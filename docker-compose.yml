@@ -81,21 +81,15 @@ services:
     container_name: ethiobio-ollama
     restart: unless-stopped
     ports:
-      - "11434:11434"
+      - "127.0.0.1:11435:11434"
     volumes:
       - ollama_data:/root/.ollama
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
     healthcheck:
-      test: ["CMD", "ollama", "list"]
-      interval: 30s
+      test: ["CMD", "sh", "-c", "ollama list | grep -q 'gemma4:31b-cloud'"]
+      interval: 15s
       timeout: 10s
-      retries: 3
+      retries: 10
+      start_period: 10s
 
   dashboard:
     build:

@@ -9,7 +9,8 @@ httpx==0.27.2
 pydantic-settings==2.5.2
 pydantic==2.9.2
 chromadb==0.5.5
-sentence-transformers==3.1.1
+# sentence-transformers removed for Docker builds (pulls PyTorch + CUDA ~3GB)
+# Embedder falls back to Ollama (nomic-embed-text) when not available
 openai==1.51.0
 anthropic==0.42.0
 python-multipart==0.0.12
@@ -22,6 +23,7 @@ pydub==0.25.1
 numpy==1.26.4
 pytest==8.3.3
 pytest-asyncio==0.24.0
+langgraph>=1.0.0
 httpx[socks]>=0.27
 structlog==24.4.0
 tenacity==9.0.0

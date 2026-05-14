@@ -47,6 +47,8 @@ class OllamaClient:
             }
         except httpx.HTTPStatusError as e:
             logger.error("ollama_chat_error", model=model_name, status=e.response.status_code, error=str(e))
+            if e.response.status_code == 404:
+                raise ConnectionError(f"Model '{model_name}' not found in Ollama. Run: ollama pull {model_name}")
             raise
         except httpx.RequestError as e:
             logger.error("ollama_connection_error", model=model_name, error=str(e))

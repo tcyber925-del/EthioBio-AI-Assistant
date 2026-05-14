@@ -58,13 +58,11 @@ def grade_keyboard(callback_prefix: str = "grade"):
 
 
 def answer_options_keyboard(options: list[str]) -> InlineKeyboardMarkup:
-    """Create inline buttons from multiple choice options (A, B, C, D)."""
+    """Create inline buttons from multiple choice options (single-letter buttons)."""
     letters = ["A", "B", "C", "D", "E", "F"]
     buttons = []
-    for i, opt in enumerate(options):
-        if i < len(letters):
-            label = opt.split(")")[0] + ")" if ") " in opt else letters[i]
-            buttons.append([InlineKeyboardButton(f"{letters[i]}) {opt.split(') ')[-1][:40]}", callback_data=f"ans_{letters[i]}")])
+    for i in range(min(len(options), len(letters))):
+        buttons.append([InlineKeyboardButton(letters[i], callback_data=f"ans_{letters[i]}")])
     buttons.append([InlineKeyboardButton("🔙 End Quiz", callback_data="quiz_end")])
     return InlineKeyboardMarkup(buttons)
 
