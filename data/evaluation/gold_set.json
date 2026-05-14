@@ -1,0 +1,47 @@
+[
+  {
+    "id": "tutor-cell-theory",
+    "type": "tutor",
+    "question": "What is cell theory?",
+    "expected_answer": "Cell theory states that all living organisms are composed of cells, the cell is the basic unit of life, and all cells arise from pre-existing cells.",
+    "grade_level": 9,
+    "topic": "Cell Biology",
+    "language": "en"
+  },
+  {
+    "id": "tutor-mitosis",
+    "type": "tutor",
+    "question": "Explain the process of mitosis.",
+    "expected_answer": "Mitosis is cell division that produces two identical daughter cells for growth and repair.",
+    "grade_level": 10,
+    "topic": "Cell Division",
+    "language": "en"
+  },
+  {
+    "id": "tutor-photosynthesis",
+    "type": "tutor",
+    "question": "What is photosynthesis?",
+    "expected_answer": "Photosynthesis is the process by which plants convert sunlight, water, and carbon dioxide into glucose and oxygen.",
+    "grade_level": 10,
+    "topic": "Photosynthesis",
+    "language": "en"
+  },
+  {
+    "id": "quiz-genetics",
+    "type": "quiz",
+    "question": "Generate a quiz about Genetics for Grade 11",
+    "expected_answer": "Quiz with questions about DNA, genes, chromosomes, and inheritance patterns",
+    "grade_level": 11,
+    "topic": "Genetics",
+    "language": "en"
+  },
+  {
+    "id": "lesson-ecology",
+    "type": "lesson_plan",
+    "question": "Create a lesson plan about Ecology for Grade 10",
+    "expected_answer": "Lesson plan with objective, activities, and assessment about ecosystems",
+    "grade_level": 10,
+    "topic": "Ecology",
+    "language": "en"
+  }
+]

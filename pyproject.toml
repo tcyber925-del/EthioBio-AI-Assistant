@@ -1,0 +1,27 @@
+[project]
+name = "ethiobio-ai-assistant"
+version = "1.1.0"
+description = "AI-powered biology learning assistant for Ethiopian middle and high school education"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+ethiobio = "src.main:run"
+ethiobio-bot = "src.telegram.bot:main"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = false
+ignore_missing_imports = true

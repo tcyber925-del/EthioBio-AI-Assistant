@@ -1,0 +1,21 @@
+Unit 1: Introduction to Biology
+
+Chapter 1: What is Biology?
+Biology is the scientific study of life. It examines the structure, function, growth, origin, evolution, and distribution of living organisms. Biology is divided into many branches including botany (study of plants), zoology (study of animals), and microbiology (study of microorganisms).
+
+Chapter 2: The Scientific Method
+The scientific method is a systematic approach to understanding the natural world. It involves making observations, asking questions, forming hypotheses, conducting experiments, analyzing data, and drawing conclusions. This method is the foundation of all biological research.
+
+Chapter 3: Characteristics of Living Things
+All living organisms share certain characteristics: they are made of cells, require energy, respond to stimuli, grow and develop, reproduce, maintain homeostasis, and adapt to their environment over time.
+
+Unit 2: Cell Biology
+
+Chapter 4: Cell Theory
+The cell theory is a fundamental principle of biology that states: (1) all living organisms are composed of one or more cells, (2) the cell is the basic structural and functional unit of life, and (3) all cells arise from pre-existing cells through cell division.
+
+Chapter 5: Cell Structure
+Cells contain various organelles that perform specific functions. The nucleus contains genetic material (DNA). Mitochondria produce energy through cellular respiration. Ribosomes synthesize proteins. The endoplasmic reticulum processes and transports proteins. The Golgi apparatus packages proteins for transport.
+
+Chapter 6: Cell Division
+Cell division is the process by which cells reproduce. Mitosis produces two identical daughter cells for growth and repair. Meiosis produces four non-identical gametes for sexual reproduction. The cell cycle includes interphase, mitosis, and cytokinesis.
