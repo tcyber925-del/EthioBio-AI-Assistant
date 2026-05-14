@@ -22,7 +22,7 @@ from src.llm.router import ModelRouter
 
 logger = structlog.get_logger()
 
-TUTOR, QUIZ_TYPE, QUIZ_GRADE, QUIZ_TOPIC, QUIZ_ANSWERING, LESSON_GRADE, LESSON_TOPIC = range(7)
+TUTOR, QUIZ_TYPE, QUIZ_GRADE, QUIZ_TOPIC, QUIZ_ANSWERING, LESSON_GRADE, LESSON_TOPIC, TUTOR_GRADE = range(8)
 
 
 async def _db_try(action, fallback=None):
@@ -189,22 +189,50 @@ async def handle_open_dashboard(update: Update, context):
 async def handle_tutor(update: Update, context):
     if update.callback_query:
         query = update.callback_query
-        await query.answer()
+        try:
+            await query.answer()
+        except Exception:
+            pass
         await query.edit_message_text(
-            "Send me your biology question. I'll help you understand it!",
-            reply_markup=back_keyboard(),
+            "Select your grade level:",
+            reply_markup=grade_keyboard("tutor_grade"),
         )
     else:
         await update.message.reply_text(
-            "Send me your biology question. I'll help you understand it!",
-            reply_markup=back_keyboard(),
+            "Select your grade level:",
+            reply_markup=grade_keyboard("tutor_grade"),
         )
+    return TUTOR_GRADE
+
+
+async def handle_tutor_grade(update: Update, context):
+    query = update.callback_query
+    try:
+        await query.answer()
+    except Exception:
+        pass
+    grade = int(query.data.split("_")[-1])
+    context.user_data["tutor_grade"] = grade
+    await query.edit_message_text(
+        f"Grade {grade} selected. Send me your biology question. I'll help you understand it!",
+        reply_markup=back_keyboard(),
+    )
     return TUTOR
+
+
+async def end_conversation(update: Update, context):
+    query = update.callback_query
+    try:
+        await query.answer()
+    except Exception:
+        pass
+    await query.edit_message_text("Choose an option:", reply_markup=main_menu_keyboard())
+    return ConversationHandler.END
 
 
 async def handle_question(update: Update, context):
     question = update.message.text
-    await update.message.reply_text("Thinking...")
+    thinking_msg = await update.message.reply_text("Thinking...")
 
     result = None
     try:
@@ -212,20 +240,23 @@ async def handle_question(update: Update, context):
         agent = TutorAgent(llm_router=router_llm, retriever=None)
         result = await agent.answer(
             question=question, user_id=None, use_rag=True,
-            grade_level=context.user_data.get("grade_level"),
+            grade_level=context.user_data.pop("tutor_grade", None) or context.user_data.get("grade_level"),
             language=context.user_data.get("language", "en"),
         )
         response = result["answer"]
         if result.get("sources"):
             response += "\n\n---\nSources: " + ", ".join(result["sources"][:3])
-        await _reply_long(update.message, response, reply_markup=main_menu_keyboard())
+        await _reply_long(thinking_msg, response, reply_markup=main_menu_keyboard())
         await router_llm.close()
     except Exception as e:
         logger.error("tutor_error", error=str(e))
-        await update.message.reply_text(
-            "Sorry, I encountered an error. Please try again.",
-            reply_markup=main_menu_keyboard(),
-        )
+        try:
+            await thinking_msg.edit_text(
+                "Sorry, I encountered an error. Please try again.",
+                reply_markup=main_menu_keyboard(),
+            )
+        except Exception:
+            pass
         return ConversationHandler.END
 
     from src.database.models import MessageThread
@@ -343,11 +374,22 @@ async def _send_quiz_question(update: Update, context, msg=None):
         f"{q['question_text']}"
     )
 
+    if qtype == "multiple_choice" and q.get("options"):
+        letters = ["A", "B", "C", "D", "E", "F"]
+        opt_lines = []
+        for i, opt in enumerate(q["options"]):
+            if i < len(letters):
+                opt_lines.append(f"{letters[i]}) {opt.split(') ')[-1]}")
+        text += "\n\n" + "\n".join(opt_lines)
+
     reply_markup = None
     if qtype == "true_false" or qtype == "true/false":
         reply_markup = tf_keyboard()
     elif q.get("options"):
         reply_markup = answer_options_keyboard(q["options"])
+    elif qtype == "short_answer":
+        text += "\n\n✏️ Type your answer below, then tap Next."
+        reply_markup = quiz_next_keyboard()
     else:
         reply_markup = quiz_next_keyboard()
 
@@ -394,14 +436,15 @@ async def handle_quiz_answer(update: Update, context):
 
     is_correct = False
     if q.get("question_type") == "multiple_choice" and q.get("options"):
-        for opt in q["options"]:
-            if opt.startswith(selected + ")") and opt == correct_answer:
-                is_correct = True
-                break
-            if opt.startswith(selected + ")") and opt == selected:
-                pass
-        if selected + ")" in correct_answer:
-            is_correct = True
+        letters = ["A", "B", "C", "D", "E", "F"]
+        try:
+            opt_idx = letters.index(selected)
+            chosen = q["options"][opt_idx]
+            chosen_text = chosen.split(") ")[-1] if ") " in chosen else chosen
+            correct_text = correct_answer.split(") ")[-1] if ") " in correct_answer else correct_answer
+            is_correct = chosen_text.strip().lower() == correct_text.strip().lower()
+        except (ValueError, IndexError):
+            is_correct = False
     else:
         is_correct = selected.strip().lower() == correct_answer.strip().lower()
 
@@ -423,6 +466,43 @@ def _get_explanation(q: dict) -> str:
     if exp:
         return f"_{exp[:200]}_"
     return ""
+
+
+async def handle_quiz_short_answer(update: Update, context):
+    session = context.user_data.get("quiz_session", {})
+    qs = session.get("questions", [])
+    idx = session.get("current", 0)
+
+    if idx >= len(qs):
+        await _show_quiz_result(update, context)
+        return ConversationHandler.END
+
+    q = qs[idx]
+    qtype = q.get("question_type", "")
+
+    if qtype != "short_answer":
+        msg = "Please use the buttons below to answer."
+        if q.get("options"):
+            await update.message.reply_text(msg, reply_markup=answer_options_keyboard(q["options"]))
+        else:
+            await update.message.reply_text(msg)
+        return QUIZ_ANSWERING
+
+    user_answer = update.message.text.strip()
+    correct_answer = q.get("correct_answer", "").strip()
+    is_correct = user_answer.lower() == correct_answer.lower()
+
+    session["answers"].append(user_answer)
+    if is_correct:
+        session["correct"] += 1
+    session["current"] += 1
+
+    feedback = "✅ Correct!" if is_correct else f"❌ Wrong. The answer was: {correct_answer}"
+    if q.get("explanation"):
+        feedback += f"\n\n_{q['explanation'][:200]}_"
+
+    await update.message.reply_text(feedback, reply_markup=quiz_next_keyboard())
+    return QUIZ_ANSWERING
 
 
 async def handle_quiz_next(update: Update, context):
@@ -576,7 +656,12 @@ async def error_handler(update: Update, context):
 
 
 def build_app() -> Application:
-    app = Application.builder().token(settings.telegram_bot_token).build()
+    from telegram.request import HTTPXRequest
+    _request = HTTPXRequest(
+        read_timeout=60.0, write_timeout=60.0,
+        connect_timeout=30.0, pool_timeout=5.0,
+    )
+    app = Application.builder().token(settings.telegram_bot_token).request(_request).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
@@ -592,16 +677,32 @@ def build_app() -> Application:
             CallbackQueryHandler(handle_quiz_start, pattern="^quiz$"),
         ],
         states={
-            QUIZ_TYPE: [CallbackQueryHandler(handle_quiz_type, pattern="^quiztype_")],
-            QUIZ_GRADE: [CallbackQueryHandler(handle_quiz_grade, pattern="^quiz_grade_")],
-            QUIZ_TOPIC: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_quiz_topic)],
+            QUIZ_TYPE: [
+                CallbackQueryHandler(handle_quiz_type, pattern="^quiztype_"),
+                CallbackQueryHandler(end_conversation, pattern="^menu$"),
+            ],
+            QUIZ_GRADE: [
+                CallbackQueryHandler(handle_quiz_grade, pattern="^quiz_grade_"),
+                CallbackQueryHandler(end_conversation, pattern="^menu$"),
+            ],
+            QUIZ_TOPIC: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_quiz_topic),
+                CallbackQueryHandler(end_conversation, pattern="^menu$"),
+            ],
             QUIZ_ANSWERING: [
                 CallbackQueryHandler(handle_quiz_answer, pattern="^ans_"),
                 CallbackQueryHandler(handle_quiz_next, pattern="^quiz_next$"),
                 CallbackQueryHandler(handle_quiz_end, pattern="^quiz_end$"),
+                CallbackQueryHandler(handle_quiz_retry, pattern="^quiz_retry$"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_quiz_short_answer),
+                CallbackQueryHandler(end_conversation, pattern="^menu$"),
             ],
         },
-        fallbacks=[CommandHandler("cancel", cancel), CommandHandler("menu", menu)],
+        fallbacks=[
+            CommandHandler("cancel", cancel),
+            CommandHandler("menu", menu),
+            CallbackQueryHandler(end_conversation, pattern="^menu$"),
+        ],
         per_user=True,
     )
     app.add_handler(quiz_handler)
@@ -609,10 +710,20 @@ def build_app() -> Application:
     lesson_handler = ConversationHandler(
         entry_points=[CallbackQueryHandler(handle_lesson_start, pattern="^lesson_plan$")],
         states={
-            LESSON_GRADE: [CallbackQueryHandler(handle_lesson_grade, pattern="^lesson_grade_")],
-            LESSON_TOPIC: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_lesson_topic)],
+            LESSON_GRADE: [
+                CallbackQueryHandler(handle_lesson_grade, pattern="^lesson_grade_"),
+                CallbackQueryHandler(end_conversation, pattern="^menu$"),
+            ],
+            LESSON_TOPIC: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_lesson_topic),
+                CallbackQueryHandler(end_conversation, pattern="^menu$"),
+            ],
         },
-        fallbacks=[CommandHandler("cancel", cancel), CommandHandler("menu", menu)],
+        fallbacks=[
+            CommandHandler("cancel", cancel),
+            CommandHandler("menu", menu),
+            CallbackQueryHandler(end_conversation, pattern="^menu$"),
+        ],
         per_user=True,
     )
     app.add_handler(lesson_handler)
@@ -622,8 +733,21 @@ def build_app() -> Application:
             CallbackQueryHandler(handle_tutor, pattern="^tutor$"),
             MessageHandler(filters.TEXT & ~filters.COMMAND, handle_general_message),
         ],
-        states={TUTOR: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_question)]},
-        fallbacks=[CommandHandler("cancel", cancel), CommandHandler("menu", menu)],
+        states={
+            TUTOR_GRADE: [
+                CallbackQueryHandler(handle_tutor_grade, pattern="^tutor_grade_"),
+                CallbackQueryHandler(end_conversation, pattern="^menu$"),
+            ],
+            TUTOR: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_question),
+                CallbackQueryHandler(end_conversation, pattern="^menu$"),
+            ],
+        },
+        fallbacks=[
+            CommandHandler("cancel", cancel),
+            CommandHandler("menu", menu),
+            CallbackQueryHandler(end_conversation, pattern="^menu$"),
+        ],
         per_user=True,
     )
     app.add_handler(conv_handler)
@@ -654,7 +778,7 @@ async def main():
     else:
         logger.info("starting_polling")
         await app.initialize()
-        await app.updater.start_polling(allowed_updates=["message", "callback_query"])
+        await app.updater.start_polling(allowed_updates=["message", "callback_query"], drop_pending_updates=True)
         await app.start()
         logger.info("bot_polling_started")
         try:
