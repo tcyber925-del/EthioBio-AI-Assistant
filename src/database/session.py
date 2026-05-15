@@ -61,8 +61,12 @@ async def get_session() -> AsyncSession:
 
 async def init_db():
     logger.info("database_init_deferred - waiting for first connection")
-    _get_engine()
+    engine = _get_engine()
     logger.debug("engine_created")
+    from src.database.models import Base
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    logger.info("database_tables_created")
 
 
 async def close_db():

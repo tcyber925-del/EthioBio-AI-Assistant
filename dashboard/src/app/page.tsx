@@ -20,13 +20,22 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchData = () => {
+  const fetchData = async () => {
     setLoading(true)
-    fetch('/api/admin/dashboard')
-      .then(res => res.json())
-      .then(d => { setData(d); setError(null) })
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false))
+    try {
+      const res = await fetch('/api/admin/dashboard')
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(`Server returned ${res.status}: ${text}`)
+      }
+      const d = await res.json()
+      setData(d)
+      setError(null)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { fetchData() }, [])

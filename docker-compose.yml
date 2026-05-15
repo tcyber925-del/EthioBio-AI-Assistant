@@ -95,6 +95,8 @@ services:
     build:
       context: ./dashboard
       dockerfile: ../Dockerfile.dashboard
+      args:
+        NEXT_PUBLIC_API_URL: http://app:8000
     container_name: ethiobio-dashboard
     restart: unless-stopped
     ports:
