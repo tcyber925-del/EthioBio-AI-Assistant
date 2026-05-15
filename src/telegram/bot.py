@@ -148,19 +148,19 @@ async def quiz_command(update: Update, context):
 async def menu(update: Update, context):
     query = update.callback_query
     await query.answer()
-    await query.edit_message_text("Choose an option:", reply_markup=main_menu_keyboard())
+    await query.message.reply_text("Choose an option:", reply_markup=main_menu_keyboard())
 
 
 async def handle_teacher_tools(update: Update, context):
     query = update.callback_query
     await query.answer()
-    await query.edit_message_text("Teacher Tools:", reply_markup=teacher_tools_keyboard())
+    await query.message.reply_text("Teacher Tools:", reply_markup=teacher_tools_keyboard())
 
 
 async def handle_open_quizzes(update: Update, context):
     query = update.callback_query
     await query.answer()
-    await query.edit_message_text(
+    await query.message.reply_text(
         "📄 Review Quizzes\n\n"
         "Open the Teacher Dashboard in your browser:\n"
         "http://localhost:3000/quizzes\n\n"
@@ -172,7 +172,7 @@ async def handle_open_quizzes(update: Update, context):
 async def handle_open_dashboard(update: Update, context):
     query = update.callback_query
     await query.answer()
-    await query.edit_message_text(
+    await query.message.reply_text(
         "📈 Teacher Dashboard\n\n"
         "Open in your browser:\n"
         "http://localhost:3000\n\n"
@@ -193,7 +193,7 @@ async def handle_tutor(update: Update, context):
             await query.answer()
         except Exception:
             pass
-        await query.edit_message_text(
+        await query.message.reply_text(
             "Select your grade level:",
             reply_markup=grade_keyboard("tutor_grade"),
         )
@@ -226,7 +226,7 @@ async def end_conversation(update: Update, context):
         await query.answer()
     except Exception:
         pass
-    await query.edit_message_text("Choose an option:", reply_markup=main_menu_keyboard())
+    await query.message.reply_text("Choose an option:", reply_markup=main_menu_keyboard())
     return ConversationHandler.END
 
 
@@ -277,7 +277,7 @@ async def handle_question(update: Update, context):
 async def handle_quiz_start(update: Update, context):
     query = update.callback_query
     await query.answer()
-    await query.edit_message_text("Select quiz type:", reply_markup=quiz_type_keyboard())
+    await query.message.reply_text("Select quiz type:", reply_markup=quiz_type_keyboard())
     return QUIZ_TYPE
 
 
@@ -534,7 +534,7 @@ async def handle_quiz_retry(update: Update, context):
 async def handle_lesson_start(update: Update, context):
     query = update.callback_query
     await query.answer()
-    await query.edit_message_text("Select grade level:", reply_markup=grade_keyboard("lesson_grade"))
+    await query.message.reply_text("Select grade level:", reply_markup=grade_keyboard("lesson_grade"))
     return LESSON_GRADE
 
 
@@ -594,7 +594,7 @@ async def handle_progress(update: Update, context):
         "In the meantime, keep practicing with quizzes!"
     )
     if query:
-        await query.edit_message_text(text, reply_markup=main_menu_keyboard())
+        await query.message.reply_text(text, reply_markup=main_menu_keyboard())
     else:
         await update.message.reply_text(text, reply_markup=main_menu_keyboard())
 
@@ -602,7 +602,7 @@ async def handle_progress(update: Update, context):
 async def handle_language(update: Update, context):
     query = update.callback_query
     await query.answer()
-    await query.edit_message_text("Choose your language:", reply_markup=language_keyboard())
+    await query.message.reply_text("Choose your language:", reply_markup=language_keyboard())
 
 
 async def handle_language_select(update: Update, context):
@@ -611,7 +611,7 @@ async def handle_language_select(update: Update, context):
     lang_map = {"lang_en": ("en", "English"), "lang_am": ("am", "Amharic"), "lang_both": ("both", "Bilingual")}
     code, name = lang_map.get(query.data, ("en", "English"))
     context.user_data["language"] = code
-    await query.edit_message_text(
+    await query.message.reply_text(
         f"Language set to {name}!\n\nYou can now ask biology questions in {name}.",
         reply_markup=main_menu_keyboard(),
     )

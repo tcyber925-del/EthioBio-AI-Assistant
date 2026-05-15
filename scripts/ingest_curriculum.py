@@ -172,7 +172,7 @@ def scan_files(base_dir: str) -> list[dict]:
     return files
 
 
-async def process_file(file_info: dict, embedder: Embedder, store: VectorStore) -> int:
+async def process_file(file_info: dict, embedder: Embedder, store: VectorStore, use_ollama: bool = False) -> int:
     """Process a single curriculum file: extract, chunk, embed, store."""
     filepath = file_info["filepath"]
     grade = file_info["grade_level"]
@@ -224,7 +224,7 @@ async def process_file(file_info: dict, embedder: Embedder, store: VectorStore) 
         ids.append(chunk_id)
 
     try:
-        embeddings = await embedder.embed_batch(chunk_texts)
+        embeddings = await embedder.embed_batch(chunk_texts, use_ollama=use_ollama)
         await store.add_documents(
             texts=chunk_texts,
             embeddings=embeddings,
@@ -245,6 +245,7 @@ async def main():
     parser.add_argument("--stats", action="store_true", help="Show store statistics")
     parser.add_argument("--query", type=str, help="Test retrieval with a query string")
     parser.add_argument("--grade", type=int, help="Filter query by grade level")
+    parser.add_argument("--ollama-embed", action="store_true", help="Use Ollama for embeddings instead of local model")
 
     args = parser.parse_args()
 
@@ -299,7 +300,7 @@ async def main():
     print(f"📚 Found {len(files)} files to process\n")
     total_chunks = 0
     for f in files:
-        chunks = await process_file(f, embedder, store)
+        chunks = await process_file(f, embedder, store, use_ollama=args.ollama_embed)
         total_chunks += chunks
 
     count = store.count()

@@ -6,9 +6,11 @@ logger = structlog.get_logger()
 
 
 class Embedder:
-    def __init__(self, router: ModelRouter = None):
+    def __init__(self, router: ModelRouter = None, force_ollama: bool = False):
         self.router = router or ModelRouter()
         self._sentence_transformer = None
+        self._force_ollama = force_ollama
+        self._local_dim = 384
 
     def _get_local_model(self):
         if self._sentence_transformer is None:
@@ -21,7 +23,7 @@ class Embedder:
         return self._sentence_transformer
 
     async def embed_text(self, text: str, use_ollama: bool = False) -> list[float]:
-        if use_ollama:
+        if use_ollama or self._force_ollama:
             return await self.router.generate_embedding(text)
 
         model = self._get_local_model()
@@ -30,7 +32,14 @@ class Embedder:
 
         return await self.router.generate_embedding(text)
 
-    async def embed_batch(self, texts: list[str], batch_size: int = 16) -> list[list[float]]:
+    async def embed_batch(self, texts: list[str], batch_size: int = 16, use_ollama: bool = False) -> list[list[float]]:
+        if use_ollama or self._force_ollama:
+            results = []
+            for text in texts:
+                emb = await self.embed_text(text, use_ollama=True)
+                results.append(emb)
+            return results
+
         model = self._get_local_model()
         if model:
             embeddings = model.encode(texts, batch_size=batch_size, show_progress_bar=False)
