@@ -167,7 +167,9 @@ def detect_grade_from_path(filepath: str) -> int:
 
 def _extract_unit(text: str) -> str:
     """Extract unit name from text (e.g. 'Unit 3: Biochemical Molecules')."""
-    match = re.search(r"Unit\s+(\d+):\s*([A-Z][^\n]{3,60})", text)
+    # Match unit header at start of line or after newline
+    # Unit name ends at newline, tab, or after ~60 chars
+    match = re.search(r"(?:^|\n)\s*Unit\s+(\d+):\s*([A-Z][^\n\t]{3,60})", text)
     if match:
         name = match.group(2).strip()
         # Reject TOC entries: contain section refs like '1.1', '1.2', or page numbers
@@ -175,8 +177,9 @@ def _extract_unit(text: str) -> str:
             return ""
         if re.search(r'\b\d{2,}\b', name):
             return ""
-        name = re.split(r'\s{2,}|\t', name)[0].strip()
-        if len(name) < 80:
+        # Clean up: remove trailing whitespace/garbage
+        name = re.split(r'\s{2,}|\t|•', name)[0].strip()
+        if len(name) < 80 and len(name) > 3:
             return f"Unit {match.group(1)}: {name}"
     return ""
 
@@ -276,7 +279,7 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
                 continue
 
             # Extract unit from this section's header
-            unit_match = re.search(r"Unit\s+(\d+):\s*([A-Z][^\n]{3,60})", section)
+            unit_match = re.search(r"(?:^|\n)\s*Unit\s+(\d+):\s*([A-Z][^\n\t]{3,60})", section)
             if unit_match:
                 name = unit_match.group(2).strip()
                 # Reject TOC entries: contain section refs, page numbers, or are followed by mostly whitespace/numbers
@@ -285,8 +288,8 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
                     after_unit = section[unit_match.end():unit_match.end()+100].strip()
                     # TOC entries are followed by whitespace and page numbers, not paragraphs
                     if after_unit and not re.match(r'^[\s\d\t]+$', after_unit[:50]):
-                        name = re.split(r'\s{2,}|\t', name)[0].strip()
-                        if len(name) < 80:
+                        name = re.split(r'\s{2,}|\t|•', name)[0].strip()
+                        if len(name) < 80 and len(name) > 3:
                             current_unit = f"Unit {unit_match.group(1)}: {name}"
 
             # Extract page number from marker or text
@@ -526,6 +529,13 @@ async def main():
     for f in files:
         chunks = await process_file(f, embedder, store, use_docling=use_docling)
         total_chunks += chunks
+
+    # Rebuild BM25 index for hybrid search
+    print("\nRebuilding BM25 index...")
+    from src.retrieval.adapter import VectorStoreAdapter
+    adapter = VectorStoreAdapter(vector_store=store)
+    adapter.build_bm25_index()
+    print("   BM25 index rebuilt")
 
     count = store.count()
     print(f"\nIngestion complete!")
