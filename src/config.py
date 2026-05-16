@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     fallback_api_key: Optional[str] = None
     fallback_model: Optional[str] = None
 
-    vector_store_path: str = "./data/vectors"
+    vector_store_path: str = "./data/vectors_new"
     collection_name: str = "ethiobio_curriculum"
 
     whisper_model: str = "base"

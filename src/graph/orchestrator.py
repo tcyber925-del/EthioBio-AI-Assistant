@@ -74,10 +74,20 @@ async def run_graph(
     for chunk in result.get("retrieved_chunks", []):
         meta = chunk.get("metadata", {})
         grade = meta.get("grade_level", "")
-        heading = meta.get("heading", "") or meta.get("topic", "")
-        source = f"Grade {grade} - {heading}" if grade else heading
-        if source:
-            sources.append(source)
+        unit = meta.get("unit", "")
+        topic = meta.get("topic", "")
+        page = meta.get("page_number", "")
+        parts = []
+        if grade:
+            parts.append(f"Grade {grade}")
+        if unit:
+            parts.append(unit)
+        if topic:
+            parts.append(topic)
+        if page:
+            parts.append(f"p.{page}")
+        if parts:
+            sources.append(", ".join(parts))
 
     return GraphOutput(
         answer=result.get("draft", ""),
