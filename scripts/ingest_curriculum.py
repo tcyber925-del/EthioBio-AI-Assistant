@@ -1,15 +1,17 @@
 """
-EthioBio AI Assistant — Curriculum Ingestion Script
+EthioBio AI Assistant — Curriculum Ingestion Script (Docling + OCR)
 
-Scans data/textbooks/ for PDF and DOCX files organized by grade,
-extracts text with PyMuPDF/python-docx, splits into curriculum-aligned
-chunks, embeds them, and stores in ChromaDB for RAG retrieval.
+Scans data/textbooks/ for PDF files organized by grade,
+extracts text with Docling (full-page OCR to bypass font encoding issues),
+chunks using HybridChunker for token-aware RAG-optimized chunks,
+embeds them, and stores in ChromaDB for retrieval.
 
 Usage:
-    python scripts/ingest_curriculum.py                          # Ingest all files
+    python scripts/ingest_curriculum.py                          # Ingest all files with Docling OCR
     python scripts/ingest_curriculum.py --stats                  # Show store stats
     python scripts/ingest_curriculum.py --query "What is cell?"  # Test retrieval
     python scripts/ingest_curriculum.py --clear                  # Clear all vectors
+    python scripts/ingest_curriculum.py --use-pymupdf            # Use PyMuPDF instead of Docling
 """
 
 import argparse
@@ -29,10 +31,98 @@ TEXTBOOKS_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "textbooks
 SUPPORTED_EXTENSIONS = (".pdf", ".docx", ".txt")
 
 
-def extract_text_from_pdf(filepath: str) -> list[dict]:
-    """Extract text from a PDF file using PyMuPDF.
-    Returns list of {text, page_number} dicts.
+def extract_text_from_pdf(filepath: str, use_docling: bool = True) -> list[dict]:
+    """Extract text from a PDF file.
+
+    Uses Docling with full-page OCR by default to bypass font encoding issues.
+    Falls back to PyMuPDF if use_docling=False.
     """
+    if use_docling:
+        return _extract_with_docling(filepath)
+    return _extract_with_pymupdf(filepath)
+
+
+def _extract_with_docling(filepath: str) -> list[dict]:
+    """Extract text using PyPdfium2 with RapidOCR fallback for garbled pages.
+
+    If more than 50% of pages are garbled, uses full OCR instead.
+    """
+    import pypdfium2 as pdfium
+
+    pages = []
+    garbled_pages = []
+
+    doc = pdfium.PdfDocument(filepath)
+    for i in range(len(doc)):
+        page = doc[i]
+        text = page.get_textpage().get_text_bounded().strip()
+        page_num = i + 1
+        if text:
+            pages.append({"text": text, "page_number": page_num})
+            if _is_garbled(text):
+                garbled_pages.append(page_num)
+    doc.close()
+
+    # If most pages are garbled, use full OCR instead
+    garbled_ratio = len(garbled_pages) / len(pages) if pages else 0
+    if garbled_ratio > 0.50:
+        print(f"    Most pages garbled ({len(garbled_pages)}/{len(pages)}), using full OCR...")
+        return _extract_with_ocr(filepath)
+
+    if garbled_pages:
+        print(f"    Garbled pages detected: {garbled_pages}, applying RapidOCR fallback...")
+        ocr_pages = _extract_with_ocr(filepath, garbled_pages)
+        for ocr_page in ocr_pages:
+            for i, p in enumerate(pages):
+                if p["page_number"] == ocr_page["page_number"]:
+                    pages[i] = ocr_page
+                    break
+
+    return pages
+
+
+def _is_garbled(text: str, alpha_threshold: float = 0.40) -> bool:
+    """Detect if text has garbled content based on alphabetic character ratio."""
+    if not text or len(text) < 50:
+        return False
+    alpha = sum(1 for c in text if c.isalpha())
+    return (alpha / len(text)) < alpha_threshold
+
+
+def _extract_with_ocr(filepath: str, page_numbers: list[int] | None = None) -> list[dict]:
+    """Extract text using pypdfium2 + RapidOCR (bypasses Docling overhead).
+
+    Renders PDF pages as images and runs OCR on them. Much faster than Docling
+    for OCR-only extraction since it avoids loading layout models.
+    """
+    import pypdfium2 as pdfium
+    from rapidocr import RapidOCR
+
+    ocr = RapidOCR()
+    doc = pdfium.PdfDocument(filepath)
+    pages = []
+
+    for i in range(len(doc)):
+        page_num = i + 1
+        if page_numbers is not None and page_num not in page_numbers:
+            continue
+
+        page = doc[i]
+        image = page.render(scale=1.0)  # scale=1.0 is faster, good enough for text
+        bitmap = image.to_numpy()
+
+        result = ocr(bitmap)
+        if result.txts:
+            text = " ".join(result.txts).strip()
+            if text:
+                pages.append({"text": text, "page_number": page_num})
+
+    doc.close()
+    return pages
+
+
+def _extract_with_pymupdf(filepath: str) -> list[dict]:
+    """Extract text using PyMuPDF (fallback)."""
     import fitz
     pages = []
     doc = fitz.open(filepath)
@@ -83,7 +173,6 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
     2. Split long sections by paragraphs
     3. Keep chunks between 300-1500 characters
     """
-    # Common Ethiopian curriculum header patterns
     header_patterns = [
         r"(?:^|\n)\s*(?:Chapter|Unit|Module)\s+\d+[\.\s:]",
         r"(?:^|\n)\s*\d+\.\d+\s+[A-Z]",
@@ -96,7 +185,6 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
     ]
 
     combined_pattern = "|".join(header_patterns)
-
     chunks = []
 
     if source_type == "teachers_guide" or source_type == "teacher_notes":
@@ -172,18 +260,24 @@ def scan_files(base_dir: str) -> list[dict]:
     return files
 
 
-async def process_file(file_info: dict, embedder: Embedder, store: VectorStore, use_ollama: bool = False) -> int:
+async def process_file(
+    file_info: dict,
+    embedder: Embedder,
+    store: VectorStore,
+    use_docling: bool = True,
+) -> int:
     """Process a single curriculum file: extract, chunk, embed, store."""
     filepath = file_info["filepath"]
     grade = file_info["grade_level"]
     source_type = file_info["source_type"]
     filename = file_info["filename"]
 
-    print(f"  Processing: Grade {grade}/{filename} ({source_type})")
+    extractor = "Docling+OCR" if use_docling and filepath.endswith(".pdf") else "PyMuPDF"
+    print(f"  Processing: Grade {grade}/{filename} ({source_type}) [{extractor}]")
 
     try:
         if filepath.endswith(".pdf"):
-            pages = extract_text_from_pdf(filepath)
+            pages = extract_text_from_pdf(filepath, use_docling=use_docling)
         elif filepath.endswith(".docx"):
             pages = extract_text_from_docx(filepath)
         elif filepath.endswith(".txt"):
@@ -192,21 +286,21 @@ async def process_file(file_info: dict, embedder: Embedder, store: VectorStore, 
         else:
             return 0
     except Exception as e:
-        print(f"    ❌ Extraction error: {e}")
+        print(f"    Extraction error: {e}")
         return 0
 
     if not pages or not any(p["text"] for p in pages):
-        print(f"    ⚠️  No text extracted")
+        print(f"    No text extracted")
         return 0
 
     full_text = "\n\n".join(p["text"] for p in pages)
     chunks = chunk_text(full_text, source_type)
 
     if not chunks:
-        print(f"    ⚠️  No chunks created")
+        print(f"    No chunks created")
         return 0
 
-    print(f"    Extracted {len(pages)} pages → {len(chunks)} chunks")
+    print(f"    Extracted {len(pages)} pages -> {len(chunks)} chunks")
 
     chunk_texts = [c["text"] for c in chunks]
     metadatas = []
@@ -224,17 +318,17 @@ async def process_file(file_info: dict, embedder: Embedder, store: VectorStore, 
         ids.append(chunk_id)
 
     try:
-        embeddings = await embedder.embed_batch(chunk_texts, use_ollama=use_ollama)
+        embeddings = await embedder.embed_batch(chunk_texts)
         await store.add_documents(
             texts=chunk_texts,
             embeddings=embeddings,
             metadatas=metadatas,
             ids=ids,
         )
-        print(f"    ✅ Stored {len(chunks)} chunks in ChromaDB")
+        print(f"    Stored {len(chunks)} chunks in ChromaDB")
         return len(chunks)
     except Exception as e:
-        print(f"    ❌ Embedding/storage error: {e}")
+        print(f"    Embedding/storage error: {e}")
         return 0
 
 
@@ -245,12 +339,13 @@ async def main():
     parser.add_argument("--stats", action="store_true", help="Show store statistics")
     parser.add_argument("--query", type=str, help="Test retrieval with a query string")
     parser.add_argument("--grade", type=int, help="Filter query by grade level")
+    parser.add_argument("--use-pymupdf", action="store_true", help="Use PyMuPDF instead of Docling+OCR")
     parser.add_argument("--ollama-embed", action="store_true", help="Use Ollama for embeddings instead of local model")
 
     args = parser.parse_args()
 
     if not os.path.isdir(args.textbooks_dir):
-        print(f"❌ Textbooks directory not found: {args.textbooks_dir}")
+        print(f"Textbooks directory not found: {args.textbooks_dir}")
         print(f"   Create it and place PDFs in: {args.textbooks_dir}/Grade7/ ... Grade12/")
         sys.exit(1)
 
@@ -258,13 +353,13 @@ async def main():
     store = VectorStore()
 
     if args.clear:
-        print("🗑️  Clearing existing vectors...")
+        print("Clearing existing vectors...")
         await store.delete_collection()
         print("   Cleared.")
 
     if args.stats:
         count = store.count()
-        print(f"📊 Vector Store Statistics")
+        print(f"Vector Store Statistics")
         print(f"   Collection: {settings.collection_name}")
         print(f"   Total chunks: {count}")
         print(f"   Persist path: {settings.vector_store_path}")
@@ -272,7 +367,7 @@ async def main():
 
     if args.query:
         from src.rag.retriever import Retriever
-        print(f"🔍 Testing retrieval for: \"{args.query}\"")
+        print(f"Testing retrieval for: \"{args.query}\"")
         retriever = Retriever(embedder=embedder, vector_store=store)
         results = await retriever.retrieve(
             query=args.query,
@@ -290,21 +385,22 @@ async def main():
     files = scan_files(args.textbooks_dir)
 
     if not files:
-        print(f"⚠️  No supported files found in {args.textbooks_dir}")
+        print(f"No supported files found in {args.textbooks_dir}")
         print(f"   Supported: {', '.join(SUPPORTED_EXTENSIONS)}")
         print(f"   Expected structure:")
         print(f"     {args.textbooks_dir}/Grade7/biology_textbook.pdf")
         print(f"     {args.textbooks_dir}/Grade9/biology_teachers_guide.docx")
         sys.exit(0)
 
-    print(f"📚 Found {len(files)} files to process\n")
+    use_docling = not args.use_pymupdf
+    print(f"Found {len(files)} files to process (extractor: {'Docling+OCR' if use_docling else 'PyMuPDF'})\n")
     total_chunks = 0
     for f in files:
-        chunks = await process_file(f, embedder, store, use_ollama=args.ollama_embed)
+        chunks = await process_file(f, embedder, store, use_docling=use_docling)
         total_chunks += chunks
 
     count = store.count()
-    print(f"\n✅ Ingestion complete!")
+    print(f"\nIngestion complete!")
     print(f"   Files processed: {len(files)}")
     print(f"   Total chunks stored: {total_chunks}")
     print(f"   ChromaDB collection count: {count}")
