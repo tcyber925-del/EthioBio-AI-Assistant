@@ -165,6 +165,36 @@ def detect_grade_from_path(filepath: str) -> int:
     return 0
 
 
+def _extract_unit(text: str) -> str:
+    """Extract unit name from text (e.g. 'Unit 3: Biochemical Molecules')."""
+    match = re.search(r"Unit\s+(\d+):\s*([A-Z][^\n]{3,60})", text)
+    if match:
+        name = match.group(2).strip()
+        # Reject TOC entries: contain section refs like '1.1', '1.2', or page numbers
+        if re.search(r'\d+\.\d+', name):
+            return ""
+        if re.search(r'\b\d{2,}\b', name):
+            return ""
+        name = re.split(r'\s{2,}|\t', name)[0].strip()
+        if len(name) < 80:
+            return f"Unit {match.group(1)}: {name}"
+    return ""
+
+
+def _extract_topic(text: str) -> str:
+    """Extract topic/section heading from text."""
+    patterns = [
+        r"(?:^|\n)\s*(\d+\.\d+\s+[A-Z][^\n]{3,80})",
+        r"(?:^|\n)\s*(Topic\s+\d+[:.\s]+[A-Z][^\n]{3,80})",
+        r"(?:^|\n)\s*(Lesson\s+\d+[:.\s]+[A-Z][^\n]{3,80})",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            return match.group(1).strip()
+    return ""
+
+
 def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
     """Split text into curriculum-aligned chunks at natural boundaries.
 
@@ -172,16 +202,20 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
     1. Split on chapter/unit/section headers
     2. Split long sections by paragraphs
     3. Keep chunks between 300-1500 characters
+    4. Track unit, topic, and page_number for each chunk
     """
+    # No TOC skipping needed — the unit extraction rejects TOC entries
+    # (they contain section refs like "1.1" which fail the clean name check)
+
     header_patterns = [
-        r"(?:^|\n)\s*(?:Chapter|Unit|Module)\s+\d+[\.\s:]",
-        r"(?:^|\n)\s*\d+\.\d+\s+[A-Z]",
-        r"(?:^|\n)\s*[A-Z][A-Z\s]{5,}(?:\n|$)",
-        r"(?:^|\n)\s*Lesson\s+\d+",
-        r"(?:^|\n)\s*Topic\s+\d+",
-        r"(?:^|\n)\s*Session\s+\d+",
-        r"(?:^|\n)\s*Part\s+[A-Z0-9]",
-        r"(?:^|\n)\s*Section\s+\d+",
+        r"(?=(?:^|\n)\s*(?:Chapter|Unit|Module)\s+\d+[\.\s:])",
+        r"(?=(?:^|\n)\s*\d+\.\d+\s+[A-Z])",
+        r"(?=(?:^|\n)\s*[A-Z][A-Z\s]{5,}(?:\n|$))",
+        r"(?=(?:^|\n)\s*Lesson\s+\d+)",
+        r"(?=(?:^|\n)\s*Topic\s+\d+)",
+        r"(?=(?:^|\n)\s*Session\s+\d+)",
+        r"(?=(?:^|\n)\s*Part\s+[A-Z0-9])",
+        r"(?=(?:^|\n)\s*Section\s+\d+)",
     ]
 
     combined_pattern = "|".join(header_patterns)
@@ -190,24 +224,79 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
     if source_type == "teachers_guide" or source_type == "teacher_notes":
         paragraphs = re.split(r"\n\s*\n", text)
         current_chunk = ""
+        current_unit = ""
+        current_page = 0
         for para in paragraphs:
             para = para.strip()
             if not para:
                 continue
+
+            unit_match = re.search(r"Unit\s+(\d+):\s*([A-Z][^\n]{3,60})", para)
+            if unit_match:
+                name = unit_match.group(2).strip()
+                if not re.search(r'\d+\.\d+', name) and not re.search(r'\b\d{2,}\b', name):
+                    current_unit = f"Unit {unit_match.group(1)}: {name}"
+
+            page_match = re.search(r"\[PAGE\s+(\d+)\]", para)
+            if page_match:
+                current_page = int(page_match.group(1))
+            else:
+                page_match = re.search(r"Grade\s+\d+\s+Biology\s+(\d+)", para)
+                if page_match:
+                    current_page = int(page_match.group(1))
+
             if len(current_chunk) + len(para) > 1500 and current_chunk:
-                chunks.append({"text": current_chunk.strip(), "heading": _extract_heading(current_chunk)})
+                chunks.append({
+                    "text": current_chunk.strip(),
+                    "heading": _extract_heading(current_chunk),
+                    "unit": current_unit,
+                    "topic": _extract_topic(current_chunk),
+                    "page_number": current_page,
+                })
                 current_chunk = para
             else:
                 current_chunk += "\n\n" + para if current_chunk else para
 
         if current_chunk:
-            chunks.append({"text": current_chunk.strip(), "heading": _extract_heading(current_chunk)})
+            chunks.append({
+                "text": current_chunk.strip(),
+                "heading": _extract_heading(current_chunk),
+                "unit": current_unit,
+                "topic": _extract_topic(current_chunk),
+                "page_number": current_page,
+            })
     else:
         sections = re.split(combined_pattern, text)
+        current_unit = ""
+        current_page = 0
+
         for section in sections:
             section = section.strip()
             if not section or len(section) < 30:
                 continue
+
+            # Extract unit from this section's header
+            unit_match = re.search(r"Unit\s+(\d+):\s*([A-Z][^\n]{3,60})", section)
+            if unit_match:
+                name = unit_match.group(2).strip()
+                # Reject TOC entries: contain section refs, page numbers, or are followed by mostly whitespace/numbers
+                if not re.search(r'\d+\.\d+', name) and not re.search(r'\b\d{2,}\b', name):
+                    # Check if the section after the unit header has real content (not just TOC)
+                    after_unit = section[unit_match.end():unit_match.end()+100].strip()
+                    # TOC entries are followed by whitespace and page numbers, not paragraphs
+                    if after_unit and not re.match(r'^[\s\d\t]+$', after_unit[:50]):
+                        name = re.split(r'\s{2,}|\t', name)[0].strip()
+                        if len(name) < 80:
+                            current_unit = f"Unit {unit_match.group(1)}: {name}"
+
+            # Extract page number from marker or text
+            page_match = re.search(r"\[PAGE\s+(\d+)\]", section)
+            if page_match:
+                current_page = int(page_match.group(1))
+            else:
+                page_match = re.search(r"Grade\s+\d+\s+Biology\s+(\d+)", section)
+                if page_match:
+                    current_page = int(page_match.group(1))
 
             if len(section) > 2000:
                 paragraphs = re.split(r"\n\s*\n", section)
@@ -216,15 +305,45 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
                     para = para.strip()
                     if not para:
                         continue
+
+                    p_match = re.search(r"\[PAGE\s+(\d+)\]", para)
+                    if p_match:
+                        current_page = int(p_match.group(1))
+                    else:
+                        p_match = re.search(r"Grade\s+\d+\s+Biology\s+(\d+)", para)
+                        if p_match:
+                            current_page = int(p_match.group(1))
+
                     if len(current) + len(para) > 1200 and current:
-                        chunks.append({"text": current.strip(), "heading": _extract_heading(current)})
+                        chunks.append({
+                            "text": current.strip(),
+                            "heading": _extract_heading(current),
+                            "unit": current_unit,
+                            "topic": _extract_topic(current),
+                            "page_number": current_page,
+                        })
                         current = para
                     else:
                         current += "\n\n" + para if current else para
                 if current:
-                    chunks.append({"text": current.strip(), "heading": _extract_heading(current)})
+                    chunks.append({
+                        "text": current.strip(),
+                        "heading": _extract_heading(current),
+                        "unit": current_unit,
+                        "topic": _extract_topic(current),
+                        "page_number": current_page,
+                    })
             else:
-                chunks.append({"text": section, "heading": _extract_heading(section)})
+                section_unit = current_unit
+                if not section_unit:
+                    section_unit = _extract_unit(section)
+                chunks.append({
+                    "text": section,
+                    "heading": _extract_heading(section),
+                    "unit": section_unit,
+                    "topic": _extract_topic(section),
+                    "page_number": current_page,
+                })
 
     filtered = [c for c in chunks if len(c["text"]) >= 50]
     return filtered
@@ -293,8 +412,14 @@ async def process_file(
         print(f"    No text extracted")
         return 0
 
-    full_text = "\n\n".join(p["text"] for p in pages)
-    chunks = chunk_text(full_text, source_type)
+    # Chunk per-page to preserve page numbers, then sub-chunk if needed
+    all_chunks = []
+    for p in pages:
+        page_chunks = chunk_text(p["text"], source_type)
+        for c in page_chunks:
+            c["page_number"] = p["page_number"]
+            all_chunks.append(c)
+    chunks = all_chunks
 
     if not chunks:
         print(f"    No chunks created")
@@ -312,7 +437,10 @@ async def process_file(
             "grade_level": grade,
             "source_type": source_type,
             "source_file": filename,
+            "unit": chunk.get("unit", "") or "",
+            "topic": chunk.get("topic", "") or "",
             "heading": chunk.get("heading", "") or chunk["text"][:80],
+            "page_number": chunk.get("page_number", 0) or 0,
             "chunk_index": i,
         })
         ids.append(chunk_id)

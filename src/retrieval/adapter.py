@@ -265,17 +265,23 @@ class VectorStoreAdapter:
         sections = []
         char_count = 0
         for i, r in enumerate(results, 1):
-            header = ""
             grade = r.metadata.get("grade_level", "")
-            topic = r.metadata.get("topic", "") or r.metadata.get("heading", "")
+            unit = r.metadata.get("unit", "")
+            topic = r.metadata.get("topic", "")
+            page = r.metadata.get("page_number", 0)
+            source_type = r.metadata.get("source_type", "")
+
+            header = f"[Source {i}]"
             if grade:
-                header = f"[Source {i}] Grade {grade}"
-                if topic:
-                    header += f" | {topic}"
-            else:
-                header = f"[Source {i}]"
-            if r.metadata.get("source_type"):
-                header += f" ({r.metadata['source_type']})"
+                header += f" Grade {grade} Biology"
+            if unit:
+                header += f" | {unit}"
+            if topic:
+                header += f" | {topic}"
+            if page:
+                header += f" | p.{page}"
+            if source_type:
+                header += f" ({source_type})"
 
             entry = f"{header}\n{r.content}"
             if char_count + len(entry) > max_chars:
@@ -287,7 +293,13 @@ class VectorStoreAdapter:
             sections.append(entry)
             char_count += len(entry)
 
-        return "\n\n".join(sections)
+        citation_instruction = (
+            "IMPORTANT: When answering, cite the source for each key point using this exact format:\n"
+            "(Grade X, Unit Y: Title, p. Z)\n"
+            "Example: (Grade 10, Unit 3: Biochemical Molecules, p. 77)\n\n"
+        )
+
+        return citation_instruction + "\n\n".join(sections)
 
     def count(self) -> int:
         return self.vector_store.count()

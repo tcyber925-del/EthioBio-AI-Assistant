@@ -19,7 +19,10 @@ Rules:
 5. If the student asks in Amharic, respond bilingually.
 6. Never provide medical advice or encourage harmful activities.
 7. If you're unsure, say so clearly rather than guessing.
-8. Always cite your sources when curriculum content is used."""
+8. CITE SOURCES: When using curriculum content, cite the source at the end of each key point using this exact format:
+   (Grade X, Unit Y: Title, p. Z)
+   Example: (Grade 10, Unit 3: Biochemical Molecules, p. 77)
+9. If the curriculum context does not contain enough information to fully answer the question, say what is missing."""
 
 
 class TutorAgent(BaseAgent):
@@ -49,10 +52,26 @@ class TutorAgent(BaseAgent):
             )
             if retrieved:
                 context = self.retriever.format_context(retrieved)
-                sources = [
-                    f"{d['metadata'].get('topic', '')} (Grade {d['metadata'].get('grade_level', '')})"
-                    for d in retrieved if d.get('metadata')
-                ]
+                sources = []
+                for d in retrieved:
+                    if not d.get('metadata'):
+                        continue
+                    meta = d['metadata']
+                    grade = meta.get('grade_level', '')
+                    unit = meta.get('unit', '')
+                    topic = meta.get('topic', '')
+                    page = meta.get('page_number', '')
+                    parts = []
+                    if grade:
+                        parts.append(f"Grade {grade}")
+                    if unit:
+                        parts.append(unit)
+                    if topic:
+                        parts.append(topic)
+                    if page:
+                        parts.append(f"p.{page}")
+                    if parts:
+                        sources.append(", ".join(parts))
 
         grade_context = f" (Grade {grade_level})" if grade_level else ""
         lang_context = "Answer in English." if language == "en" else "Answer in English with Amharic explanation."

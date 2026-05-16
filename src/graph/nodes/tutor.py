@@ -12,7 +12,10 @@ Rules:
 3. When provided with curriculum context, ALWAYS ground your answer in it.
 4. Keep explanations clear, simple, and focused.
 5. If you're unsure, say so clearly rather than guessing.
-6. Always cite your sources when curriculum content is used."""
+6. CITE SOURCES: When using curriculum content, cite the source at the end of each key point using this exact format:
+   (Grade X, Unit Y: Title, p. Z)
+   Example: (Grade 10, Unit 3: Biochemical Molecules, p. 77)
+7. If the curriculum context does not contain enough information to fully answer the question, say what is missing."""
 
 
 class TutorNode:

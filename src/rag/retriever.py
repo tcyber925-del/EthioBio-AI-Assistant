@@ -56,11 +56,28 @@ class Retriever:
 
         sections = []
         for i, doc in enumerate(documents, 1):
-            topic = doc["metadata"].get("topic", "General")
-            grade = doc["metadata"].get("grade_level", "")
-            header = f"[Source {i}] Topic: {topic}"
+            meta = doc.get("metadata", {})
+            grade = meta.get("grade_level", "")
+            unit = meta.get("unit", "")
+            topic = meta.get("topic", "")
+            page = meta.get("page_number", "")
+
+            header = f"[Source {i}]"
             if grade:
-                header += f" | Grade: {grade}"
+                header += f" Grade {grade} Biology"
+            if unit:
+                header += f" | {unit}"
+            if topic:
+                header += f" | {topic}"
+            if page:
+                header += f" | p.{page}"
+
             sections.append(f"{header}\n{doc['content']}")
 
-        return "\n\n".join(sections)
+        citation_instruction = (
+            "IMPORTANT: When answering, cite the source for each key point using this exact format:\n"
+            "(Grade X, Unit Y: Title, p. Z)\n"
+            "Example: (Grade 10, Unit 3: Biochemical Molecules, p. 77)\n\n"
+        )
+
+        return citation_instruction + "\n\n".join(sections)
