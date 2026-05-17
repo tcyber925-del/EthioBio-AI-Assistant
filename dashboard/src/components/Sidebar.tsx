@@ -17,7 +17,7 @@ export default function Sidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="w-64 bg-card border-r border-border min-h-screen flex flex-col flex-shrink-0">
+    <aside className="w-64 bg-card border-r border-border h-screen overflow-y-auto flex flex-col flex-shrink-0">
       <div className="p-5 border-b border-border">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
