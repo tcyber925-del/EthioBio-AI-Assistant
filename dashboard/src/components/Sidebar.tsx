@@ -17,13 +17,15 @@ export default function Sidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="w-64 bg-white border-r min-h-screen flex flex-col">
-      <div className="p-5 border-b">
+    <aside className="w-64 bg-card border-r border-border min-h-screen flex flex-col flex-shrink-0">
+      <div className="p-5 border-b border-border">
         <div className="flex items-center gap-3">
-          <GraduationCap className="w-7 h-7 text-green-600" />
+          <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+            <GraduationCap className="w-5 h-5 text-primary" />
+          </div>
           <div>
-            <h2 className="font-bold text-gray-900 text-sm">EthioBio</h2>
-            <p className="text-xs text-gray-500">Teacher Dashboard</p>
+            <h2 className="font-bold text-foreground text-sm">EthioBio</h2>
+            <p className="text-xs text-foreground-muted">Teacher Dashboard</p>
           </div>
         </div>
       </div>
@@ -37,8 +39,8 @@ export default function Sidebar() {
               href={link.href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 active
-                  ? 'bg-green-50 text-green-700'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-foreground-muted hover:bg-background-secondary hover:text-foreground'
               }`}
             >
               <Icon className="w-5 h-5" />
@@ -47,10 +49,12 @@ export default function Sidebar() {
           )
         })}
       </nav>
-      <div className="p-4 border-t text-xs text-gray-400">
-        <BookOpen className="w-4 h-4 inline mr-1" />
-        <span>Grade 12 curriculum</span>
-        <p className="mt-1">gemma4:31b-cloud</p>
+      <div className="p-4 border-t border-border text-xs text-foreground-muted">
+        <div className="flex items-center gap-2">
+          <BookOpen className="w-4 h-4" />
+          <span>Grade 9-12 curriculum</span>
+        </div>
+        <p className="mt-1 text-foreground-muted/60">gemma4:31b-cloud</p>
       </div>
     </aside>
   )

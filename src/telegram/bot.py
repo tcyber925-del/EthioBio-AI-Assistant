@@ -12,8 +12,9 @@ from src.telegram.keyboards import (
     answer_options_keyboard, tf_keyboard, quiz_next_keyboard,
     quiz_result_keyboard,
 )
+from src.telegram.formatter import format_for_telegram, sanitize_for_telegram, strip_markdown
 from src.database.session import async_session_factory
-from src.database.models import User, UserRole
+from src.database.models import User, UserRole, StudentProfile
 from src.agents.tutor import TutorAgent
 from src.agents.quiz import QuizAgent
 from src.agents.lesson_planner import LessonPlannerAgent
@@ -44,6 +45,9 @@ async def _try_register_user(telegram_id: int):
             if not user:
                 user = User(telegram_id=telegram_id, role=UserRole.student, language_preference="en")
                 session.add(user)
+                await session.flush()
+                profile = StudentProfile(user_id=user.id)
+                session.add(profile)
                 await session.commit()
     await _db_try(_register)
 
@@ -117,7 +121,7 @@ async def ask_command(update: Update, context):
             response = result["answer"]
             if result.get("sources"):
                 response += "\n\n---\nSources: " + ", ".join(result["sources"][:3])
-            await _reply_long(update.message, response, reply_markup=main_menu_keyboard())
+            await _reply_long(update.message, response, reply_markup=main_menu_keyboard(), parse_mode="HTML")
             await router_llm.close()
         except Exception as e:
             logger.error("ask_command_error", error=str(e))
@@ -246,7 +250,7 @@ async def handle_question(update: Update, context):
         response = result["answer"]
         if result.get("sources"):
             response += "\n\n---\nSources: " + ", ".join(result["sources"][:3])
-        await _reply_long(thinking_msg, response, reply_markup=main_menu_keyboard())
+        await _reply_long(thinking_msg, response, reply_markup=main_menu_keyboard(), parse_mode="HTML")
         await router_llm.close()
     except Exception as e:
         logger.error("tutor_error", error=str(e))
@@ -341,20 +345,38 @@ async def handle_quiz_topic(update: Update, context):
     return QUIZ_ANSWERING
 
 
-async def _reply_long(update_or_msg_or_query, text: str, reply_markup=None, max_len: int = 4096):
+async def _reply_long(update_or_msg_or_query, text: str, reply_markup=None, parse_mode=None, max_len: int = 4096):
     """Split text into chunks and send as multiple messages if needed."""
-    for i in range(0, len(text), max_len):
-        chunk = text[i:i + max_len]
+    html_text = sanitize_for_telegram(format_for_telegram(text)) if parse_mode == "HTML" else text
+    plain_text = strip_markdown(text) if parse_mode == "HTML" else text
+
+    for i in range(0, len(html_text), max_len):
+        chunk = html_text[i:i + max_len]
+        plain_chunk = plain_text[i:i + max_len] if parse_mode == "HTML" else chunk
         if i == 0:
             if hasattr(update_or_msg_or_query, 'edit_text'):
                 try:
-                    await update_or_msg_or_query.edit_text(chunk, reply_markup=reply_markup)
+                    await update_or_msg_or_query.edit_text(chunk, reply_markup=reply_markup, parse_mode=parse_mode)
                     continue
                 except Exception:
                     pass
-            await update_or_msg_or_query.reply_text(chunk, reply_markup=reply_markup)
+            try:
+                await update_or_msg_or_query.reply_text(chunk, reply_markup=reply_markup, parse_mode=parse_mode)
+            except Exception as e:
+                if "parse" in str(e).lower():
+                    logger.warning("html_parse_failed", error=str(e))
+                    await update_or_msg_or_query.reply_text(plain_chunk, reply_markup=reply_markup)
+                else:
+                    raise
         else:
-            await update_or_msg_or_query.reply_text(chunk)
+            try:
+                await update_or_msg_or_query.reply_text(chunk, parse_mode=parse_mode)
+            except Exception as e:
+                if "parse" in str(e).lower():
+                    logger.warning("html_parse_failed", error=str(e))
+                    await update_or_msg_or_query.reply_text(plain_chunk)
+                else:
+                    raise
 
 
 async def _send_quiz_question(update: Update, context, msg=None):
@@ -370,7 +392,7 @@ async def _send_quiz_question(update: Update, context, msg=None):
     text = (
         f"📝 {session.get('title', 'Quiz')}\n\n"
         f"Question {idx + 1}/{session.get('total', len(qs))}\n"
-        f"_{qtype.replace('_', ' ')}_\n\n"
+        f"<i>{qtype.replace('_', ' ')}</i>\n\n"
         f"{q['question_text']}"
     )
 
@@ -394,9 +416,9 @@ async def _send_quiz_question(update: Update, context, msg=None):
         reply_markup = quiz_next_keyboard()
 
     if msg:
-        await _reply_long(msg, text, reply_markup=reply_markup)
+        await _reply_long(msg, text, reply_markup=reply_markup, parse_mode="HTML")
     else:
-        await _reply_long(update.message, text, reply_markup=reply_markup)
+        await _reply_long(update.message, text, reply_markup=reply_markup, parse_mode="HTML")
 
 
 async def _show_quiz_result(update: Update, context, msg=None):
@@ -414,9 +436,9 @@ async def _show_quiz_result(update: Update, context, msg=None):
     text = "\n".join(lines)
 
     if msg:
-        await _reply_long(msg, text, reply_markup=quiz_result_keyboard())
+        await _reply_long(msg, text, reply_markup=quiz_result_keyboard(), parse_mode="HTML")
     else:
-        await _reply_long(update.message, text, reply_markup=quiz_result_keyboard())
+        await _reply_long(update.message, text, reply_markup=quiz_result_keyboard(), parse_mode="HTML")
 
 
 async def handle_quiz_answer(update: Update, context):
@@ -464,7 +486,7 @@ async def handle_quiz_answer(update: Update, context):
 def _get_explanation(q: dict) -> str:
     exp = q.get("explanation", "")
     if exp:
-        return f"_{exp[:200]}_"
+        return f"<i>{exp[:200]}</i>"
     return ""
 
 
@@ -499,9 +521,9 @@ async def handle_quiz_short_answer(update: Update, context):
 
     feedback = "✅ Correct!" if is_correct else f"❌ Wrong. The answer was: {correct_answer}"
     if q.get("explanation"):
-        feedback += f"\n\n_{q['explanation'][:200]}_"
+        feedback += f"\n\n<i>{q['explanation'][:200]}</i>"
 
-    await update.message.reply_text(feedback, reply_markup=quiz_next_keyboard())
+    await update.message.reply_text(feedback, reply_markup=quiz_next_keyboard(), parse_mode="HTML")
     return QUIZ_ANSWERING
 
 
@@ -572,7 +594,7 @@ async def handle_lesson_topic(update: Update, context):
             response += f"\nAssessment:\n{result['assessment'][:500]}"
         if result.get("homework"):
             response += f"\n\nHomework:\n{result['homework'][:500]}"
-        await _reply_long(update.message, response, reply_markup=main_menu_keyboard())
+        await _reply_long(update.message, response, reply_markup=main_menu_keyboard(), parse_mode="HTML")
         await router_llm.close()
     except Exception as e:
         logger.error("lesson_error", error=str(e))

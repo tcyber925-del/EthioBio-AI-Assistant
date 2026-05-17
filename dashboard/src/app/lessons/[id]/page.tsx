@@ -5,6 +5,8 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, AlertTriangle, Check, X, Loader2 } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
+import MarkdownRenderer from '@/components/MarkdownRenderer'
+import { fetchWithTimeout } from '@/lib/fetch'
 
 interface LessonDetail {
   id: string; topic: string; grade_level: number
@@ -21,23 +23,23 @@ export default function LessonDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [updating, setUpdating] = useState(false)
 
-  const fetchLesson = () => {
+  const fetchLesson = async () => {
     setLoading(true)
-    fetch(`/api/admin/content/lesson/${params.id}`)
-      .then(res => {
-        if (!res.ok) throw new Error('Lesson plan not found')
-        return res.json()
-      })
-      .then(d => { setLesson(d); setError(null) })
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false))
+    setError(null)
+    try {
+      const data = await fetchWithTimeout(`/api/admin/content/lesson/${params.id}`)
+      setLesson(data)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const updateStatus = async (newStatus: string) => {
     setUpdating(true)
     try {
-      const res = await fetch(`/api/admin/content/lesson/${params.id}/status?status=${newStatus}`, { method: 'PATCH' })
-      if (!res.ok) throw new Error('Failed to update status')
+      await fetchWithTimeout(`/api/admin/content/lesson/${params.id}/status?status=${newStatus}`, { method: 'PATCH' })
       setLesson(prev => prev ? { ...prev, status: newStatus } : prev)
     } catch (err: any) {
       setError(err.message)
@@ -52,67 +54,67 @@ export default function LessonDetailPage() {
   if (error) return (
     <div className="text-center py-16">
       <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-      <p className="text-red-500">{error}</p>
-      <Link href="/lessons" className="text-green-600 hover:underline mt-4 inline-block">Back to lesson plans</Link>
+      <p className="text-red-400">{error}</p>
+      <Link href="/lessons" className="text-primary hover:underline mt-4 inline-block">Back to lesson plans</Link>
     </div>
   )
   if (!lesson) return null
 
   return (
     <div>
-      <Link href="/lessons" className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-4">
+      <Link href="/lessons" className="flex items-center gap-2 text-sm text-foreground-muted hover:text-foreground mb-4 transition-colors">
         <ArrowLeft className="w-4 h-4" /> Back to lesson plans
       </Link>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{lesson.topic}</h1>
-          <p className="text-sm text-gray-500 mt-1">Grade {lesson.grade_level} · {lesson.status} · {lesson.model_used}</p>
+          <h1 className="text-2xl font-bold text-foreground">{lesson.topic}</h1>
+          <p className="text-sm text-foreground-muted mt-1">Grade {lesson.grade_level} · {lesson.status} · {lesson.model_used}</p>
         </div>
         <div className="flex gap-3">
           {lesson.status === 'draft' && (
             <>
-              <button onClick={() => updateStatus('archived')} disabled={updating} className="flex items-center gap-2 px-4 py-2 text-sm border rounded-lg hover:bg-gray-50 disabled:opacity-50">
+              <button onClick={() => updateStatus('archived')} disabled={updating} className="flex items-center gap-2 px-4 py-2 text-sm border border-border rounded-lg hover:bg-card disabled:opacity-50 text-foreground-muted transition-colors">
                 <X className="w-4 h-4" /> Reject
               </button>
-              <button onClick={() => updateStatus('published')} disabled={updating} className="flex items-center gap-2 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">
+              <button onClick={() => updateStatus('published')} disabled={updating} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary-hover disabled:opacity-50 transition-colors">
                 <Check className="w-4 h-4" /> Approve
               </button>
             </>
           )}
           {lesson.status === 'published' && (
-            <span className="px-4 py-2 text-sm bg-green-50 text-green-700 rounded-lg font-medium">Published</span>
+            <span className="px-4 py-2 text-sm bg-green-500/10 text-green-400 rounded-lg font-medium">Published</span>
           )}
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border p-6 space-y-6">
+      <div className="bg-card rounded-xl border border-border p-6 space-y-6">
         <div>
-          <h3 className="text-sm font-medium text-gray-500 mb-1">Objective</h3>
-          <p className="text-gray-900">{lesson.objective}</p>
+          <h3 className="text-sm font-medium text-foreground-muted mb-1">Objective</h3>
+          <MarkdownRenderer content={lesson.objective} className="text-foreground" />
         </div>
         {lesson.prior_knowledge && (
           <div>
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Prior Knowledge</h3>
-            <p className="text-gray-900 text-sm">{lesson.prior_knowledge}</p>
+            <h3 className="text-sm font-medium text-foreground-muted mb-1">Prior Knowledge</h3>
+            <MarkdownRenderer content={lesson.prior_knowledge} className="text-foreground text-sm" />
           </div>
         )}
         {lesson.explanation && (
           <div>
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Explanation</h3>
-            <p className="text-gray-900 text-sm leading-relaxed whitespace-pre-wrap">{lesson.explanation}</p>
+            <h3 className="text-sm font-medium text-foreground-muted mb-1">Explanation</h3>
+            <MarkdownRenderer content={lesson.explanation} className="text-foreground text-sm" />
           </div>
         )}
         {lesson.activities && lesson.activities.length > 0 && (
           <div>
-            <h3 className="text-sm font-medium text-gray-500 mb-2">Activities ({lesson.activities.length})</h3>
+            <h3 className="text-sm font-medium text-foreground-muted mb-2">Activities ({lesson.activities.length})</h3>
             <div className="space-y-2">
               {lesson.activities.map((a: any, i: number) => (
-                <div key={i} className="p-3 bg-gray-50 rounded-lg text-sm">
+                <div key={i} className="p-3 bg-background-secondary rounded-lg text-sm">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">{a.name}</span>
-                    <span className="text-gray-400 text-xs">({a.duration_minutes}min · {a.type})</span>
+                    <span className="font-medium text-foreground">{a.name}</span>
+                    <span className="text-foreground-muted text-xs">({a.duration_minutes}min · {a.type})</span>
                   </div>
-                  <p className="text-gray-600 mt-1">{a.description}</p>
+                  <p className="text-foreground-muted mt-1">{a.description}</p>
                 </div>
               ))}
             </div>
@@ -120,25 +122,25 @@ export default function LessonDetailPage() {
         )}
         {lesson.assessment && (
           <div>
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Assessment</h3>
-            <p className="text-gray-900 text-sm whitespace-pre-wrap">{lesson.assessment}</p>
+            <h3 className="text-sm font-medium text-foreground-muted mb-1">Assessment</h3>
+            <MarkdownRenderer content={lesson.assessment} className="text-foreground text-sm" />
           </div>
         )}
         {lesson.homework && (
           <div>
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Homework</h3>
-            <p className="text-gray-900 text-sm whitespace-pre-wrap">{lesson.homework}</p>
+            <h3 className="text-sm font-medium text-foreground-muted mb-1">Homework</h3>
+            <MarkdownRenderer content={lesson.homework} className="text-foreground text-sm" />
           </div>
         )}
         {lesson.teacher_notes && (
           <div>
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Teacher Notes</h3>
-            <p className="text-gray-900 text-sm italic whitespace-pre-wrap">{lesson.teacher_notes}</p>
+            <h3 className="text-sm font-medium text-foreground-muted mb-1">Teacher Notes</h3>
+            <MarkdownRenderer content={lesson.teacher_notes} className="text-foreground text-sm text-foreground-muted italic" />
           </div>
         )}
-        <p className="text-xs text-gray-400 pt-4 border-t">Created: {lesson.created_at}</p>
+        <p className="text-xs text-foreground-muted pt-4 border-t border-border">Created: {lesson.created_at}</p>
       </div>
-      {updating && <p className="text-sm text-gray-400 mt-2"><Loader2 className="w-3 h-3 inline animate-spin" /> Updating...</p>}
+      {updating && <p className="text-sm text-foreground-muted mt-2"><Loader2 className="w-3 h-3 inline animate-spin" /> Updating...</p>}
     </div>
   )
 }
