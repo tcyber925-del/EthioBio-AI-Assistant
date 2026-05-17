@@ -6,6 +6,13 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        background: 'var(--background)',
+        'background-secondary': 'var(--background-secondary)',
+        foreground: 'var(--foreground)',
+        'foreground-muted': 'var(--foreground-muted)',
+        border: 'var(--border)',
+        card: 'var(--card)',
+        'card-hover': 'var(--card-hover)',
         primary: {
           50: '#f0fdf4',
           100: '#dcfce7',

@@ -32,6 +32,11 @@ async def admin_dashboard(session: AsyncSession = Depends(get_session)):
         )
         logs = latest_logs.scalars().all()
 
+        recent_users_result = await session.execute(
+            select(User).order_by(User.created_at.desc()).limit(20)
+        )
+        recent_users = recent_users_result.scalars().all()
+
         return {
             "users": user_count or 0,
             "teachers": teacher_count or 0,
@@ -39,6 +44,17 @@ async def admin_dashboard(session: AsyncSession = Depends(get_session)):
             "quizzes": quiz_count or 0,
             "lesson_plans": lesson_count or 0,
             "quiz_attempts": attempt_count or 0,
+            "recent_users": [
+                {
+                    "id": str(u.id),
+                    "telegram_id": u.telegram_id,
+                    "role": u.role.value if u.role else "student",
+                    "language_preference": u.language_preference or "en",
+                    "grade_level": u.grade_level,
+                    "created_at": u.created_at.isoformat() if u.created_at else None,
+                }
+                for u in recent_users
+            ],
             "recent_logs": [
                 {
                     "id": str(log.id),

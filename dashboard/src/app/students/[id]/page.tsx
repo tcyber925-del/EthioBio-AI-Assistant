@@ -1,88 +1,76 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, BarChart3, AlertTriangle } from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-
-const mockData = [
-  { topic: 'Cell Biology', score: 85 },
-  { topic: 'Genetics', score: 45 },
-  { topic: 'Evolution', score: 72 },
-  { topic: 'Ecology', score: 90 },
-  { topic: 'Biochemistry', score: 38 },
-]
+import { ArrowLeft, AlertTriangle, BarChart3 } from 'lucide-react'
+import { CardSkeleton } from '@/components/Skeleton'
+import { fetchWithTimeout } from '@/lib/fetch'
 
 export default function StudentDetailPage() {
   const params = useParams()
-  const grade = params.id === '1' ? 9 : params.id === '2' ? 10 : params.id === '3' ? 11 : 12
+  const [student, setStudent] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchWithTimeout(`/progress/student/${params.id}`)
+      .then(d => setStudent(d))
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false))
+  }, [params.id])
+
+  if (loading) return <div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)}</div>
+  if (error) return (
+    <div className="text-center py-16">
+      <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
+      <p className="text-red-400">{error}</p>
+      <Link href="/students" className="text-primary hover:underline mt-4 inline-block">Back to students</Link>
+    </div>
+  )
+  if (!student) return null
 
   return (
     <div>
-      <Link href="/students" className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-4">
+      <Link href="/students" className="flex items-center gap-2 text-sm text-foreground-muted hover:text-foreground mb-4 transition-colors">
         <ArrowLeft className="w-4 h-4" /> Back to students
       </Link>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-foreground">Student #{student.id?.slice(0, 8)}</h1>
+        <p className="text-sm text-foreground-muted mt-1">Grade {student.grade_level || 'N/A'} · {student.language_preference}</p>
+      </div>
 
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Grade {grade} Students</h1>
-          <p className="text-sm text-gray-500 mt-1">Performance overview</p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="bg-card rounded-xl border border-border p-5">
+          <p className="text-sm text-foreground-muted">Quiz Attempts</p>
+          <p className="text-2xl font-bold text-foreground">{student.quiz_attempts || 0}</p>
+        </div>
+        <div className="bg-card rounded-xl border border-border p-5">
+          <p className="text-sm text-foreground-muted">Average Score</p>
+          <p className="text-2xl font-bold text-foreground">{student.avg_score ? `${Math.round(student.avg_score)}%` : '—'}</p>
+        </div>
+        <div className="bg-card rounded-xl border border-border p-5">
+          <p className="text-sm text-foreground-muted">Weak Areas</p>
+          <p className="text-2xl font-bold text-foreground">{student.weak_areas?.length || 0}</p>
         </div>
       </div>
 
-      {mockData.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border">
-          <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500 font-medium">No progress data yet</p>
-          <p className="text-sm text-gray-400 mt-1">Data will appear after students take quizzes</p>
+      {student.weak_areas && student.weak_areas.length > 0 && (
+        <div className="bg-card rounded-xl border border-border p-5">
+          <h2 className="text-lg font-semibold text-foreground mb-3">Weak Areas</h2>
+          <div className="flex flex-wrap gap-2">
+            {student.weak_areas.map((area: string, i: number) => (
+              <span key={i} className="px-3 py-1 bg-red-500/10 text-red-400 rounded-full text-sm">{area}</span>
+            ))}
+          </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-xl shadow-sm border p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Topic Scores</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={mockData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11 }} />
-                <YAxis type="category" dataKey="topic" width={100} tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Bar dataKey="score" fill="#16a34a" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+      )}
 
-          <div className="space-y-4">
-            <div className="bg-white rounded-xl shadow-sm border p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Weak Areas</h2>
-              {mockData.filter(d => d.score < 60).length > 0 ? (
-                <div className="space-y-2">
-                  {mockData.filter(d => d.score < 60).map(d => (
-                    <div key={d.topic} className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
-                      <AlertTriangle className="w-4 h-4 text-red-500" />
-                      <span className="text-sm text-red-700">{d.topic} ({d.score}%)</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-400">No weak areas identified</p>
-              )}
-            </div>
-            <div className="bg-white rounded-xl shadow-sm border p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Summary</h2>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500">Average Score</p>
-                  <p className="text-xl font-bold text-gray-900">
-                    {Math.round(mockData.reduce((a, b) => a + b.score, 0) / mockData.length)}%
-                  </p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500">Topics</p>
-                  <p className="text-xl font-bold text-gray-900">{mockData.length}</p>
-                </div>
-              </div>
-            </div>
-          </div>
+      {!student.quiz_attempts && (
+        <div className="bg-card rounded-xl border border-border p-8 text-center">
+          <BarChart3 className="w-12 h-12 text-border mx-auto mb-3" />
+          <p className="text-foreground-muted font-medium">No quiz data yet</p>
+          <p className="text-sm text-foreground-muted/60 mt-1">Student has not taken any quizzes</p>
         </div>
       )}
     </div>

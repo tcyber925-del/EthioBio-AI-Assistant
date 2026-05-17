@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { BookOpen, ClipboardCheck, FileText, Users, BarChart3, AlertTriangle } from 'lucide-react'
+import { BookOpen, ClipboardCheck, FileText, Users, BarChart3, AlertTriangle, RefreshCw } from 'lucide-react'
 import StatCard from '@/components/StatCard'
 import { CardSkeleton, TableSkeleton } from '@/components/Skeleton'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { fetchWithTimeout } from '@/lib/fetch'
 
 interface DashboardData {
   users: number; teachers: number; students: number
@@ -23,12 +24,7 @@ export default function Dashboard() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/dashboard')
-      if (!res.ok) {
-        const text = await res.text()
-        throw new Error(`Server returned ${res.status}: ${text}`)
-      }
-      const d = await res.json()
+      const d = await fetchWithTimeout('/api/admin/dashboard')
       setData(d)
       setError(null)
     } catch (err: unknown) {
@@ -43,7 +39,7 @@ export default function Dashboard() {
   if (loading && !data) {
     return (
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-6">Dashboard</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
           {Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} />)}
         </div>
@@ -57,9 +53,9 @@ export default function Dashboard() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-3" />
-          <p className="text-red-500 font-medium">Failed to load dashboard</p>
-          <p className="text-sm text-gray-400 mt-1">{error}</p>
-          <button onClick={fetchData} className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700">
+          <p className="text-red-400 font-medium">Failed to load dashboard</p>
+          <p className="text-sm text-foreground-muted mt-1">{error}</p>
+          <button onClick={fetchData} className="mt-4 px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover transition-colors">
             Retry
           </button>
         </div>
@@ -81,11 +77,11 @@ export default function Dashboard() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-sm text-gray-500 mt-1">EthioBio AI Assistant overview</p>
+          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-sm text-foreground-muted mt-1">EthioBio AI Assistant overview</p>
         </div>
-        <button onClick={fetchData} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50 transition-colors">
-          Refresh
+        <button onClick={fetchData} className="flex items-center gap-2 px-4 py-2 text-sm border border-border rounded-lg hover:bg-card transition-colors text-foreground-muted hover:text-foreground">
+          <RefreshCw className="w-4 h-4" /> Refresh
         </button>
       </div>
 
@@ -99,78 +95,78 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border p-5">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Request Latency</h2>
+        <div className="lg:col-span-2 bg-card rounded-xl border border-border p-5">
+          <h2 className="text-lg font-semibold text-foreground mb-4">Request Latency</h2>
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} unit="ms" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#94a3b8' }} />
+                <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} unit="ms" />
                 <Tooltip />
-                <Line type="monotone" dataKey="latency" stroke="#16a34a" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="latency" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} />
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-gray-400 text-sm py-8 text-center">No request data yet</p>
+            <p className="text-foreground-muted text-sm py-8 text-center">No request data yet</p>
           )}
         </div>
-        <div className="bg-white rounded-xl shadow-sm border p-5">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Request Status</h2>
+        <div className="bg-card rounded-xl border border-border p-5">
+          <h2 className="text-lg font-semibold text-foreground mb-4">Request Status</h2>
           {logs.length > 0 ? (
             <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                <span className="text-sm font-medium text-green-700">Success</span>
-                <span className="text-lg font-bold text-green-700">{successCount}</span>
+              <div className="flex items-center justify-between p-3 bg-green-500/10 rounded-lg">
+                <span className="text-sm font-medium text-green-400">Success</span>
+                <span className="text-lg font-bold text-green-400">{successCount}</span>
               </div>
-              <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
-                <span className="text-sm font-medium text-red-700">Failed</span>
-                <span className="text-lg font-bold text-red-700">{failCount}</span>
+              <div className="flex items-center justify-between p-3 bg-red-500/10 rounded-lg">
+                <span className="text-sm font-medium text-red-400">Failed</span>
+                <span className="text-lg font-bold text-red-400">{failCount}</span>
               </div>
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="text-sm font-medium text-gray-600">Success rate</span>
-                <span className="text-lg font-bold text-gray-700">
+              <div className="flex items-center justify-between p-3 bg-border/50 rounded-lg">
+                <span className="text-sm font-medium text-foreground-muted">Success rate</span>
+                <span className="text-lg font-bold text-foreground">
                   {logs.length > 0 ? Math.round(successCount / logs.length * 100) : 0}%
                 </span>
               </div>
             </div>
           ) : (
-            <p className="text-gray-400 text-sm py-8 text-center">No data yet</p>
+            <p className="text-foreground-muted text-sm py-8 text-center">No data yet</p>
           )}
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border">
-        <div className="px-5 py-4 border-b flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
+      <div className="bg-card rounded-xl border border-border">
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-foreground">Recent Activity</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-background-secondary">
               <tr>
-                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">Model</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">Latency</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">Type</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">Model</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">Status</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">Latency</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-border">
               {logs.slice(0, 10).map(log => (
-                <tr key={log.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-3 text-sm text-gray-900">{log.request_type}</td>
-                  <td className="px-5 py-3 text-sm text-gray-500 font-mono text-xs">{log.model_used}</td>
+                <tr key={log.id} className="hover:bg-background-secondary/50">
+                  <td className="px-5 py-3 text-sm text-foreground">{log.request_type}</td>
+                  <td className="px-5 py-3 text-sm text-foreground-muted font-mono text-xs">{log.model_used}</td>
                   <td className="px-5 py-3">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      log.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      log.success ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
                     }`}>
                       {log.success ? 'Success' : 'Failed'}
                     </span>
                   </td>
-                  <td className="px-5 py-3 text-sm text-gray-500">{log.latency_ms}ms</td>
+                  <td className="px-5 py-3 text-sm text-foreground-muted">{log.latency_ms}ms</td>
                 </tr>
               ))}
               {logs.length === 0 && (
-                <tr><td colSpan={4} className="px-5 py-12 text-center text-gray-400">No recent activity</td></tr>
+                <tr><td colSpan={4} className="px-5 py-12 text-center text-foreground-muted">No recent activity</td></tr>
               )}
             </tbody>
           </table>

@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:20-alpine AS builder
 
 ARG NEXT_PUBLIC_API_URL=http://app:8000
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
@@ -11,6 +11,15 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
+FROM node:20-alpine
+
+WORKDIR /app
+
+ENV HOSTNAME=0.0.0.0 PORT=3000
+
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
 EXPOSE 3000
 
-CMD ["npm", "start"]
+CMD ["node", "server.js"]
