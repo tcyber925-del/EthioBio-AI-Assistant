@@ -3,7 +3,7 @@ title: EthioBio AI Assistant
 ---
 # EthioBio AI Assistant
 
-## Product Requirements Document (PRD) v1.1
+## Product Requirements Document (PRD) v1.2
 
 ## 1. Overview
 
@@ -12,6 +12,8 @@ EthioBio AI Assistant is an AI-powered biology learning and teaching assistant f
 The product is **English-first** because the Ethiopian middle and high school biology curriculum is mainly in English, but it also supports **Amharic** for explanations, parent communication, and accessibility.
 
 The system will be **Telegram-first**, with WhatsApp support added later. The AI layer will use **Ollama-hosted local/open models as the primary engine**, with fallback to other providers when needed for quality, speed, or availability.
+
+All RAG-grounded responses include **explicit source citations** in the format `(Grade X, Unit Y: Title, p. Z)` to ensure curriculum alignment and reduce hallucinations.
 
 ---
 
@@ -30,7 +32,8 @@ The system will be **Telegram-first**, with WhatsApp support added later. The AI
 6. Provide fallback AI providers for reliability.
     
 7. Offer a modular AI-agent architecture that can grow over time.
-    
+
+8. Ensure all answers cite their textbook sources for transparency and trust.
 
 ---
 
@@ -109,23 +112,27 @@ Schools need a tool that is:
     
 - Amharic support for explanations and summaries
     
-- curriculum-aligned retrieval
+- Curriculum-aligned retrieval (hybrid: dense + BM25 + reranker)
     
-- quiz generation
+- Quiz generation (MC, T/F, short answer, matching, diagram-labeling)
     
-- lesson planning
+- Lesson planning
     
-- student progress tracking
+- Student progress tracking
     
-- parent summaries
+- Parent summaries
     
-- teacher review dashboard
+- Teacher review dashboard (Next.js, 9 pages)
     
 - Ollama-first model routing
     
-- fallback AI provider support
+- Fallback AI provider support (OpenAI/Anthropic)
     
-- logging, monitoring, and evaluation
+- Logging, monitoring, and evaluation
+    
+- Docling+OCR PDF extraction for garbled textbooks
+    
+- Explicit source citations in all RAG responses
     
 
 ### Out of scope for v1
@@ -160,7 +167,8 @@ Schools need a tool that is:
 - **Fallback ready**: local models are primary; external providers are backup.
     
 - **Safe and explainable**: the system should be understandable and auditable.
-    
+
+- **Cited sources**: every answer must cite its textbook source with grade, unit, topic, and page number.
 
 ---
 
@@ -175,6 +183,8 @@ Schools need a tool that is:
 - As a student, I want explanations in simple English and sometimes Amharic.
     
 - As a student, I want to send a voice note when typing is hard.
+
+- As a student, I want to see which textbook page a concept comes from.
     
 
 ### Teacher stories
@@ -186,6 +196,8 @@ Schools need a tool that is:
 - As a teacher, I want to review and edit AI-generated content.
     
 - As a teacher, I want to see which topics students struggle with.
+
+- As a teacher, I want to verify that AI answers cite the correct textbook sources.
     
 
 ### Parent stories
@@ -219,7 +231,8 @@ The assistant must:
 - support English first, Amharic on request
     
 - use curriculum context when available
-    
+
+- cite sources in `(Grade X, Unit Y: Title, p. Z)` format
 
 ### 8.2 Quiz generation
 
@@ -238,7 +251,8 @@ The assistant must generate:
 - answer keys
     
 - short explanations
-    
+
+- questions grounded in retrieved textbook content, not general LLM knowledge
 
 ### 8.3 Lesson planning
 
@@ -267,10 +281,11 @@ The system must:
     
 - map performance to biology topics
     
-- identify weak areas
+- identify weak areas (<60% score threshold)
     
 - recommend revision
-    
+
+- detect trends (improving/declining/stable)
 
 ### 8.5 Parent summaries
 
@@ -309,7 +324,20 @@ The dashboard must allow:
 - student performance viewing
     
 - export to PDF/DOCX
+
+- monitoring metrics (fallback rate, failure rate, latency)
+
+### 8.8 Source citations
+
+The system must:
+
+- extract page-level metadata during PDF ingestion
     
+- preserve grade, unit, topic, and page number for each chunk
+    
+- include citations in all RAG-grounded responses
+    
+- format citations as `(Grade X, Unit Y: Title, p. Z)`
 
 ---
 
@@ -321,14 +349,14 @@ The system must use:
 
 ### Primary
 
-- Ollama-hosted open models for most requests
+- Ollama-hosted open models for most requests (`gemma4:31b-cloud`)
     
 
 ### Fallback
 
-- external providers when:
+- external providers (OpenAI `gpt-4o-mini`, Anthropic `claude-3-haiku`) when:
     
-    - local model confidence is low
+    - local model confidence is low (< 0.5)
         
     - request is too complex
         
@@ -352,29 +380,30 @@ A model router should decide:
 - whether to ask a clarification question
     
 - whether to fallback
-    
+
+- log all routing decisions to `ModelRoutingLog` DB table
 
 ---
 
 ## 10. AI agent system
 
-The product should use multiple specialized agents.
+The product uses multiple specialized agents orchestrated via LangGraph.
 
 ### 10.1 Orchestrator Agent
 
-Routes user requests to the right agent.
+Routes user requests to the right agent. Intent classification: tutor/quiz/lesson_plan/progress/translation/admin/general.
 
 ### 10.2 Curriculum Retrieval Agent
 
-Searches approved biology sources before responding.
+Searches approved biology sources before answering. Uses hybrid retrieval: dense (ChromaDB) + sparse (BM25) + cross-encoder reranker.
 
 ### 10.3 Tutor Agent
 
-Explains biology concepts in a student-friendly way.
+Explains biology concepts in a student-friendly way. Grounded in retrieved textbook content with explicit source citations.
 
 ### 10.4 Quiz Agent
 
-Generates assessments, answer keys, and explanations.
+Generates assessments, answer keys, and explanations. Retrieves 5 ChromaDB chunks and generates questions strictly from context.
 
 ### 10.5 Lesson Planner Agent
 
@@ -386,19 +415,19 @@ Supports English-first content with Amharic translation or bilingual summaries.
 
 ### 10.7 Student Progress Agent
 
-Tracks learner performance and topic mastery.
+Tracks learner performance and topic mastery. Detects trends (improving/declining/stable) and identifies weak areas.
 
 ### 10.8 Parent Summary Agent
 
-Creates short and readable progress reports.
+Creates short and readable progress reports in English and Amharic.
 
 ### 10.9 Safety Agent
 
-Blocks unsafe, irrelevant, or low-quality outputs.
+Blocks unsafe, irrelevant, or low-quality outputs. Routes: "reject" (score < 0.4), "revise" (score < 0.7), "finalize" (pass). Bidirectional revision loop back to Tutor Agent.
 
 ### 10.10 Evaluation Agent
 
-Checks curriculum alignment, grade appropriateness, and answer quality.
+Checks curriculum alignment, grade appropriateness, and answer quality. Uses Ragas metrics (faithfulness, answer relevancy, context recall, context precision) with heuristic fallback.
 
 ---
 
@@ -427,14 +456,15 @@ Agents should be able to call tools such as:
 
 The assistant must:
 
-- retrieve relevant curriculum passages
+- retrieve relevant curriculum passages using hybrid search (dense + BM25 + rerank)
     
 - ground answers in approved sources
     
-- attach source references internally
+- attach source references in `(Grade X, Unit Y: Title, p. Z)` format
     
 - reduce hallucinations
-    
+
+- support grade/topic/unit/source_type filtering
 
 ### 11.3 Structured outputs
 
@@ -459,7 +489,7 @@ The agent should:
     
 3. draft a response
     
-4. critique the draft
+4. critique the draft (Safety Agent)
     
 5. revise if needed
     
@@ -522,7 +552,8 @@ Track:
 - user feedback
     
 - failures
-    
+
+- LangSmith tracing (optional, via `LANGCHAIN_API_KEY`)
 
 ---
 
@@ -530,56 +561,81 @@ Track:
 
 ### 12.1 Backend
 
-- Python
+- Python 3.12+
     
 - FastAPI
+    
+- uvicorn
     
 
 ### 12.2 Data storage
 
-- PostgreSQL for persistent application data
+- PostgreSQL 16 with pgvector for persistent application data
     
-- Redis for caching and background jobs
+- Redis 7 for caching and background jobs
+    
+- ChromaDB for vector store (with BM25 sparse index)
     
 
 ### 12.3 AI runtime
 
-- Ollama for primary local model hosting
+- Ollama for primary local/cloud model hosting (`gemma4:31b-cloud`)
     
-- provider adapters for fallback APIs
+- OpenAI/Anthropic adapters for fallback APIs
     
 
 ### 12.4 Retrieval layer
 
-- pgvector, Qdrant, or Chroma
+- ChromaDB (dense) + BM25Okapi (sparse) + cross-encoder reranker (`ms-marco-MiniLM-L-6-v2`)
+    
+- Configurable weights: 0.6 dense / 0.4 BM25
+    
+- `VectorStoreAdapter` interface — swappable without touching agents
     
 
 ### 12.5 Channels
 
-- Telegram first
+- Telegram first (python-telegram-bot v21, async native)
     
 - WhatsApp later
     
 
 ### 12.6 Document processing
 
-- PDF parser
+- PyPdfium2 for fast PDF text extraction
     
-- DOCX parser
+- RapidOCR for garbled pages (font encoding issues)
     
-- OCR for images and worksheets
+- Auto-detection of garbled text (alpha character ratio < 40%)
+    
+- Docling HybridChunker for token-aware RAG chunking
+    
+- Per-page chunking to preserve accurate page numbers
+    
+- DOCX parser support
     
 
 ### 12.7 Voice processing
 
-- speech-to-text
+- speech-to-text (stubbed)
     
 - optional text-to-speech later
     
 
 ### 12.8 Admin UI
 
-- React or Next.js dashboard
+- Next.js 14 App Router (9 pages: Dashboard, Quizzes, Lessons, Students, Monitoring, Ask Q&A)
+    
+- Tailwind CSS 3.4, recharts, lucide-react
+    
+
+### 12.9 Orchestration
+
+- LangGraph StateGraph with 5 nodes: orchestrator → retrieve/skip → tutor → safety → revise/finalize
+    
+- Dependency-injected nodes (ModelRouter, VectorStoreAdapter)
+    
+- 20+ field AgentState dataclass
     
 
 ---
@@ -588,7 +644,7 @@ Track:
 
 ### Main entities
 
-- User
+- User (telegram_id as BigInteger)
     
 - StudentProfile
     
@@ -596,11 +652,15 @@ Track:
     
 - ClassGroup
     
+- ClassEnrollment
+    
 - CurriculumTopic
     
 - LessonPlan
     
 - Question
+    
+- Quiz
     
 - QuizAttempt
     
@@ -638,7 +698,8 @@ Track:
 - model used
     
 - confidence score
-    
+
+- UUID primary keys, asyncpg, JSON columns
 
 ---
 
@@ -650,21 +711,25 @@ Track:
     
 - `/quiz/generate`
     
+- `/quiz/submit`
+    
 - `/lesson-plan/generate`
     
 - `/progress/student/{id}`
     
-- `/parent-summary/generate`
+- `/progress/parent-summary`
     
-- `/content/search`
+- `/graph/chat`
     
-- `/admin/review`
+- `/graph/status`
     
-- `/voice/transcribe`
+- `/admin/dashboard`
     
-- `/export/pdf`
+- `/admin/content/review`
     
-- `/export/docx`
+- `/admin/monitoring`
+    
+- `/health`
     
 
 ### API expectations
@@ -699,6 +764,8 @@ Track:
     
 - clear error handling
     
+- DB table auto-creation on startup
+    
 
 ### Security
 
@@ -713,11 +780,15 @@ Track:
 
 - modular code
     
-- test coverage
+- test coverage (pytest, 7 test files)
     
 - clear docs
     
 - clean separation of concerns
+    
+- ruff linting (line-length=100, EFINW)
+    
+- mypy type checking (strict=false)
     
 
 ### Cost control
@@ -735,7 +806,7 @@ Track:
 
 ### Automated tests
 
-- unit tests
+- unit tests (57 Python files, ~4,788 lines)
     
 - integration tests
     
@@ -748,7 +819,8 @@ Track:
 - schema validation tests
     
 - prompt regression tests
-    
+
+- Ragas evaluation with heuristic fallback
 
 ### Manual tests
 
@@ -763,7 +835,8 @@ Track:
 - voice input behavior
     
 - fallback provider behavior
-    
+
+- garbled PDF extraction verification
 
 ### Acceptance criteria
 
@@ -782,7 +855,10 @@ The system is acceptable when:
 - performance data is stored correctly
     
 - deployment is repeatable
-    
+
+- all RAG responses include explicit source citations
+
+- Grade 10 textbooks with font encoding issues are handled via OCR
 
 ---
 
@@ -816,7 +892,7 @@ The system is acceptable when:
 
 ### Infrastructure
 
-- Dockerized services
+- Dockerized services (6 containers: app, bot, postgres, redis, ollama, dashboard)
     
 - migration scripts
     
@@ -825,27 +901,28 @@ The system is acceptable when:
 - health checks
     
 - backups
-    
+
+- docker-compose.yml with service topology
 
 ---
 
 ## 18. Suggested MVP delivery phases
 
-### Phase 1
+### Phase 1 ✅
 
 Telegram bot, basic tutoring, Ollama integration, retrieval.
 
-### Phase 2
+### Phase 2 ✅
 
 Quiz generation, lesson planning, teacher review tools.
 
-### Phase 3
+### Phase 3 ✅
 
 Student progress tracking, parent summaries, analytics.
 
-### Phase 4
+### Phase 4 🔄
 
-Voice support, OCR, WhatsApp integration, exports.
+Voice support (stubbed), OCR (integrated for garbled PDFs), WhatsApp integration (planned), exports (stubbed).
 
 ---
 
@@ -853,7 +930,7 @@ Voice support, OCR, WhatsApp integration, exports.
 
 ### Risk: hallucinated answers
 
-Mitigation: RAG, safety checks, fallback, teacher review.
+Mitigation: RAG (hybrid: dense + BM25 + rerank), safety checks, fallback, teacher review, explicit source citations.
 
 ### Risk: weak Amharic output
 
@@ -861,15 +938,19 @@ Mitigation: use Amharic selectively and keep English primary.
 
 ### Risk: local model performance issues
 
-Mitigation: model routing and fallback providers.
+Mitigation: model routing and fallback providers (OpenAI/Anthropic).
 
 ### Risk: poor curriculum alignment
 
-Mitigation: curated content store and human review.
+Mitigation: curated content store, human review, hybrid retrieval, grade/topic/unit filtering.
 
 ### Risk: low internet access
 
 Mitigation: text-first design and cached responses.
+
+### Risk: garbled PDF text from font encoding issues
+
+Mitigation: PyPdfium2 + RapidOCR fallback with auto-detection (alpha ratio < 40%). Grade 10 requires full OCR.
 
 ---
 
@@ -883,14 +964,19 @@ The product is done for v1 when:
     
 - the system uses Ollama first and falls back when needed
     
-- curriculum grounding is active
+- curriculum grounding is active (hybrid RAG)
     
 - progress tracking works
     
 - parent summaries work
     
 - the app is tested, deployed, and maintainable
-    
+
+- all RAG responses include explicit source citations `(Grade X, Unit Y: Title, p. Z)`
+
+- garbled textbook PDFs are handled via OCR extraction
+
+- 4 textbooks ingested (Grades 9-12) with 1,165 chunks
 
 ---
 
@@ -899,40 +985,44 @@ The product is done for v1 when:
 Use this as the implementation directive:
 
 ```text
-Build EthioBio AI Assistant v1.1 as a production-ready Telegram-first biology learning platform for Ethiopian middle and high school education.
+Build EthioBio AI Assistant v1.2 as a production-ready Telegram-first biology learning platform for Ethiopian middle and high school education.
 
 Requirements:
 - English-first curriculum alignment
 - Amharic support as secondary
-- Ollama as the primary model runtime
-- fallback providers when local models are insufficient
-- RAG over approved biology curriculum content
-- agent-based architecture with tool use, routing, memory, confidence scoring, and self-checking
+- Ollama as the primary model runtime (gemma4:31b-cloud)
+- Fallback providers (OpenAI/Anthropic) when local models are insufficient
+- Hybrid RAG over approved biology curriculum content (Dense + BM25 + Cross-encoder reranker)
+- Agent-based architecture with tool use, routing, memory, confidence scoring, and self-checking
+- LangGraph orchestration (5 nodes: orchestrator → retrieve/skip → tutor → safety → revise/finalize)
 - FastAPI backend
-- PostgreSQL + Redis
-- teacher dashboard
-- student progress tracking
-- parent summaries
-- quiz generation
-- lesson planning
-- voice support later
-- Dockerized deployment
-- full automated test coverage
+- PostgreSQL 16 + pgvector + Redis 7
+- ChromaDB vector store with BM25 sparse index
+- Teacher dashboard (Next.js 14, 9 pages)
+- Student progress tracking with trend detection
+- Parent summaries (bilingual)
+- Quiz generation (5 types, RAG-grounded)
+- Lesson planning
+- Docling+OCR PDF extraction (PyPdfium2 + RapidOCR fallback)
+- Explicit source citations (Grade X, Unit Y: Title, p. Z)
+- Dockerized deployment (6 services)
+- Full automated test coverage (pytest, 7 test files)
 
 Implementation order:
 1. scaffold repo
 2. build Telegram bot
 3. integrate Ollama
 4. add fallback provider routing
-5. implement retrieval pipeline
-6. implement tutor agent
+5. implement hybrid retrieval pipeline (dense + BM25 + rerank)
+6. implement tutor agent with citations
 7. implement quiz agent
 8. implement lesson planner
 9. implement student tracking
 10. implement teacher dashboard
-11. add tests and evaluation suite
-12. add deployment scripts
-13. document everything
+11. add Docling+OCR PDF extraction
+12. add tests and evaluation suite
+13. add deployment scripts
+14. document everything
 
 Standards:
 - no placeholder-only code
@@ -940,9 +1030,11 @@ Standards:
 - all endpoints tested
 - all generated outputs schema-validated
 - all secrets externalized
-- readable logs
+- readable logs (structlog)
 - clean docs
 - working deployment
+- ruff linting (line-length=100, EFINW)
+- mypy type checking (strict=false)
 ```
 
 If you want, I can next turn this into a **developer-ready backlog** with **epics, user stories, acceptance criteria, and a week-by-week implementation plan**.

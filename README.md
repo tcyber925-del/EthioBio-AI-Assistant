@@ -1,85 +1,115 @@
 # EthioBio AI Assistant
 
-AI-powered biology learning and teaching assistant for Ethiopian middle and high school education (Grades 7-12). Uses LangGraph orchestration, RAG with ChromaDB, and gemma4:31b-cloud via Ollama.
+AI-powered biology learning and teaching assistant for Ethiopian middle and high school education (Grades 7-12). Uses LangGraph orchestration, hybrid RAG (Dense + BM25 + Cross-encoder reranker), ChromaDB, Docling+OCR PDF extraction, and gemma4:31b-cloud via Ollama.
 
 ## Features
 
-- **Biology Q&A** — Ask biology questions, get curriculum-aligned answers from Grade 12 textbook
+- **Biology Q&A** — Ask biology questions, get curriculum-aligned answers with explicit source citations
 - **Interactive Quiz** — Tap-to-answer quizzes with inline buttons, instant feedback, and score tracking
-- **RAG-Grounded Generation** — Quiz questions strictly based on Ethiopian textbook content, not general LLM knowledge
+- **RAG-Grounded Generation** — Quiz questions and answers strictly based on Ethiopian textbook content
 - **Lesson Planning** — Create structured lesson plans with objectives, activities, and assessments
-- **Student Progress Tracking** — Monitor performance, identify weak areas
+- **Student Progress Tracking** — Monitor performance, identify weak areas, trend detection
 - **Parent Summaries** — Weekly progress reports in English and Amharic
 - **Amharic Support** — Bilingual explanations and translations
-- **LangGraph Orchestration** — Intent classification → RAG retrieval → gemma4 generation → safety check
-- **Telegram Bot** — Primary user interface with interactive menus, commands, and inline keyboards
-- **Teacher Dashboard** — Next.js web dashboard for content review, approval workflow, monitoring
-- **Gemma4-First** — Cloud-hosted 31B parameter model with TinyLlama fallback
+- **LangGraph Orchestration** — Intent classification → RAG retrieval → tutor → safety check → revise/finalize
+- **Telegram Bot** — Primary user interface with interactive menus, commands, inline keyboards, conversation flows
+- **Teacher Dashboard** — Next.js web dashboard (9 pages) for content review, approval workflow, monitoring
+- **Hybrid RAG** — Dense (ChromaDB) + Sparse (BM25) + Cross-encoder reranker for accurate retrieval
+- **Docling+OCR Extraction** — PyPdfium2 with RapidOCR fallback to handle garbled PDF font encoding
+- **Source Citations** — Every answer cites `(Grade X, Unit Y: Title, p. Z)` format
+- **Gemma4-First** — Cloud-hosted 31B parameter model with OpenAI/Anthropic fallback
 
 ## Architecture
 
 ```
 src/
-├── main.py                # FastAPI server entry point
-├── config.py              # Pydantic Settings (env-based)
+├── main.py                     # FastAPI server entry point
+├── config.py                   # Pydantic Settings (env-based)
 ├── database/
-│   ├── models.py          # 15 SQLAlchemy entities
-│   └── session.py         # Async session with lazy engine
+│   ├── models.py               # 14 SQLAlchemy entities (UUID PKs, asyncpg, JSON columns)
+│   └── session.py              # Async session with lazy engine, auto-create tables
 ├── llm/
-│   ├── ollama_client.py   # Ollama API wrapper (chat, embeddings, health)
-│   ├── fallback.py        # OpenAI/Anthropic fallback adapter
-│   └── router.py          # Confidence-based model routing
+│   ├── ollama_client.py        # Ollama API wrapper (chat, embeddings, health)
+│   ├── fallback.py             # OpenAI/Anthropic fallback adapter
+│   └── router.py               # Confidence-based model routing with DB logging
 ├── rag/
-│   ├── embedder.py        # Embedding via Ollama or sentence-transformers
-│   ├── vector_store.py    # ChromaDB operations
-│   └── retriever.py       # Curriculum search with grade filtering
-├── retrieval/
-│   ├── adapter.py         # VectorStoreAdapter — ChromaDB abstraction
-│   └── __init__.py
+│   ├── embedder.py             # Embedding via Ollama or sentence-transformers (dual backend)
+│   ├── vector_store.py         # ChromaDB operations (PersistentClient)
+│   └── retriever.py            # Curriculum search with grade/topic/unit filters
+├── retrieval/                  # Hybrid search layer
+│   ├── adapter.py              # VectorStoreAdapter — dense + BM25 + rerank merge
+│   ├── bm25.py                 # BM25Okapi sparse index with pickle persistence
+│   └── reranker.py             # Cross-encoder reranker (ms-marco-MiniLM-L-6-v2)
 ├── agents/
-│   ├── base.py            # Base agent with _call_llm
-│   ├── orchestrator.py    # Intent classification
-│   ├── tutor.py           # Biology Q&A
-│   ├── quiz.py            # RAG-grounded quiz generation
-│   ├── lesson_planner.py  # Lesson plan generation
-│   ├── translator.py      # English-Amharic translation
-│   ├── safety.py          # Content review
-│   ├── student_progress.py# Performance analytics
-│   └── parent_summary.py  # Weekly report generation
-├── graph/                 # LangGraph orchestration
-│   ├── state.py           # AgentState, GraphOutput
-│   ├── orchestrator.py    # Compiled graph with 5 nodes
+│   ├── base.py                 # Base agent with _call_llm
+│   ├── orchestrator.py         # Intent classification + routing
+│   ├── tutor.py                # Biology Q&A with source citations
+│   ├── quiz.py                 # RAG-grounded quiz generation (5 types)
+│   ├── lesson_planner.py       # Lesson plan generation
+│   ├── translator.py           # English-Amharic translation
+│   ├── safety.py               # Content review + hallucination guard
+│   ├── student_progress.py     # Performance analytics + trend detection
+│   └── parent_summary.py       # Weekly bilingual report generation
+├── graph/                      # LangGraph orchestration
+│   ├── state.py                # AgentState (20+ fields), GraphOutput
+│   ├── orchestrator.py         # Compiled graph: orchestrator → retrieve/skip → tutor → safety → revise/finalize
 │   └── nodes/
-│       ├── orchestrator.py # Intent classifier
-│       ├── retrieval.py    # RAG context fetch
-│       ├── tutor.py        # Answer generation
-│       └── safety.py       # Self-check + revision
-├── schemas/               # Pydantic models for all structured outputs
+│       ├── orchestrator.py     # Intent classifier, needs_retrieval routing
+│       ├── retrieval.py        # RetrievalNode + SkipRetrievalNode
+│       ├── tutor.py            # Answer generation with citations
+│       └── safety.py           # Self-check + revision loop (reject/revise/finalize)
+├── schemas/                    # Pydantic models for all structured outputs
 ├── api/
-│   ├── chat.py            # POST /chat
-│   ├── quiz.py            # POST /quiz/generate, /quiz/submit
-│   ├── lesson.py          # POST /lesson-plan/generate
-│   ├── progress.py        # Progress + parent summary endpoints
-│   ├── admin.py           # Dashboard, content review, monitoring, approve/reject
-│   └── graph.py           # POST /graph/chat, GET /graph/status
+│   ├── chat.py                 # POST /chat
+│   ├── quiz.py                 # POST /quiz/generate, /quiz/submit
+│   ├── lesson.py               # POST /lesson-plan/generate
+│   ├── progress.py             # Progress + parent summary endpoints
+│   ├── admin.py                # Dashboard, content review, monitoring, approve/reject
+│   └── graph.py                # POST /graph/chat, GET /graph/status
 ├── telegram/
-│   ├── bot.py             # PTB Application with ConversationHandlers (interactive quiz)
-│   └── keyboards.py       # Inline keyboard layouts (icons, submenus)
+│   ├── bot.py                  # PTB Application with ConversationHandlers (interactive quiz, tutor, lesson)
+│   └── keyboards.py            # Inline keyboard layouts (9 factory functions)
+├── ingestion/
+│   └── docling_extractor.py    # PyPdfium2 + RapidOCR extraction, garbled detection, HybridChunker
 ├── evaluation/
-│   └── ragas_test.py      # Ragas evaluation metrics + gold dataset
+│   └── ragas_test.py           # Ragas evaluation + heuristic fallback + gold dataset
 └── observability/
-    └── tracing.py         # LangSmith tracing (optional)
-dashboard/                 # Next.js teacher dashboard (sidebar, 6 pages)
+    └── tracing.py              # LangSmith tracing (optional)
+dashboard/                      # Next.js teacher dashboard (9 routes)
 scripts/
-├── ingest_curriculum.py   # PDF/DOCX → ChromaDB ingestion with smart chunking
-tests/                     # pytest suite (23+ tests)
+├── ingest_curriculum.py        # PDF → ChromaDB + BM25 ingestion with Docling/OCR
+└── init-db.sql                 # pgvector extension init
+tests/                          # pytest suite (7 test files, 23+ tests)
 data/
-├── textbooks/             # Place curriculum PDFs here
-│   ├── Grade7/ ... Grade12/
+├── textbooks/                  # Ethiopian curriculum PDFs (Grades 9-12)
 ├── evaluation/
-│   └── gold_set.json      # Ragas gold QA dataset
-└── vectors/               # ChromaDB persist directory
+│   └── gold_set.json           # Ragas gold QA dataset
+└── vectors_new/                # ChromaDB persist + BM25 index
 ```
+
+### LangGraph Pipeline
+
+```
+entry → orchestrator → needs_retrieval? → retrieve ─┐
+                  │                       skip_retr. ┤
+                  └──────────────────────────────────→ tutor → safety → END / revise→tutor
+```
+
+### Hybrid RAG Pipeline
+
+```
+query → embed → dense search (ChromaDB) + sparse search (BM25) → merge (0.6/0.4) → rerank (cross-encoder) → top-k → format context
+```
+
+### Citation Format
+
+All RAG-grounded responses include explicit source citations:
+
+```
+(Grade X, Unit Y: Title, p. Z)
+```
+
+Example: `(Grade 10, Unit 3: Biochemical Molecules, p. 72)`
 
 ## Quick Start
 
@@ -102,7 +132,7 @@ cp .env.example .env
 # Start infrastructure
 docker compose up -d postgres redis
 
-# Create database tables
+# Create database tables (auto-created on first connection)
 source .venv/bin/activate
 python -c "
 from sqlalchemy import create_engine
@@ -136,11 +166,9 @@ Place Ethiopian biology textbook PDFs in the grade directories:
 
 ```
 data/textbooks/
-├── Grade7/
-├── Grade8/
-├── Grade9/
-├── Grade10/
-├── Grade11/
+├── Grade9/Grade_9_Biology_Textbook.pdf
+├── Grade10/grade_10-biology_kehulumcom.pdf
+├── Grade11/grade-11-biology-new-curriculum.pdf
 └── Grade12/Grade_12_Biology_Textbook.pdf
 ```
 
@@ -155,11 +183,21 @@ python scripts/ingest_curriculum.py --stats
 python scripts/ingest_curriculum.py --query "What is DNA replication?" --grade 12
 ```
 
+**Note:** Grade 10 textbooks with font encoding issues require full OCR extraction (RapidOCR). The ingestion script auto-detects garbled pages (alpha character ratio < 40%) and falls back to OCR automatically.
+
 ### Docker (full stack)
 
 ```bash
 docker compose up --build
 ```
+
+Services:
+- **App** — FastAPI on `:8000`
+- **Telegram Bot** — PTB polling mode
+- **PostgreSQL** — pgvector/pg16 on `:5432`
+- **Redis** — caching on `:6379`
+- **Ollama** — model serving on `:11435` (host) / `:11434` (container)
+- **Dashboard** — Next.js on `:3000`
 
 ## Environment Variables
 
@@ -172,6 +210,11 @@ Key environment variables (see `.env.example` for full list):
 | `OLLAMA_BASE_URL` | Ollama server URL | `http://localhost:11434` |
 | `OLLAMA_EMBED_MODEL` | Embedding model | `nomic-embed-text` |
 | `DATABASE_URL` | PostgreSQL async connection | `postgresql+asyncpg://...` |
+| `REDIS_URL` | Redis connection | `redis://localhost:6379/0` |
+| `FALLBACK_PROVIDER` | Fallback provider | `openai` or `anthropic` |
+| `FALLBACK_API_KEY` | Fallback API key | (required if fallback enabled) |
+| `VECTOR_STORE_PATH` | ChromaDB persist directory | `./data/vectors_new` |
+| `LANGCHAIN_API_KEY` | LangSmith tracing | (optional) |
 
 ## API Endpoints
 
@@ -252,10 +295,14 @@ python -m src.telegram.bot
 
 **Teacher Tools buttons don't work:** The submenu uses `callback_data` instead of `url` buttons (Telegram blocks HTTP URLs). URL buttons require HTTPS which isn't available on localhost.
 
+**Garbled textbook text:** Grade 10 textbooks have font encoding issues. The ingestion script auto-detects garbled pages (alpha ratio < 40%) and uses RapidOCR. If needed, force full OCR with `--use-docling` flag.
+
+**Quiz/Lesson re-entry from grade buttons:** Callback patterns must anchor at end (`^quiz$` not `^quiz`). This is fixed in the current codebase.
+
 ## Testing
 
 ```bash
-# Run unit tests
+# Run unit tests (skip endpoint tests that hit real Ollama)
 pytest tests/ -v -k "not test_chat_endpoint and not test_quiz_generate_endpoint"
 
 # RAG verification
@@ -268,7 +315,13 @@ from src.graph.orchestrator import run_graph
 result = asyncio.run(run_graph('What is a cell?', grade_level=12))
 print(result.answer)
 "
+
+# Evaluation (requires datasets + ragas)
+pip install datasets ragas
+python -c "from src.evaluation.ragas_test import run_evaluation; import asyncio; asyncio.run(run_evaluation())"
 ```
+
+Set `LANGCHAIN_API_KEY` to enable LangSmith tracing.
 
 ## Bug Fixes Applied
 
@@ -286,6 +339,13 @@ print(result.answer)
 - QuizAgent JSON parsing: Handles LLM returning `list` instead of `dict`
 - `/admin/content/review`: Accepts both `type` and `content_type` params for dashboard compatibility
 - Dashboard API calls: Bypass Next.js proxy for generation endpoints (socket hang-up fix)
+- DB table auto-creation: `Base.metadata.create_all()` on startup eliminates manual init step
+- Garbled PDF text: PyPdfium2 + RapidOCR fallback with auto-detection (alpha ratio < 40%)
+- Grade 10 OCR: Full RapidOCR extraction required (176/182 pages garbled due to font encoding)
+- Hybrid RAG: Dense + BM25 + cross-encoder reranker replaces single-vector retrieval
+- Citation format: Explicit `(Grade X, Unit Y: Title, p. Z)` citations in all RAG responses
+- Per-page chunking: Preserves accurate page numbers instead of full-text splitting
+- Vector store path: `data/vectors_new/` (old `data/vectors/` had permission issues)
 
 ## Evaluation
 
@@ -305,3 +365,19 @@ Set `LANGCHAIN_API_KEY` to enable LangSmith tracing.
 5. Start bot: `python -m src.telegram.bot`
 6. Start dashboard: `cd dashboard && npm run build && npx next start -p 3000`
 7. (Optional) Set `TELEGRAM_WEBHOOK_URL` for production webhook mode
+
+## Project Metrics
+
+| Metric | Value |
+|--------|-------|
+| Python source files | 57 |
+| Total Python lines | ~4,788 |
+| Database models | 14 |
+| Agents | 8 (Tutor, Quiz, LessonPlanner, Safety, Translator, StudentProgress, ParentSummary, Orchestrator) |
+| LangGraph nodes | 5 (orchestrator, retrieve, skip_retrieval, tutor, safety) |
+| API endpoints | 15 |
+| Test files | 7 |
+| Dashboard pages | 9 |
+| Textbooks ingested | 4 (Grades 9, 10, 11, 12) |
+| Vector store chunks | 1,165 |
+| Retrieval methods | Hybrid (Dense + BM25 + Cross-encoder reranker) |
