@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     fallback_api_key: Optional[str] = None
     fallback_model: Optional[str] = None
 
+    provider_openai_compatible_url: Optional[str] = None
+    provider_openai_compatible_api_key: Optional[str] = None
+    provider_openai_compatible_model: Optional[str] = None
+    provider_openai_compatible_name: str = "lm-studio"
+
     vector_store_path: str = "./data/vectors_new"
     collection_name: str = "ethiobio_curriculum"
 
