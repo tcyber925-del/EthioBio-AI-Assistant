@@ -5,7 +5,7 @@ title: EthioBio AI Assistant
 
 ## Overview
 - **Project Name**: EthioBio AI Assistant
-- **Status**: Active — v1.2
+- **Status**: Active — v1.3
 - **Start Date**: May 2026
 - **Target Date**: —
 - **Priority**: High
@@ -44,26 +44,31 @@ Student progress tracking, parent summaries, analytics.
 ### Phase 4 🔄 In Progress
 Voice support (stubbed), OCR (integrated for garbled PDFs), WhatsApp integration (planned), exports (stubbed).
 
+### Phase 5 ✅ Complete
+Dynamic multi-provider AI system: `LLMProvider` ABC, `ProviderManager` fallback chain, `ModelRegistry` auto-detection, runtime model switching, model selection UI in dashboard and Telegram bot, 6 new `/models/*` API endpoints.
+
 ## Dependencies
-- Ollama for local/cloud model hosting (`gemma4:31b-cloud`)
+- Ollama for local/cloud model hosting (primary, auto-detects available models)
+- OpenAI API (fallback provider)
+- Anthropic API (fallback provider)
+- OpenAI-compatible providers (LM Studio, vLLM)
 - PostgreSQL 16 with pgvector for data storage
 - Redis 7 for caching and background jobs
 - ChromaDB + BM25 for hybrid vector retrieval
 - Telegram Bot API
-- OpenAI/Anthropic for fallback providers
 
 ## Timeline
 | Phase | Start | End | Status |
 |-------|-------|-----|--------|
 | Planning | May 2026 | May 2026 | ✅ Complete |
-| Execution | May 2026 | May 2026 | ✅ Complete (v1.2) |
+| Execution | May 2026 | May 2026 | ✅ Complete (v1.3) |
 | Review | — | — | Pending |
 
 ## Notes
 English-first product (Ethiopian biology curriculum is in English) with Amharic support for explanations, parent communication, and accessibility. All RAG responses include explicit source citations in `(Grade X, Unit Y: Title, p. Z)` format. 4 textbooks ingested (Grades 9-12) with 1,165 chunks.
 
 ## Resources
-- [[./PRD.md|Full PRD Document v1.2]]
+- [[./PRD.md|Full PRD Document v1.3]]
 
 ## Actions
 - [x] Define detailed implementation plan

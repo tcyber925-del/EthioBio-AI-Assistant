@@ -3,7 +3,7 @@ title: EthioBio AI Assistant
 ---
 # EthioBio AI Assistant
 
-## Product Requirements Document (PRD) v1.2
+## Product Requirements Document (PRD) v1.3
 
 ## 1. Overview
 
@@ -345,33 +345,42 @@ The system must:
 
 ## 9.1 Model strategy
 
-The system must use:
+The system must use a dynamic multi-provider architecture with runtime model selection:
 
 ### Primary
 
-- Ollama-hosted open models for most requests (`gemma4:31b-cloud`)
+- Ollama-hosted open models for most requests (auto-detected via `/api/tags`)
+- Default: `gemma4:31b-cloud`
+- Users can select any available model via dashboard or Telegram bot (`/model`)
     
-
 ### Fallback
 
-- external providers (OpenAI `gpt-4o-mini`, Anthropic `claude-3-haiku`) when:
+- Configured fallback chain: Ollama → OpenAI → Anthropic → OpenAI-compatible (LM Studio, vLLM)
+- Automatic fallback when:
     
-    - local model confidence is low (< 0.5)
+    - local model is unavailable
         
-    - request is too complex
+    - request times out
         
-    - response quality is not sufficient
+    - health check fails
         
-    - local service is unavailable
+    - runtime error occurs
         
-    - voice/transcription needs a stronger model
-        
+- Runtime model switching without code changes or restarts
 
+### Provider abstraction
+
+- `LLMProvider` — abstract interface for all providers
+- `ProviderManager` — centralized orchestration with fallback chain
+- `ModelRegistry` — auto-detects locally installed Ollama models
+- `ModelRouter` — backward-compatible wrapper over `ProviderManager`
+- `UsageInfo` — standardized token usage tracking (`prompt_tokens`, `completion_tokens`, `total_tokens`)
+    
 ### Routing logic
 
 A model router should decide:
 
-- which model to use
+- which model to use (user-selected or default)
     
 - whether to use retrieval
     
@@ -379,9 +388,11 @@ A model router should decide:
     
 - whether to ask a clarification question
     
-- whether to fallback
+- whether to fallback to next provider in chain
 
 - log all routing decisions to `ModelRoutingLog` DB table
+
+- expose model management via `/models/*` API endpoints
 
 ---
 
@@ -579,9 +590,11 @@ Track:
 
 ### 12.3 AI runtime
 
-- Ollama for primary local/cloud model hosting (`gemma4:31b-cloud`)
-    
-- OpenAI/Anthropic adapters for fallback APIs
+- `ProviderManager` — centralized multi-provider orchestration
+- Ollama for primary local/cloud model hosting (auto-detects available models)
+- OpenAI/Anthropic/OpenAI-compatible adapters for fallback APIs
+- `__model__:` system message convention for per-request Ollama model selection
+- Runtime model switching via API (`POST /models/active`) or UI
     
 
 ### 12.4 Retrieval layer
@@ -731,6 +744,16 @@ Track:
     
 - `/health`
     
+- `/models` — list available models across all providers
+    
+- `/models/providers` — provider health and info
+    
+- `/models/active` — get/set currently active model
+    
+- `/models/health` — health check for all providers
+    
+- `/models/refresh` — force refresh Ollama model cache
+    
 
 ### API expectations
 
@@ -852,6 +875,8 @@ The system is acceptable when:
     
 - fallback works when necessary
     
+- users can select models at runtime via dashboard or Telegram bot
+    
 - performance data is stored correctly
     
 - deployment is repeatable
@@ -924,6 +949,10 @@ Student progress tracking, parent summaries, analytics.
 
 Voice support (stubbed), OCR (integrated for garbled PDFs), WhatsApp integration (planned), exports (stubbed).
 
+### Phase 5 ✅
+
+Dynamic multi-provider AI system: `LLMProvider` ABC, `ProviderManager` fallback chain, `ModelRegistry` auto-detection, runtime model switching, model selection UI in dashboard and Telegram bot, 6 new `/models/*` API endpoints.
+
 ---
 
 ## 19. Risks and mitigations
@@ -938,7 +967,7 @@ Mitigation: use Amharic selectively and keep English primary.
 
 ### Risk: local model performance issues
 
-Mitigation: model routing and fallback providers (OpenAI/Anthropic).
+Mitigation: multi-provider architecture with automatic fallback chain (Ollama → OpenAI → Anthropic → OpenAI-compatible), runtime model switching, health checks, and model selection UI.
 
 ### Risk: poor curriculum alignment
 
@@ -964,6 +993,10 @@ The product is done for v1 when:
     
 - the system uses Ollama first and falls back when needed
     
+- users can select models at runtime via dashboard or Telegram bot
+    
+- provider health is monitorable via `/models/health`
+    
 - curriculum grounding is active (hybrid RAG)
     
 - progress tracking works
@@ -985,17 +1018,20 @@ The product is done for v1 when:
 Use this as the implementation directive:
 
 ```text
-Build EthioBio AI Assistant v1.2 as a production-ready Telegram-first biology learning platform for Ethiopian middle and high school education.
+Build EthioBio AI Assistant v1.3 as a production-ready Telegram-first biology learning platform for Ethiopian middle and high school education.
 
 Requirements:
 - English-first curriculum alignment
 - Amharic support as secondary
-- Ollama as the primary model runtime (gemma4:31b-cloud)
+- Dynamic multi-provider AI system (Ollama primary, OpenAI/Anthropic/OpenAI-compatible fallbacks)
+- Runtime model switching without code changes
+- Model auto-detection via Ollama `/api/tags`
+- Model selection UI in dashboard (Ask, Quiz, Lesson pages) and Telegram bot (`/model` command)
 - Fallback providers (OpenAI/Anthropic) when local models are insufficient
 - Hybrid RAG over approved biology curriculum content (Dense + BM25 + Cross-encoder reranker)
 - Agent-based architecture with tool use, routing, memory, confidence scoring, and self-checking
 - LangGraph orchestration (5 nodes: orchestrator → retrieve/skip → tutor → safety → revise/finalize)
-- FastAPI backend
+- FastAPI backend with 21 API endpoints including 6 `/models/*` management routes
 - PostgreSQL 16 + pgvector + Redis 7
 - ChromaDB vector store with BM25 sparse index
 - Teacher dashboard (Next.js 14, 9 pages)
@@ -1011,18 +1047,19 @@ Requirements:
 Implementation order:
 1. scaffold repo
 2. build Telegram bot
-3. integrate Ollama
-4. add fallback provider routing
+3. integrate multi-provider AI system (LLMProvider ABC, ProviderManager, ModelRegistry)
+4. add model management API endpoints (/models/*)
 5. implement hybrid retrieval pipeline (dense + BM25 + rerank)
 6. implement tutor agent with citations
 7. implement quiz agent
 8. implement lesson planner
 9. implement student tracking
-10. implement teacher dashboard
-11. add Docling+OCR PDF extraction
-12. add tests and evaluation suite
-13. add deployment scripts
-14. document everything
+10. implement teacher dashboard with model selector
+11. add model selection to Telegram bot
+12. add Docling+OCR PDF extraction
+13. add tests and evaluation suite
+14. add deployment scripts
+15. document everything
 
 Standards:
 - no placeholder-only code

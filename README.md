@@ -1,6 +1,6 @@
 # EthioBio AI Assistant
 
-AI-powered biology learning and teaching assistant for Ethiopian middle and high school education (Grades 7-12). Uses LangGraph orchestration, hybrid RAG (Dense + BM25 + Cross-encoder reranker), ChromaDB, Docling+OCR PDF extraction, and gemma4:31b-cloud via Ollama.
+AI-powered biology learning and teaching assistant for Ethiopian middle and high school education (Grades 7-12). Uses LangGraph orchestration, hybrid RAG (Dense + BM25 + Cross-encoder reranker), ChromaDB, Docling+OCR PDF extraction, and dynamic multi-provider AI system (Ollama, OpenAI, Anthropic).
 
 ## Features
 
@@ -17,7 +17,10 @@ AI-powered biology learning and teaching assistant for Ethiopian middle and high
 - **Hybrid RAG** — Dense (ChromaDB) + Sparse (BM25) + Cross-encoder reranker for accurate retrieval
 - **Docling+OCR Extraction** — PyPdfium2 with RapidOCR fallback to handle garbled PDF font encoding
 - **Source Citations** — Every answer cites `(Grade X, Unit Y: Title, p. Z)` format
-- **Gemma4-First** — Cloud-hosted 31B parameter model with OpenAI/Anthropic fallback
+- **Multi-Provider AI** — Ollama primary with OpenAI/Anthropic fallback chain, runtime model switching
+- **Model Auto-Detection** — Discovers all locally installed Ollama models automatically
+- **Model Selection UI** — Choose models in dashboard (Ask, Quiz, Lesson) and Telegram bot (`/model`)
+- **Extensible Providers** — Clean `LLMProvider` interface for adding LM Studio, vLLM, llama.cpp
 
 ## Architecture
 
@@ -29,9 +32,16 @@ src/
 │   ├── models.py               # 14 SQLAlchemy entities (UUID PKs, asyncpg, JSON columns)
 │   └── session.py              # Async session with lazy engine, auto-create tables
 ├── llm/
+│   ├── providers/              # Provider abstraction layer
+│   │   ├── base.py             # LLMProvider ABC, ProviderInfo, ChatResponse
+│   │   ├── ollama.py           # OllamaProvider (any local model)
+│   │   ├── openai_provider.py  # OpenAIProvider (OpenAI, LM Studio, vLLM)
+│   │   └── anthropic_provider.py # AnthropicProvider (Claude)
+│   ├── manager.py              # ProviderManager — fallback chain orchestration
+│   ├── registry.py             # ModelRegistry — auto-detect Ollama models
 │   ├── ollama_client.py        # Ollama API wrapper (chat, embeddings, health)
-│   ├── fallback.py             # OpenAI/Anthropic fallback adapter
-│   └── router.py               # Confidence-based model routing with DB logging
+│   ├── fallback.py             # OpenAI/Anthropic fallback adapter (legacy)
+│   └── router.py               # ModelRouter — backward-compat wrapper over ProviderManager
 ├── rag/
 │   ├── embedder.py             # Embedding via Ollama or sentence-transformers (dual backend)
 │   ├── vector_store.py         # ChromaDB operations (PersistentClient)
@@ -215,6 +225,11 @@ Key environment variables (see `.env.example` for full list):
 | `FALLBACK_API_KEY` | Fallback API key | (required if fallback enabled) |
 | `VECTOR_STORE_PATH` | ChromaDB persist directory | `./data/vectors_new` |
 | `LANGCHAIN_API_KEY` | LangSmith tracing | (optional) |
+| `API_BASE_URL` | Backend API URL for Telegram bot | `http://app:8000` |
+| `PROVIDER_OPENAI_COMPATIBLE_NAME` | OpenAI-compatible provider name | (optional) |
+| `PROVIDER_OPENAI_COMPATIBLE_URL` | OpenAI-compatible provider URL | (optional) |
+| `PROVIDER_OPENAI_COMPATIBLE_API_KEY` | OpenAI-compatible API key | (optional) |
+| `PROVIDER_OPENAI_COMPATIBLE_MODEL` | OpenAI-compatible model name | (optional) |
 
 ## API Endpoints
 
@@ -235,6 +250,12 @@ Key environment variables (see `.env.example` for full list):
 | GET | `/admin/content/lesson/{id}` | Lesson detail with full content |
 | PATCH | `/admin/content/{type}/{id}/status` | Approve/reject content |
 | GET | `/admin/monitoring` | System monitoring |
+| GET | `/models` | List available models across all providers |
+| GET | `/models/providers` | Provider health and info |
+| GET | `/models/active` | Get currently active model |
+| POST | `/models/active` | Set active model |
+| GET | `/models/health` | Health check for all providers |
+| POST | `/models/refresh` | Force refresh Ollama model cache |
 
 ## Telegram Bot
 
@@ -260,6 +281,7 @@ User taps answer → instant feedback (✅ Correct / ❌ Wrong + explanation)
 | `/grade <7-12>` | Set default grade level |
 | `/language <en\|am\|both>` | Set language |
 | `/cancel` | Cancel current operation |
+| `/model` | Select LLM model |
 
 ### Menu Layout
 
@@ -269,6 +291,7 @@ Main Menu
 ├── 📝 Take a Quiz       → type → grade → topic → interactive quiz
 ├── 📊 My Progress       → stats (requires PostgreSQL)
 ├── 🌐 Language          → en / am / both
+├── 🤖 Model Selection   → choose LLM model
 ├── 👨‍🏫 Teacher Tools     → Lesson Plan + Dashboard links
 └── ❓ Help
 ```
@@ -325,6 +348,11 @@ Set `LANGCHAIN_API_KEY` to enable LangSmith tracing.
 
 ## Bug Fixes Applied
 
+- Multi-provider system: LLMProvider ABC, ProviderManager, ModelRegistry, runtime model switching
+- Model selection UI: Dashboard (Ask, Quiz, Lesson pages) + Telegram bot (/model command)
+- /models/* API endpoints: list, health, active model, refresh
+- Next.js proxy: Added /models/* rewrite rule for dashboard model selector
+- api_base_url config: Dedicated setting for Telegram bot to reach FastAPI backend
 - `_get_or_create_user`: Session parameter was `None` — now creates its own session
 - `handle_question`: DB save was inside the answer try/except — now independent
 - `main()`: Missing `await app.start()` after `start_polling()` — handlers never fired
@@ -370,14 +398,15 @@ Set `LANGCHAIN_API_KEY` to enable LangSmith tracing.
 
 | Metric | Value |
 |--------|-------|
-| Python source files | 57 |
-| Total Python lines | ~4,788 |
+| Python source files | 64 |
+| Total Python lines | ~5,400 |
 | Database models | 14 |
+| Providers | 3 (Ollama, OpenAI, Anthropic) + extensible |
 | Agents | 8 (Tutor, Quiz, LessonPlanner, Safety, Translator, StudentProgress, ParentSummary, Orchestrator) |
 | LangGraph nodes | 5 (orchestrator, retrieve, skip_retrieval, tutor, safety) |
-| API endpoints | 15 |
+| API endpoints | 21 |
 | Test files | 7 |
 | Dashboard pages | 9 |
-| Textbooks ingested | 4 (Grades 9, 10, 11, 12) |
+| Textbooks ingested | 4 (Grades 9-12) |
 | Vector store chunks | 1,165 |
 | Retrieval methods | Hybrid (Dense + BM25 + Cross-encoder reranker) |

@@ -4,8 +4,8 @@
 Build an AI-powered biology learning and teaching assistant for Ethiopian middle and high school education. Helps teachers save time, helps students learn more effectively, and supports parents and school administrators with simple, useful updates.
 
 ## Scope
-### In Scope (v1.2)
-- Telegram bot (interactive quiz flow, conversation handlers, inline keyboards)
+### In Scope (v1.3)
+- Telegram bot (interactive quiz flow, conversation handlers, inline keyboards, model selection)
 - English-first biology Q&A with source citations
 - Amharic support for explanations and summaries
 - Hybrid RAG retrieval (Dense + BM25 + Cross-encoder reranker)
@@ -14,22 +14,25 @@ Build an AI-powered biology learning and teaching assistant for Ethiopian middle
 - Student progress tracking with trend detection
 - Parent summaries (bilingual)
 - Teacher review dashboard (Next.js, 9 pages)
-- Ollama-first model routing (`gemma4:31b-cloud`)
-- Fallback AI provider support (OpenAI/Anthropic)
+- Dynamic multi-provider AI system (Ollama, OpenAI, Anthropic, OpenAI-compatible)
+- Runtime model switching without code changes
+- Model auto-detection via Ollama `/api/tags`
+- Model selection UI in dashboard and Telegram bot (`/model` command)
+- 6 new `/models/*` API endpoints for model management
 - LangGraph orchestration (5 nodes)
 - Docling+OCR PDF extraction for garbled textbooks
 - Explicit source citations `(Grade X, Unit Y: Title, p. Z)`
 - Logging, monitoring, and evaluation
 
-### Out of Scope (v1.2)
+### Out of Scope (v1.3)
 - Full mobile app
 - Video learning platform
 - Custom foundation model training
 - Real-time classroom proctoring
 - Non-biology subjects
 - Full offline classroom package
-- Voice support (stubbed, planned for v1.3)
-- WhatsApp integration (planned for v1.3)
+- Voice support (stubbed, planned for v1.4)
+- WhatsApp integration (planned for v1.4)
 
 ## Approach
 ### Product Principles
@@ -43,9 +46,11 @@ Build an AI-powered biology learning and teaching assistant for Ethiopian middle
 - **Cited sources**: every answer cites its textbook source with grade, unit, topic, and page.
 
 ### AI Architecture
-- **Primary**: Ollama-hosted models (`gemma4:31b-cloud`)
-- **Fallback**: OpenAI (`gpt-4o-mini`) or Anthropic (`claude-3-haiku`) when confidence < 0.5 or Ollama unavailable
-- **Model Router**: confidence-based routing with DB logging to `ModelRoutingLog`
+- **Primary**: Ollama-hosted models (auto-detected via `/api/tags`, default: `gemma4:31b-cloud`)
+- **Fallback chain**: Ollama → OpenAI → Anthropic → OpenAI-compatible (LM Studio, vLLM)
+- **ProviderManager**: centralized orchestration with automatic fallback, runtime model switching
+- **ModelRegistry**: auto-detects locally installed Ollama models
+- **ModelRouter**: backward-compatible thin wrapper over `ProviderManager`
 - **Orchestration**: LangGraph StateGraph with 5 nodes and dependency injection
 
 ### Agent System
@@ -88,7 +93,7 @@ entry → orchestrator → needs_retrieval? → retrieve ─┐
 |------|--------|------------|
 | Hallucinated answers | High | Hybrid RAG, safety checks, fallback, teacher review, explicit citations |
 | Weak Amharic output | Medium | Use Amharic selectively, keep English primary |
-| Local model performance issues | High | Model routing and fallback providers |
+| Local model performance issues | High | Multi-provider architecture with automatic fallback chain, runtime model switching, health checks |
 | Poor curriculum alignment | High | Curated content store, human review, hybrid retrieval, grade/topic filtering |
 | Low internet access | Medium | Text-first design and cached responses |
 | Garbled PDF text | High | PyPdfium2 + RapidOCR with auto-detection (alpha ratio < 40%) |
@@ -102,17 +107,11 @@ entry → orchestrator → needs_retrieval? → retrieve ─┐
 - PostgreSQL 16 + pgvector, Redis 7, ChromaDB + BM25
 
 ### AI Runtime
-- Ollama (`gemma4:31b-cloud`, `tinyllama`, `nomic-embed-text`)
-- OpenAI/Anthropic adapters for fallback
-
-### Retrieval Layer
-- ChromaDB (dense) + BM25Okapi (sparse) + cross-encoder reranker (`ms-marco-MiniLM-L-6-v2`)
-
-### Document Processing
-- PyPdfium2, RapidOCR, Docling HybridChunker
+- Ollama (auto-detects available models, default: `gemma4:31b-cloud`)
+- OpenAI/Anthropic/OpenAI-compatible adapters for fallback chain
 
 ### Channels
-- Telegram (v1.2), WhatsApp (planned for v1.3)
+- Telegram (v1.3), WhatsApp (planned for v1.4)
 
 ### Admin UI
 - Next.js 14 App Router, Tailwind CSS 3.4, recharts, lucide-react
