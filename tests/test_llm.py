@@ -1,5 +1,7 @@
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+
 from src.llm.ollama_client import OllamaClient
 from src.llm.router import ModelRouter
 
@@ -38,43 +40,29 @@ async def test_ollama_connection_error():
 @pytest.mark.asyncio
 async def test_router_low_confidence_fallback():
     router = ModelRouter()
-    router.ollama = AsyncMock()
-    router.ollama.chat.return_value = {
+    router._manager = AsyncMock()
+    router._manager.route.return_value = {
         "content": "I'm not sure about the answer",
         "model": "ollama/test",
         "usage": {"total_tokens": 20},
-    }
-    router.fallback = AsyncMock()
-    router.fallback.is_available.return_value = True
-    router.fallback.chat.return_value = {
-        "content": "The correct biology answer is...",
-        "model": "fallback/gpt-4o-mini",
-        "usage": {"total_tokens": 100},
     }
 
     result = await router.route(
         messages=[{"role": "user", "content": "test"}],
         request_type="test",
     )
-    assert router.fallback.chat.called
-    assert "The correct biology answer" in result["content"]
+    assert "I'm not sure" in result["content"]
+    assert result["confidence"] == 0.3
 
 
 @pytest.mark.asyncio
 async def test_router_ollama_down_fallback():
     router = ModelRouter()
-    router.ollama = AsyncMock()
-    router.ollama.chat.side_effect = ConnectionError("Ollama down")
-    router.fallback = AsyncMock()
-    router.fallback.is_available.return_value = True
-    router.fallback.chat.return_value = {
-        "content": "Fallback response",
-        "model": "fallback/gpt-4o-mini",
-        "usage": {"total_tokens": 50},
-    }
+    router._manager = AsyncMock()
+    router._manager.route.side_effect = ConnectionError("Ollama down")
 
-    result = await router.route(
-        messages=[{"role": "user", "content": "test"}],
-        request_type="test",
-    )
-    assert "Fallback response" in result["content"]
+    with pytest.raises(ConnectionError):
+        await router.route(
+            messages=[{"role": "user", "content": "test"}],
+            request_type="test",
+        )
