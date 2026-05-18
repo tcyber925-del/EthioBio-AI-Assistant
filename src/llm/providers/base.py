@@ -1,5 +1,13 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import TypedDict
+
+
+class UsageInfo(TypedDict, total=False):
+    """Token usage information from a chat response."""
+    total_tokens: int
+    prompt_tokens: int
+    completion_tokens: int
 
 
 @dataclass
@@ -8,7 +16,7 @@ class ProviderInfo:
     name: str
     provider_type: str  # "ollama", "openai", "anthropic", "openai-compatible"
     base_url: str
-    available_models: list[str]
+    available_models: list[str] = field(default_factory=list)
     is_healthy: bool = False
     is_default: bool = False
 
@@ -18,7 +26,7 @@ class ChatResponse:
     """Unified response from any provider."""
     content: str
     model: str
-    usage: dict
+    usage: UsageInfo
     provider: str
 
 
@@ -37,17 +45,17 @@ class LLMProvider(ABC):
 
     @abstractmethod
     async def is_available(self) -> bool:
-        """Check if this provider is configured and reachable."""
+        """Check if this provider is configured (credentials/URL set) and reachable."""
         ...
 
     @abstractmethod
     async def get_available_models(self) -> list[str]:
-        """List models available through this provider."""
+        """List models available through this provider. May trigger a network call."""
         ...
 
     @abstractmethod
     async def check_health(self) -> bool:
-        """Health check for the provider."""
+        """Perform a live health check against the provider's API endpoint."""
         ...
 
     @abstractmethod
