@@ -20,6 +20,7 @@ class QuizGenerateRequest(BaseModel):
     types: list[str] = Field(default_factory=lambda: ["multiple_choice", "true_false"])
     language: str = "en"
     teacher_id: Optional[UUID] = None
+    model: Optional[str] = None
 
 
 class QuizGenerateResponse(BaseModel):

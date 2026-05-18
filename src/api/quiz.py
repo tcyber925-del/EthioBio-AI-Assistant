@@ -18,7 +18,7 @@ router = APIRouter(prefix="/quiz", tags=["Quiz"])
 
 @router.post("/generate", response_model=QuizGenerateResponse)
 async def generate_quiz(request: QuizGenerateRequest, session: AsyncSession = Depends(get_session)):
-    router_llm = ModelRouter()
+    router_llm = ModelRouter(preferred_model=request.model)
     agent = QuizAgent(llm_router=router_llm)
 
     try:

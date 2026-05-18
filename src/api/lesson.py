@@ -13,7 +13,7 @@ router = APIRouter(prefix="/lesson-plan", tags=["Lesson Plan"])
 
 @router.post("/generate", response_model=LessonPlanResponse)
 async def generate_lesson_plan(request: LessonPlanRequest, session: AsyncSession = Depends(get_session)):
-    router_llm = ModelRouter()
+    router_llm = ModelRouter(preferred_model=request.model)
     agent = LessonPlannerAgent(llm_router=router_llm)
 
     try:

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ClipboardCheck, AlertTriangle, Plus, X, Loader2 } from 'lucide-react'
 import { TableSkeleton } from '@/components/Skeleton'
+import ModelSelector from '@/components/ModelSelector'
 import { fetchWithTimeout } from '@/lib/fetch'
 
 interface Quiz {
@@ -21,6 +22,7 @@ export default function QuizzesPage() {
   const [genTopic, setGenTopic] = useState('')
   const [genCount, setGenCount] = useState(5)
   const [genType, setGenType] = useState('multiple_choice')
+  const [selectedModel, setSelectedModel] = useState('')
   const [generating, setGenerating] = useState(false)
   const [genMsg, setGenMsg] = useState<string | null>(null)
 
@@ -48,7 +50,7 @@ export default function QuizzesPage() {
       const data = await fetchWithTimeout(`/quiz/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ grade_level: genGrade, topic: genTopic, question_count: genCount, types }),
+        body: JSON.stringify({ grade_level: genGrade, topic: genTopic, question_count: genCount, types, model: selectedModel }),
       }, 120000)
       setShowModal(false)
       setGenTopic('')
@@ -152,17 +154,21 @@ export default function QuizzesPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
+                  <label className="text-sm text-foreground-muted block mb-1">Model</label>
+                  <ModelSelector value={selectedModel} onChange={setSelectedModel} />
+                </div>
+                <div>
                   <label className="text-sm text-foreground-muted block mb-1">Questions</label>
                   <input type="number" min={1} max={30} value={genCount} onChange={e => setGenCount(Number(e.target.value))} className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
                 </div>
-                <div>
-                  <label className="text-sm text-foreground-muted block mb-1">Type</label>
-                  <select value={genType} onChange={e => setGenType(e.target.value)} className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
-                    <option value="multiple_choice">Multiple Choice</option>
-                    <option value="true_false">True/False</option>
-                    <option value="mixed">Mixed</option>
-                  </select>
-                </div>
+              </div>
+              <div>
+                <label className="text-sm text-foreground-muted block mb-1">Type</label>
+                <select value={genType} onChange={e => setGenType(e.target.value)} className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+                  <option value="multiple_choice">Multiple Choice</option>
+                  <option value="true_false">True/False</option>
+                  <option value="mixed">Mixed</option>
+                </select>
               </div>
               <button
                 onClick={generateQuiz}

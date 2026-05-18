@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { FileText, AlertTriangle, Plus, X, Loader2 } from 'lucide-react'
 import { TableSkeleton } from '@/components/Skeleton'
+import ModelSelector from '@/components/ModelSelector'
 import { fetchWithTimeout } from '@/lib/fetch'
 
 interface Lesson {
@@ -20,6 +21,7 @@ export default function LessonsPage() {
   const [genGrade, setGenGrade] = useState(12)
   const [genTopic, setGenTopic] = useState('')
   const [genDuration, setGenDuration] = useState(40)
+  const [selectedModel, setSelectedModel] = useState('')
   const [generating, setGenerating] = useState(false)
   const [genMsg, setGenMsg] = useState<string | null>(null)
 
@@ -46,7 +48,7 @@ export default function LessonsPage() {
       await fetchWithTimeout(`/lesson-plan/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ grade_level: genGrade, topic: genTopic, duration_minutes: genDuration }),
+        body: JSON.stringify({ grade_level: genGrade, topic: genTopic, duration_minutes: genDuration, model: selectedModel }),
       }, 120000)
       setShowModal(false)
       setGenTopic('')
@@ -141,6 +143,10 @@ export default function LessonsPage() {
                 <select value={genGrade} onChange={e => setGenGrade(Number(e.target.value))} className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
                   {[7, 8, 9, 10, 11, 12].map(g => <option key={g} value={g}>Grade {g}</option>)}
                 </select>
+              </div>
+              <div>
+                <label className="text-sm text-foreground-muted block mb-1">Model</label>
+                <ModelSelector value={selectedModel} onChange={setSelectedModel} />
               </div>
               <div>
                 <label className="text-sm text-foreground-muted block mb-1">Topic</label>
