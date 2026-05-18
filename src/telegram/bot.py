@@ -1,25 +1,37 @@
+import httpx
 import structlog
-from telegram import Update
 from telegram.ext import (
-    Application, CommandHandler, CallbackQueryHandler,
-    MessageHandler, filters, ConversationHandler,
+    Application,
+    CallbackQueryHandler,
+    CommandHandler,
+    ConversationHandler,
+    MessageHandler,
+    filters,
 )
 
-from src.config import settings
-from src.telegram.keyboards import (
-    main_menu_keyboard, teacher_tools_keyboard, language_keyboard,
-    quiz_type_keyboard, grade_keyboard, back_keyboard,
-    answer_options_keyboard, tf_keyboard, quiz_next_keyboard,
-    quiz_result_keyboard,
-)
-from src.telegram.formatter import format_for_telegram, sanitize_for_telegram, strip_markdown
-from src.database.session import async_session_factory
-from src.database.models import User, UserRole, StudentProfile
-from src.agents.tutor import TutorAgent
-from src.agents.quiz import QuizAgent
 from src.agents.lesson_planner import LessonPlannerAgent
+from src.agents.quiz import QuizAgent
 from src.agents.student_progress import StudentProgressAgent
+from src.agents.tutor import TutorAgent
+from src.config import settings
+from src.database.models import StudentProfile, User, UserRole
+from src.database.session import async_session_factory
 from src.llm.router import ModelRouter
+from src.telegram.formatter import format_for_telegram, sanitize_for_telegram, strip_markdown
+from src.telegram.keyboards import (
+    answer_options_keyboard,
+    back_keyboard,
+    grade_keyboard,
+    language_keyboard,
+    main_menu_keyboard,
+    model_selection_keyboard,
+    quiz_next_keyboard,
+    quiz_result_keyboard,
+    quiz_type_keyboard,
+    teacher_tools_keyboard,
+    tf_keyboard,
+)
+from telegram import InlineKeyboardMarkup, Update
 
 logger = structlog.get_logger()
 
@@ -639,6 +651,63 @@ async def handle_language_select(update: Update, context):
     )
 
 
+async def model_command(update: Update, context):
+    api_base = settings.dashboard_url or "http://localhost:8000"
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"{api_base}/models")
+            models = resp.json()
+            resp2 = await client.get(f"{api_base}/models/active")
+            active = resp2.json()["model"]
+        await update.message.reply_text(
+            "Select a model:",
+            reply_markup=InlineKeyboardMarkup(model_selection_keyboard(models, active)),
+        )
+    except Exception as e:
+        logger.error("model_command_error", error=str(e))
+        await update.message.reply_text("Failed to fetch models. Is the API server running?", reply_markup=main_menu_keyboard())
+
+
+async def handle_model_selection(update: Update, context):
+    query = update.callback_query
+    await query.answer()
+    action = query.data.split(":", 1)[1]
+    api_base = settings.dashboard_url or "http://localhost:8000"
+
+    if action == "back":
+        await query.edit_message_text("Main menu:", reply_markup=main_menu_keyboard())
+        return
+
+    if action == "refresh":
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.post(f"{api_base}/models/refresh")
+                resp = await client.get(f"{api_base}/models")
+                models = resp.json()
+                resp2 = await client.get(f"{api_base}/models/active")
+                active = resp2.json()["model"]
+            await query.edit_message_text(
+                "Select a model:",
+                reply_markup=InlineKeyboardMarkup(model_selection_keyboard(models, active)),
+            )
+        except Exception as e:
+            logger.error("model_refresh_error", error=str(e))
+            await query.edit_message_text("Failed to refresh models.", reply_markup=main_menu_keyboard())
+        return
+
+    # Setting a model
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.post(f"{api_base}/models/active", json={"model": action})
+        await query.edit_message_text(
+            f"✅ Active model is now: {action}",
+            reply_markup=main_menu_keyboard(),
+        )
+    except Exception as e:
+        logger.error("model_set_error", error=str(e))
+        await query.edit_message_text(f"Failed to set model: {action}", reply_markup=main_menu_keyboard())
+
+
 async def handle_general_message(update: Update, context):
     message_text = update.message.text
     try:
@@ -692,6 +761,7 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("ask", ask_command))
     app.add_handler(CommandHandler("grade", grade_command))
     app.add_handler(CommandHandler("language", language_command))
+    app.add_handler(CommandHandler("model", model_command))
 
     quiz_handler = ConversationHandler(
         entry_points=[
@@ -774,6 +844,7 @@ def build_app() -> Application:
     )
     app.add_handler(conv_handler)
 
+    app.add_handler(CallbackQueryHandler(handle_model_selection, pattern="^model:"))
     app.add_handler(CallbackQueryHandler(handle_teacher_tools, pattern="^teacher_tools$"))
     app.add_handler(CallbackQueryHandler(handle_open_quizzes, pattern="^open_quizzes$"))
     app.add_handler(CallbackQueryHandler(handle_open_dashboard, pattern="^open_dashboard$"))
