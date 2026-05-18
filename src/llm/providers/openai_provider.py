@@ -59,7 +59,9 @@ class OpenAIProvider(LLMProvider):
         )
 
     async def is_available(self) -> bool:
-        return bool(self._api_key)
+        available = bool(self._api_key)
+        self._healthy = available
+        return available
 
     async def get_available_models(self) -> list[str]:
         return [self._model]

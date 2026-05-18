@@ -30,7 +30,7 @@ class OllamaProvider(LLMProvider):
         model = self._default_model
         for msg in messages:
             if msg.get("role") == "system" and msg.get("content", "").startswith("__model__:"):
-                model = msg["content"].split(":", 2)[1]
+                model = msg["content"].split(":", 1)[1]
                 break
 
         payload = {
