@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     provider_openai_compatible_url: Optional[str] = None
     provider_openai_compatible_api_key: Optional[str] = None
     provider_openai_compatible_model: Optional[str] = None
-    provider_openai_compatible_name: str = "lm-studio"
+    provider_openai_compatible_name: Optional[str] = None
 
     vector_store_path: str = "./data/vectors_new"
     collection_name: str = "ethiobio_curriculum"
