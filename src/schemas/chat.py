@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import Optional
 from uuid import UUID
 
@@ -10,6 +10,7 @@ class TutorRequest(BaseModel):
     topic: Optional[str] = None
     language: str = "en"
     use_rag: bool = True
+    model: Optional[str] = None
 
 
 class TutorResponse(BaseModel):

@@ -50,8 +50,9 @@ async def run_graph(
     grade_level: int = None,
     topic: str = None,
     language: str = "en",
+    preferred_model: str | None = None,
 ) -> GraphOutput:
-    router = ModelRouter()
+    router = ModelRouter(preferred_model=preferred_model)
     adapter = VectorStoreAdapter()
 
     initial_state = AgentState(
@@ -60,6 +61,7 @@ async def run_graph(
         grade_level=grade_level,
         topic=topic,
         language=language,
+        preferred_model=preferred_model or "",
     )
 
     graph = build_graph(router, adapter)
