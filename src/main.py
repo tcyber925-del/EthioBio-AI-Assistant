@@ -8,6 +8,7 @@ from src.database.session import init_db, close_db, get_session
 from src.llm.router import ModelRouter
 from src.api import chat, quiz, lesson, progress, admin
 from src.api.graph import router as graph_router
+from src.api.models import router as models_router
 from src.schemas.common import HealthResponse
 
 logger = structlog.get_logger()
@@ -42,6 +43,7 @@ app.include_router(lesson.router)
 app.include_router(progress.router)
 app.include_router(admin.router)
 app.include_router(graph_router)
+app.include_router(models_router)
 
 
 @app.get("/health", response_model=HealthResponse)

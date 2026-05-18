@@ -95,3 +95,14 @@ def quiz_result_keyboard() -> InlineKeyboardMarkup:
 
 def back_keyboard():
     return InlineKeyboardMarkup([[InlineKeyboardButton("← Back to Menu", callback_data="menu")]])
+
+
+def model_selection_keyboard(models: list[dict], active_model: str) -> list[list[InlineKeyboardButton]]:
+    """Build inline keyboard for model selection."""
+    buttons = []
+    for m in models:
+        label = f"{'✓ ' if m['id'] == active_model else ''}{m['name']} ({m['provider']})"
+        buttons.append([InlineKeyboardButton(label, callback_data=f"model:{m['id']}")])
+    buttons.append([InlineKeyboardButton("🔄 Refresh Models", callback_data="model:refresh")])
+    buttons.append([InlineKeyboardButton("Back", callback_data="model:back")])
+    return buttons

@@ -2,10 +2,12 @@
 
 ## Final Deliverables
 
-### Definition of Done (v1.2)
+### Definition of Done (v1.3)
 - [x] A student can use Telegram to ask biology questions
 - [x] A teacher can generate and edit lesson plans and quizzes
 - [x] The system uses Ollama first and falls back when needed
+- [x] Users can select models at runtime via dashboard or Telegram bot
+- [x] Provider health is monitorable via `/models/health`
 - [x] Curriculum grounding is active (hybrid RAG: dense + BM25 + reranker)
 - [x] Progress tracking works (trend detection, weak areas)
 - [x] Parent summaries work (bilingual)
@@ -15,7 +17,7 @@
 - [x] The app is tested, deployed, and maintainable
 
 ## Documentation
-- [[../00-Overview/PRD.md|Product Requirements Document v1.2]]
+- [[../00-Overview/PRD.md|Product Requirements Document v1.3]]
 - [[../README.md|README — Quick Start, API docs, deployment guide]]
 - [[../01-Planning/Planning.md|Planning Document]]
 - [[../02-Execution/Execution.md|Execution Log]]
@@ -24,12 +26,13 @@
 ## Metrics
 | Metric | Target | Actual |
 |--------|--------|--------|
-| Python source files | — | 57 |
-| Total Python lines | — | ~4,788 |
+| Python source files | — | 64 |
+| Total Python lines | — | ~5,400 |
 | Database models | 15 | 14 |
+| Providers | — | 3 (Ollama, OpenAI, Anthropic) + extensible |
 | Agents implemented | 10 | 8 core + orchestrator |
 | LangGraph nodes | 5 | 5 |
-| API endpoints | 10 | 15 |
+| API endpoints | 15 | 21 |
 | Tests | — | 7 test files, 23+ tests |
 | Dashboard pages | — | 9 |
 | Textbooks ingested | 4 | 4 (Grades 9-12) |
@@ -38,8 +41,9 @@
 
 ## Post-Project Actions
 - [x] Deploy PostgreSQL + Redis (docker compose up -d postgres redis)
-- [x] Pull Ollama models (gemma4:31b-cloud, tinyllama, nomic-embed-text)
+- [x] Pull Ollama models (gemma4:31b-cloud, tinyllama, nomic-embed-text, nemotron-3-super:cloud)
 - [x] Configure Telegram bot token in .env
+- [x] Configure multi-provider settings in .env
 - [x] Run initial test suite: pytest tests/ -v
 - [x] Start API server: python -m src.main
 - [x] Start Telegram bot: python -m src.telegram.bot
@@ -54,9 +58,16 @@
 - `config.py`, `main.py` — App entry and configuration (Pydantic Settings, FastAPI lifespan)
 - `database/models.py` — 14 SQLAlchemy entities (UUID PKs, asyncpg, JSON columns, BigInteger for telegram_id)
 - `database/session.py` — Async DB session management with auto-create tables
+- `llm/providers/base.py` — `LLMProvider` ABC, `ProviderInfo`, `ChatResponse`, `UsageInfo`
+- `llm/providers/ollama.py` — `OllamaProvider` (any local model, dynamic selection)
+- `llm/providers/openai_provider.py` — `OpenAIProvider` (OpenAI, LM Studio, vLLM)
+- `llm/providers/anthropic_provider.py` — `AnthropicProvider` (Claude)
+- `llm/manager.py` — `ProviderManager` (fallback chain orchestration, runtime switching)
+- `llm/registry.py` — `ModelRegistry` (auto-detect Ollama models via `/api/tags`)
 - `llm/ollama_client.py` — Ollama API integration (chat, embeddings, health)
-- `llm/fallback.py` — OpenAI/Anthropic fallback adapters
-- `llm/router.py` — Confidence-based model routing with DB logging
+- `llm/fallback.py` — OpenAI/Anthropic fallback adapters (legacy)
+- `llm/router.py` — `ModelRouter` (backward-compat wrapper over `ProviderManager`)
+- `api/models.py` — Model management endpoints (`/models/*`)
 - `rag/embedder.py` — Local + Ollama embedding (dual backend)
 - `rag/vector_store.py` — ChromaDB operations (PersistentClient)
 - `rag/retriever.py` — Curriculum-aligned retrieval with filters
@@ -104,12 +115,12 @@
 - `scripts/ingest_curriculum.py` — PDF → ChromaDB + BM25 ingestion (Docling/OCR, CLI: --clear, --stats, --query)
 
 ### Tests
-- `tests/test_llm.py` — Ollama chat, connection error, router fallback (4 tests)
+- `tests/test_llm.py` — `LLMProvider` ABC, `OllamaProvider`, `ModelRegistry`, `ProviderManager` (10 tests)
 - `tests/test_rag.py` — Embedder, retriever, format_context (3 tests)
 - `tests/test_agents.py` — Tutor, Quiz, LessonPlanner, Orchestrator, Safety, Translator, StudentProgress (7 tests)
 - `tests/test_api.py` — Health, quiz/generate, lesson-plan/generate, chat, admin/dashboard (5 tests)
 - `tests/test_evaluation.py` — Gold set, Ragas imports, heuristic eval, gold set coverage (4 tests)
-- `tests/conftest.py` — Fixtures: mock_router, mock_retriever
+- `tests/conftest.py` — Fixtures: mock_router (ProviderManager), mock_retriever
 
 ### Data
 - `data/textbooks/` — Ethiopian curriculum PDFs (Grades 9-12)

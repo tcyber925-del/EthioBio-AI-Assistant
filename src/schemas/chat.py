@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field
 from typing import Optional
 from uuid import UUID
+
+from pydantic import BaseModel
 
 
 class TutorRequest(BaseModel):
@@ -10,6 +11,7 @@ class TutorRequest(BaseModel):
     topic: Optional[str] = None
     language: str = "en"
     use_rag: bool = True
+    model: Optional[str] = None
 
 
 class TutorResponse(BaseModel):

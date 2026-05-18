@@ -9,6 +9,7 @@ class LessonPlanRequest(BaseModel):
     duration_minutes: int = Field(40, ge=20, le=120)
     language: str = "en"
     teacher_id: Optional[UUID] = None
+    model: Optional[str] = None
 
 
 class LessonPlanResponse(BaseModel):

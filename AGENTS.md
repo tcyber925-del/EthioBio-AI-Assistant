@@ -13,9 +13,12 @@ entry → orchestrator → needs_retrieval? → retrieve ─┐
 ```
 
 Key abstractions:
-- **ModelRouter** (`src/llm/router.py`) — Ollama primary (gemma4:31b-cloud), OpenAI/Anthropic fallback. Confidence-based fallback when < 0.5.
+- **ProviderManager** (`src/llm/manager.py`) — Centralized orchestration with fallback chain (Ollama → OpenAI → Anthropic → OpenAI-compatible). Runtime model switching.
+- **LLMProvider** (`src/llm/providers/base.py`) — Abstract interface. Implementations: `OllamaProvider`, `OpenAIProvider`, `AnthropicProvider`.
+- **ModelRegistry** (`src/llm/registry.py`) — Auto-detects locally installed Ollama models via `/api/tags`.
+- **ModelRouter** (`src/llm/router.py`) — Backward-compatible thin wrapper over `ProviderManager`.
 - **VectorStoreAdapter** (`src/retrieval/adapter.py`) — ChromaDB wrapper. Swappable interface.
-- **AgentState** (`src/graph/state.py`) — 20+ fields: intent, user_message, grade_level, language, retrieved_chunks, draft, confidence, safety, status, error, trace_id, etc.
+- **AgentState** (`src/graph/state.py`) — 20+ fields: intent, user_message, grade_level, language, retrieved_chunks, draft, confidence, safety, status, error, trace_id, preferred_model, etc.
 
 ## Entrypoints
 
@@ -32,6 +35,13 @@ Key abstractions:
 # Run
 python -m src.main                                     # :8000
 python -m src.telegram.bot                             # bot (in another terminal)
+
+# Model management (API)
+curl http://localhost:8000/models                      # list available models
+curl http://localhost:8000/models/active               # get active model
+curl -X POST http://localhost:8000/models/active -H "Content-Type: application/json" -d '{"model": "gemma4:31b-cloud"}'
+curl http://localhost:8000/models/health               # provider health
+curl -X POST http://localhost:8000/models/refresh      # refresh Ollama cache
 
 # Test (endpoint tests hit real Ollama — skip for unit-only)
 pytest tests/ -v -k "not test_chat_endpoint and not test_quiz_generate_endpoint"
@@ -54,12 +64,17 @@ docker compose up -d postgres redis
 6. **`telegram_id` must be BIGINT** — large user IDs overflow Integer.
 7. **QuizAgent generates from RAG context** — retrieves 5 ChromaDB chunks, injects into system prompt, instructs LLM to answer strictly from context (see `src/agents/quiz.py:54-58`).
 8. **Bidirectional safety revision** — SafetyNode can route `"revise"` or `"reject"` back to TutorNode for regeneration.
+9. **`api_base_url` vs `dashboard_url`** — `api_base_url` is for Telegram bot to reach FastAPI backend (`http://app:8000` in Docker). `dashboard_url` is for dashboard links (`http://localhost:3000`).
+10. **Ollama model cache** — `OllamaProvider` and `ModelRegistry` both cache model lists. Use `POST /models/refresh` to clear both.
+11. **`__model__:` system message convention** — OllamaProvider prepends `__model__:<name>` to system prompt for per-request model selection.
+12. **`UsageInfo` TypedDict** — Provider responses include token usage as `UsageInfo` (`prompt_tokens`, `completion_tokens`, `total_tokens`).
 
 ## Testing
 
 - `pytest` with `asyncio_mode = "auto"` (set in `pyproject.toml`)
-- Tests mock `ModelRouter` and `VectorStoreAdapter` via `conftest.py` fixtures (`mock_router`, `mock_retriever`)
+- Tests mock `ProviderManager` and `VectorStoreAdapter` via `conftest.py` fixtures (`mock_router`, `mock_retriever`)
 - Quiz/lesson tests mock `_call_llm` directly on the agent instance
+- Provider tests (`tests/test_llm.py`) cover `LLMProvider` ABC, `OllamaProvider`, `ModelRegistry`, `ProviderManager`
 - No CI, no pre-commit, no integration containers
 - Endpoint tests (`test_chat_endpoint`, `test_quiz_generate_endpoint`) require a running Ollama
 
@@ -71,6 +86,7 @@ docker compose up -d postgres redis
 | Mypy | `strict=false`, `ignore_missing_imports=true` |
 | Python | 3.12+, async everywhere (asyncpg, httpx) |
 | Dashboard | Next.js in `dashboard/`, built via `Dockerfile.dashboard` |
+| Providers | Ollama (primary), OpenAI, Anthropic, OpenAI-compatible (LM Studio, vLLM) |
 
 ## References
 

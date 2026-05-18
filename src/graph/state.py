@@ -11,8 +11,8 @@ The graph follows this sequence:
 7. Log the trace and outcome
 """
 
-from typing import Optional, Any
 from dataclasses import dataclass, field
+from typing import Optional
 from uuid import UUID
 
 
@@ -48,6 +48,7 @@ class AgentState:
 
     quiz_params: dict = field(default_factory=dict)
     lesson_params: dict = field(default_factory=dict)
+    preferred_model: str = ""
 
 
 @dataclass
@@ -57,4 +58,5 @@ class GraphOutput:
     confidence: float
     sources: list[str]
     status: str
-    requires_teacher_review: bool
+    requires_teacher_review: bool = False
+    preferred_model: str = ""

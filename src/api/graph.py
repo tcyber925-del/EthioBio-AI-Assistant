@@ -1,10 +1,11 @@
 """LangGraph-powered API endpoint for the EthioBio orchestration pipeline."""
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
 from typing import Optional
 from uuid import UUID
+
 import structlog
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 
 from src.graph.orchestrator import run_graph
 
@@ -18,6 +19,7 @@ class GraphChatRequest(BaseModel):
     grade_level: Optional[int] = Field(None, ge=7, le=12)
     topic: Optional[str] = None
     language: str = "en"
+    model: Optional[str] = None
 
 
 class GraphChatResponse(BaseModel):
@@ -38,6 +40,7 @@ async def graph_chat(request: GraphChatRequest):
             grade_level=request.grade_level,
             topic=request.topic,
             language=request.language,
+            preferred_model=request.model,
         )
 
         return GraphChatResponse(

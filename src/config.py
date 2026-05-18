@@ -1,5 +1,6 @@
-from pydantic_settings import BaseSettings
 from typing import Optional
+
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -25,12 +26,18 @@ class Settings(BaseSettings):
     fallback_api_key: Optional[str] = None
     fallback_model: Optional[str] = None
 
+    provider_openai_compatible_url: Optional[str] = None
+    provider_openai_compatible_api_key: Optional[str] = None
+    provider_openai_compatible_model: Optional[str] = None
+    provider_openai_compatible_name: Optional[str] = None
+
     vector_store_path: str = "./data/vectors_new"
     collection_name: str = "ethiobio_curriculum"
 
     whisper_model: str = "base"
 
     dashboard_url: str = "http://localhost:3000"
+    api_base_url: str = "http://localhost:8000"
     jwt_secret: str = "change-me-jwt-secret"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 480

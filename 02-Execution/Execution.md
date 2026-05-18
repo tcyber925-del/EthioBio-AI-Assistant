@@ -21,8 +21,25 @@
 ## Phase 4: Advanced Features
 - [x] OCR integration (RapidOCR fallback for garbled PDFs)
 - [ ] Voice support (speech-to-text) — *stubbed, needs Whisper/STT integration*
-- [ ] WhatsApp channel support — *planned for v1.3*
+- [ ] WhatsApp channel support — *planned for v1.4*
 - [x] PDF/DOCX export — *endpoints defined, Docling HybridChunker integrated*
+
+## Phase 5: Multi-Provider AI System
+- [x] `LLMProvider` abstract interface (`src/llm/providers/base.py`)
+- [x] `OllamaProvider` — any local Ollama model with dynamic selection
+- [x] `OpenAIProvider` — OpenAI API + OpenAI-compatible (LM Studio, vLLM)
+- [x] `AnthropicProvider` — Anthropic Claude API
+- [x] `ProviderManager` — fallback chain orchestration, runtime switching, health checks
+- [x] `ModelRegistry` — auto-detect Ollama models via `/api/tags`
+- [x] `ModelRouter` — backward-compatible wrapper over `ProviderManager`
+- [x] `AgentState.preferred_model` field + schema updates
+- [x] 6 new `/models/*` API endpoints (list, providers, active, health, refresh)
+- [x] Dashboard model selector (Ask, Quiz, Lesson pages, Monitoring panel)
+- [x] Telegram bot `/model` command with inline keyboard
+- [x] `.env.example` updated with multi-provider config
+- [x] Tests updated (10/10 passing in `tests/test_llm.py`)
+- [x] Next.js proxy: `/models/:path*` rewrite rule
+- [x] `api_base_url` config for Telegram bot Docker networking
 
 ## LangGraph Orchestration
 - [x] Build StateGraph with 5 nodes (orchestrator, retrieve, skip_retrieval, tutor, safety)
@@ -64,6 +81,7 @@
 | 2026-05-16 | Citations: explicit `(Grade X, Unit Y: Title, p. Z)` format, enriched metadata, per-page chunking, TutorNode + TutorAgent prompts updated |
 | 2026-05-16 | Re-ingestion: all 4 textbooks re-ingested (1,165 chunks), new vector store path `data/vectors_new/`, BM25 index auto-rebuild |
 | 2026-05-17 | Documentation: updated README.md, PRD.md v1.2, Project-Overview.md, Planning.md, Execution.md, Review.md, Output.md |
+| 2026-05-18 | Phase 5 complete: Multi-provider AI system v1.3 — LLMProvider ABC, ProviderManager, ModelRegistry, runtime model switching, model selection UI (dashboard + Telegram), 6 new /models/* endpoints, 10/10 tests passing |
 
 ## Blockers
 - ~~PostgreSQL and Redis not running locally~~ — resolved via `docker compose up -d postgres redis`

@@ -12,6 +12,7 @@ def mock_router():
         "usage": {"total_tokens": 50},
     }
     router.generate_embedding.return_value = [0.1] * 384
+    router.manager = AsyncMock()
     return router
 
 
