@@ -177,8 +177,11 @@ class ProviderManager:
         return health
 
     async def refresh_models(self):
-        """Refresh Ollama model cache."""
+        """Refresh Ollama model cache across all providers."""
         await self._registry.refresh()
+        for provider in self._providers.values():
+            if hasattr(provider, "_available_models"):
+                provider._available_models = None
 
     async def close(self):
         for provider in self._providers.values():
