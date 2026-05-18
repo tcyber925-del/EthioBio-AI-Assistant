@@ -3,12 +3,13 @@
 import { useState } from 'react'
 import { Send, MessageSquare, AlertTriangle, BookOpen, Loader2 } from 'lucide-react'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
+import ModelSelector from '@/components/ModelSelector'
 import { fetchWithTimeout } from '@/lib/fetch'
 
 export default function AskPage() {
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState<string | null>(null)
-  const [model, setModel] = useState('')
+  const [selectedModel, setSelectedModel] = useState('')
   const [confidence, setConfidence] = useState(0)
   const [sources, setSources] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -25,8 +26,8 @@ export default function AskPage() {
     try {
       const endpoint = mode === 'graph' ? '/graph/chat' : '/chat'
       const body = mode === 'graph'
-        ? { question: question.trim(), grade_level: grade }
-        : { user_id: '00000000-0000-0000-0000-000000000001', question: question.trim(), grade_level: grade, use_rag: true }
+        ? { question: question.trim(), grade_level: grade, model: selectedModel }
+        : { user_id: '00000000-0000-0000-0000-000000000001', question: question.trim(), grade_level: grade, use_rag: true, model: selectedModel }
 
       const data = await fetchWithTimeout(endpoint, {
         method: 'POST',
@@ -35,7 +36,7 @@ export default function AskPage() {
       }, 120000)
 
       setAnswer(data.answer || '')
-      setModel(data.model_used || '')
+      setSelectedModel(data.model_used || '')
       setConfidence(data.confidence || 0)
       setSources(data.sources || [])
     } catch (err: any) {
@@ -53,6 +54,7 @@ export default function AskPage() {
           <p className="text-sm text-foreground-muted mt-1">Test the biology assistant</p>
         </div>
         <div className="flex items-center gap-3">
+          <ModelSelector value={selectedModel} onChange={setSelectedModel} />
           <select value={grade} onChange={e => setGrade(Number(e.target.value))} className="px-3 py-2 border border-border rounded-lg text-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
             {[7, 8, 9, 10, 11, 12].map(g => <option key={g} value={g}>Grade {g}</option>)}
           </select>
@@ -90,7 +92,7 @@ export default function AskPage() {
             <div className="h-4 bg-border rounded w-1/2 mx-auto" />
             <div className="h-4 bg-border rounded w-2/3 mx-auto" />
           </div>
-          <p className="text-sm text-foreground-muted mt-4">Calling gemma4:31b-cloud...</p>
+          <p className="text-sm text-foreground-muted mt-4">Calling {selectedModel || 'model'}...</p>
         </div>
       )}
 
@@ -108,7 +110,7 @@ export default function AskPage() {
         <div className="bg-card rounded-xl border border-border p-6">
           <div className="flex items-center gap-2 text-xs text-foreground-muted mb-4 pb-3 border-b border-border">
             <MessageSquare className="w-4 h-4" />
-            <span className="font-mono">{model}</span>
+            <span className="font-mono">{selectedModel}</span>
             <span className="px-2 py-0.5 bg-green-500/10 text-green-400 rounded-full text-xs">{Math.round(confidence * 100)}% confidence</span>
           </div>
           <MarkdownRenderer content={answer} />
