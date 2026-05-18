@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     whisper_model: str = "base"
 
     dashboard_url: str = "http://localhost:3000"
+    api_base_url: str = "http://localhost:8000"
     jwt_secret: str = "change-me-jwt-secret"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 480

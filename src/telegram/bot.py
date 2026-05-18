@@ -651,7 +651,7 @@ async def handle_language_select(update: Update, context):
 
 
 async def model_command(update: Update, context):
-    api_base = settings.dashboard_url or "http://localhost:8000"
+    api_base = settings.api_base_url
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.get(f"{api_base}/models")
@@ -671,7 +671,7 @@ async def handle_model_selection(update: Update, context):
     query = update.callback_query
     await query.answer()
     action = query.data.split(":", 1)[1]
-    api_base = settings.dashboard_url or "http://localhost:8000"
+    api_base = settings.api_base_url
 
     if action == "back":
         await query.edit_message_text("Main menu:", reply_markup=main_menu_keyboard())
