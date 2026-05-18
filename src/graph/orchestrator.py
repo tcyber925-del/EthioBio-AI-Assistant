@@ -4,12 +4,13 @@ EthioBio AI Assistant — LangGraph orchestration graph.
 Builds the graph with dependency-injected nodes (router, adapter).
 """
 
-from langgraph.graph import StateGraph, END
-from src.graph.state import AgentState, GraphOutput
+from langgraph.graph import END, StateGraph
+
 from src.graph.nodes.orchestrator import OrchestratorNode, needs_retrieval
 from src.graph.nodes.retrieval import RetrievalNode, SkipRetrievalNode
-from src.graph.nodes.tutor import TutorNode
 from src.graph.nodes.safety import SafetyNode, should_revise
+from src.graph.nodes.tutor import TutorNode
+from src.graph.state import AgentState, GraphOutput
 from src.llm.router import ModelRouter
 from src.retrieval.adapter import VectorStoreAdapter
 

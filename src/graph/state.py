@@ -11,8 +11,8 @@ The graph follows this sequence:
 7. Log the trace and outcome
 """
 
-from typing import Optional, Any
 from dataclasses import dataclass, field
+from typing import Optional
 from uuid import UUID
 
 

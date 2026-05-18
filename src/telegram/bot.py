@@ -11,7 +11,6 @@ from telegram.ext import (
 
 from src.agents.lesson_planner import LessonPlannerAgent
 from src.agents.quiz import QuizAgent
-from src.agents.student_progress import StudentProgressAgent
 from src.agents.tutor import TutorAgent
 from src.config import settings
 from src.database.models import StudentProfile, User, UserRole

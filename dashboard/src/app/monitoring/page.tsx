@@ -16,17 +16,23 @@ export default function MonitoringPage() {
   const [logs, setLogs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [providers, setProviders] = useState<any[]>([])
+  const [activeModel, setActiveModel] = useState('')
 
   const fetchData = async () => {
     setLoading(true)
     setError(null)
     try {
-      const [mon, dash] = await Promise.all([
+      const [mon, dash, prov, active] = await Promise.all([
         fetchWithTimeout('/api/admin/monitoring'),
         fetchWithTimeout('/api/admin/dashboard'),
+        fetchWithTimeout('/models/providers'),
+        fetchWithTimeout('/models/active'),
       ])
       setData(mon)
       setLogs(dash.recent_logs || [])
+      setProviders(prov)
+      setActiveModel(active.model)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -60,6 +66,27 @@ export default function MonitoringPage() {
         <button onClick={fetchData} className="flex items-center gap-2 px-4 py-2 text-sm border border-border rounded-lg hover:bg-card transition-colors text-foreground-muted hover:text-foreground">
           <RefreshCw className="w-4 h-4" /> Refresh
         </button>
+      </div>
+
+      <div className="bg-card rounded-xl border border-border p-5 mb-6">
+        <h2 className="text-lg font-semibold text-foreground mb-4">Provider Status</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {providers.map(p => (
+            <div key={p.name} className={`p-4 rounded-lg border ${p.is_healthy ? 'border-green-500/30 bg-green-500/5' : 'border-red-500/30 bg-red-500/5'}`}>
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-sm">{p.name}</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs ${p.is_healthy ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                  {p.is_healthy ? 'Online' : 'Offline'}
+                </span>
+              </div>
+              <p className="text-xs text-foreground-muted mt-1">{p.provider_type}</p>
+              <p className="text-xs text-foreground-muted mt-1">{p.available_models.length} model(s)</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 text-sm text-foreground-muted">
+          Active model: <span className="font-mono text-foreground">{activeModel}</span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
