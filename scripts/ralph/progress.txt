@@ -1,0 +1,26 @@
+# Ralph Progress Log
+Started: 
+
+## Codebase Patterns
+- Socratic mode is a boolean field on AgentState (`socratic_mode: bool`) passed through the LangGraph pipeline
+- TutorNode and TutorAgent both accept a `socratic_mode` parameter to switch between standard and Socratic system prompts
+- Telegram bot stores session-scoped toggles in `context.user_data`
+- API request schemas always default `socratic_mode: bool = False` to maintain backward compatibility
+
+## 2026-05-23 - ST-001 - Toggle Socratic Mode
+- Added `socratic_mode: bool = False` field to AgentState and GraphOutput
+- Created `SOCRATIC_SYSTEM_PROMPT` in both TutorNode and TutorAgent with Socratic method rules
+- Added `socratic_mode` parameter to GraphChatRequest, TutorRequest, and run_graph() — API-level toggle support
+- Updated GraphChatResponse and TutorResponse to reflect socratic_mode state
+- Added `/socratic` command handler to Telegram bot for toggling on/off
+- Added `socratic_toggle_keyboard()` and integrated socratic toggle into main menu keyboard
+- Added `handle_socratic_toggle` callback query handler for inline button toggling
+- Changed `Settings.model_config` to add `"extra": "ignore"` for test compatibility
+- Files changed: src/graph/state.py, src/graph/nodes/tutor.py, src/graph/orchestrator.py, src/schemas/chat.py, src/api/graph.py, src/api/chat.py, src/agents/tutor.py, src/telegram/bot.py, src/telegram/keyboards.py, src/config.py
+- **Learnings for future iterations:**
+  - Patterns discovered: Socratic mode uses the same data flow as `language` field — add field to AgentState, pass through API schemas, wire into TutorNode/TutorAgent prompt selection
+  - Gotchas encountered: Telegram `context.user_data` is ephemeral (per-session, in-memory) — state resets on bot restart. The PRD mentions "state persists during session" which this approach satisfies
+  - The `main_menu_keyboard()` now takes a `socratic_enabled` param to show correct toggle label
+---
+
+

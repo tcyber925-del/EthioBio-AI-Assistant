@@ -1,0 +1,54 @@
+{
+  "title": "Socratic Tutoring Mode",
+  "branchName": "feature/socratic-tutoring",
+  "userStories": [
+    {
+      "id": "ST-001",
+      "title": "Toggle Socratic Mode",
+      "description": "As a student, I want to enable Socratic tutoring, so that I can learn through guided reasoning.",
+      "priority": 1,
+      "passes": true,
+      "acceptanceCriteria": [
+        "AI asks at least one guiding question",
+        "Question relates to current biology topic",
+        "Question difficulty adapts to context"
+      ]
+    },
+    {
+      "id": "ST-003",
+      "title": "Hint Progression System",
+      "description": "As a student, I want hints to become progressively more helpful, so that I can eventually solve the problem.",
+      "priority": 2,
+      "passes": false,
+      "acceptanceCriteria": [
+        "Hints progress from broad to specific",
+        "Maximum 3 hint levels",
+        "Final answer optionally revealable"
+      ]
+    },
+    {
+      "id": "ST-004",
+      "title": "Misconception Detection",
+      "description": "As a student, I want incorrect assumptions corrected gently, so that I do not reinforce wrong biology concepts.",
+      "priority": 2,
+      "passes": false,
+      "acceptanceCriteria": [
+        "AI detects obvious conceptual errors",
+        "Corrections remain supportive",
+        "AI explains why reasoning is incorrect"
+      ]
+    },
+    {
+      "id": "ST-005",
+      "title": "Reveal Answer Fallback",
+      "description": "As a student, I want to reveal the answer after multiple attempts, so that I do not get stuck indefinitely.",
+      "priority": 2,
+      "passes": false,
+      "acceptanceCriteria": [
+        "Reveal button exists",
+        "Final answer includes explanation",
+        "Attempt count tracked"
+      ]
+    }
+  ]
+}
