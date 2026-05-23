@@ -15,6 +15,8 @@ class TutorRequest(BaseModel):
     socratic_mode: bool = False
     hint_level: int = 0
     reveal_answer: bool = False
+    misconception_detected: bool = False
+    misconception_correction: str = ""
 
 
 class TutorResponse(BaseModel):
@@ -26,3 +28,5 @@ class TutorResponse(BaseModel):
     socratic_mode: bool = False
     hint_level: int = 0
     reveal_answer: bool = False
+    misconception_detected: bool = False
+    misconception_correction: str = ""

@@ -31,7 +31,7 @@
       "title": "Misconception Detection",
       "description": "As a student, I want incorrect assumptions corrected gently, so that I do not reinforce wrong biology concepts.",
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "acceptanceCriteria": [
         "AI detects obvious conceptual errors",
         "Corrections remain supportive",

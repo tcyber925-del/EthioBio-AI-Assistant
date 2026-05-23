@@ -1,7 +1,47 @@
 """Tutor node — generates biology answers with curriculum grounding."""
 
+import re
+
 from src.graph.state import AgentState
 from src.llm.router import ModelRouter
+
+MISCONCEPTION_INDICATORS = [
+    "that's not quite right",
+    "that's not correct",
+    "that is incorrect",
+    "i see a misconception",
+    "common misconception",
+    "you're confusing",
+    "you are confusing",
+    "that's a misunderstanding",
+    "there's a misunderstanding",
+    "this is a common error",
+    "a common mistake",
+    "this is incorrect",
+    "that is wrong",
+    "that's wrong",
+    "not accurate",
+    "this isn't correct",
+    "that isn't correct",
+    "i think there's a misunderstanding",
+    "i think there is a misunderstanding",
+]
+
+
+def _detect_misconception(response_text: str) -> tuple[bool, str]:
+    response_lower = response_text.lower()
+    for indicator in MISCONCEPTION_INDICATORS:
+        if indicator in response_lower:
+            sentences = re.split(r'(?<=[.!?])\s+', response_text)
+            for i, sentence in enumerate(sentences):
+                if indicator in sentence.lower():
+                    correction = sentence.strip()
+                    if i + 1 < len(sentences):
+                        correction += " " + sentences[i + 1].strip()
+                    if len(correction) > 300:
+                        correction = correction[:297] + "..."
+                    return True, correction
+    return False, ""
 
 SYSTEM_PROMPT = """You are EthioBio Tutor, an AI biology tutor for Ethiopian middle and high school students (Grades 7-12).
 The curriculum is English-first. You may also provide explanations in Amharic when requested.
@@ -15,7 +55,8 @@ Rules:
 6. CITE SOURCES: When using curriculum content, cite the source at the end of each key point using this exact format:
    (Grade X, Unit Y: Title, p. Z)
    Example: (Grade 10, Unit 3: Biochemical Molecules, p. 77)
-7. If the curriculum context does not contain enough information to fully answer the question, say what is missing."""
+7. If the curriculum context does not contain enough information to fully answer the question, say what is missing.
+8. If the student's question or reasoning contains a conceptual error, gently point it out and explain why it is incorrect before providing the correct information. Be supportive — never condescending."""
 
 SOCRATIC_SYSTEM_PROMPT = """You are EthioBio Tutor in Socratic Mode, an AI biology tutor for Ethiopian middle and high school students (Grades 7-12).
 The curriculum is English-first. You may also provide explanations in Amharic when requested.
@@ -33,7 +74,8 @@ Rules:
 4. Keep responses brief and focused on the next guiding question.
 5. Praise correct reasoning and gently redirect incorrect assumptions.
 6. If the student is stuck after several exchanges, you may provide a hint to keep them moving.
-7. Always encourage the student to think step by step."""
+7. Always encourage the student to think step by step.
+8. If the student's response contains a conceptual error, gently correct them by explaining why their reasoning is incorrect, then continue with a guiding question. Be supportive — never condescending."""
 
 HINT_PROMPTS = {
     1: "\n\nThe student has requested a HINT (Level 1). Give a BROAD, general hint that points them in the right direction without giving away the answer. Frame it as a guiding thought or a nudge toward the correct concept.",
@@ -69,8 +111,13 @@ class TutorNode:
 
         result = await self.router.route(messages, request_type="tutor", temperature=0.7, max_tokens=2048)
 
-        state.draft = result["content"]
+        content = result["content"]
+        state.draft = content
         state.model_used = result.get("model", "")
         state.confidence = result.get("confidence", 0.0)
+
+        detected, correction = _detect_misconception(content)
+        state.misconception_detected = detected
+        state.misconception_correction = correction
 
         return state

@@ -35,6 +35,8 @@ class GraphChatResponse(BaseModel):
     socratic_mode: bool = False
     hint_level: int = 0
     reveal_answer: bool = False
+    misconception_detected: bool = False
+    misconception_correction: str = ""
 
 
 @router.post("/chat", response_model=GraphChatResponse)
@@ -62,6 +64,8 @@ async def graph_chat(request: GraphChatRequest):
             socratic_mode=result.socratic_mode,
             hint_level=result.hint_level,
             reveal_answer=result.reveal_answer,
+            misconception_detected=result.misconception_detected,
+            misconception_correction=result.misconception_correction,
         )
     except Exception as e:
         logger.error("graph_chat_error", error=str(e))

@@ -55,6 +55,8 @@ class AgentState:
 
     hint_level: int = 0
     reveal_answer: bool = False
+    misconception_detected: bool = False
+    misconception_correction: str = ""
 
 
 @dataclass
@@ -70,3 +72,5 @@ class GraphOutput:
     guiding_question: str = ""
     hint_level: int = 0
     reveal_answer: bool = False
+    misconception_detected: bool = False
+    misconception_correction: str = ""

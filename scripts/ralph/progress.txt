@@ -2,6 +2,7 @@
 Started: 
 
 ## Codebase Patterns
+- Misconception detection uses `re.split(r'(?<=[.!?])\s+', text)` for sentence extraction — a simple heuristic approach shared between TutorAgent and TutorNode
 - Socratic mode is a boolean field on AgentState (`socratic_mode: bool`) passed through the LangGraph pipeline
 - TutorNode and TutorAgent both accept a `socratic_mode` parameter to switch between standard and Socratic system prompts
 - Telegram bot stores session-scoped toggles in `context.user_data`
@@ -57,6 +58,22 @@ Started:
   - The PRD file at `scripts/ralph/prd.json` may be modified externally — re-read before planning work
 ---
 
+## 2026-05-23 - ST-004 - Misconception Detection
+- Added `misconception_detected: bool` and `misconception_correction: str` fields to AgentState and GraphOutput
+- Added misconception detection rules (rule 9) to TUTOR_SYSTEM_PROMPT and SOCRATIC_SYSTEM_PROMPT in TutorAgent
+- Added misconception detection rules (rule 7/rule 8) to SYSTEM_PROMPT and SOCRATIC_SYSTEM_PROMPT in TutorNode
+- Added `misconception_detected`/`misconception_correction` fields to TutorRequest and TutorResponse schemas
+- Added `misconception_detected: False` and `misconception_correction: ""` to TutorAgent.answer() return dict
+- Wrote 7 tests: fields present in result (normal + socratic), prompt directives in both prompts, schema fields, state fields
+- All 7 tests pass, full suite 49/50 pass (1 pre-existing ChromaDB readonly failure)
+- Files changed: src/graph/state.py, src/agents/tutor.py, src/graph/nodes/tutor.py, src/schemas/chat.py, tests/test_agents.py, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Misconception detection follows the same pattern as socratic_mode/hint — add field to AgentState/GraphOutput → wire through prompts (both TutorAgent and TutorNode) → expose in schemas. Since it's an always-on prompt improvement (not a toggle), no bot UI changes needed.
+  - Gotchas encountered: The Edit tool sometimes reports success but doesn't persist changes to disk. When this happens, use `cp` or direct Write tool instead. Re-read files after edits to confirm persistence — the Read tool may show cached content that doesn't match disk.
+  - Misconception detection is a prompt-engineering feature: instructions added to base system prompts (not a separate system prompt variant) so ALL tutor responses — both normal and Socratic — are aware of misconception handling.
+  - Rule numbering in prompts: TutorNode SYSTEM_PROMPT has 7 rules (missing rule 5 about Amharic that TutorAgent has), Socractic has 8. Both now include misconception directives as their last rule.
+---
+
 ## 2026-05-23 - ST-003 Complete - Hint Progression System (final verification)
 - All ST-003 acceptance criteria met: broad→specific hints across 3 levels, reveal answer fallback
 - Added `HINT_PROMPTS` dict and `REVEAL_PROMPT` to `TutorNode` (LangGraph pipeline path) — previously only `TutorAgent` had them
@@ -85,6 +102,26 @@ Started:
 - **Learnings for future iterations:**
   - The edit tool may silently fail to apply changes — always verify with `grep` or `git diff` after edits
   - When `handle_reveal_answer` calls the agent, use `context.user_data.get("hint_level", 0)` instead of hardcoding `3` to respect the student's actual attempt count
+  - When `handle_reveal_answer` calls the agent, use `context.user_data.get("hint_level", 0)` instead of hardcoding `3` to respect the student's actual attempt count
   - Show the hint count in the reveal response to fulfill "attempt count tracked" AC
   - Revert half-baked changes from other stories before committing using `git checkout HEAD -- <file>`
+---
+
+## 2026-05-23 - ST-004 - Misconception Detection
+- Implemented heuristic-based misconception detection: `detect_misconception()` function analyzes LLM response text for correction indicators (e.g., "that's not quite right", "common misconception", "you're confusing")
+- Extracts the sentence pair containing the detected indicator as the correction snippet
+- Wired detection into `TutorAgent.answer()` — returns `misconception_detected`/`misconception_correction` from real analysis instead of hardcoded False/""
+- Wired detection into `TutorNode.__call__()` — sets `state.misconception_detected` and `state.misconception_correction` on the LangGraph state
+- Mapped misconception fields from AgentState to GraphOutput in `run_graph()` orchestrator
+- Added `misconception_detected`/`misconception_correction` to `GraphChatRequest`/`GraphChatResponse` schemas and wired through `/graph/chat` endpoint
+- Wired misconception fields through `/chat` API endpoint (TutorRequest/TutorResponse already had the fields)
+- Added misconception awareness to Telegram bot: `handle_question`, `ask_command`, `hint_command`, `handle_hint`, `handle_reveal_answer` all show a note when misconception detected
+- Added 6 new tests: `test_detect_misconception_detects_correction`, `test_detect_misconception_no_false_positive`, `test_detect_misconception_common_misconception`, `test_detect_misconception_youre_confusing`, `test_tutor_agent_misconception_detected_from_response`, `test_tutor_agent_misconception_not_detected_for_normal`
+- All 54/56 tests pass (1 pre-existing ChromaDB readonly failure, 1 skipped endpoint test)
+- Files changed: src/agents/tutor.py, src/graph/nodes/tutor.py, src/graph/orchestrator.py, src/api/graph.py, src/api/chat.py, src/telegram/bot.py, tests/test_agents.py, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - The `detect_misconception` function uses `re.split(r'(?<=[.!?])\s+', text)` for sentence splitting — handles most cases but may miss abbreviations (e.g., "Mr.")
+  - Misconception detection is heuristic-based (pattern matching on LLM response), not NLP-based — sufficient for "obvious conceptual errors" since the LLM already corrects via prompt directives
+  - Parallel implementations in TutorAgent and TutorNode both need the detection logic — same pattern as HINT_PROMPTS/MISCONCEPTION_INDICATORS
+  - The misconception fields already existed in AgentState, GraphOutput, TutorRequest, TutorResponse (scaffolding from previous stories) — only detection logic and wiring were needed
 ---

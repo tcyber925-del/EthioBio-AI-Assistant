@@ -40,6 +40,8 @@ async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_
             socratic_mode=result.get("socratic_mode", False),
             hint_level=result.get("hint_level", 0),
             reveal_answer=result.get("reveal_answer", False),
+            misconception_detected=result.get("misconception_detected", False),
+            misconception_correction=result.get("misconception_correction", ""),
         )
     except Exception as e:
         logger.error("chat_error", error=str(e))

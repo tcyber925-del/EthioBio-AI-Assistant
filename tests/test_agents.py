@@ -312,6 +312,100 @@ def test_schema_misconception_fields():
     assert resp.misconception_correction == ""
 
 
+@pytest.mark.asyncio
+async def test_detect_misconception_detects_correction():
+    from src.agents.tutor import detect_misconception
+    response = (
+        "That's not quite right. Mitochondria are not involved in photosynthesis."
+        " They are the powerhouse of the cell."
+    )
+    detected, correction = detect_misconception(response)
+    assert detected is True
+    assert "mitochondria" in correction.lower() or "powerhouse" in correction.lower()
+
+
+@pytest.mark.asyncio
+async def test_detect_misconception_no_false_positive():
+    from src.agents.tutor import detect_misconception
+    response = (
+        "Great question! Photosynthesis occurs in the chloroplasts"
+        " of plant cells."
+    )
+    detected, _ = detect_misconception(response)
+    assert detected is False
+
+
+@pytest.mark.asyncio
+async def test_detect_misconception_common_misconception():
+    from src.agents.tutor import detect_misconception
+    response = (
+        "That's a common misconception. Evolution is not about individuals adapting,"
+        " but about populations changing over generations through natural selection."
+    )
+    detected, correction = detect_misconception(response)
+    assert detected is True
+    assert "evolution" in correction.lower()
+
+
+@pytest.mark.asyncio
+async def test_detect_misconception_youre_confusing():
+    from src.agents.tutor import detect_misconception
+    response = (
+        "I think you're confusing mitosis with meiosis."
+        " Mitosis produces identical daughter cells, while meiosis produces gametes."
+    )
+    detected, correction = detect_misconception(response)
+    assert detected is True
+    assert "mitosis" in correction.lower()
+
+
+@pytest.mark.asyncio
+async def test_tutor_agent_misconception_detected_from_response(mock_router, mock_retriever):
+    mock_router.route.return_value = {
+        "content": (
+            "That's not quite right. The cell membrane is not impermeable."
+            " It is selectively permeable, allowing some molecules to pass"
+            " while blocking others."
+        ),
+        "model": "ollama/test",
+        "confidence": 0.95,
+        "usage": {"total_tokens": 50},
+    }
+    agent = TutorAgent(llm_router=mock_router, retriever=mock_retriever)
+    result = await agent.answer(
+        question="Is the cell membrane impermeable?",
+        user_id=uuid4(),
+        grade_level=10,
+        topic="Cell Biology",
+        use_rag=True,
+    )
+    assert result["misconception_detected"] is True
+    assert "not impermeable" in result["misconception_correction"].lower()
+
+
+@pytest.mark.asyncio
+async def test_tutor_agent_misconception_not_detected_for_normal(mock_router, mock_retriever):
+    mock_router.route.return_value = {
+        "content": (
+            "The cell membrane is selectively permeable."
+            " It controls what enters and exits the cell."
+        ),
+        "model": "ollama/test",
+        "confidence": 0.95,
+        "usage": {"total_tokens": 50},
+    }
+    agent = TutorAgent(llm_router=mock_router, retriever=mock_retriever)
+    result = await agent.answer(
+        question="What is the cell membrane?",
+        user_id=uuid4(),
+        grade_level=10,
+        topic="Cell Biology",
+        use_rag=True,
+    )
+    assert result["misconception_detected"] is False
+    assert result["misconception_correction"] == ""
+
+
 def test_state_misconception_fields():
     from src.graph.state import AgentState, GraphOutput
     state = AgentState()

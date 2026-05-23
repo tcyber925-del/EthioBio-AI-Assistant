@@ -109,4 +109,6 @@ async def run_graph(
         guiding_question=result.get("guiding_question", ""),
         hint_level=result.get("hint_level", 0),
         reveal_answer=result.get("reveal_answer", False),
+        misconception_detected=result.get("misconception_detected", False),
+        misconception_correction=result.get("misconception_correction", ""),
     )

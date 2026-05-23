@@ -1,3 +1,4 @@
+import re
 from typing import Optional
 from uuid import UUID
 
@@ -9,6 +10,28 @@ from src.llm.router import ModelRouter
 from src.rag.retriever import Retriever
 
 logger = structlog.get_logger()
+
+MISCONCEPTION_INDICATORS = [
+    "that's not quite right",
+    "that's not correct",
+    "that is incorrect",
+    "i see a misconception",
+    "common misconception",
+    "you're confusing",
+    "you are confusing",
+    "that's a misunderstanding",
+    "there's a misunderstanding",
+    "this is a common error",
+    "a common mistake",
+    "this is incorrect",
+    "that is wrong",
+    "that's wrong",
+    "not accurate",
+    "this isn't correct",
+    "that isn't correct",
+    "i think there's a misunderstanding",
+    "i think there is a misunderstanding",
+]
 
 TUTOR_SYSTEM_PROMPT = """You are EthioBio Tutor, an AI biology tutor for Ethiopian middle and high school students (Grades 7-12).
 The curriculum is English-first. You may also provide explanations in Amharic when requested.
@@ -24,7 +47,8 @@ Rules:
 8. CITE SOURCES: When using curriculum content, cite the source at the end of each key point using this exact format:
    (Grade X, Unit Y: Title, p. Z)
    Example: (Grade 10, Unit 3: Biochemical Molecules, p. 77)
-9. If the curriculum context does not contain enough information to fully answer the question, say what is missing."""
+9. If the curriculum context does not contain enough information to fully answer the question, say what is missing.
+10. If the student's question or reasoning contains a conceptual error, gently point it out and explain why it is incorrect before providing the correct information. Be supportive — never condescending."""
 
 SOCRATIC_SYSTEM_PROMPT = """You are EthioBio Tutor (Socratic Mode), an AI biology tutor for Ethiopian middle and high school students (Grades 7-12).
 You use the Socratic method — instead of giving direct answers, you guide students through reasoning.
@@ -44,7 +68,8 @@ Rules:
 6. If the student is stuck or uncertain, provide a hint or break the problem into smaller steps.
 7. When provided with curriculum context, use it to frame your guiding questions.
 8. If you're unsure about the biology content, say so rather than misleading.
-9. After several back-and-forth exchanges or if the student explicitly asks for the answer, you may provide a complete explanation with source citations."""
+9. After several back-and-forth exchanges or if the student explicitly asks for the answer, you may provide a complete explanation with source citations.
+10. If the student's response contains a conceptual error, gently correct them by explaining why their reasoning is incorrect, then continue with a guiding question. Be supportive — never condescending."""
 
 
 HINT_PROMPTS = {
@@ -54,6 +79,27 @@ HINT_PROMPTS = {
 }
 
 REVEAL_PROMPT = "\n\nThe student has requested the final answer. Provide the complete correct answer with a full explanation. Cite curriculum sources when available."
+
+
+def detect_misconception(text: str) -> tuple[bool, str]:
+    """Scan response text for misconception correction indicators.
+
+    Returns (detected: bool, correction_sentence: str) where correction_sentence
+    is the sentence(s) containing the detected indicator, or an empty string.
+    """
+    lower = text.lower()
+    for indicator in MISCONCEPTION_INDICATORS:
+        if indicator in lower:
+            sentences = re.split(r'(?<=[.!?])\s+', text)
+            for i, sentence in enumerate(sentences):
+                if indicator in sentence.lower():
+                    correction = sentence.strip()
+                    if i + 1 < len(sentences):
+                        correction += " " + sentences[i + 1].strip()
+                    if len(correction) > 300:
+                        correction = correction[:297] + "..."
+                    return True, correction
+    return False, ""
 
 
 class TutorAgent(BaseAgent):
@@ -128,8 +174,11 @@ class TutorAgent(BaseAgent):
             request_type="tutor",
         )
 
+        content = result["content"]
+        misconception_detected, misconception_correction = detect_misconception(content)
+
         return {
-            "answer": result["content"],
+            "answer": content,
             "sources": sources,
             "model_used": result.get("model", ""),
             "confidence": result.get("confidence", 0.0),
@@ -137,4 +186,6 @@ class TutorAgent(BaseAgent):
             "socratic_mode": socratic_mode,
             "hint_level": hint_level,
             "reveal_answer": reveal_answer,
+            "misconception_detected": misconception_detected,
+            "misconception_correction": misconception_correction,
         }
