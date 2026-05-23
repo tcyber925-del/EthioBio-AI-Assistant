@@ -21,6 +21,18 @@
       "priority": 2,
       "passes": true,
       "acceptanceCriteria": [
+        "Hints progress from broad to specific",
+        "Maximum 3 hint levels",
+        "Final answer optionally revealable"
+      ]
+    },
+    {
+      "id": "ST-004",
+      "title": "Misconception Detection",
+      "description": "As a student, I want incorrect assumptions corrected gently, so that I do not reinforce wrong biology concepts.",
+      "priority": 2,
+      "passes": false,
+      "acceptanceCriteria": [
         "AI detects obvious conceptual errors",
         "Corrections remain supportive",
         "AI explains why reasoning is incorrect"

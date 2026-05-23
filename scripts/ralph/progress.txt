@@ -56,3 +56,19 @@ Started:
   - Working tree may contain half-baked changes from other stories — always `git checkout HEAD -- <file>` unwanted changes before committing
   - The PRD file at `scripts/ralph/prd.json` may be modified externally — re-read before planning work
 ---
+
+## 2026-05-23 - ST-003 Complete - Hint Progression System (final verification)
+- All ST-003 acceptance criteria met: broad→specific hints across 3 levels, reveal answer fallback
+- Added `HINT_PROMPTS` dict and `REVEAL_PROMPT` to `TutorNode` (LangGraph pipeline path) — previously only `TutorAgent` had them
+- Added `hint_level` and `reveal_answer` fields to `TutorRequest` and `TutorResponse` schemas
+- Wired `hint_level`/`reveal_answer` through `/chat` API endpoint to `TutorAgent.answer()`
+- Fixed `mock_retriever` in conftest.py: replaced `AsyncMock` with `MagicMock` to eliminate "coroutine never awaited" warnings on sync `format_context()` calls
+- Verified all 8 tutor/hint tests pass (8/8), full test suite 27/28 pass (1 pre-existing ChromaDB readonly failure)
+- PRD had 72% corrupted (ST-004 deleted, ST-003 AC swapped) by prior commit — restored to correct state with all 4 stories, ST-003 set to `passes: true`
+- Files verified: src/graph/nodes/tutor.py, src/schemas/chat.py, src/api/chat.py, tests/conftest.py, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - The LangGraph pipeline (TutorNode) and the Telegram bot (TutorAgent) have PARALLEL prompt construction logic. Both must be updated when adding new prompt modes. The previous ST-003 implementation only updated TutorAgent — TutorNode was missed.
+  - `ruff check --fix` on the whole repo can corrupt JSON files and other non-Python files. Only run it on specific file targets.
+  - `git checkout HEAD -- <file>` is reliable for restoring corrupted files. Verify after restore.
+  - The committed PRD at `a2a4887` is corrupted (ST-004 missing, wrong AC on ST-003) — this may have been caused by a `ruff` fix or manual edit error.
+---
