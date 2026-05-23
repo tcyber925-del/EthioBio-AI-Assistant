@@ -43,7 +43,7 @@
       "title": "Reveal Answer Fallback",
       "description": "As a student, I want to reveal the answer after multiple attempts, so that I do not get stuck indefinitely.",
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "acceptanceCriteria": [
         "Reveal button exists",
         "Final answer includes explanation",

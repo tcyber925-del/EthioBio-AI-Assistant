@@ -72,3 +72,19 @@ Started:
   - `git checkout HEAD -- <file>` is reliable for restoring corrupted files. Verify after restore.
   - The committed PRD at `a2a4887` is corrupted (ST-004 missing, wrong AC on ST-003) — this may have been caused by a `ruff` fix or manual edit error.
 ---
+
+## 2026-05-23 - ST-005 - Reveal Answer Fallback
+- Fixed `handle_reveal_answer` to use actual `hint_level` from `user_data` instead of hardcoded `3`
+- Added attempt count display in reveal response: "📊 You used X hint(s) before revealing the answer."
+- Added `/reveal` command handler for text-command access (symmetric with `/hint`)
+- Updated `/help` text to document `/reveal` command
+- Registered `reveal_command` handler in `build_app()`
+- Wrote 2 new tests: `test_tutor_agent_reveal_no_hints` (reveal with 0 hints) and `test_tutor_agent_reveal_tracks_attempts` (hint_level preserved through reveal at all levels)
+- Updated `test_tutor_agent_reveal_answer` to also assert `hint_level == 3`
+- Files changed: src/telegram/bot.py, tests/test_agents.py, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - The edit tool may silently fail to apply changes — always verify with `grep` or `git diff` after edits
+  - When `handle_reveal_answer` calls the agent, use `context.user_data.get("hint_level", 0)` instead of hardcoding `3` to respect the student's actual attempt count
+  - Show the hint count in the reveal response to fulfill "attempt count tracked" AC
+  - Revert half-baked changes from other stories before committing using `git checkout HEAD -- <file>`
+---

@@ -189,6 +189,43 @@ async def test_tutor_agent_reveal_answer(mock_router, mock_retriever):
     )
     assert "answer" in result
     assert result.get("reveal_answer") is True
+    assert result.get("hint_level") == 3
+
+
+@pytest.mark.asyncio
+async def test_tutor_agent_reveal_no_hints(mock_router, mock_retriever):
+    """ST-005: Reveal answer works with hint_level=0 (no prior hints)."""
+    agent = TutorAgent(llm_router=mock_router, retriever=mock_retriever)
+    result = await agent.answer(
+        question="What is mitosis?",
+        user_id=uuid4(),
+        grade_level=10,
+        topic="Cell Biology",
+        use_rag=True,
+        hint_level=0,
+        reveal_answer=True,
+    )
+    assert "answer" in result
+    assert result.get("reveal_answer") is True
+    assert result.get("hint_level") == 0
+
+
+@pytest.mark.asyncio
+async def test_tutor_agent_reveal_tracks_attempts(mock_router, mock_retriever):
+    """ST-005: Hint level is tracked as attempt count alongside reveal."""
+    agent = TutorAgent(llm_router=mock_router, retriever=mock_retriever)
+    for hint_lvl in [0, 1, 2, 3]:
+        result = await agent.answer(
+            question="What is mitosis?",
+            user_id=uuid4(),
+            grade_level=10,
+            topic="Cell Biology",
+            use_rag=True,
+            hint_level=hint_lvl,
+            reveal_answer=True,
+        )
+        assert result.get("hint_level") == hint_lvl
+        assert result.get("reveal_answer") is True
 
 
 @pytest.mark.asyncio
@@ -204,6 +241,88 @@ async def test_tutor_agent_hint_defaults(mock_router, mock_retriever):
     )
     assert result.get("hint_level") == 0
     assert result.get("reveal_answer") is False
+
+
+@pytest.mark.asyncio
+async def test_tutor_agent_misconception_fields_present(mock_router, mock_retriever):
+    agent = TutorAgent(llm_router=mock_router, retriever=mock_retriever)
+    result = await agent.answer(
+        question="What is a cell?",
+        user_id=uuid4(),
+        grade_level=10,
+        topic="Cell Biology",
+        use_rag=True,
+    )
+    assert "misconception_detected" in result
+    assert "misconception_correction" in result
+    assert result["misconception_detected"] is False
+    assert result["misconception_correction"] == ""
+
+
+@pytest.mark.asyncio
+async def test_tutor_agent_misconception_fields_socratic(mock_router, mock_retriever):
+    agent = TutorAgent(llm_router=mock_router, retriever=mock_retriever)
+    result = await agent.answer(
+        question="What is photosynthesis?",
+        user_id=uuid4(),
+        grade_level=10,
+        topic="Cell Biology",
+        use_rag=True,
+        socratic_mode=True,
+    )
+    assert "misconception_detected" in result
+    assert "misconception_correction" in result
+
+
+@pytest.mark.asyncio
+async def test_tutor_agent_normal_prompt_has_misconception_directive():
+    from src.agents.tutor import TUTOR_SYSTEM_PROMPT
+    assert "conceptual error" in TUTOR_SYSTEM_PROMPT
+    assert "gently point it out" in TUTOR_SYSTEM_PROMPT
+    assert "never condescending" in TUTOR_SYSTEM_PROMPT
+
+
+@pytest.mark.asyncio
+async def test_tutor_agent_socratic_prompt_has_misconception_directive():
+    from src.agents.tutor import SOCRATIC_SYSTEM_PROMPT
+    assert "conceptual error" in SOCRATIC_SYSTEM_PROMPT
+    assert "gently correct" in SOCRATIC_SYSTEM_PROMPT
+    assert "never condescending" in SOCRATIC_SYSTEM_PROMPT
+
+
+def test_graph_node_prompt_has_misconception_directive():
+    from src.graph.nodes.tutor import SYSTEM_PROMPT, SOCRATIC_SYSTEM_PROMPT
+    assert "conceptual error" in SYSTEM_PROMPT
+    assert "conceptual error" in SOCRATIC_SYSTEM_PROMPT
+    assert "gently" in SYSTEM_PROMPT
+    assert "gently" in SOCRATIC_SYSTEM_PROMPT
+
+
+def test_schema_misconception_fields():
+    from src.schemas.chat import TutorRequest, TutorResponse
+    req = TutorRequest(user_id=uuid4(), question="test")
+    assert hasattr(req, "misconception_detected")
+    assert hasattr(req, "misconception_correction")
+    assert req.misconception_detected is False
+    assert req.misconception_correction == ""
+    resp = TutorResponse(answer="test", language="en", model_used="test", confidence=0.9)
+    assert hasattr(resp, "misconception_detected")
+    assert hasattr(resp, "misconception_correction")
+    assert resp.misconception_detected is False
+    assert resp.misconception_correction == ""
+
+
+def test_state_misconception_fields():
+    from src.graph.state import AgentState, GraphOutput
+    state = AgentState()
+    assert state.misconception_detected is False
+    assert state.misconception_correction == ""
+    output = GraphOutput(
+        answer="test", model_used="test", confidence=0.9,
+        sources=[], status="ok", requires_teacher_review=False,
+    )
+    assert output.misconception_detected is False
+    assert output.misconception_correction == ""
 
 
 def test_student_progress_analysis():

@@ -120,6 +120,47 @@ async def language_command(update: Update, context):
         await update.message.reply_text("Usage: /language <en|am|both>", reply_markup=language_keyboard())
 
 
+async def reveal_command(update: Update, context):
+    question = context.user_data.get("ask_question", "")
+    if not question:
+        await update.message.reply_text(
+            "No active question. Ask a question first with /ask or select Tutor from the menu.",
+            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+        )
+        return
+    hint_level = context.user_data.get("hint_level", 0)
+    context.user_data["reveal_answer"] = True
+    await update.message.reply_text("🔍 Revealing the full answer...")
+    try:
+        router_llm = ModelRouter()
+        agent = TutorAgent(llm_router=router_llm, retriever=None)
+        result = await agent.answer(
+            question=question, user_id=None, use_rag=True,
+            grade_level=context.user_data.get("grade_level"),
+            language=context.user_data.get("language", "en"),
+            socratic_mode=False,
+            hint_level=hint_level,
+            reveal_answer=True,
+        )
+        attempt_msg = f"
+
+📊 You used {hint_level} hint(s) before revealing the answer." if hint_level > 0 else "
+
+📊 You revealed the answer without using hints."
+        response = result["answer"] + attempt_msg
+        await _reply_long(
+            update.message, response,
+            reply_markup=hint_keyboard(hint_level, True),
+        )
+        await router_llm.close()
+    except Exception as e:
+        logger.error("reveal_command_error", error=str(e))
+        await update.message.reply_text(
+            "Sorry, I encountered an error.",
+            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+        )
+
+
 async def socratic_command(update: Update, context):
     current = context.user_data.get("socratic_mode", False)
     context.user_data["socratic_mode"] = not current
@@ -854,6 +895,7 @@ async def handle_reveal_answer(update: Update, context):
             reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
         )
         return
+    hint_level = context.user_data.get("hint_level", 0)
     context.user_data["reveal_answer"] = True
     await query.edit_message_text("🔍 Revealing the full answer...")
     try:
@@ -864,13 +906,18 @@ async def handle_reveal_answer(update: Update, context):
             grade_level=context.user_data.get("grade_level"),
             language=context.user_data.get("language", "en"),
             socratic_mode=False,
-            hint_level=3,
+            hint_level=hint_level,
             reveal_answer=True,
         )
-        response = result["answer"]
+        attempt_msg = f"
+
+📊 You used {hint_level} hint(s) before revealing the answer." if hint_level > 0 else "
+
+📊 You revealed the answer without using hints."
+        response = result["answer"] + attempt_msg
         await _reply_long(
             query.message, response,
-            reply_markup=hint_keyboard(3, True),
+            reply_markup=hint_keyboard(hint_level, True),
         )
         await router_llm.close()
     except Exception as e:
@@ -937,6 +984,7 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("model", model_command))
     app.add_handler(CommandHandler("socratic", socratic_command))
     app.add_handler(CommandHandler("hint", hint_command))
+    app.add_handler(CommandHandler("reveal", reveal_command))
 
     quiz_handler = ConversationHandler(
         entry_points=[
