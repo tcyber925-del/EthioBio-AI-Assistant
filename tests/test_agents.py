@@ -29,6 +29,37 @@ async def test_tutor_agent_basic(mock_router, mock_retriever):
 
 
 @pytest.mark.asyncio
+async def test_tutor_agent_socratic_mode(mock_router, mock_retriever):
+    agent = TutorAgent(llm_router=mock_router, retriever=mock_retriever)
+    result = await agent.answer(
+        question="What is photosynthesis?",
+        user_id=uuid4(),
+        grade_level=10,
+        topic="Cell Biology",
+        use_rag=True,
+        socratic_mode=True,
+    )
+    assert "answer" in result
+    assert result.get("socratic_mode") is True
+    assert "model_used" in result
+
+
+@pytest.mark.asyncio
+async def test_tutor_agent_normal_mode(mock_router, mock_retriever):
+    agent = TutorAgent(llm_router=mock_router, retriever=mock_retriever)
+    result = await agent.answer(
+        question="What is a cell?",
+        user_id=uuid4(),
+        grade_level=10,
+        topic="Cell Biology",
+        use_rag=True,
+        socratic_mode=False,
+    )
+    assert "answer" in result
+    assert result.get("socratic_mode") is False
+
+
+@pytest.mark.asyncio
 async def test_quiz_generation(mock_router):
     agent = QuizAgent(llm_router=mock_router)
     agent._call_llm = AsyncMock()

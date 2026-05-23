@@ -51,6 +51,10 @@ class AgentState:
     preferred_model: str = ""
 
     socratic_mode: bool = False
+    guiding_question: str = ""
+
+    hint_level: int = 0
+    reveal_answer: bool = False
 
 
 @dataclass
@@ -63,3 +67,6 @@ class GraphOutput:
     requires_teacher_review: bool = False
     preferred_model: str = ""
     socratic_mode: bool = False
+    guiding_question: str = ""
+    hint_level: int = 0
+    reveal_answer: bool = False
