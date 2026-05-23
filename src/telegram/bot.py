@@ -210,7 +210,7 @@ async def hint_command(update: Update, context):
         )
         response = result["answer"]
         if result.get("misconception_detected"):
-            response += "\n\n💡 I noticed a slight misunderstanding — I've gently corrected it above."
+            response += "\n\n💡 I noticed a misunderstanding — gently corrected above."
         await _reply_long(
             update.message, response,
             reply_markup=hint_keyboard(next_level, False),
@@ -243,7 +243,7 @@ async def ask_command(update: Update, context):
             )
             response = result["answer"]
             if result.get("misconception_detected"):
-                response += "\n\n💡 I noticed a slight misunderstanding — I've gently corrected it above."
+                response += "\n\n💡 I noticed a misunderstanding — gently corrected above."
             if result.get("sources"):
                 response += "\n\n---\nSources: " + ", ".join(result["sources"][:3])
             reply_markup = hint_keyboard(0, False) if socratic else main_menu_keyboard(socratic)
@@ -384,7 +384,7 @@ async def handle_question(update: Update, context):
         )
         response = result["answer"]
         if result.get("misconception_detected"):
-            response += "\n\n💡 I noticed a slight misunderstanding in your reasoning — I've gently corrected it above."
+            response += "\n\n💡 I noticed a misunderstanding — gently corrected above."
         if result.get("sources"):
             response += "\n\n---\nSources: " + ", ".join(result["sources"][:3])
         reply_markup = hint_keyboard(hint_level, reveal) if socratic else main_menu_keyboard(socratic)
@@ -879,7 +879,7 @@ async def handle_hint(update: Update, context):
         )
         response = result["answer"]
         if result.get("misconception_detected"):
-            response += "\n\n💡 I noticed a slight misunderstanding — I've gently corrected it above."
+            response += "\n\n💡 I noticed a misunderstanding — gently corrected above."
         await _reply_long(
             query.message, response,
             reply_markup=hint_keyboard(hint_level, False),
