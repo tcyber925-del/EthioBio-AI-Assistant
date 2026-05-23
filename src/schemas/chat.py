@@ -12,6 +12,7 @@ class TutorRequest(BaseModel):
     language: str = "en"
     use_rag: bool = True
     model: Optional[str] = None
+    socratic_mode: bool = False
 
 
 class TutorResponse(BaseModel):
@@ -20,3 +21,4 @@ class TutorResponse(BaseModel):
     sources: list[str] = []
     model_used: str
     confidence: float
+    socratic_mode: bool = False

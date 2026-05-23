@@ -1,11 +1,13 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 
-def main_menu_keyboard():
+def main_menu_keyboard(socratic_enabled: bool = False):
+    socratic_label = "🧠 Socratic: ON" if socratic_enabled else "🧠 Socratic: OFF"
     buttons = [
         [InlineKeyboardButton("🧬 Ask a Question", callback_data="tutor")],
         [InlineKeyboardButton("📝 Take a Quiz", callback_data="quiz")],
         [InlineKeyboardButton("📊 My Progress", callback_data="progress")],
+        [InlineKeyboardButton(socratic_label, callback_data="socratic_toggle")],
         [InlineKeyboardButton("🌐 Language", callback_data="language")],
         [InlineKeyboardButton("👨‍🏫 Teacher Tools", callback_data="teacher_tools")],
         [InlineKeyboardButton("❓ Help", callback_data="help")],
@@ -106,3 +108,13 @@ def model_selection_keyboard(models: list[dict], active_model: str) -> list[list
     buttons.append([InlineKeyboardButton("🔄 Refresh Models", callback_data="model:refresh")])
     buttons.append([InlineKeyboardButton("Back", callback_data="model:back")])
     return buttons
+
+
+def socratic_toggle_keyboard(socratic_enabled: bool = False):
+    label = "🧠 Turn OFF" if socratic_enabled else "🧠 Turn ON"
+    data = "socratic_off" if socratic_enabled else "socratic_on"
+    buttons = [
+        [InlineKeyboardButton(label, callback_data=data)],
+        [InlineKeyboardButton("← Back to Menu", callback_data="menu")],
+    ]
+    return InlineKeyboardMarkup(buttons)

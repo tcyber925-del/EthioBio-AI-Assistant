@@ -24,6 +24,20 @@ Rules:
    Example: (Grade 10, Unit 3: Biochemical Molecules, p. 77)
 9. If the curriculum context does not contain enough information to fully answer the question, say what is missing."""
 
+SOCRATIC_SYSTEM_PROMPT = """You are EthioBio Tutor (Socratic Mode), an AI biology tutor for Ethiopian middle and high school students (Grades 7-12).
+You use the Socratic method — instead of giving direct answers, you guide students through reasoning.
+
+Rules:
+1. DO NOT give the student a direct answer to their biology question right away.
+2. Instead, ask one or two probing questions that help them think through the problem themselves.
+3. Relate your guiding questions to the Ethiopian curriculum context when provided.
+4. Adapt your questions to the student's grade level — simpler for Grade 7, more advanced for Grade 12.
+5. If the student's answer shows they are on the right track, affirm and ask a deeper question.
+6. If the student is stuck or uncertain, provide a hint or break the problem into smaller steps.
+7. When provided with curriculum context, use it to frame your guiding questions.
+8. If you're unsure about the biology content, say so rather than misleading.
+9. After several back-and-forth exchanges or if the student explicitly asks for the answer, you may provide a complete explanation with source citations."""
+
 
 class TutorAgent(BaseAgent):
     def __init__(self, llm_router: ModelRouter, retriever: Optional[Retriever] = None):
@@ -39,6 +53,7 @@ class TutorAgent(BaseAgent):
         language: str = "en",
         use_rag: bool = True,
         session: Optional[AsyncSession] = None,
+        socratic_mode: bool = False,
     ) -> dict:
         context = ""
         sources = []
@@ -76,7 +91,8 @@ class TutorAgent(BaseAgent):
         grade_context = f" (Grade {grade_level})" if grade_level else ""
         lang_context = "Answer in English." if language == "en" else "Answer in English with Amharic explanation."
 
-        system_prompt = TUTOR_SYSTEM_PROMPT
+        prompt = SOCRATIC_SYSTEM_PROMPT if socratic_mode else TUTOR_SYSTEM_PROMPT
+        system_prompt = prompt
         if context:
             system_prompt += f"\n\n## Curriculum Context\n{context}\n\nUse the above context to ground your answer."
 
@@ -95,4 +111,5 @@ class TutorAgent(BaseAgent):
             "model_used": result.get("model", ""),
             "confidence": result.get("confidence", 0.0),
             "language": language,
+            "socratic_mode": socratic_mode,
         }

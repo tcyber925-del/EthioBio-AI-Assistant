@@ -52,6 +52,7 @@ async def run_graph(
     topic: str = None,
     language: str = "en",
     preferred_model: str | None = None,
+    socratic_mode: bool = False,
 ) -> GraphOutput:
     router = ModelRouter(preferred_model=preferred_model)
     adapter = VectorStoreAdapter()
@@ -63,6 +64,7 @@ async def run_graph(
         topic=topic,
         language=language,
         preferred_model=preferred_model or "",
+        socratic_mode=socratic_mode,
     )
 
     graph = build_graph(router, adapter)
@@ -99,4 +101,5 @@ async def run_graph(
         sources=sources[:3],
         status=result.get("status", "pending"),
         requires_teacher_review=result.get("requires_teacher_review", False),
+        socratic_mode=result.get("socratic_mode", False),
     )

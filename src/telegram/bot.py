@@ -65,11 +65,12 @@ async def _try_register_user(telegram_id: int):
 
 async def start(update: Update, context):
     await _try_register_user(update.effective_user.id)
+    socratic = context.user_data.get("socratic_mode", False)
     await update.message.reply_text(
         "Welcome to EthioBio AI Assistant!\n\n"
         "I'm your biology learning assistant for Ethiopian Grades 7-12.\n\n"
         "Send me any biology question, or use the menu below:",
-        reply_markup=main_menu_keyboard(),
+        reply_markup=main_menu_keyboard(socratic),
     )
 
 
@@ -83,9 +84,10 @@ async def help_command(update: Update, context):
         "/quiz [grade] [topic] — Generate a quiz\n"
         "/grade <7-12> — Set your default grade\n"
         "/language <en|am|both> — Set language\n"
+        "/socratic — Toggle Socratic tutoring mode\n"
         "/cancel — Cancel current operation\n\n"
         "Or just type any biology question to get started!",
-        reply_markup=main_menu_keyboard(),
+        reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
     )
 
 
@@ -103,7 +105,7 @@ async def grade_command(update: Update, context):
             context.user_data["grade_level"] = grade
             await update.message.reply_text(f"Default grade set to Grade {grade}.")
             return
-    await update.message.reply_text("Usage: /grade <7-12>", reply_markup=main_menu_keyboard())
+    await update.message.reply_text("Usage: /grade <7-12>", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
 
 
 async def language_command(update: Update, context):
@@ -114,6 +116,17 @@ async def language_command(update: Update, context):
         await update.message.reply_text(f"Language set to {lang_map[args[0]]}.")
     else:
         await update.message.reply_text("Usage: /language <en|am|both>", reply_markup=language_keyboard())
+
+
+async def socratic_command(update: Update, context):
+    current = context.user_data.get("socratic_mode", False)
+    context.user_data["socratic_mode"] = not current
+    status = "ON 🧠" if context.user_data["socratic_mode"] else "OFF"
+    await update.message.reply_text(
+        f"Socratic Mode is now {status}.\n\n"
+        "In Socratic mode, I'll guide you with questions rather than giving direct answers.",
+        reply_markup=main_menu_keyboard(context.user_data["socratic_mode"]),
+    )
 
 
 async def ask_command(update: Update, context):
@@ -128,17 +141,18 @@ async def ask_command(update: Update, context):
                 question=question, user_id=None, use_rag=True,
                 grade_level=context.user_data.get("grade_level"),
                 language=context.user_data.get("language", "en"),
+                socratic_mode=context.user_data.get("socratic_mode", False),
             )
             response = result["answer"]
             if result.get("sources"):
                 response += "\n\n---\nSources: " + ", ".join(result["sources"][:3])
-            await _reply_long(update.message, response, reply_markup=main_menu_keyboard(), parse_mode="HTML")
+            await _reply_long(update.message, response, reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)), parse_mode="HTML")
             await router_llm.close()
         except Exception as e:
             logger.error("ask_command_error", error=str(e))
-            await update.message.reply_text("Sorry, I encountered an error.", reply_markup=main_menu_keyboard())
+            await update.message.reply_text("Sorry, I encountered an error.", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
     else:
-        await update.message.reply_text("Usage: /ask <your biology question>", reply_markup=main_menu_keyboard())
+        await update.message.reply_text("Usage: /ask <your biology question>", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
 
 
 async def quiz_command(update: Update, context):
@@ -156,14 +170,14 @@ async def quiz_command(update: Update, context):
         await update.message.reply_text("Select quiz type:", reply_markup=quiz_type_keyboard())
         return QUIZ_TYPE
     else:
-        await update.message.reply_text("Usage: /quiz [grade] [topic]", reply_markup=main_menu_keyboard())
+        await update.message.reply_text("Usage: /quiz [grade] [topic]", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
         return ConversationHandler.END
 
 
 async def menu(update: Update, context):
     query = update.callback_query
     await query.answer()
-    await query.message.reply_text("Choose an option:", reply_markup=main_menu_keyboard())
+    await query.edit_message_text("Choose an option:", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
 
 
 async def handle_teacher_tools(update: Update, context):
@@ -241,7 +255,7 @@ async def end_conversation(update: Update, context):
         await query.answer()
     except Exception:
         pass
-    await query.message.reply_text("Choose an option:", reply_markup=main_menu_keyboard())
+    await query.edit_message_text("Choose an option:", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
     return ConversationHandler.END
 
 
@@ -249,26 +263,37 @@ async def handle_question(update: Update, context):
     question = update.message.text
     thinking_msg = await update.message.reply_text("Thinking...")
 
-    result = None
-    try:
-        router_llm = ModelRouter()
-        agent = TutorAgent(llm_router=router_llm, retriever=None)
-        result = await agent.answer(
-            question=question, user_id=None, use_rag=True,
-            grade_level=context.user_data.pop("tutor_grade", None) or context.user_data.get("grade_level"),
-            language=context.user_data.get("language", "en"),
-        )
-        response = result["answer"]
-        if result.get("sources"):
-            response += "\n\n---\nSources: " + ", ".join(result["sources"][:3])
-        await _reply_long(thinking_msg, response, reply_markup=main_menu_keyboard(), parse_mode="HTML")
+        result = None
+        try:
+            router_llm = ModelRouter()
+            agent = TutorAgent(llm_router=router_llm, retriever=None)
+            result = await agent.answer(
+                question=question, user_id=None, use_rag=True,
+                grade_level=context.user_data.pop("tutor_grade", None) or context.user_data.get("grade_level"),
+                language=context.user_data.get("language", "en"),
+                socratic_mode=context.user_data.get("socratic_mode", False),
+            )
+            response = result["answer"]
+            if result.get("sources"):
+                response += "\n\n---\nSources: " + ", ".join(result["sources"][:3])
+            await _reply_long(thinking_msg, response, reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)), parse_mode="HTML")
+        except Exception as e:
+            logger.error("tutor_error", error=str(e))
+            try:
+                await thinking_msg.edit_text(
+                    "Sorry, I encountered an error. Please try again.",
+                    reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+                )
+            except Exception:
+                pass
+            return ConversationHandler.END
         await router_llm.close()
     except Exception as e:
         logger.error("tutor_error", error=str(e))
         try:
             await thinking_msg.edit_text(
                 "Sorry, I encountered an error. Please try again.",
-                reply_markup=main_menu_keyboard(),
+                reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
             )
         except Exception:
             pass
@@ -605,11 +630,11 @@ async def handle_lesson_topic(update: Update, context):
             response += f"\nAssessment:\n{result['assessment'][:500]}"
         if result.get("homework"):
             response += f"\n\nHomework:\n{result['homework'][:500]}"
-        await _reply_long(update.message, response, reply_markup=main_menu_keyboard(), parse_mode="HTML")
+        await _reply_long(update.message, response, reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)), parse_mode="HTML")
         await router_llm.close()
     except Exception as e:
         logger.error("lesson_error", error=str(e))
-        await update.message.reply_text("Error creating lesson plan.", reply_markup=main_menu_keyboard())
+        await update.message.reply_text("Error creating lesson plan.", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
 
     return ConversationHandler.END
 
@@ -627,9 +652,13 @@ async def handle_progress(update: Update, context):
         "In the meantime, keep practicing with quizzes!"
     )
     if query:
+<<<<<<< HEAD
         await query.message.reply_text(text, reply_markup=main_menu_keyboard())
+=======
+        await query.edit_message_text(text, reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
+>>>>>>> 7921683 (feat: ST-001 - Toggle Socratic Mode)
     else:
-        await update.message.reply_text(text, reply_markup=main_menu_keyboard())
+        await update.message.reply_text(text, reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
 
 
 async def handle_language(update: Update, context):
@@ -646,7 +675,20 @@ async def handle_language_select(update: Update, context):
     context.user_data["language"] = code
     await query.message.reply_text(
         f"Language set to {name}!\n\nYou can now ask biology questions in {name}.",
-        reply_markup=main_menu_keyboard(),
+        reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+    )
+
+
+async def handle_socratic_toggle(update: Update, context):
+    query = update.callback_query
+    await query.answer()
+    current = context.user_data.get("socratic_mode", False)
+    context.user_data["socratic_mode"] = not current
+    status = "ON 🧠" if context.user_data["socratic_mode"] else "OFF"
+    await query.edit_message_text(
+        f"Socratic Mode is now {status}.\n\n"
+        "In Socratic mode, I'll guide you with questions rather than giving direct answers.",
+        reply_markup=main_menu_keyboard(not current),
     )
 
 
@@ -727,7 +769,7 @@ async def handle_general_message(update: Update, context):
             await update.message.reply_text(
                 f"I understood: \"{intent['intent']}\" (confidence: {intent['confidence']:.0%})\n\n"
                 f"Use the menu buttons to access specific features.",
-                reply_markup=main_menu_keyboard(),
+                reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
             )
     except Exception as e:
         logger.error("general_message_error", error=str(e))
@@ -761,6 +803,7 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("grade", grade_command))
     app.add_handler(CommandHandler("language", language_command))
     app.add_handler(CommandHandler("model", model_command))
+    app.add_handler(CommandHandler("socratic", socratic_command))
 
     quiz_handler = ConversationHandler(
         entry_points=[
@@ -843,7 +886,9 @@ def build_app() -> Application:
     )
     app.add_handler(conv_handler)
 
+<<<<<<< HEAD
     app.add_handler(CallbackQueryHandler(handle_model_selection, pattern="^model:"))
+    app.add_handler(CallbackQueryHandler(handle_socratic_toggle, pattern="^socratic_toggle$"))
     app.add_handler(CallbackQueryHandler(handle_teacher_tools, pattern="^teacher_tools$"))
     app.add_handler(CallbackQueryHandler(handle_open_quizzes, pattern="^open_quizzes$"))
     app.add_handler(CallbackQueryHandler(handle_open_dashboard, pattern="^open_dashboard$"))

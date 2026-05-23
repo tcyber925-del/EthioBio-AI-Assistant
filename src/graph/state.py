@@ -50,6 +50,8 @@ class AgentState:
     lesson_params: dict = field(default_factory=dict)
     preferred_model: str = ""
 
+    socratic_mode: bool = False
+
 
 @dataclass
 class GraphOutput:
@@ -60,3 +62,4 @@ class GraphOutput:
     status: str
     requires_teacher_review: bool = False
     preferred_model: str = ""
+    socratic_mode: bool = False

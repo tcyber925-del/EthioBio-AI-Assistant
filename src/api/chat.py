@@ -26,6 +26,7 @@ async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_
             language=request.language,
             use_rag=request.use_rag,
             session=session,
+            socratic_mode=request.socratic_mode,
         )
         return TutorResponse(
             answer=result["answer"],
@@ -33,6 +34,7 @@ async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_
             sources=result.get("sources", []),
             model_used=result.get("model_used", ""),
             confidence=result.get("confidence", 0.0),
+            socratic_mode=result.get("socratic_mode", False),
         )
     except Exception as e:
         logger.error("chat_error", error=str(e))
