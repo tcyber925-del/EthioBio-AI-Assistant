@@ -1,14 +1,15 @@
 from contextlib import asynccontextmanager
+
+import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import structlog
 
-from src.config import settings
-from src.database.session import init_db, close_db, get_session
-from src.llm.router import ModelRouter
-from src.api import chat, quiz, lesson, progress, admin
+from src.api import admin, chat, lesson, progress, quiz
 from src.api.graph import router as graph_router
 from src.api.models import router as models_router
+from src.config import settings
+from src.database.session import close_db, init_db
+from src.llm.router import ModelRouter
 from src.schemas.common import HealthResponse
 
 logger = structlog.get_logger()

@@ -1,10 +1,23 @@
+import enum
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import String, Integer, BigInteger, Float, Boolean, Text, DateTime, Enum, ForeignKey, JSON
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from sqlalchemy import (
+    JSON,
+    BigInteger,
+    Boolean,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from src.database.session import Base
-import enum
 
 
 def utcnow():

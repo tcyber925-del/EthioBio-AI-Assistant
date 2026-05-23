@@ -1,15 +1,16 @@
+from unittest.mock import AsyncMock
+from uuid import uuid4
+
 import pytest
-from unittest.mock import AsyncMock, patch
-from src.llm.router import ModelRouter
-from src.agents.tutor import TutorAgent
-from src.agents.quiz import QuizAgent
+
 from src.agents.lesson_planner import LessonPlannerAgent
 from src.agents.orchestrator import OrchestratorAgent
+from src.agents.quiz import QuizAgent
 from src.agents.safety import SafetyAgent
-from src.agents.translator import TranslatorAgent
 from src.agents.student_progress import StudentProgressAgent
-from src.agents.parent_summary import ParentSummaryAgent
-from uuid import uuid4
+from src.agents.translator import TranslatorAgent
+from src.agents.tutor import TutorAgent
+from src.llm.router import ModelRouter
 
 
 @pytest.mark.asyncio
@@ -122,6 +123,87 @@ async def test_translator(mock_router):
     result = await agent.translate("What is a cell?", source_lang="en", target_lang="am")
     assert "translated_text" in result
     assert "model_used" in result
+
+
+@pytest.mark.asyncio
+async def test_tutor_agent_hint_level_1(mock_router, mock_retriever):
+    """ST-003: Hint level 1 returns a broad hint."""
+    agent = TutorAgent(llm_router=mock_router, retriever=mock_retriever)
+    result = await agent.answer(
+        question="What is mitosis?",
+        user_id=uuid4(),
+        grade_level=10,
+        topic="Cell Biology",
+        use_rag=True,
+        hint_level=1,
+    )
+    assert "answer" in result
+    assert result.get("hint_level") == 1
+    assert result.get("reveal_answer") is False
+
+
+@pytest.mark.asyncio
+async def test_tutor_agent_hint_level_2(mock_router, mock_retriever):
+    """ST-003: Hint level 2 returns a more specific hint."""
+    agent = TutorAgent(llm_router=mock_router, retriever=mock_retriever)
+    result = await agent.answer(
+        question="What is mitosis?",
+        user_id=uuid4(),
+        grade_level=10,
+        topic="Cell Biology",
+        use_rag=True,
+        hint_level=2,
+    )
+    assert "answer" in result
+    assert result.get("hint_level") == 2
+
+
+@pytest.mark.asyncio
+async def test_tutor_agent_hint_level_3(mock_router, mock_retriever):
+    """ST-003: Hint level 3 returns a very specific hint."""
+    agent = TutorAgent(llm_router=mock_router, retriever=mock_retriever)
+    result = await agent.answer(
+        question="What is mitosis?",
+        user_id=uuid4(),
+        grade_level=10,
+        topic="Cell Biology",
+        use_rag=True,
+        hint_level=3,
+    )
+    assert "answer" in result
+    assert result.get("hint_level") == 3
+
+
+@pytest.mark.asyncio
+async def test_tutor_agent_reveal_answer(mock_router, mock_retriever):
+    """ST-003: Reveal answer provides full answer."""
+    agent = TutorAgent(llm_router=mock_router, retriever=mock_retriever)
+    result = await agent.answer(
+        question="What is mitosis?",
+        user_id=uuid4(),
+        grade_level=10,
+        topic="Cell Biology",
+        use_rag=True,
+        hint_level=3,
+        reveal_answer=True,
+    )
+    assert "answer" in result
+    assert result.get("reveal_answer") is True
+
+
+@pytest.mark.asyncio
+async def test_tutor_agent_hint_defaults(mock_router, mock_retriever):
+    """ST-003: Default hint_level is 0 and reveal_answer is False."""
+    agent = TutorAgent(llm_router=mock_router, retriever=mock_retriever)
+    result = await agent.answer(
+        question="What is a cell?",
+        user_id=uuid4(),
+        grade_level=10,
+        topic="Cell Biology",
+        use_rag=True,
+    )
+    assert result.get("hint_level") == 0
+    assert result.get("reveal_answer") is False
 
 
 def test_student_progress_analysis():

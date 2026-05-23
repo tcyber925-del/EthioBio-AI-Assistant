@@ -1,7 +1,7 @@
-from typing import Optional
+import structlog
+
 from src.agents.base import BaseAgent
 from src.llm.router import ModelRouter
-import structlog
 
 logger = structlog.get_logger()
 

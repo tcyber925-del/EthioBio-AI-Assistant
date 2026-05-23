@@ -1,7 +1,9 @@
 from typing import Optional
-from sqlalchemy.ext.asyncio import AsyncSession
-from src.llm.router import ModelRouter
+
 import structlog
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.llm.router import ModelRouter
 
 logger = structlog.get_logger()
 

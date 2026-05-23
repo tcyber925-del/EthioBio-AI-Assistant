@@ -1,10 +1,12 @@
 from typing import Optional
-from sqlalchemy.ext.asyncio import AsyncSession
-from src.agents.base import BaseAgent
-from src.rag.retriever import Retriever
-from src.llm.router import ModelRouter
 from uuid import UUID
+
 import structlog
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.agents.base import BaseAgent
+from src.llm.router import ModelRouter
+from src.rag.retriever import Retriever
 
 logger = structlog.get_logger()
 
@@ -45,6 +47,15 @@ Rules:
 9. After several back-and-forth exchanges or if the student explicitly asks for the answer, you may provide a complete explanation with source citations."""
 
 
+HINT_PROMPTS = {
+    1: "\n\nThe student has requested a HINT (Level 1). Give a BROAD, general hint that points them in the right direction without giving away the answer. Frame it as a guiding thought or a nudge toward the correct concept.",
+    2: "\n\nThe student has requested a HINT (Level 2). Give a MORE SPECIFIC hint that narrows down the possibilities significantly. Point toward the relevant process, structure, or principle involved.",
+    3: "\n\nThe student has requested a HINT (Level 3). Give a VERY SPECIFIC hint that leads almost directly to the answer. You may describe the key mechanism or cite the relevant curriculum section, but let the student articulate the final conclusion.",
+}
+
+REVEAL_PROMPT = "\n\nThe student has requested the final answer. Provide the complete correct answer with a full explanation. Cite curriculum sources when available."
+
+
 class TutorAgent(BaseAgent):
     def __init__(self, llm_router: ModelRouter, retriever: Optional[Retriever] = None):
         super().__init__(llm_router, name="tutor")
@@ -60,6 +71,8 @@ class TutorAgent(BaseAgent):
         use_rag: bool = True,
         session: Optional[AsyncSession] = None,
         socratic_mode: bool = False,
+        hint_level: int = 0,
+        reveal_answer: bool = False,
     ) -> dict:
         context = ""
         sources = []
@@ -99,6 +112,10 @@ class TutorAgent(BaseAgent):
 
         prompt = SOCRATIC_SYSTEM_PROMPT if socratic_mode else TUTOR_SYSTEM_PROMPT
         system_prompt = prompt
+        if reveal_answer:
+            system_prompt += REVEAL_PROMPT
+        elif hint_level > 0 and hint_level in HINT_PROMPTS:
+            system_prompt += HINT_PROMPTS[hint_level]
         if context:
             system_prompt += f"\n\n## Curriculum Context\n{context}\n\nUse the above context to ground your answer."
 
@@ -118,4 +135,6 @@ class TutorAgent(BaseAgent):
             "confidence": result.get("confidence", 0.0),
             "language": language,
             "socratic_mode": socratic_mode,
+            "hint_level": hint_level,
+            "reveal_answer": reveal_answer,
         }

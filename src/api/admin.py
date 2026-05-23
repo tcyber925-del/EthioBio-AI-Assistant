@@ -1,13 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
-from src.database.session import get_session
-from src.database.models import (
-    User, Quiz, Question, LessonPlan, ModelRoutingLog,
-    FeedbackEvent, QuizAttempt, UserRole,
-)
-from typing import Optional
+
 import structlog
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.database.models import (
+    LessonPlan,
+    ModelRoutingLog,
+    Question,
+    Quiz,
+    QuizAttempt,
+    User,
+    UserRole,
+)
+from src.database.session import get_session
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/admin", tags=["Admin"])

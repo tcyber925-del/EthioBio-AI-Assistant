@@ -1,7 +1,8 @@
+
 import structlog
-from typing import Optional
-from openai import AsyncOpenAI
 from anthropic import AsyncAnthropic
+from openai import AsyncOpenAI
+
 from src.config import settings
 
 logger = structlog.get_logger()

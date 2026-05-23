@@ -1,5 +1,7 @@
-import structlog
 from typing import Optional
+
+import structlog
+
 from src.rag.embedder import Embedder
 from src.rag.vector_store import VectorStore
 

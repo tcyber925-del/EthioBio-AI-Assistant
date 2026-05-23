@@ -1,9 +1,11 @@
+import json
 from typing import Optional
+
+import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.agents.base import BaseAgent
 from src.llm.router import ModelRouter
-import json
-import structlog
 
 logger = structlog.get_logger()
 

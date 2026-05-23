@@ -7,7 +7,9 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.models import ModelRoutingLog
+from src.llm.fallback import FallbackProvider
 from src.llm.manager import ProviderManager
+from src.llm.ollama_client import OllamaClient
 from src.llm.registry import ModelRegistry
 
 logger = structlog.get_logger()

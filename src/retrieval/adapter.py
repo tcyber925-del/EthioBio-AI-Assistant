@@ -6,11 +6,13 @@ ChromaDB can be swapped without touching agents or ingestion.
 """
 
 from typing import Optional
+
+import structlog
+
 from src.rag.embedder import Embedder
 from src.rag.vector_store import VectorStore
 from src.retrieval.bm25 import BM25Index
 from src.retrieval.reranker import Reranker
-import structlog
 
 logger = structlog.get_logger()
 

@@ -5,10 +5,11 @@ Provides decorators and helpers for tracing requests through the graph.
 Skips tracing if LANGCHAIN_API_KEY is not set (graceful fallback).
 """
 
-import os
 import functools
+import os
+from typing import Callable, Optional
+
 import structlog
-from typing import Optional, Callable, Any
 
 logger = structlog.get_logger()
 

@@ -1,6 +1,8 @@
-import structlog
 import os
 from typing import Optional
+
+import structlog
+
 from src.config import settings
 
 logger = structlog.get_logger()

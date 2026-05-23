@@ -1,7 +1,7 @@
 """Retrieval node — fetches curriculum context from vector store."""
 
 from src.graph.state import AgentState
-from src.retrieval.adapter import VectorStoreAdapter, RetrievalFilter
+from src.retrieval.adapter import RetrievalFilter, VectorStoreAdapter
 
 
 class RetrievalNode:

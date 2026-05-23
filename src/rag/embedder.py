@@ -1,5 +1,5 @@
 import structlog
-from src.config import settings
+
 from src.llm.router import ModelRouter
 
 logger = structlog.get_logger()

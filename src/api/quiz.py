@@ -1,16 +1,19 @@
+
+import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID
-from src.database.session import get_session
-from src.database.models import Quiz, Question, QuizAttempt, User
-from src.schemas.quiz import (
-    QuizGenerateRequest, QuizGenerateResponse,
-    QuizSubmitRequest, QuizSubmitResponse,
-    QuestionSchema,
-)
+
 from src.agents.quiz import QuizAgent
+from src.database.models import Question, Quiz, QuizAttempt
+from src.database.session import get_session
 from src.llm.router import ModelRouter
-import structlog
+from src.schemas.quiz import (
+    QuestionSchema,
+    QuizGenerateRequest,
+    QuizGenerateResponse,
+    QuizSubmitRequest,
+    QuizSubmitResponse,
+)
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/quiz", tags=["Quiz"])

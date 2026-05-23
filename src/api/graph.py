@@ -21,6 +21,8 @@ class GraphChatRequest(BaseModel):
     language: str = "en"
     model: Optional[str] = None
     socratic_mode: bool = False
+    hint_level: int = 0
+    reveal_answer: bool = False
 
 
 class GraphChatResponse(BaseModel):
@@ -31,6 +33,8 @@ class GraphChatResponse(BaseModel):
     status: str = "approved"
     requires_teacher_review: bool = False
     socratic_mode: bool = False
+    hint_level: int = 0
+    reveal_answer: bool = False
 
 
 @router.post("/chat", response_model=GraphChatResponse)
@@ -44,6 +48,8 @@ async def graph_chat(request: GraphChatRequest):
             language=request.language,
             preferred_model=request.model,
             socratic_mode=request.socratic_mode,
+            hint_level=request.hint_level,
+            reveal_answer=request.reveal_answer,
         )
 
         return GraphChatResponse(
@@ -54,6 +60,8 @@ async def graph_chat(request: GraphChatRequest):
             status=result.status,
             requires_teacher_review=result.requires_teacher_review,
             socratic_mode=result.socratic_mode,
+            hint_level=result.hint_level,
+            reveal_answer=result.reveal_answer,
         )
     except Exception as e:
         logger.error("graph_chat_error", error=str(e))

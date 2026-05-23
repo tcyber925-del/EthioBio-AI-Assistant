@@ -1,5 +1,7 @@
+from unittest.mock import AsyncMock
+
 import pytest
-from unittest.mock import AsyncMock, patch
+
 from src.rag.embedder import Embedder
 from src.rag.retriever import Retriever
 

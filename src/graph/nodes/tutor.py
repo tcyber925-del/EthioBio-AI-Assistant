@@ -35,6 +35,14 @@ Rules:
 6. If the student is stuck after several exchanges, you may provide a hint to keep them moving.
 7. Always encourage the student to think step by step."""
 
+HINT_PROMPTS = {
+    1: "\n\nThe student has requested a HINT (Level 1). Give a BROAD, general hint that points them in the right direction without giving away the answer. Frame it as a guiding thought or a nudge toward the correct concept.",
+    2: "\n\nThe student has requested a HINT (Level 2). Give a MORE SPECIFIC hint that narrows down the possibilities significantly. Point toward the relevant process, structure, or principle involved.",
+    3: "\n\nThe student has requested a HINT (Level 3). Give a VERY SPECIFIC hint that leads almost directly to the answer. You may describe the key mechanism or cite the relevant curriculum section, but let the student articulate the final conclusion.",
+}
+
+REVEAL_PROMPT = "\n\nThe student has requested the final answer. Provide the complete correct answer with a full explanation. Cite curriculum sources when available."
+
 
 class TutorNode:
     def __init__(self, router: ModelRouter):
@@ -45,6 +53,10 @@ class TutorNode:
         lang_context = "Answer in English." if state.language == "en" else "Answer in English with Amharic explanation."
 
         system = SOCRATIC_SYSTEM_PROMPT if state.socratic_mode else SYSTEM_PROMPT
+        if state.reveal_answer:
+            system += REVEAL_PROMPT
+        elif state.hint_level > 0 and state.hint_level in HINT_PROMPTS:
+            system += HINT_PROMPTS[state.hint_level]
         if state.context:
             system += f"\n\n## Curriculum Context\n{state.context}\n\nUse the above context to ground your answer."
 

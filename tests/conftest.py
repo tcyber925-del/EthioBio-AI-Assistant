@@ -1,5 +1,6 @@
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, patch
 
 
 @pytest.fixture
@@ -18,9 +19,9 @@ def mock_router():
 
 @pytest.fixture
 def mock_retriever():
-    retriever = AsyncMock()
-    retriever.retrieve.return_value = [
+    retriever = MagicMock()
+    retriever.retrieve = AsyncMock(return_value=[
         {"content": "Test curriculum content", "metadata": {"topic": "Cell Biology", "grade_level": 10}, "score": 0.95, "id": "1"}
-    ]
+    ])
     retriever.format_context.return_value = "[Source 1] Topic: Cell Biology | Grade: 10\nTest curriculum content"
     return retriever

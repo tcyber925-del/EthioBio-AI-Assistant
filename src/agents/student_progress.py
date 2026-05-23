@@ -1,10 +1,10 @@
 from typing import Optional
+
+import structlog
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.agents.base import BaseAgent
 from src.llm.router import ModelRouter
-from sqlalchemy.ext.asyncio import AsyncSession
-from src.database.models import ProgressRecord as Record
-from datetime import datetime, timezone, timedelta
-import structlog
 
 logger = structlog.get_logger()
 

@@ -2,6 +2,7 @@
 
 import json
 import os
+
 import pytest
 
 
@@ -19,7 +20,7 @@ def test_gold_set_exists():
 
 
 def test_ragas_module_imports():
-    from src.evaluation.ragas_test import load_gold_set, evaluate_with_ragas, _heuristic_eval
+    from src.evaluation.ragas_test import _heuristic_eval, evaluate_with_ragas, load_gold_set
     assert callable(evaluate_with_ragas)
     assert callable(load_gold_set)
     assert callable(_heuristic_eval)

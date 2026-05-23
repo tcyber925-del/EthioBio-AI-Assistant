@@ -118,3 +118,19 @@ def socratic_toggle_keyboard(socratic_enabled: bool = False):
         [InlineKeyboardButton("← Back to Menu", callback_data="menu")],
     ]
     return InlineKeyboardMarkup(buttons)
+
+
+def hint_keyboard(hint_level: int = 0, reveal_answer: bool = False):
+    if reveal_answer:
+        buttons = [
+            [InlineKeyboardButton("← Back to Menu", callback_data="menu")],
+        ]
+    else:
+        next_hint = hint_level + 1
+        buttons = []
+        if next_hint <= 3:
+            labels = {1: "💡 Broad Hint", 2: "💡 Specific Hint", 3: "💡 Strong Hint"}
+            buttons.append([InlineKeyboardButton(labels[next_hint], callback_data=f"hint_{next_hint}")])
+        buttons.append([InlineKeyboardButton("🔍 Reveal Answer", callback_data="reveal_answer")])
+        buttons.append([InlineKeyboardButton("← Back to Menu", callback_data="menu")])
+    return InlineKeyboardMarkup(buttons)

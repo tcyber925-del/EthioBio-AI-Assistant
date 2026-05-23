@@ -15,17 +15,16 @@ Usage:
 """
 
 import argparse
+import glob
 import os
 import re
 import sys
-import glob
-from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from src.config import settings
 from src.rag.embedder import Embedder
 from src.rag.vector_store import VectorStore
-from src.config import settings
 
 TEXTBOOKS_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "textbooks")
 SUPPORTED_EXTENSIONS = (".pdf", ".docx", ".txt")
@@ -412,7 +411,7 @@ async def process_file(
         return 0
 
     if not pages or not any(p["text"] for p in pages):
-        print(f"    No text extracted")
+        print("    ⚠️  No text extracted")
         return 0
 
     # Chunk per-page to preserve page numbers, then sub-chunk if needed
@@ -425,7 +424,7 @@ async def process_file(
     chunks = all_chunks
 
     if not chunks:
-        print(f"    No chunks created")
+        print("    ⚠️  No chunks created")
         return 0
 
     print(f"    Extracted {len(pages)} pages -> {len(chunks)} chunks")
@@ -490,7 +489,7 @@ async def main():
 
     if args.stats:
         count = store.count()
-        print(f"Vector Store Statistics")
+        print("📊 Vector Store Statistics")
         print(f"   Collection: {settings.collection_name}")
         print(f"   Total chunks: {count}")
         print(f"   Persist path: {settings.vector_store_path}")
@@ -518,7 +517,7 @@ async def main():
     if not files:
         print(f"No supported files found in {args.textbooks_dir}")
         print(f"   Supported: {', '.join(SUPPORTED_EXTENSIONS)}")
-        print(f"   Expected structure:")
+        print("   Expected structure:")
         print(f"     {args.textbooks_dir}/Grade7/biology_textbook.pdf")
         print(f"     {args.textbooks_dir}/Grade9/biology_teachers_guide.docx")
         sys.exit(0)
@@ -538,7 +537,7 @@ async def main():
     print("   BM25 index rebuilt")
 
     count = store.count()
-    print(f"\nIngestion complete!")
+    print("\n✅ Ingestion complete!")
     print(f"   Files processed: {len(files)}")
     print(f"   Total chunks stored: {total_chunks}")
     print(f"   ChromaDB collection count: {count}")

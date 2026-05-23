@@ -21,6 +21,7 @@ from src.telegram.keyboards import (
     answer_options_keyboard,
     back_keyboard,
     grade_keyboard,
+    hint_keyboard,
     language_keyboard,
     main_menu_keyboard,
     model_selection_keyboard,
@@ -85,6 +86,7 @@ async def help_command(update: Update, context):
         "/grade <7-12> — Set your default grade\n"
         "/language <en|am|both> — Set language\n"
         "/socratic — Toggle Socratic tutoring mode\n"
+        "/hint — Get the next hint level (1-3) in Socratic mode\n"
         "/cancel — Cancel current operation\n\n"
         "Or just type any biology question to get started!",
         reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
@@ -129,24 +131,78 @@ async def socratic_command(update: Update, context):
     )
 
 
+async def hint_command(update: Update, context):
+    hint_level = context.user_data.get("hint_level", 0)
+    reveal = context.user_data.get("reveal_answer", False)
+    if reveal:
+        await update.message.reply_text(
+            "The answer has already been revealed! Ask a new question to continue.",
+            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+        )
+        return
+    next_level = hint_level + 1
+    if next_level > 3:
+        await update.message.reply_text(
+            "You've used all hint levels. Tap 'Reveal Answer' to see the full explanation.",
+            reply_markup=hint_keyboard(hint_level, reveal),
+        )
+        return
+    context.user_data["hint_level"] = next_level
+    question = context.user_data.get("ask_question", "")
+    if not question:
+        await update.message.reply_text(
+            "No active question. Ask a question first with /ask or select Tutor from the menu.",
+            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+        )
+        return
+    await update.message.reply_text(f"💡 Hint level {next_level}/3...")
+    try:
+        router_llm = ModelRouter()
+        agent = TutorAgent(llm_router=router_llm, retriever=None)
+        result = await agent.answer(
+            question=question, user_id=None, use_rag=True,
+            grade_level=context.user_data.get("grade_level"),
+            language=context.user_data.get("language", "en"),
+            socratic_mode=context.user_data.get("socratic_mode", True),
+            hint_level=next_level,
+            reveal_answer=False,
+        )
+        response = result["answer"]
+        await _reply_long(
+            update.message, response,
+            reply_markup=hint_keyboard(next_level, False),
+        )
+        await router_llm.close()
+    except Exception as e:
+        logger.error("hint_command_error", error=str(e))
+        await update.message.reply_text(
+            "Sorry, I encountered an error.",
+            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+        )
+
+
 async def ask_command(update: Update, context):
     question = " ".join(context.args) if context.args else ""
     if question:
         context.user_data["ask_question"] = question
+        context.user_data["hint_level"] = 0
+        context.user_data["reveal_answer"] = False
         await update.message.reply_text("Thinking...")
         try:
             router_llm = ModelRouter()
             agent = TutorAgent(llm_router=router_llm, retriever=None)
+            socratic = context.user_data.get("socratic_mode", False)
             result = await agent.answer(
                 question=question, user_id=None, use_rag=True,
                 grade_level=context.user_data.get("grade_level"),
                 language=context.user_data.get("language", "en"),
-                socratic_mode=context.user_data.get("socratic_mode", False),
+                socratic_mode=socratic,
             )
             response = result["answer"]
             if result.get("sources"):
                 response += "\n\n---\nSources: " + ", ".join(result["sources"][:3])
-            await _reply_long(update.message, response, reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)), parse_mode="HTML")
+            reply_markup = hint_keyboard(0, False) if socratic else main_menu_keyboard(socratic)
+            await _reply_long(update.message, response, reply_markup=reply_markup, parse_mode="HTML")
             await router_llm.close()
         except Exception as e:
             logger.error("ask_command_error", error=str(e))
@@ -261,32 +317,31 @@ async def end_conversation(update: Update, context):
 
 async def handle_question(update: Update, context):
     question = update.message.text
+    context.user_data["ask_question"] = question
+    context.user_data["hint_level"] = 0
+    context.user_data["reveal_answer"] = False
     thinking_msg = await update.message.reply_text("Thinking...")
 
-        result = None
-        try:
-            router_llm = ModelRouter()
-            agent = TutorAgent(llm_router=router_llm, retriever=None)
-            result = await agent.answer(
-                question=question, user_id=None, use_rag=True,
-                grade_level=context.user_data.pop("tutor_grade", None) or context.user_data.get("grade_level"),
-                language=context.user_data.get("language", "en"),
-                socratic_mode=context.user_data.get("socratic_mode", False),
-            )
-            response = result["answer"]
-            if result.get("sources"):
-                response += "\n\n---\nSources: " + ", ".join(result["sources"][:3])
-            await _reply_long(thinking_msg, response, reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)), parse_mode="HTML")
-        except Exception as e:
-            logger.error("tutor_error", error=str(e))
-            try:
-                await thinking_msg.edit_text(
-                    "Sorry, I encountered an error. Please try again.",
-                    reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
-                )
-            except Exception:
-                pass
-            return ConversationHandler.END
+    result = None
+    try:
+        router_llm = ModelRouter()
+        agent = TutorAgent(llm_router=router_llm, retriever=None)
+        socratic = context.user_data.get("socratic_mode", False)
+        hint_level = context.user_data.get("hint_level", 0)
+        reveal = context.user_data.get("reveal_answer", False)
+        result = await agent.answer(
+            question=question, user_id=None, use_rag=True,
+            grade_level=context.user_data.pop("tutor_grade", None) or context.user_data.get("grade_level"),
+            language=context.user_data.get("language", "en"),
+            socratic_mode=socratic,
+            hint_level=hint_level,
+            reveal_answer=reveal,
+        )
+        response = result["answer"]
+        if result.get("sources"):
+            response += "\n\n---\nSources: " + ", ".join(result["sources"][:3])
+        reply_markup = hint_keyboard(hint_level, reveal) if socratic else main_menu_keyboard(socratic)
+        await _reply_long(thinking_msg, response, reply_markup=reply_markup)
         await router_llm.close()
     except Exception as e:
         logger.error("tutor_error", error=str(e))
@@ -652,11 +707,7 @@ async def handle_progress(update: Update, context):
         "In the meantime, keep practicing with quizzes!"
     )
     if query:
-<<<<<<< HEAD
-        await query.message.reply_text(text, reply_markup=main_menu_keyboard())
-=======
         await query.edit_message_text(text, reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
->>>>>>> 7921683 (feat: ST-001 - Toggle Socratic Mode)
     else:
         await update.message.reply_text(text, reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
 
@@ -736,7 +787,6 @@ async def handle_model_selection(update: Update, context):
             await query.edit_message_text("Failed to refresh models.", reply_markup=main_menu_keyboard())
         return
 
-    # Setting a model
     try:
         async with httpx.AsyncClient() as client:
             await client.post(f"{api_base}/models/active", json={"model": action})
@@ -747,6 +797,88 @@ async def handle_model_selection(update: Update, context):
     except Exception as e:
         logger.error("model_set_error", error=str(e))
         await query.edit_message_text(f"Failed to set model: {action}", reply_markup=main_menu_keyboard())
+
+
+async def handle_hint(update: Update, context):
+    query = update.callback_query
+    await query.answer()
+    hint_level = int(query.data.split("_")[-1])
+    reveal = context.user_data.get("reveal_answer", False)
+    if reveal:
+        await query.edit_message_text(
+            "The answer has already been revealed! Ask a new question.",
+            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+        )
+        return
+    question = context.user_data.get("ask_question", "")
+    if not question:
+        await query.edit_message_text(
+            "No active question. Ask a question first.",
+            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+        )
+        return
+    context.user_data["hint_level"] = hint_level
+    await query.edit_message_text(f"💡 Hint level {hint_level}/3...")
+    try:
+        router_llm = ModelRouter()
+        agent = TutorAgent(llm_router=router_llm, retriever=None)
+        result = await agent.answer(
+            question=question, user_id=None, use_rag=True,
+            grade_level=context.user_data.get("grade_level"),
+            language=context.user_data.get("language", "en"),
+            socratic_mode=context.user_data.get("socratic_mode", True),
+            hint_level=hint_level,
+            reveal_answer=False,
+        )
+        response = result["answer"]
+        await _reply_long(
+            query.message, response,
+            reply_markup=hint_keyboard(hint_level, False),
+        )
+        await router_llm.close()
+    except Exception as e:
+        logger.error("hint_callback_error", error=str(e))
+        await query.edit_message_text(
+            "Sorry, I encountered an error.",
+            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+        )
+
+
+async def handle_reveal_answer(update: Update, context):
+    query = update.callback_query
+    await query.answer()
+    question = context.user_data.get("ask_question", "")
+    if not question:
+        await query.edit_message_text(
+            "No active question. Ask a question first.",
+            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+        )
+        return
+    context.user_data["reveal_answer"] = True
+    await query.edit_message_text("🔍 Revealing the full answer...")
+    try:
+        router_llm = ModelRouter()
+        agent = TutorAgent(llm_router=router_llm, retriever=None)
+        result = await agent.answer(
+            question=question, user_id=None, use_rag=True,
+            grade_level=context.user_data.get("grade_level"),
+            language=context.user_data.get("language", "en"),
+            socratic_mode=False,
+            hint_level=3,
+            reveal_answer=True,
+        )
+        response = result["answer"]
+        await _reply_long(
+            query.message, response,
+            reply_markup=hint_keyboard(3, True),
+        )
+        await router_llm.close()
+    except Exception as e:
+        logger.error("reveal_answer_error", error=str(e))
+        await query.edit_message_text(
+            "Sorry, I encountered an error.",
+            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+        )
 
 
 async def handle_general_message(update: Update, context):
@@ -804,6 +936,7 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("language", language_command))
     app.add_handler(CommandHandler("model", model_command))
     app.add_handler(CommandHandler("socratic", socratic_command))
+    app.add_handler(CommandHandler("hint", hint_command))
 
     quiz_handler = ConversationHandler(
         entry_points=[
@@ -886,9 +1019,10 @@ def build_app() -> Application:
     )
     app.add_handler(conv_handler)
 
-<<<<<<< HEAD
     app.add_handler(CallbackQueryHandler(handle_model_selection, pattern="^model:"))
     app.add_handler(CallbackQueryHandler(handle_socratic_toggle, pattern="^socratic_toggle$"))
+    app.add_handler(CallbackQueryHandler(handle_hint, pattern="^hint_"))
+    app.add_handler(CallbackQueryHandler(handle_reveal_answer, pattern="^reveal_answer$"))
     app.add_handler(CallbackQueryHandler(handle_teacher_tools, pattern="^teacher_tools$"))
     app.add_handler(CallbackQueryHandler(handle_open_quizzes, pattern="^open_quizzes$"))
     app.add_handler(CallbackQueryHandler(handle_open_dashboard, pattern="^open_dashboard$"))

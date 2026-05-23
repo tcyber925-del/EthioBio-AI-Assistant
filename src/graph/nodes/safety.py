@@ -1,8 +1,9 @@
 """Safety node — runs self-check on generated content."""
 
+import json
+
 from src.graph.state import AgentState
 from src.llm.router import ModelRouter
-import json
 
 SAFETY_PROMPT = """You are EthioBio Safety Agent. Review the following biology content for:
 1. Factual accuracy

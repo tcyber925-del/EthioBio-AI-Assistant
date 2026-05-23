@@ -1,11 +1,12 @@
+import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.database.session import get_session
-from src.database.models import LessonPlan
-from src.schemas.lesson import LessonPlanRequest, LessonPlanResponse
+
 from src.agents.lesson_planner import LessonPlannerAgent
+from src.database.models import LessonPlan
+from src.database.session import get_session
 from src.llm.router import ModelRouter
-import structlog
+from src.schemas.lesson import LessonPlanRequest, LessonPlanResponse
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/lesson-plan", tags=["Lesson Plan"])

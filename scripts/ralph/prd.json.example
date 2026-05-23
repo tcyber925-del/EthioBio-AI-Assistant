@@ -1,0 +1,28 @@
+{
+  "title": "Feature Title",
+  "branchName": "ralph/feature-name",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Story title",
+      "description": "Description of what needs to be implemented",
+      "priority": 1,
+      "passes": false,
+      "acceptanceCriteria": [
+        "Criterion 1",
+        "Criterion 2"
+      ]
+    },
+    {
+      "id": "US-002",
+      "title": "Another story",
+      "description": "Description of what needs to be implemented",
+      "priority": 2,
+      "passes": false,
+      "acceptanceCriteria": [
+        "Criterion 1",
+        "Criterion 2"
+      ]
+    }
+  ]
+}

@@ -1,18 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
-from uuid import UUID
-from src.database.session import get_session
-from src.database.models import ProgressRecord, StudentProfile, ParentSummary, User, UserRole, QuizAttempt, Question
-from src.schemas.progress import (
-    ProgressRequest, ProgressResponse,
-    ParentSummaryRequest, ParentSummaryResponse,
-)
-from src.agents.student_progress import StudentProgressAgent
-from src.agents.parent_summary import ParentSummaryAgent
-from src.llm.router import ModelRouter
-from datetime import datetime, timezone, timedelta
 import structlog
+from datetime import datetime, timedelta, timezone
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.agents.parent_summary import ParentSummaryAgent
+from src.agents.student_progress import StudentProgressAgent
+from src.database.models import ParentSummary, ProgressRecord, StudentProfile, User, UserRole, QuizAttempt, Question
+from src.database.session import get_session
+from src.llm.router import ModelRouter
+from src.schemas.progress import (
+    ParentSummaryRequest,
+    ParentSummaryResponse,
+    ProgressRequest,
+    ProgressResponse,
+)
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/progress", tags=["Progress"])

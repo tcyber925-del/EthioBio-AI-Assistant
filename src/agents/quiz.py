@@ -1,10 +1,12 @@
+import json
 from typing import Optional
+
+import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.agents.base import BaseAgent
 from src.llm.router import ModelRouter
-from src.retrieval.adapter import VectorStoreAdapter, RetrievalFilter
-import json
-import structlog
+from src.retrieval.adapter import RetrievalFilter, VectorStoreAdapter
 
 logger = structlog.get_logger()
 

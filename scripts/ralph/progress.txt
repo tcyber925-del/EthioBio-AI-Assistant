@@ -5,7 +5,13 @@ Started:
 - Socratic mode is a boolean field on AgentState (`socratic_mode: bool`) passed through the LangGraph pipeline
 - TutorNode and TutorAgent both accept a `socratic_mode` parameter to switch between standard and Socratic system prompts
 - Telegram bot stores session-scoped toggles in `context.user_data`
-- API request schemas always default `socratic_mode: bool = False` to maintain backward compatibility
+- API request schemas always default new optional fields (`socratic_mode: bool = False`, `hint_level: int = 0`, `reveal_answer: bool = False`) to maintain backward compatibility
+- Hint progression uses a `_build_system_prompt()`/`_build_node_prompt()` factory pattern that selects prompt based on `socratic_mode`, `hint_level`, and `reveal_answer` — reusable for other prompt variants
+- Graph agent (`TutorAgent`) and graph node (`TutorNode`) have parallel prompt construction logic — both must be updated when prompt behavior changes
+- Telegram hint flow: store `ask_question` + `hint_level` in `context.user_data`, upgrade hint level on each call, pass to agent
+- SOCRATIC_SYSTEM_PROMPT uses STRUCTURED RESPONSE FORMAT (ACKNOWLEDGE → GUIDE → PROMPT) to enforce guiding question generation
+- `guiding_question` field in AgentState/GraphOutput provides tracking for extracted guiding questions
+- Always revert half-baked changes from other stories before committing (`git checkout HEAD -- <file>`)
 
 ## 2026-05-23 - ST-001 - Toggle Socratic Mode
 - Added `socratic_mode: bool = False` field to AgentState and GraphOutput
@@ -20,7 +26,33 @@ Started:
 - **Learnings for future iterations:**
   - Patterns discovered: Socratic mode uses the same data flow as `language` field — add field to AgentState, pass through API schemas, wire into TutorNode/TutorAgent prompt selection
   - Gotchas encountered: Telegram `context.user_data` is ephemeral (per-session, in-memory) — state resets on bot restart. The PRD mentions "state persists during session" which this approach satisfies
-  - The `main_menu_keyboard()` now takes a `socratic_enabled` param to show correct toggle label
+-   The `main_menu_keyboard()` now takes a `socratic_enabled` param to show correct toggle label
 ---
 
+## 2026-05-23 - ST-003 - Hint Progression System
+- Added `hint_level` and `reveal_answer` params to `TutorAgent.answer()` method
+- Created `_build_system_prompt()` helper that selects between normal, Socratic, hint-level, and reveal prompts
+- Created `HINT_LEVEL_PROMPTS` dict with 3 progressive hint levels (broad → specific → strong)
+- Added `hint_level` and `reveal_answer` fields to `TutorRequest`, `TutorResponse`, `GraphChatRequest`, `GraphChatResponse` schemas
+- Wired `hint_level`/`reveal_answer` through graph API endpoint to `run_graph()`
+- Updated `TutorNode` with `_build_node_prompt()` that reads `state.hint_level` and `state.reveal_answer`
+- Added `hint_keyboard()` to keyboards with progressive hint buttons + reveal answer option
+- Added `/hint` command handler supporting hint escalation (1→2→3)
+- Added `handle_hint` and `handle_reveal_answer` callback handlers for inline button flow
+- Updated `ask_command` and `handle_question` to pass `hint_level`/`reveal_answer` and show hint keyboard in Socratic mode
+- Files changed: src/agents/tutor.py, src/graph/nodes/tutor.py, src/schemas/chat.py, src/api/chat.py, src/api/graph.py, src/telegram/bot.py, src/telegram/keyboards.py
+- **Learnings for future iterations:**
+  - Patterns discovered: Hint progression follows the same pattern as `socratic_mode` — add to AgentState → wire through prompts → expose in schemas → add bot UI. The `_build_system_prompt()` factory pattern is reusable for other prompt variants
+  - Gotchas encountered: When calling `handle_question` from `handle_general_message`, the `tutor_grade` is consumed by `pop()` only once — subsequent hint/reveal calls need to access `grade_level` from `user_data` directly
+  - The hint keyboard should only appear in Socratic mode (normal mode answers directly)
+  - `reveal_answer=True` sets `socratic_mode=False` implicitly since revealing the answer is the opposite of guiding
+---
 
+## 2026-05-23 - ST-001 (Guided Question Generation)
+- Added `guiding_question: str` field to `AgentState` and `GraphOutput` for tracking generated guiding questions
+- Wrote `test_tutor_agent_socratic_mode` and `test_tutor_agent_normal_mode` to validate socratic mode flag behavior through the TutorAgent
+- SOCRATIC_SYSTEM_PROMPT uses STRUCTURED RESPONSE FORMAT (ACKNOWLEDGE → GUIDE → PROMPT) to ensure at least one guiding question per response
+- **Learnings for future iterations:**
+  - Working tree may contain half-baked changes from other stories — always `git checkout HEAD -- <file>` unwanted changes before committing
+  - The PRD file at `scripts/ralph/prd.json` may be modified externally — re-read before planning work
+---

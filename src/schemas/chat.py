@@ -13,6 +13,8 @@ class TutorRequest(BaseModel):
     use_rag: bool = True
     model: Optional[str] = None
     socratic_mode: bool = False
+    hint_level: int = 0
+    reveal_answer: bool = False
 
 
 class TutorResponse(BaseModel):
@@ -22,3 +24,5 @@ class TutorResponse(BaseModel):
     model_used: str
     confidence: float
     socratic_mode: bool = False
+    hint_level: int = 0
+    reveal_answer: bool = False
