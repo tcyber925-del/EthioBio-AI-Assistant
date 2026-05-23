@@ -1,10 +1,10 @@
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel
+from src.schemas.base import SchemaModel
 
 
-class TutorRequest(BaseModel):
+class TutorRequest(SchemaModel):
     user_id: UUID
     question: str
     grade_level: Optional[int] = None
@@ -19,7 +19,7 @@ class TutorRequest(BaseModel):
     misconception_correction: str = ""
 
 
-class TutorResponse(BaseModel):
+class TutorResponse(SchemaModel):
     answer: str
     language: str
     sources: list[str] = []

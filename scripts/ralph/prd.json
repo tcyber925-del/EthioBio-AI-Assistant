@@ -9,6 +9,19 @@
       "priority": 1,
       "passes": true,
       "acceptanceCriteria": [
+        "Toggle exists in chat UI",
+        "State persists during session",
+        "Messages use Socratic prompting",
+        "Default mode remains normal chat"
+      ]
+    },
+    {
+      "id": "ST-002",
+      "title": "Guided Question Generation",
+      "description": "As a student, I want the AI to ask guiding questions, so that I can think critically before answering.",
+      "priority": 1,
+      "passes": true,
+      "acceptanceCriteria": [
         "AI asks at least one guiding question",
         "Question relates to current biology topic",
         "Question difficulty adapts to context"

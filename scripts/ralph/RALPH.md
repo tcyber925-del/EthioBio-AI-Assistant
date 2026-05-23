@@ -75,12 +75,14 @@ This is an Obsidian PARA vault. The project codebase is at `1-Projects/p000-Acti
 
 Key architecture:
 - LangGraph pipeline: Orchestrator → (Retrieve | SkipRetrieval) → Tutor → Safety → (finalize | revise→Tutor)
-- ProviderManager (`src/llm/manager.py`) for LLM orchestration with fallback
+- ModelRouter (`src/llm/router.py`) for Ollama-first routing with fallback providers
 - VectorStoreAdapter (`src/retrieval/adapter.py`) - ChromaDB wrapper
 - FastAPI server at `python -m src.main` on :8000
 - Telegram bot at `python -m src.telegram.bot`
 
 Reference the project's AGENTS.md for full details on architecture, gotchas, and conventions.
+
+If a story changes UI behavior, verify it interactively before marking it complete.
 
 ## Stop Condition
 
@@ -97,3 +99,4 @@ If there are still stories with `passes: false`, end your response normally (ano
 - Commit frequently
 - Keep CI green
 - Read the Codebase Patterns section in progress.txt before starting
+- Re-check repo paths and symbols before using project-specific instructions from this file

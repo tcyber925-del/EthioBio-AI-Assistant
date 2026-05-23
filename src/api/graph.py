@@ -5,15 +5,16 @@ from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from src.graph.orchestrator import run_graph
+from src.schemas.base import SchemaModel
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/graph", tags=["Graph"])
 
 
-class GraphChatRequest(BaseModel):
+class GraphChatRequest(SchemaModel):
     question: str
     user_id: Optional[UUID] = None
     grade_level: Optional[int] = Field(None, ge=7, le=12)
@@ -25,7 +26,7 @@ class GraphChatRequest(BaseModel):
     reveal_answer: bool = False
 
 
-class GraphChatResponse(BaseModel):
+class GraphChatResponse(SchemaModel):
     answer: str
     model_used: str
     confidence: float

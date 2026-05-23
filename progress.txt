@@ -1,0 +1,24 @@
+## Codebase Patterns
+- Use `python-docx` `Document` with `BytesIO` buffer for in-memory DOCX generation
+- Use `fpdf2` subclassing `FPDF` for PDF generation; prefer `cell()` with `new_x="LMARGIN"` / `new_y="NEXT"` over `multi_cell()` for simple text
+- When registering a new API router in `main.py`, add both the import and `app.include_router()` call
+- Export module follows: define exporter in `src/export/`, add endpoint in `src/api/export.py`, add tests in `tests/`
+
+## [2026-05-23 15:58] - Phase 4: PDF/DOCX Export
+- Implemented PDF/DOCX export for quizzes and lesson plans
+- Created `src/export/` module with `docx_exporter.py` and `pdf_exporter.py`
+- Added `GET /export/quiz/{id}?format=docx|pdf` and `GET /export/lesson-plan/{id}?format=docx|pdf` endpoints
+- Added 13 tests (8 unit + 5 integration) in `tests/test_export.py`
+- Added `fpdf2` dependency for PDF generation
+- Added `src/export/AGENTS.md` with module patterns
+- Updated project-level `AGENTS.md` with export module section
+- Updated `02-Execution/Execution.md` with completion status
+
+## [2026-05-23 16:20] - ST-004: Misconception Detection (verified existing)
+- Verified ST-004 already implemented in commit 5f795a4
+- Reviewed: `detect_misconception()` function in both `src/agents/tutor.py` and `src/graph/nodes/tutor.py`
+- Reviewed: Heuristic keyword-based detection using `MISCONCEPTION_INDICATORS` list
+- Reviewed: Misconception correction surfaced in Telegram bot responses (`handle_question`, `ask_command`, `hint_command`, `handle_hint`)
+- Reviewed: Fields wired through `GraphOutput` in `orchestrator.py`
+- All 6 misconception tests pass (28/28 agent tests, 55/56 total tests — pre-existing ChromaDB failure)
+- All stories complete: ST-001 (Socratic) ✅ ST-003 (Hint Progression) ✅ ST-004 (Misconception Detection) ✅ ST-005 (Reveal Answer) ✅
