@@ -54,6 +54,15 @@ mypy src/
 docker compose up -d postgres redis
 ```
 
+## Export Module (`src/export/`, `src/api/export.py`)
+
+The export module generates downloadable DOCX and PDF files for quizzes and lesson plans.
+
+- **DOCX**: Use `python-docx` `Document` with `BytesIO` buffer. The returned bytes are ZIP-compressed — do not assert text content directly in tests.
+- **PDF**: Use `fpdf2` subclassing `FPDF`. Prefer `cell()` with `new_x="LMARGIN"` / `new_y="NEXT"` over `multi_cell()` for simple text to avoid edge-case failures.
+- **Adding exportable types**: Add exporter to both `docx_exporter.py` and `pdf_exporter.py`, then add endpoint in `src/api/export.py`.
+- When registering a new router in `main.py`, both the import and `app.include_router()` call must be added.
+
 ## Key Gotchas
 
 1. **`topic` filter in RetrievalFilter returns empty** — PDF chunks lack `topic` metadata. Use `grade_level` only; semantic search compensates.

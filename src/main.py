@@ -4,7 +4,7 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api import admin, chat, lesson, progress, quiz
+from src.api import admin, chat, export, lesson, progress, quiz
 from src.api.graph import router as graph_router
 from src.api.models import router as models_router
 from src.config import settings
@@ -45,6 +45,7 @@ app.include_router(progress.router)
 app.include_router(admin.router)
 app.include_router(graph_router)
 app.include_router(models_router)
+app.include_router(export.router)
 
 
 @app.get("/health", response_model=HealthResponse)

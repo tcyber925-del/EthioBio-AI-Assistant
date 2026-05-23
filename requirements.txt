@@ -35,3 +35,4 @@ structlog==24.4.0
 tenacity==9.0.0
 alembic>=1.13
 psycopg2-binary>=2.9
+fpdf2==2.8.1
