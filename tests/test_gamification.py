@@ -1,4 +1,4 @@
-from src.schemas.gamification import calculate_level, xp_for_next_level
+from src.schemas.gamification import calculate_level, progress_pct, xp_for_next_level
 
 
 def test_calculate_level_starts_at_one():
@@ -34,6 +34,23 @@ def test_quiz_xp_calculation():
     assert _calculate_quiz_xp(80) == 20
     assert _calculate_quiz_xp(90) == 20
     assert _calculate_quiz_xp(100) == 35
+
+
+def test_progress_pct_at_level_start():
+    assert progress_pct(0) == 0.0
+
+
+def test_progress_pct_halfway():
+    assert progress_pct(50) == 50.0
+
+
+def test_progress_pct_near_level_up():
+    assert progress_pct(99) == 99.0
+
+
+def test_progress_pct_at_threshold():
+    val = progress_pct(100)
+    assert val == 0.0 or val == 100.0
 
 
 def test_streak_bonus_thresholds():

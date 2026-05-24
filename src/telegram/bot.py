@@ -587,10 +587,12 @@ async def _save_quiz_rewards(telegram_id, correct, total, context):
             pct = round(correct / max(total, 1) * 100)
             xp_amount = _calculate_quiz_xp(pct)
             meta = {"correct": correct, "total": total, "source": "telegram_bot"}
-            await award_xp(user.id, "quiz_completion", xp_amount, meta, session)
+            gam_result, _, level_up = await award_xp(user.id, "quiz_completion", xp_amount, meta, session)
             await update_streak(user.id, session)
             await session.commit()
             context.user_data["last_xp_awarded"] = xp_amount
+            context.user_data["last_level_up"] = level_up
+            context.user_data["last_new_level"] = gam_result.level
     await _db_try(_save)
 
 
@@ -607,9 +609,14 @@ async def _show_quiz_result(update: Update, context, msg=None):
         await _save_quiz_rewards(telegram_id, correct, total, context)
 
     xp_awarded = context.user_data.get("last_xp_awarded", _calculate_quiz_xp(pct))
+    level_up = context.user_data.pop("last_level_up", False)
     lines = [f"📊 Quiz Complete!\nScore: {correct}/{total} ({pct}%)"]
     if xp_awarded:
-        lines.append(f"⭐ XP Earned: +{xp_awarded} XP\n")
+        lines.append(f"⭐ XP Earned: +{xp_awarded} XP")
+    if level_up:
+        new_level = context.user_data.get("last_new_level", 1)
+        lines.append(f"🎉 LEVEL UP! You are now Level {new_level}!")
+    lines.append("")
     for i, q in enumerate(qs):
         icon = "✅" if i < len(ans) and ans[i] == q.get("correct_answer", "") else "❌"
         lines.append(f"{icon} Q{i+1}: {q.get('question_text', '')[:50]}")

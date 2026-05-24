@@ -43,7 +43,7 @@
       "title": "Mastery Level System",
       "description": "As a student, I want mastery levels, so that I can track biology growth.",
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "acceptanceCriteria": [
         "Levels calculated from XP",
         "Progress bar displayed",

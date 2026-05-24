@@ -25,6 +25,26 @@ def xp_for_next_level(total_xp: int) -> int:
     return LEVEL_THRESHOLDS[current_level] - total_xp
 
 
+def xp_for_current_level(total_xp: int) -> int:
+    level = calculate_level(total_xp)
+    return LEVEL_THRESHOLDS[level - 1]
+
+
+def next_level_threshold(total_xp: int) -> int:
+    level = calculate_level(total_xp)
+    if level >= len(LEVEL_THRESHOLDS):
+        return total_xp
+    return LEVEL_THRESHOLDS[level]
+
+
+def progress_pct(total_xp: int) -> float:
+    current = xp_for_current_level(total_xp)
+    next_t = next_level_threshold(total_xp)
+    if next_t <= current:
+        return 100.0
+    return round((total_xp - current) / (next_t - current) * 100, 1)
+
+
 class XpAwardRequest(SchemaModel):
     user_id: UUID
     source: str
@@ -46,4 +66,7 @@ class GamificationProfileResponse(SchemaModel):
     current_streak: int
     longest_streak: int
     next_level_xp: int
+    progress_pct: float = 0.0
+    level_up: bool = False
+    new_level: int = 0
     recent_events: list[XpEventResponse] = []

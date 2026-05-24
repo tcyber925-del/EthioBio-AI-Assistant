@@ -163,3 +163,16 @@ Started:
 - Pattern discovered: Telegram bot quiz flow runs in-memory (not through FastAPI), so XP/streak must be triggered directly via `award_xp()`/`update_streak()` with a local DB session
 - Files changed: src/telegram/bot.py, tests/test_gamification.py, scripts/ralph/prd.json, scripts/ralph/progress.txt
 ---
+
+## 2026-05-24 - GM-003 - Mastery Level System
+- Level calculation already done in GM-001 (calculate_level() in schemas/gamification.py)
+- Added progress_pct(), xp_for_current_level(), next_level_threshold() helpers
+- Added progress_pct field to GamificationProfileResponse
+- Added level_up detection in award_xp(): compares old_level vs new_level after XP award
+- Added level_up and new_level fields to GamificationProfileResponse
+- Updated _build_profile() to accept and pass level_up flag
+- Wired level-up into Telegram bot quiz result: shows "🎉 LEVEL UP! You are now Level X!"
+- Added 4 tests for progress_pct calculation (11 total gamification tests, all passing)
+- Pattern discovered: award_xp() now returns 3 values (gam, event, level_up) — all callers updated
+- Files changed: src/schemas/gamification.py, src/api/gamification.py, src/api/quiz.py, src/telegram/bot.py, tests/test_gamification.py, scripts/ralph/prd.json, scripts/ralph/progress.txt
+---

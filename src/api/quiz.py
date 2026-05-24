@@ -124,7 +124,7 @@ async def submit_quiz(request: QuizSubmitRequest, session: AsyncSession = Depend
             xp_awarded += 10
         if score >= 100:
             xp_awarded += 15
-        await award_xp(
+        _, _, _ = await award_xp(
             request.user_id,
             "quiz_completion",
             xp_awarded,

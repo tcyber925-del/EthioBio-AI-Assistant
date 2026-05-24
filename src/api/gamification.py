@@ -56,7 +56,7 @@ async def update_streak(user_id, session):
 
     bonus_xp = STREAK_BONUS_THRESHOLDS.get(gam.current_streak, 0)
     if bonus_xp:
-        await award_xp(
+        _, _, _ = await award_xp(
             user_id, "daily_streak_bonus", bonus_xp,
             {"streak": gam.current_streak, "bonus_type": f"{gam.current_streak}_day_streak"},
             session,
@@ -82,17 +82,20 @@ async def ensure_gamification(user_id, session):
 
 async def award_xp(user_id, source, amount, event_metadata, session):
     gam = await ensure_gamification(user_id, session)
+    old_level = gam.level
     gam.total_xp += amount
-    gam.level = calculate_level(gam.total_xp)
+    new_level = calculate_level(gam.total_xp)
+    gam.level = new_level
+    level_up = new_level > old_level
     event = XpEvent(
         user_id=user_id,
         source=source,
         amount=amount,
-        event_metadata=event_metadata,
+        event_metadata={**event_metadata, "level_up": level_up, "new_level": new_level},
     )
     session.add(event)
     await session.flush()
-    return gam, event
+    return gam, event, level_up
 
 
 @router.post("/xp", response_model=GamificationProfileResponse)
@@ -101,13 +104,13 @@ async def award_xp_endpoint(
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        gam, event = await award_xp(
+        gam, event, level_up = await award_xp(
             request.user_id, request.source, request.amount, request.event_metadata, session
         )
         await session.commit()
 
         events = await _get_recent_events(request.user_id, session)
-        return _build_profile(gam, request.user_id, events)
+        return _build_profile(gam, request.user_id, events, level_up=level_up)
     except HTTPException:
         raise
     except Exception as e:
@@ -179,8 +182,8 @@ async def _get_recent_events(user_id, session, limit=10):
     ]
 
 
-def _build_profile(gam, user_id, events):
-    from src.schemas.gamification import xp_for_next_level
+def _build_profile(gam, user_id, events, level_up=False):
+    from src.schemas.gamification import progress_pct, xp_for_next_level
     return GamificationProfileResponse(
         user_id=user_id,
         total_xp=gam.total_xp,
@@ -188,5 +191,8 @@ def _build_profile(gam, user_id, events):
         current_streak=gam.current_streak,
         longest_streak=gam.longest_streak,
         next_level_xp=xp_for_next_level(gam.total_xp),
+        progress_pct=progress_pct(gam.total_xp),
+        level_up=level_up,
+        new_level=gam.level if level_up else 0,
         recent_events=events,
     )
