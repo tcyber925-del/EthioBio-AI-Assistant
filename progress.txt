@@ -3,6 +3,7 @@
 - Use `fpdf2` subclassing `FPDF` for PDF generation; prefer `cell()` with `new_x="LMARGIN"` / `new_y="NEXT"` over `multi_cell()` for simple text
 - When registering a new API router in `main.py`, add both the import and `app.include_router()` call
 - Export module follows: define exporter in `src/export/`, add endpoint in `src/api/export.py`, add tests in `tests/`
+- Gamification components live in `dashboard/src/components/gamification/`; add proxy rewrite in `next.config.js` for any new gamification API routes
 
 ## [2026-05-23 15:58] - Phase 4: PDF/DOCX Export
 - Implemented PDF/DOCX export for quizzes and lesson plans
@@ -22,3 +23,22 @@
 - Reviewed: Fields wired through `GraphOutput` in `orchestrator.py`
 - All 6 misconception tests pass (28/28 agent tests, 55/56 total tests — pre-existing ChromaDB failure)
 - All stories complete: ST-001 (Socratic) ✅ ST-003 (Hint Progression) ✅ ST-004 (Misconception Detection) ✅ ST-005 (Reveal Answer) ✅
+
+## [2026-05-24 12:00] - GM-006: Dashboard Gamification Widgets
+- Created 5 gamification components in `dashboard/src/components/gamification/`:
+  - `XpCard.tsx` — XP card with level display and progress bar
+  - `StreakWidget.tsx` — Streak display with fire icon, current/longest days
+  - `MasteryProgressBar.tsx` — Level progress bar with gradient fill
+  - `AchievementPanel.tsx` — Achievement badges grid (unlocked/locked states)
+  - `GamificationProfile.tsx` — Combined widget that fetches from `/gamification/profile/{user_id}`
+- Added `/gamification/:path*` rewrite in `dashboard/next.config.js`
+- Updated `dashboard/src/app/students/[id]/page.tsx` to show gamification widgets alongside existing quiz stats
+- Added Dashboard Gamification Widgets section to project `AGENTS.md` with usage patterns
+- **Learnings for future iterations:**
+  - Patterns discovered: Drop `<GamificationProfile userId={id} />` into any page with a user ID
+  - Achievement definitions must be duplicated in frontend (for locked/unlocked display) and kept in sync with backend `ACHIEVEMENT_DEFINITIONS` in `src/api/gamification.py`
+  - Backend `/gamification/profile/{user_id}` endpoint is fully built — GM-006 was purely frontend work
+  - Dashboard TypeScript typecheck: `npx tsc --noEmit` in `dashboard/`
+  - Dashboard build: `npx next build` in `dashboard/`
+  - Backend test filter: `pytest tests/ -v -k "not test_chat_endpoint and not test_quiz_generate_endpoint and not test_quiz_generation"`
+---

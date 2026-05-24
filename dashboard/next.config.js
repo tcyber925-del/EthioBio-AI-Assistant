@@ -11,6 +11,7 @@ const nextConfig = {
       { source: '/chat', destination: `${api}/chat` },
       { source: '/graph/:path*', destination: `${api}/graph/:path*` },
       { source: '/progress/:path*', destination: `${api}/progress/:path*` },
+      { source: '/gamification/:path*', destination: `${api}/gamification/:path*` },
     ]
   },
 }

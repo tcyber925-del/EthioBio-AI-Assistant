@@ -54,6 +54,18 @@ mypy src/
 docker compose up -d postgres redis
 ```
 
+## Dashboard Gamification Widgets (`dashboard/src/components/gamification/`)
+
+The dashboard gamification module displays XP, streaks, mastery levels, and achievements in the Next.js frontend.
+
+- **Component hierarchy**: `GamificationProfile` fetches from `/gamification/profile/{user_id}` and composes `XpCard`, `StreakWidget`, `MasteryProgressBar`, and `AchievementPanel`.
+- **Backend API** is at `src/api/gamification.py` — fully built with `/gamification/profile/{user_id}`, `/gamification/events/{user_id}`, `/gamification/achievements/{user_id}` endpoints.
+- **API proxy**: Add `/gamification/:path*` rewrite in `dashboard/next.config.js` to connect frontend to backend.
+- **Adding a new widget**: Create component in `dashboard/src/components/gamification/`, import into `GamificationProfile`, add to render layout.
+- **Achievement definitions** must match backend's `ACHIEVEMENT_DEFINITIONS` in `src/api/gamification.py` — the frontend `GamificationProfile` component has a duplicate list for locked/unlocked display.
+- **Single-page integration**: Drop `<GamificationProfile userId={id} />` into any page that has a user ID (e.g., student detail page).
+- **TypeScript typecheck**: Run `npx tsc --noEmit` in `dashboard/` to verify all gamification components.
+
 ## Export Module (`src/export/`, `src/api/export.py`)
 
 The export module generates downloadable DOCX and PDF files for quizzes and lesson plans.
