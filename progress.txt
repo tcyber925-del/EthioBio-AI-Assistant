@@ -42,7 +42,27 @@
   - Dashboard build: `npx next build` in `dashboard/`
   - Backend test filter: `pytest tests/ -v -k "not test_chat_endpoint and not test_quiz_generate_endpoint and not test_quiz_generation"`
 ---
-## [2026-05-24 21:15] - GM-007: Tutoring Reward Integration
+## [2026-05-24 21:30] - GM-008: Recovery Plan Rewards
+- Added `RecoveryPlan` and `RecoveryTask` database models in `src/database/models.py`
+- Added `recovery_task_completion` (40 XP) and `recovery_milestone` (50 XP bonus) to `XP_SOURCES`
+- Added `RECOVERY_MILESTONE_THRESHOLDS` (3/5/10/15 tasks) for bonus milestone rewards
+- Created `src/schemas/recovery.py` with `RecoveryPlanResponse`, `RecoveryTaskResponse`, `CompleteTaskResponse`, `CreateRecoveryPlanRequest` schemas
+- Created `src/api/recovery.py` with three endpoints: POST /recovery/plan, GET /recovery/plan/{user_id}, POST /recovery/task/complete
+- The task completion endpoint awards XP via `award_xp()`, checks milestones, updates streak, and checks achievements
+- Added `recovery_progress` field to `GamificationProfileResponse` and wired into `_build_profile()` to query active plans per user
+- Created `RecoveryProgressCard.tsx` frontend component in `dashboard/src/components/gamification/`
+- Added `RecoveryProgressCard` to `GamificationProfile.tsx` render and TypeScript interface
+- Registered recovery router in `src/main.py`
+- Added 8 tests in `tests/test_recovery.py` covering XP sources, milestone thresholds, schema fields, progress response, and profile integration
+- Added Recovery Plan Module section to project `AGENTS.md`
+- All 23 gamification+recovery tests pass; 73/96 full suite pass (6 pre-existing telegram bot failures)
+- **Learnings for future iterations:**
+  - Patterns discovered: Follow `_save_quiz_rewards` pattern for any new XP source in the bot
+  - Milestone rewards pattern: Define thresholds dict in gamification.py, check `completed in THRESHOLDS` in API handler, call `award_xp()` with milestone source
+  - The `_build_profile()` function in `gamification.py` is the central place to add new data to the gamification profile response
+  - Recovery plans don't need AI generation — they are simple remediation task trackers
+  - XP wiring pattern is consistent: `award_xp()` → `update_streak()` → `check_achievements()` → `session.commit()`
+---
 - Added XP fields (xp_awarded, level_up, new_level) to TutorResponse and GraphChatResponse schemas
 - Wired `award_xp()` for `tutor_interaction` (5 XP per XP_SOURCES) into POST /chat endpoint
 - Wired `award_xp()` for `tutor_interaction` into POST /graph/chat endpoint (added Depends(get_session))

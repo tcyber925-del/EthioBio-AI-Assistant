@@ -67,6 +67,13 @@ class AchievementResponse(SchemaModel):
     unlocked_at: datetime
 
 
+class RecoveryProgressResponse(SchemaModel):
+    active_plans: int = 0
+    total_tasks: int = 0
+    completed_tasks: int = 0
+    overall_progress_pct: float = 0.0
+
+
 class GamificationProfileResponse(SchemaModel):
     user_id: UUID
     total_xp: int
@@ -80,3 +87,4 @@ class GamificationProfileResponse(SchemaModel):
     recent_events: list[XpEventResponse] = []
     achievements: list[AchievementResponse] = []
     new_achievements: list[AchievementResponse] = []
+    recovery_progress: RecoveryProgressResponse | None = None

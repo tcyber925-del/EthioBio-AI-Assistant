@@ -84,6 +84,17 @@ When adding XP rewards to a new activity type:
 3. **Wire into Telegram bot**: Create a `_save_<activity>_rewards()` helper following the `_save_quiz_rewards`/`_save_tutor_rewards` pattern (look up user by telegram_id, award XP in async session, store in `context.user_data`).
 4. **Display feedback**: For API responses, add XP fields to the response schema. For bot, check `context.user_data["last_xp_awarded"]` and `last_level_up` and append to response text.
 
+## Recovery Plan Module (`src/api/recovery.py`, `src/schemas/recovery.py`, `src/database/models.py`)
+
+The recovery plan module tracks student remediation tasks and awards XP for completion.
+
+- **Models**: `RecoveryPlan` (user_id, topic, total_tasks, completed_tasks, status) and `RecoveryTask` (plan_id, title, task_type, is_completed, xp_awarded) in `src/database/models.py`
+- **XP sources**: `recovery_task_completion` (40 XP per task) and `recovery_milestone` (bonus XP at 3/5/10/15 tasks) — both defined in `XP_SOURCES` and `RECOVERY_MILESTONE_THRESHOLDS` in `src/api/gamification.py`
+- **Endpoints**: `POST /recovery/plan` (create), `GET /recovery/plan/{user_id}` (list), `POST /recovery/task/complete?task_id=&user_id=` (complete task → awards XP + milestone checks)
+- **Profile integration**: `GamificationProfileResponse` includes optional `recovery_progress` field showing active plans, task counts, and overall progress %
+- **Frontend**: `RecoveryProgressCard.tsx` shows recovery progress in the student dashboard via `GamificationProfile`
+- **Router registration**: Add `recovery` to imports and `app.include_router(recovery.router)` in `src/main.py`
+
 ## Key Gotchas
 
 1. **`topic` filter in RetrievalFilter returns empty** — PDF chunks lack `topic` metadata. Use `grade_level` only; semantic search compensates.

@@ -8,6 +8,7 @@ import XpCard from './XpCard'
 import StreakWidget from './StreakWidget'
 import MasteryProgressBar from './MasteryProgressBar'
 import AchievementPanel from './AchievementPanel'
+import RecoveryProgressCard from './RecoveryProgressCard'
 
 interface Achievement {
   id: string
@@ -15,6 +16,13 @@ interface Achievement {
   description: string
   icon: string
   unlocked_at: string | null
+}
+
+interface RecoveryProgress {
+  active_plans: number
+  total_tasks: number
+  completed_tasks: number
+  overall_progress_pct: number
 }
 
 interface GamificationData {
@@ -25,6 +33,7 @@ interface GamificationData {
   next_level_xp: number
   progress_pct: number
   achievements: Achievement[]
+  recovery_progress?: RecoveryProgress | null
 }
 
 export default function GamificationProfile({ userId }: { userId: string }) {
@@ -108,6 +117,15 @@ export default function GamificationProfile({ userId }: { userId: string }) {
         nextLevelXp={data.next_level_xp}
         progressPct={data.progress_pct}
       />
+
+      {data.recovery_progress && (
+        <RecoveryProgressCard
+          activePlans={data.recovery_progress.active_plans}
+          totalTasks={data.recovery_progress.total_tasks}
+          completedTasks={data.recovery_progress.completed_tasks}
+          overallProgressPct={data.recovery_progress.overall_progress_pct}
+        />
+      )}
 
       <AchievementPanel achievements={allAchievements} />
     </div>

@@ -4,8 +4,9 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from src.database.models import User, UserAchievement, UserGamification, XpEvent
+from src.database.models import RecoveryPlan, User, UserAchievement, UserGamification, XpEvent
 from src.database.session import get_session
 from src.schemas.gamification import (
     AchievementResponse,
@@ -26,7 +27,11 @@ XP_SOURCES = {
     "tutor_interaction": 5,
     "daily_streak_bonus": 20,
     "achievement_unlock": 50,
+    "recovery_task_completion": 40,
+    "recovery_milestone": 50,
 }
+
+RECOVERY_MILESTONE_THRESHOLDS = {3: 30, 5: 50, 10: 100, 15: 150}
 
 
 STREAK_BONUS_THRESHOLDS = {7: 20, 14: 50, 21: 100, 30: 200}
@@ -278,8 +283,10 @@ async def _build_profile(gam, user_id, events, level_up=False, session=None):
     from src.schemas.gamification import progress_pct, xp_for_next_level
     achievements = []
     new_achievements = []
+    recovery_progress = None
     if session:
         achievements = await get_user_achievements(user_id, session)
+        recovery_progress = await _get_recovery_progress(user_id, session)
     return GamificationProfileResponse(
         user_id=user_id,
         total_xp=gam.total_xp,
@@ -293,4 +300,31 @@ async def _build_profile(gam, user_id, events, level_up=False, session=None):
         recent_events=events,
         achievements=achievements,
         new_achievements=new_achievements,
+        recovery_progress=recovery_progress,
     )
+
+
+async def _get_recovery_progress(user_id, session):
+    from src.schemas.gamification import RecoveryProgressResponse
+    try:
+        plans_result = await session.execute(
+            select(RecoveryPlan)
+            .where(RecoveryPlan.user_id == user_id, RecoveryPlan.status == "active")
+            .options(selectinload(RecoveryPlan.tasks))
+        )
+        plans = plans_result.scalars().all()
+        if not plans:
+            return None
+
+        total_tasks = sum(p.total_tasks for p in plans)
+        completed_tasks = sum(p.completed_tasks for p in plans)
+        overall_progress = round(completed_tasks / max(total_tasks, 1) * 100, 1)
+
+        return RecoveryProgressResponse(
+            active_plans=len(plans),
+            total_tasks=total_tasks,
+            completed_tasks=completed_tasks,
+            overall_progress_pct=overall_progress,
+        )
+    except Exception:
+        return None

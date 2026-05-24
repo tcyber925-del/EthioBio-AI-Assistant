@@ -115,7 +115,7 @@
       "title": "Recovery Plan Rewards",
       "description": "As a student, I want recovery progress rewarded, so that remediation feels motivating.",
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "acceptanceCriteria": [
         "Recovery tasks grant XP",
         "Milestone rewards implemented",
