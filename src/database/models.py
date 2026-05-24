@@ -266,6 +266,20 @@ class XpEvent(Base):
     user: Mapped["User"] = relationship(backref="xp_events")
 
 
+class UserAchievement(Base):
+    __tablename__ = "user_achievements"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    achievement_id: Mapped[str] = mapped_column(String(50))
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str] = mapped_column(String(500), nullable=True)
+    icon: Mapped[str] = mapped_column(String(50), default="🏆")
+    unlocked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    user: Mapped["User"] = relationship(backref="achievements")
+
+
 class FeedbackEvent(Base):
     __tablename__ = "feedback_events"
 

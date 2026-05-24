@@ -53,6 +53,15 @@ def test_progress_pct_at_threshold():
     assert val == 0.0 or val == 100.0
 
 
+def test_achievement_definitions_exist():
+    from src.api.gamification import ACHIEVEMENT_DEFINITIONS
+    expected = ["first_quiz", "quiz_master", "perfect_score", "streak_3", "streak_7", "streak_30", "xp_1000", "level_5", "level_10"]
+    for ach_id in expected:
+        assert ach_id in ACHIEVEMENT_DEFINITIONS
+        assert "title" in ACHIEVEMENT_DEFINITIONS[ach_id]
+        assert "icon" in ACHIEVEMENT_DEFINITIONS[ach_id]
+
+
 def test_streak_bonus_thresholds():
     from src.api.gamification import STREAK_BONUS_THRESHOLDS
     assert STREAK_BONUS_THRESHOLDS[7] == 20

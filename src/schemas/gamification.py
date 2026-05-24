@@ -59,6 +59,14 @@ class XpEventResponse(SchemaModel):
     created_at: datetime
 
 
+class AchievementResponse(SchemaModel):
+    id: str
+    title: str
+    description: str
+    icon: str
+    unlocked_at: datetime
+
+
 class GamificationProfileResponse(SchemaModel):
     user_id: UUID
     total_xp: int
@@ -70,3 +78,5 @@ class GamificationProfileResponse(SchemaModel):
     level_up: bool = False
     new_level: int = 0
     recent_events: list[XpEventResponse] = []
+    achievements: list[AchievementResponse] = []
+    new_achievements: list[AchievementResponse] = []

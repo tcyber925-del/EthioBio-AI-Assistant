@@ -5,9 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database.models import User, UserGamification, XpEvent
+from src.database.models import User, UserAchievement, UserGamification, XpEvent
 from src.database.session import get_session
 from src.schemas.gamification import (
+    AchievementResponse,
     GamificationProfileResponse,
     XpAwardRequest,
     XpEventResponse,
@@ -29,6 +30,18 @@ XP_SOURCES = {
 
 
 STREAK_BONUS_THRESHOLDS = {7: 20, 14: 50, 21: 100, 30: 200}
+
+ACHIEVEMENT_DEFINITIONS = {
+    "first_quiz": {"title": "First Steps", "description": "Complete your first quiz", "icon": "🎯", "condition": "quiz_count >= 1"},
+    "quiz_master": {"title": "Quiz Master", "description": "Complete 10 quizzes", "icon": "📚", "condition": "quiz_count >= 10"},
+    "perfect_score": {"title": "Perfect Score", "description": "Get 100% on any quiz", "icon": "💯", "condition": "perfect_quiz >= 1"},
+    "streak_3": {"title": "Streak Starter", "description": "Maintain a 3-day streak", "icon": "🔥", "condition": "streak >= 3"},
+    "streak_7": {"title": "Dedicated", "description": "Maintain a 7-day streak", "icon": "🔥", "condition": "streak >= 7"},
+    "streak_30": {"title": "Scholar", "description": "Maintain a 30-day streak", "icon": "🏅", "condition": "streak >= 30"},
+    "xp_1000": {"title": "XP Hunter", "description": "Earn 1000 total XP", "icon": "⭐", "condition": "xp >= 1000"},
+    "level_5": {"title": "Biology Expert", "description": "Reach Level 5", "icon": "🧬", "condition": "level >= 5"},
+    "level_10": {"title": "Master Biologist", "description": "Reach Level 10", "icon": "👑", "condition": "level >= 10"},
+}
 
 
 async def update_streak(user_id, session):
@@ -80,6 +93,72 @@ async def ensure_gamification(user_id, session):
     return gam
 
 
+async def get_user_achievements(user_id, session):
+    result = await session.execute(
+        select(UserAchievement)
+        .where(UserAchievement.user_id == user_id)
+        .order_by(UserAchievement.unlocked_at.desc())
+    )
+    return [
+        AchievementResponse(
+            id=a.achievement_id,
+            title=a.title,
+            description=a.description or "",
+            icon=a.icon,
+            unlocked_at=a.unlocked_at,
+        )
+        for a in result.scalars().all()
+    ]
+
+
+async def check_achievements(user_id, gam, session):
+    unlocked = []
+    result = await session.execute(
+        select(UserAchievement).where(UserAchievement.user_id == user_id)
+    )
+    existing = {a.achievement_id for a in result.scalars().all()}
+
+    xp_total = gam.total_xp
+    streak = gam.current_streak
+    level = gam.level
+
+    condition_map = {
+        "first_quiz": xp_total >= 10,
+        "quiz_master": False,
+        "perfect_score": False,
+        "streak_3": streak >= 3,
+        "streak_7": streak >= 7,
+        "streak_30": streak >= 30,
+        "xp_1000": xp_total >= 1000,
+        "level_5": level >= 5,
+        "level_10": level >= 10,
+    }
+
+    for ach_id, achieved in condition_map.items():
+        if ach_id not in existing and achieved:
+            defn = ACHIEVEMENT_DEFINITIONS[ach_id]
+            ua = UserAchievement(
+                user_id=user_id,
+                achievement_id=ach_id,
+                title=defn["title"],
+                description=defn["description"],
+                icon=defn["icon"],
+            )
+            session.add(ua)
+            await session.flush()
+            gam.total_xp += 50
+            gam.level = calculate_level(gam.total_xp)
+            event = XpEvent(
+                user_id=user_id,
+                source="achievement_unlock",
+                amount=50,
+                event_metadata={"achievement_id": ach_id, "title": defn["title"]},
+            )
+            session.add(event)
+            unlocked.append(ua)
+    return unlocked
+
+
 async def award_xp(user_id, source, amount, event_metadata, session):
     gam = await ensure_gamification(user_id, session)
     old_level = gam.level
@@ -107,10 +186,11 @@ async def award_xp_endpoint(
         gam, event, level_up = await award_xp(
             request.user_id, request.source, request.amount, request.event_metadata, session
         )
+        new_achs = await check_achievements(request.user_id, gam, session)
         await session.commit()
 
         events = await _get_recent_events(request.user_id, session)
-        return _build_profile(gam, request.user_id, events, level_up=level_up)
+        return await _build_profile(gam, request.user_id, events, level_up=level_up, session=session)
     except HTTPException:
         raise
     except Exception as e:
@@ -126,7 +206,7 @@ async def get_gamification_profile(
     try:
         gam = await ensure_gamification(user_id, session)
         events = await _get_recent_events(user_id, session)
-        return _build_profile(gam, user_id, events)
+        return await _build_profile(gam, user_id, events, session=session)
     except HTTPException:
         raise
     except Exception as e:
@@ -141,9 +221,10 @@ async def record_activity(
 ):
     try:
         gam, streak = await update_streak(request.user_id, session)
+        new_achs = await check_achievements(request.user_id, gam, session)
         await session.commit()
         events = await _get_recent_events(request.user_id, session)
-        return _build_profile(gam, request.user_id, events)
+        return await _build_profile(gam, request.user_id, events, session=session)
     except HTTPException:
         raise
     except Exception as e:
@@ -161,6 +242,17 @@ async def get_xp_events(
         return events
     except Exception as e:
         logger.error("xp_events_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/achievements/{user_id}", response_model=list[AchievementResponse])
+async def get_user_achievements_endpoint(
+    user_id, session: AsyncSession = Depends(get_session)
+):
+    try:
+        return await get_user_achievements(user_id, session)
+    except Exception as e:
+        logger.error("achievements_error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -182,8 +274,12 @@ async def _get_recent_events(user_id, session, limit=10):
     ]
 
 
-def _build_profile(gam, user_id, events, level_up=False):
+async def _build_profile(gam, user_id, events, level_up=False, session=None):
     from src.schemas.gamification import progress_pct, xp_for_next_level
+    achievements = []
+    new_achievements = []
+    if session:
+        achievements = await get_user_achievements(user_id, session)
     return GamificationProfileResponse(
         user_id=user_id,
         total_xp=gam.total_xp,
@@ -195,4 +291,6 @@ def _build_profile(gam, user_id, events, level_up=False):
         level_up=level_up,
         new_level=gam.level if level_up else 0,
         recent_events=events,
+        achievements=achievements,
+        new_achievements=new_achievements,
     )

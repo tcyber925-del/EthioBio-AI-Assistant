@@ -55,7 +55,7 @@
       "title": "Achievement Badges",
       "description": "As a student, I want achievement badges, so that milestones feel meaningful.",
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "acceptanceCriteria": [
         "Badge conditions configurable",
         "Badge UI exists",

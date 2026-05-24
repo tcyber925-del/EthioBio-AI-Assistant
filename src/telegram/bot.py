@@ -12,7 +12,7 @@ from telegram.ext import (
 from src.agents.lesson_planner import LessonPlannerAgent
 from src.agents.quiz import QuizAgent
 from src.agents.tutor import TutorAgent
-from src.api.gamification import award_xp, update_streak
+from src.api.gamification import award_xp, check_achievements, update_streak
 from src.config import settings
 from src.database.models import StudentProfile, User, UserRole
 from src.database.session import async_session_factory
@@ -589,6 +589,7 @@ async def _save_quiz_rewards(telegram_id, correct, total, context):
             meta = {"correct": correct, "total": total, "source": "telegram_bot"}
             gam_result, _, level_up = await award_xp(user.id, "quiz_completion", xp_amount, meta, session)
             await update_streak(user.id, session)
+            await check_achievements(user.id, gam_result, session)
             await session.commit()
             context.user_data["last_xp_awarded"] = xp_amount
             context.user_data["last_level_up"] = level_up

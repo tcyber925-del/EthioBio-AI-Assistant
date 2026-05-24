@@ -176,3 +176,17 @@ Started:
 - Pattern discovered: award_xp() now returns 3 values (gam, event, level_up) — all callers updated
 - Files changed: src/schemas/gamification.py, src/api/gamification.py, src/api/quiz.py, src/telegram/bot.py, tests/test_gamification.py, scripts/ralph/prd.json, scripts/ralph/progress.txt
 ---
+
+## 2026-05-24 - GM-004 - Achievement Badges
+- Added UserAchievement model (user_id, achievement_id, title, description, icon, unlocked_at)
+- Defined 9 achievements in ACHIEVEMENT_DEFINITIONS with configurable conditions:
+  - first_quiz, quiz_master, perfect_score, streak_3/7/30, xp_1000, level_5/level_10
+- Added check_achievements() function: evaluates conditions against user state, unlocks new achievements, awards 50 XP bonus per achievement
+- Added get_user_achievements() helper and GET /gamification/achievements/{user_id} endpoint
+- Added achievements/new_achievements fields to GamificationProfileResponse
+- Achievement checking wired into: POST /gamification/xp, POST /gamification/activity, POST /quiz/submit, Telegram bot quiz flow
+- Achievement unlock triggers 50 XP bonus and level recalculation
+- Test: all 9 achievement definition keys verified (12 total gamification tests, all passing)
+- Pattern discovered: Achievements follow the same pattern as XP/streak — model → check function → wire into trigger points. The check function is called after XP award/streak update in all trigger paths.
+- Files changed: src/database/models.py, src/schemas/gamification.py, src/api/gamification.py, src/api/quiz.py, src/telegram/bot.py, tests/test_gamification.py, scripts/ralph/prd.json, scripts/ralph/progress.txt
+---
