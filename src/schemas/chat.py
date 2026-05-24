@@ -30,3 +30,6 @@ class TutorResponse(SchemaModel):
     reveal_answer: bool = False
     misconception_detected: bool = False
     misconception_correction: str = ""
+    xp_awarded: int = 0
+    level_up: bool = False
+    new_level: int = 0

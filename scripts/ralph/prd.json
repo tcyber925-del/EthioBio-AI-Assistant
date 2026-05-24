@@ -100,7 +100,7 @@
       "title": "Tutoring Reward Integration",
       "description": "As a student, I want tutoring participation rewarded, so that active learning feels engaging.",
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "acceptanceCriteria": [
         "Tutoring sessions grant XP",
         "Feedback notifications displayed",

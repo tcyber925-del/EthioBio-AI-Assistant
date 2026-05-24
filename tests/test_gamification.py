@@ -68,3 +68,28 @@ def test_streak_bonus_thresholds():
     assert STREAK_BONUS_THRESHOLDS[14] == 50
     assert STREAK_BONUS_THRESHOLDS[21] == 100
     assert STREAK_BONUS_THRESHOLDS[30] == 200
+
+
+def test_tutor_interaction_xp_source():
+    from src.api.gamification import XP_SOURCES
+    assert "tutor_interaction" in XP_SOURCES
+    assert XP_SOURCES["tutor_interaction"] == 5
+
+
+def test_chat_response_schema_has_xp_fields():
+    from src.schemas.chat import TutorResponse
+    resp = TutorResponse(answer="test", language="en", sources=[], model_used="test", confidence=0.5)
+    assert hasattr(resp, "xp_awarded")
+    assert hasattr(resp, "level_up")
+    assert hasattr(resp, "new_level")
+    assert resp.xp_awarded == 0
+    assert resp.level_up is False
+
+
+def test_graph_chat_response_schema_has_xp_fields():
+    from src.api.graph import GraphChatResponse
+    graph_resp = GraphChatResponse(answer="test", model_used="test", confidence=0.5)
+    assert hasattr(graph_resp, "xp_awarded")
+    assert hasattr(graph_resp, "level_up")
+    assert hasattr(graph_resp, "new_level")
+    assert graph_resp.xp_awarded == 0

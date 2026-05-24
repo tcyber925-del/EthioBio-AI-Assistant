@@ -245,6 +245,16 @@ async def ask_command(update: Update, context):
                 response += "\n\n💡 I noticed a misunderstanding — gently corrected above."
             if result.get("sources"):
                 response += "\n\n---\nSources: " + ", ".join(result["sources"][:3])
+            telegram_id = update.effective_user.id if update.effective_user else None
+            if telegram_id:
+                await _save_tutor_rewards(telegram_id, context)
+                xp_awarded = context.user_data.get("last_xp_awarded", 0)
+                level_up = context.user_data.get("last_level_up", False)
+                if xp_awarded:
+                    response += f"\n\n⭐ +{xp_awarded} XP for this session"
+                if level_up:
+                    new_level = context.user_data.get("last_new_level", 1)
+                    response += f"\n🎉 LEVEL UP! You are now Level {new_level}!"
             reply_markup = hint_keyboard(0, False) if socratic else main_menu_keyboard(socratic)
             await _reply_long(update.message, response, reply_markup=reply_markup, parse_mode="HTML")
             await router_llm.close()
@@ -394,6 +404,16 @@ async def handle_question(update: Update, context):
             response += "\n\n💡 I noticed a misunderstanding — gently corrected above."
         if result.get("sources"):
             response += "\n\n---\nSources: " + ", ".join(result["sources"][:3])
+        telegram_id = update.effective_user.id if update.effective_user else None
+        if telegram_id:
+            await _save_tutor_rewards(telegram_id, context)
+            xp_awarded = context.user_data.get("last_xp_awarded", 0)
+            level_up = context.user_data.get("last_level_up", False)
+            if xp_awarded:
+                response += f"\n\n⭐ +{xp_awarded} XP for this session"
+            if level_up:
+                new_level = context.user_data.get("last_new_level", 1)
+                response += f"\n🎉 LEVEL UP! You are now Level {new_level}!"
         reply_markup = hint_keyboard(hint_level, reveal) if socratic else main_menu_keyboard(socratic)
         await _reply_long(thinking_msg, response, reply_markup=reply_markup, parse_mode="HTML")
         await router_llm.close()
@@ -588,6 +608,28 @@ async def _save_quiz_rewards(telegram_id, correct, total, context):
             xp_amount = _calculate_quiz_xp(pct)
             meta = {"correct": correct, "total": total, "source": "telegram_bot"}
             gam_result, _, level_up = await award_xp(user.id, "quiz_completion", xp_amount, meta, session)
+            await update_streak(user.id, session)
+            await check_achievements(user.id, gam_result, session)
+            await session.commit()
+            context.user_data["last_xp_awarded"] = xp_amount
+            context.user_data["last_level_up"] = level_up
+            context.user_data["last_new_level"] = gam_result.level
+    await _db_try(_save)
+
+
+async def _save_tutor_rewards(telegram_id, context):
+    from sqlalchemy import select
+    from src.api.gamification import XP_SOURCES
+    async def _save():
+        factory = async_session_factory()
+        async with factory() as session:
+            result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+            user = result.scalar_one_or_none()
+            if not user:
+                return
+            xp_amount = XP_SOURCES.get("tutor_interaction", 5)
+            meta = {"source": "telegram_bot"}
+            gam_result, _, level_up = await award_xp(user.id, "tutor_interaction", xp_amount, meta, session)
             await update_streak(user.id, session)
             await check_achievements(user.id, gam_result, session)
             await session.commit()

@@ -75,6 +75,15 @@ The export module generates downloadable DOCX and PDF files for quizzes and less
 - **Adding exportable types**: Add exporter to both `docx_exporter.py` and `pdf_exporter.py`, then add endpoint in `src/api/export.py`.
 - When registering a new router in `main.py`, both the import and `app.include_router()` call must be added.
 
+## Gamification Reward Integration
+
+When adding XP rewards to a new activity type:
+
+1. **Define the XP source** in `XP_SOURCES` dict in `src/api/gamification.py` (amount is the "configurable trigger")
+2. **Wire into REST API**: In the endpoint handler, call `award_xp(user_id, source, amount, meta, session)` then `update_streak()` then `check_achievements()`. Include `xp_awarded`, `level_up`, `new_level` in the response schema.
+3. **Wire into Telegram bot**: Create a `_save_<activity>_rewards()` helper following the `_save_quiz_rewards`/`_save_tutor_rewards` pattern (look up user by telegram_id, award XP in async session, store in `context.user_data`).
+4. **Display feedback**: For API responses, add XP fields to the response schema. For bot, check `context.user_data["last_xp_awarded"]` and `last_level_up` and append to response text.
+
 ## Key Gotchas
 
 1. **`topic` filter in RetrievalFilter returns empty** — PDF chunks lack `topic` metadata. Use `grade_level` only; semantic search compensates.

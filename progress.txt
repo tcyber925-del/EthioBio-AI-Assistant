@@ -42,3 +42,17 @@
   - Dashboard build: `npx next build` in `dashboard/`
   - Backend test filter: `pytest tests/ -v -k "not test_chat_endpoint and not test_quiz_generate_endpoint and not test_quiz_generation"`
 ---
+## [2026-05-24 21:15] - GM-007: Tutoring Reward Integration
+- Added XP fields (xp_awarded, level_up, new_level) to TutorResponse and GraphChatResponse schemas
+- Wired `award_xp()` for `tutor_interaction` (5 XP per XP_SOURCES) into POST /chat endpoint
+- Wired `award_xp()` for `tutor_interaction` into POST /graph/chat endpoint (added Depends(get_session))
+- Added `_save_tutor_rewards()` helper in Telegram bot (follows `_save_quiz_rewards` pattern)
+- Wired XP notifications into bot's `ask_command` and `handle_question` handlers
+- Added 3 tests: tutor_interaction XP source, TutorResponse XP fields, GraphChatResponse XP fields
+- **Learnings for future iterations:**
+  - Patterns discovered: Follow `_save_quiz_rewards` pattern for any new XP source in the bot; `_save_tutor_rewards` is the template for bot-side reward integration
+  - When adding a new API endpoint that needs gamification, use `Depends(get_session)` and then call `award_xp()`, `update_streak()`, `check_achievements()`
+  - The `POST /graph/chat` endpoint did not previously have DB access added — needed both the session dependency and the gamification calls
+  - Bot tutor handlers pass `user_id=None` to `TutorAgent.answer()`, so XP must be awarded separately via `_save_tutor_rewards` which looks up user by telegram_id
+  - Gamification XP definitions in `XP_SOURCES` dict serve as the "configurable" reward triggers — no migration needed
+---
