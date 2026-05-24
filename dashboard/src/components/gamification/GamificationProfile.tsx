@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { fetchWithTimeout } from '@/lib/fetch'
 import { CardSkeleton } from '@/components/Skeleton'
@@ -9,6 +9,7 @@ import StreakWidget from './StreakWidget'
 import MasteryProgressBar from './MasteryProgressBar'
 import AchievementPanel from './AchievementPanel'
 import RecoveryProgressCard from './RecoveryProgressCard'
+import LevelUpModal from './LevelUpModal'
 
 interface Achievement {
   id: string
@@ -32,6 +33,8 @@ interface GamificationData {
   longest_streak: number
   next_level_xp: number
   progress_pct: number
+  level_up: boolean
+  new_level: number
   achievements: Achievement[]
   recovery_progress?: RecoveryProgress | null
 }
@@ -40,6 +43,9 @@ export default function GamificationProfile({ userId }: { userId: string }) {
   const [data, setData] = useState<GamificationData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showLevelUp, setShowLevelUp] = useState(false)
+  const [levelUpLevel, setLevelUpLevel] = useState(0)
+  const prevLevel = useRef<number | null>(null)
 
   const fetchProfile = async () => {
     setLoading(true)
@@ -61,6 +67,18 @@ export default function GamificationProfile({ userId }: { userId: string }) {
   }
 
   useEffect(() => { fetchProfile() }, [userId])
+
+  useEffect(() => {
+    if (!data) return
+    if (data.level_up && data.new_level > 0) {
+      setLevelUpLevel(data.new_level)
+      setShowLevelUp(true)
+    } else if (prevLevel.current !== null && data.level > prevLevel.current) {
+      setLevelUpLevel(data.level)
+      setShowLevelUp(true)
+    }
+    prevLevel.current = data.level
+  }, [data])
 
   if (loading) {
     return (
@@ -128,6 +146,13 @@ export default function GamificationProfile({ userId }: { userId: string }) {
       )}
 
       <AchievementPanel achievements={allAchievements} />
+
+      {showLevelUp && (
+        <LevelUpModal
+          level={levelUpLevel}
+          onClose={() => setShowLevelUp(false)}
+        />
+      )}
     </div>
   )
 }

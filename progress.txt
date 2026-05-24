@@ -76,3 +76,17 @@
   - Bot tutor handlers pass `user_id=None` to `TutorAgent.answer()`, so XP must be awarded separately via `_save_tutor_rewards` which looks up user by telegram_id
   - Gamification XP definitions in `XP_SOURCES` dict serve as the "configurable" reward triggers — no migration needed
 ---
+## [2026-05-24 22:30] - GM-009: Level-Up Notifications
+- Created `LevelUpModal.tsx` — celebration modal with entrance animation (scale-in + fade), bounce icon, backdrop click-to-close, and close button
+- Wired into `GamificationProfile.tsx` with two level-up detection mechanisms:
+  1. `level_up`/`new_level` fields from API response (set when XP award endpoint triggers level-up)
+  2. Previous level comparison via `useRef` (detects level increases on profile GET fetches)
+- Added `level_up` and `new_level` to `GamificationData` TypeScript interface
+- Updated PRD with GM-007 and GM-009 marked as `passes: true`
+- All 63 agent/gamification/export/evaluation tests pass, plus 8 recovery tests
+- **Learnings for future iterations:**
+  - Level-up detection needs two strategies: API `level_up` flag (immediate) + level change tracking (historical/re-fetch)
+  - `useRef` is the idiomatic way to track previous values across renders without re-renders
+  - The gamification profile GET endpoint doesn't return `level_up: true` — only POST XP endpoints do. So the ref-based fallback is essential for detecting level-ups on page load/refresh.
+  - Modal entrance animation: use `useEffect` with short timeout + CSS transitions for mount animations (scale + opacity)
+---

@@ -130,7 +130,7 @@
       "title": "Level-Up Notifications",
       "description": "As a student, I want visible level-up feedback, so that progression feels exciting.",
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "acceptanceCriteria": [
         "Level-up modal implemented",
         "Animation supported",
