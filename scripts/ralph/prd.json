@@ -1,66 +1,65 @@
 {
-  "title": "Socratic Tutoring Mode",
-  "branchName": "feature/socratic-tutoring",
+  "title": "Gamification System",
+  "branchName": "feature/gamification-system",
   "userStories": [
     {
-      "id": "ST-001",
-      "title": "Toggle Socratic Mode",
-      "description": "As a student, I want to enable Socratic tutoring, so that I can learn through guided reasoning.",
+      "id": "GM-001",
+      "title": "XP Reward Engine",
+      "description": "As a student, I want to earn XP, so that progress feels rewarding.",
       "priority": 1,
       "passes": true,
       "acceptanceCriteria": [
-        "Toggle exists in chat UI",
-        "State persists during session",
-        "Messages use Socratic prompting",
-        "Default mode remains normal chat"
+        "XP awarded after activities",
+        "XP persisted in database",
+        "XP visible in profile UI"
       ]
     },
     {
-      "id": "ST-002",
-      "title": "Guided Question Generation",
-      "description": "As a student, I want the AI to ask guiding questions, so that I can think critically before answering.",
+      "id": "GM-002",
+      "title": "Daily Streak Tracking",
+      "description": "As a student, I want study streaks tracked, so that I stay consistent.",
       "priority": 1,
-      "passes": true,
+      "passes": false,
       "acceptanceCriteria": [
-        "AI asks at least one guiding question",
-        "Question relates to current biology topic",
-        "Question difficulty adapts to context"
+        "Consecutive days counted",
+        "Missed day resets streak",
+        "Current streak visible"
       ]
     },
     {
-      "id": "ST-003",
-      "title": "Hint Progression System",
-      "description": "As a student, I want hints to become progressively more helpful, so that I can eventually solve the problem.",
-      "priority": 2,
-      "passes": true,
+      "id": "GM-005",
+      "title": "Quiz Reward Integration",
+      "description": "As a student, I want quizzes connected to rewards, so that studying feels motivating.",
+      "priority": 1,
+      "passes": false,
       "acceptanceCriteria": [
-        "Hints progress from broad to specific",
-        "Maximum 3 hint levels",
-        "Final answer optionally revealable"
+        "Quiz completion awards XP",
+        "Bonus XP for high scores",
+        "Rewards displayed after completion"
       ]
     },
     {
-      "id": "ST-004",
-      "title": "Misconception Detection",
-      "description": "As a student, I want incorrect assumptions corrected gently, so that I do not reinforce wrong biology concepts.",
+      "id": "GM-003",
+      "title": "Mastery Level System",
+      "description": "As a student, I want mastery levels, so that I can track biology growth.",
       "priority": 2,
-      "passes": true,
+      "passes": false,
       "acceptanceCriteria": [
-        "AI detects obvious conceptual errors",
-        "Corrections remain supportive",
-        "AI explains why reasoning is incorrect"
+        "Levels calculated from XP",
+        "Progress bar displayed",
+        "Level-up notifications shown"
       ]
     },
     {
-      "id": "ST-005",
-      "title": "Reveal Answer Fallback",
-      "description": "As a student, I want to reveal the answer after multiple attempts, so that I do not get stuck indefinitely.",
+      "id": "GM-004",
+      "title": "Achievement Badges",
+      "description": "As a student, I want achievement badges, so that milestones feel meaningful.",
       "priority": 2,
-      "passes": true,
+      "passes": false,
       "acceptanceCriteria": [
-        "Reveal button exists",
-        "Final answer includes explanation",
-        "Attempt count tracked"
+        "Badge conditions configurable",
+        "Badge UI exists",
+        "Earned badges persisted"
       ]
     }
   ]

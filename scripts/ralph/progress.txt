@@ -125,3 +125,18 @@ Started:
   - Parallel implementations in TutorAgent and TutorNode both need the detection logic — same pattern as HINT_PROMPTS/MISCONCEPTION_INDICATORS
   - The misconception fields already existed in AgentState, GraphOutput, TutorRequest, TutorResponse (scaffolding from previous stories) — only detection logic and wiring were needed
 ---
+
+## 2026-05-24 - GM-001 - XP Reward Engine
+- Added UserGamification model (1:1 with User): total_xp, level, current_streak, longest_streak, last_active_date
+- Added XpEvent model (transaction log): user_id, source, amount, event_metadata, created_at
+- Created src/schemas/gamification.py with XpAwardRequest, XpEventResponse, GamificationProfileResponse + level calculation helpers (calculate_level, xp_for_next_level)
+- Created src/api/gamification.py with POST /gamification/xp, GET /gamification/profile/{user_id}, GET /gamification/events/{user_id}
+- Created award_xp() helper function for internal use by other modules
+- Registered gamification router in main.py
+- Wired XP awarding into quiz submit endpoint: 10 XP base + 10 bonus for >=80% + 15 bonus for 100%
+- Added xp_awarded field to QuizSubmitResponse schema
+- Wrote 5 tests: level calculation at 0 XP, threshold crossings, high values, next XP computation, max level
+- All 5 tests pass, full suite 79/79 pass (excluding pre-existing integration failures)
+- Pattern discovered: XP reward engine follows same pattern as other features — DB models → schemas → API router → register in main → wire into trigger points
+- Files changed: src/database/models.py, src/schemas/gamification.py, src/api/gamification.py, src/api/quiz.py, src/schemas/quiz.py, src/main.py, tests/test_gamification.py, scripts/ralph/prd.json, scripts/ralph/progress.txt
+---
