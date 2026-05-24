@@ -19,7 +19,7 @@
       "title": "Daily Streak Tracking",
       "description": "As a student, I want study streaks tracked, so that I stay consistent.",
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "acceptanceCriteria": [
         "Consecutive days counted",
         "Missed day resets streak",

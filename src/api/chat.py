@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.tutor import TutorAgent
+from src.api.gamification import update_streak
 from src.database.session import get_session
 from src.llm.router import ModelRouter
 from src.rag.retriever import Retriever
@@ -31,6 +32,8 @@ async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_
             hint_level=request.hint_level,
             reveal_answer=request.reveal_answer,
         )
+        if request.user_id:
+            await update_streak(request.user_id, session)
         return TutorResponse(
             answer=result["answer"],
             language=result.get("language", request.language),

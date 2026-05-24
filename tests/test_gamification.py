@@ -26,3 +26,11 @@ def test_xp_for_next_level():
 
 def test_xp_for_next_level_max_level():
     assert xp_for_next_level(100000) == 0
+
+
+def test_streak_bonus_thresholds():
+    from src.api.gamification import STREAK_BONUS_THRESHOLDS
+    assert STREAK_BONUS_THRESHOLDS[7] == 20
+    assert STREAK_BONUS_THRESHOLDS[14] == 50
+    assert STREAK_BONUS_THRESHOLDS[21] == 100
+    assert STREAK_BONUS_THRESHOLDS[30] == 200

@@ -140,3 +140,16 @@ Started:
 - Pattern discovered: XP reward engine follows same pattern as other features — DB models → schemas → API router → register in main → wire into trigger points
 - Files changed: src/database/models.py, src/schemas/gamification.py, src/api/gamification.py, src/api/quiz.py, src/schemas/quiz.py, src/main.py, tests/test_gamification.py, scripts/ralph/prd.json, scripts/ralph/progress.txt
 ---
+
+## 2026-05-24 - GM-002 - Daily Streak Tracking
+- Added `update_streak()` function to gamification API: increments streak on consecutive days, resets to 1 on gaps, updates longest_streak, awards bonus XP at 7/14/21/30 day milestones
+- Added `POST /gamification/activity` endpoint for tracking arbitrary activity
+- Wired streak update into quiz submit endpoint (`src/api/quiz.py`)
+- Wired streak update into chat/tutor endpoint (`src/api/chat.py`)
+- Streak data (current_streak, longest_streak, last_active_date) already in UserGamification model from GM-001
+- Streak visible via `GET /gamification/profile/{user_id}` response
+- Test: streak bonus threshold values verified
+- All checks pass, 71/77 tests pass (6 pre-existing Telegram bot failures)
+- Pattern discovered: Activity triggers follow the same wiring pattern as XP — identify trigger points (quiz submit, chat), call the gamification function, commit transaction. Both `award_xp()` and `update_streak()` are public functions importable by other modules.
+- Files changed: src/api/gamification.py, src/api/quiz.py, src/api/chat.py, tests/test_gamification.py, scripts/ralph/prd.json, scripts/ralph/progress.txt
+---

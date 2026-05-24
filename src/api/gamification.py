@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -24,6 +26,43 @@ XP_SOURCES = {
     "daily_streak_bonus": 20,
     "achievement_unlock": 50,
 }
+
+
+STREAK_BONUS_THRESHOLDS = {7: 20, 14: 50, 21: 100, 30: 200}
+
+
+async def update_streak(user_id, session):
+    gam = await ensure_gamification(user_id, session)
+    today = datetime.now(timezone.utc).date()
+
+    if gam.last_active_date is not None:
+        lad = gam.last_active_date
+        last = lad.date() if hasattr(lad, 'date') else lad
+        delta = (today - last).days
+        if delta == 0:
+            return gam, 0
+        elif delta == 1:
+            gam.current_streak += 1
+        else:
+            gam.current_streak = 1
+    else:
+        gam.current_streak = 1
+
+    if gam.current_streak > gam.longest_streak:
+        gam.longest_streak = gam.current_streak
+
+    gam.last_active_date = datetime.now(timezone.utc)
+    await session.flush()
+
+    bonus_xp = STREAK_BONUS_THRESHOLDS.get(gam.current_streak, 0)
+    if bonus_xp:
+        await award_xp(
+            user_id, "daily_streak_bonus", bonus_xp,
+            {"streak": gam.current_streak, "bonus_type": f"{gam.current_streak}_day_streak"},
+            session,
+        )
+
+    return gam, gam.current_streak
 
 
 async def ensure_gamification(user_id, session):
@@ -89,6 +128,24 @@ async def get_gamification_profile(
         raise
     except Exception as e:
         logger.error("gamification_profile_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/activity", response_model=GamificationProfileResponse)
+async def record_activity(
+    request: XpAwardRequest,
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        gam, streak = await update_streak(request.user_id, session)
+        await session.commit()
+        events = await _get_recent_events(request.user_id, session)
+        return _build_profile(gam, request.user_id, events)
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        logger.error("activity_record_error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 

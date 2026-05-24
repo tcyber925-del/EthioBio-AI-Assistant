@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.quiz import QuizAgent
-from src.api.gamification import award_xp
+from src.api.gamification import award_xp, update_streak
 from src.database.models import Question, Quiz, QuizAttempt
 from src.database.session import get_session
 from src.llm.router import ModelRouter
@@ -131,6 +131,7 @@ async def submit_quiz(request: QuizSubmitRequest, session: AsyncSession = Depend
             {"quiz_id": str(request.quiz_id), "score": score, "total": total},
             session,
         )
+        await update_streak(request.user_id, session)
         await session.commit()
 
         return QuizSubmitResponse(
