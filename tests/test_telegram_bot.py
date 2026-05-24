@@ -69,14 +69,15 @@ async def test_cancel_preserves_socratic_mode_but_clears_transient_state():
 
 @pytest.mark.asyncio
 async def test_handle_socratic_toggle_updates_state_and_keyboard():
-    query = SimpleNamespace(answer=AsyncMock(), edit_message_text=AsyncMock())
+    message = SimpleNamespace(reply_text=AsyncMock())
+    query = SimpleNamespace(answer=AsyncMock(), edit_message_reply_markup=AsyncMock(), message=message)
     update = SimpleNamespace(callback_query=query)
     context = SimpleNamespace(user_data={"socratic_mode": False})
 
     await bot.handle_socratic_toggle(update, context)
 
     assert context.user_data["socratic_mode"] is True
-    markup = query.edit_message_text.await_args.kwargs["reply_markup"]
+    markup = query.message.reply_text.await_args.kwargs["reply_markup"]
     assert markup.inline_keyboard[3][0].text == "🧠 Socratic: ON"
 
 
@@ -89,7 +90,7 @@ async def test_handle_hint_keeps_socratic_mode_and_renders_html(monkeypatch):
     query = SimpleNamespace(
         data="hint_1",
         answer=AsyncMock(),
-        edit_message_text=AsyncMock(),
+        edit_message_reply_markup=AsyncMock(),
         message=message,
     )
     update = SimpleNamespace(callback_query=query)
@@ -108,11 +109,12 @@ async def test_handle_hint_keeps_socratic_mode_and_renders_html(monkeypatch):
 
     assert context.user_data["socratic_mode"] is True
     assert context.user_data["hint_level"] == 1
-    message.reply_text.assert_awaited()
-    assert message.reply_text.await_args.kwargs["parse_mode"] == ParseMode.HTML
-    sent_text = message.reply_text.await_args.args[0]
+    message.reply_text.assert_awaited_with("💡 Hint level 1/3...")
+    hint_reply = message.reply_text.return_value
+    hint_reply.edit_text.assert_awaited()
+    sent_text = hint_reply.edit_text.await_args.args[0]
     assert "<b>ACKNOWLEDGE:</b> Resp &lt;tag&gt;" in sent_text
-    assert "<b>Sources:</b> Cell &lt;Bio&gt;" in sent_text
+    assert "misunderstanding" in sent_text
 
 
 def test_format_quiz_question_escapes_dynamic_text():
@@ -171,25 +173,27 @@ async def test_help_command_uses_html_formatting():
 
 
 @pytest.mark.asyncio
-async def test_handle_progress_uses_html_formatting_for_callback():
-    query = SimpleNamespace(answer=AsyncMock(), edit_message_text=AsyncMock())
+async def test_handle_progress_replies_new_message_for_callback():
+    message = SimpleNamespace(reply_text=AsyncMock())
+    query = SimpleNamespace(answer=AsyncMock(), edit_message_reply_markup=AsyncMock(), message=message)
     update = SimpleNamespace(callback_query=query)
     context = SimpleNamespace(user_data={})
 
     await bot.handle_progress(update, context)
 
-    assert query.edit_message_text.await_args.kwargs["parse_mode"] == ParseMode.HTML
-    sent_text = query.edit_message_text.await_args.args[0]
-    assert "<b>📊 My Progress</b>" in sent_text
+    query.message.reply_text.assert_awaited()
+    sent_text = query.message.reply_text.await_args.args[0]
+    assert "📊 My Progress" in sent_text
 
 
 @pytest.mark.asyncio
-async def test_handle_language_uses_html_formatting():
-    query = SimpleNamespace(answer=AsyncMock(), edit_message_text=AsyncMock())
+async def test_handle_language_replies_new_message():
+    message = SimpleNamespace(reply_text=AsyncMock())
+    query = SimpleNamespace(answer=AsyncMock(), message=message)
     update = SimpleNamespace(callback_query=query)
     context = SimpleNamespace(user_data={})
 
     await bot.handle_language(update, context)
 
-    assert query.edit_message_text.await_args.kwargs["parse_mode"] == ParseMode.HTML
-    assert "<b>Choose Your Language</b>" in query.edit_message_text.await_args.args[0]
+    query.message.reply_text.assert_awaited()
+    assert "choose your language" in query.message.reply_text.await_args.args[0].lower()

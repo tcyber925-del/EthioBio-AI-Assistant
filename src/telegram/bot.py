@@ -142,15 +142,12 @@ async def reveal_command(update: Update, context):
             hint_level=hint_level,
             reveal_answer=True,
         )
-        attempt_msg = f"
-
-📊 You used {hint_level} hint(s) before revealing the answer." if hint_level > 0 else "
-
-📊 You revealed the answer without using hints."
+        attempt_msg = f"\n\n📊 You used {hint_level} hint(s) before revealing the answer." if hint_level > 0 else "\n\n📊 You revealed the answer without using hints."
         response = result["answer"] + attempt_msg
         await _reply_long(
             update.message, response,
             reply_markup=hint_keyboard(hint_level, True),
+            parse_mode="HTML",
         )
         await router_llm.close()
     except Exception as e:
@@ -214,6 +211,7 @@ async def hint_command(update: Update, context):
         await _reply_long(
             update.message, response,
             reply_markup=hint_keyboard(next_level, False),
+            parse_mode="HTML",
         )
         await router_llm.close()
     except Exception as e:
@@ -278,7 +276,11 @@ async def quiz_command(update: Update, context):
 async def menu(update: Update, context):
     query = update.callback_query
     await query.answer()
-    await query.edit_message_text("Choose an option:", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
+    try:
+        await query.edit_message_reply_markup(reply_markup=None)
+    except Exception:
+        pass
+    await query.message.reply_text("Choose an option:", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
 
 
 async def handle_teacher_tools(update: Update, context):
@@ -356,7 +358,11 @@ async def end_conversation(update: Update, context):
         await query.answer()
     except Exception:
         pass
-    await query.edit_message_text("Choose an option:", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
+    try:
+        await query.edit_message_reply_markup(reply_markup=None)
+    except Exception:
+        pass
+    await query.message.reply_text("Choose an option:", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
     return ConversationHandler.END
 
 
@@ -388,7 +394,7 @@ async def handle_question(update: Update, context):
         if result.get("sources"):
             response += "\n\n---\nSources: " + ", ".join(result["sources"][:3])
         reply_markup = hint_keyboard(hint_level, reveal) if socratic else main_menu_keyboard(socratic)
-        await _reply_long(thinking_msg, response, reply_markup=reply_markup)
+        await _reply_long(thinking_msg, response, reply_markup=reply_markup, parse_mode="HTML")
         await router_llm.close()
     except Exception as e:
         logger.error("tutor_error", error=str(e))
@@ -483,7 +489,7 @@ async def handle_quiz_topic(update: Update, context):
     return QUIZ_ANSWERING
 
 
-async def _reply_long(update_or_msg_or_query, text: str, reply_markup=None, parse_mode=None, max_len: int = 4096):
+async def _reply_long(update_or_msg_or_query, text: str, reply_markup=None, parse_mode=None, max_len: int = 4096, force_new=False):
     """Split text into chunks and send as multiple messages if needed."""
     html_text = sanitize_for_telegram(format_for_telegram(text)) if parse_mode == "HTML" else text
     plain_text = strip_markdown(text) if parse_mode == "HTML" else text
@@ -492,7 +498,7 @@ async def _reply_long(update_or_msg_or_query, text: str, reply_markup=None, pars
         chunk = html_text[i:i + max_len]
         plain_chunk = plain_text[i:i + max_len] if parse_mode == "HTML" else chunk
         if i == 0:
-            if hasattr(update_or_msg_or_query, 'edit_text'):
+            if not force_new and hasattr(update_or_msg_or_query, 'edit_text'):
                 try:
                     await update_or_msg_or_query.edit_text(chunk, reply_markup=reply_markup, parse_mode=parse_mode)
                     continue
@@ -517,12 +523,12 @@ async def _reply_long(update_or_msg_or_query, text: str, reply_markup=None, pars
                     raise
 
 
-async def _send_quiz_question(update: Update, context, msg=None):
+async def _send_quiz_question(update: Update, context, msg=None, new_message=False):
     session = context.user_data.get("quiz_session", {})
     qs = session.get("questions", [])
     idx = session.get("current", 0)
     if idx >= len(qs):
-        await _show_quiz_result(update, context, msg)
+        await _show_quiz_result(update, context)
         return
 
     q = qs[idx]
@@ -554,9 +560,9 @@ async def _send_quiz_question(update: Update, context, msg=None):
         reply_markup = quiz_next_keyboard()
 
     if msg:
-        await _reply_long(msg, text, reply_markup=reply_markup, parse_mode="HTML")
+        await _reply_long(msg, text, reply_markup=reply_markup, parse_mode="HTML", force_new=new_message)
     else:
-        await _reply_long(update.message, text, reply_markup=reply_markup, parse_mode="HTML")
+        await _reply_long(update.effective_message, text, reply_markup=reply_markup, parse_mode="HTML")
 
 
 async def _show_quiz_result(update: Update, context, msg=None):
@@ -573,10 +579,8 @@ async def _show_quiz_result(update: Update, context, msg=None):
         lines.append(f"{icon} Q{i+1}: {q.get('question_text', '')[:50]}")
     text = "\n".join(lines)
 
-    if msg:
-        await _reply_long(msg, text, reply_markup=quiz_result_keyboard(), parse_mode="HTML")
-    else:
-        await _reply_long(update.message, text, reply_markup=quiz_result_keyboard(), parse_mode="HTML")
+    dest = msg or update.effective_message
+    await dest.reply_text(text, reply_markup=quiz_result_keyboard(), parse_mode="HTML")
 
 
 async def handle_quiz_answer(update: Update, context):
@@ -588,7 +592,7 @@ async def handle_quiz_answer(update: Update, context):
 
     if idx >= len(qs):
         await _show_quiz_result(update, context)
-        return QUIZ_RESULT
+        return ConversationHandler.END
 
     q = qs[idx]
     selected = query.data.replace("ans_", "")
@@ -614,9 +618,14 @@ async def handle_quiz_answer(update: Update, context):
     session["current"] += 1
 
     feedback = "✅ Correct!" if is_correct else f"❌ Wrong. The answer was: {correct_answer}"
-    await query.edit_message_text(
+    try:
+        await query.edit_message_reply_markup(reply_markup=None)
+    except Exception:
+        pass
+    await query.message.reply_text(
         f"{feedback}\n\n{_get_explanation(q)}",
         reply_markup=quiz_next_keyboard(),
+        parse_mode="HTML",
     )
     return QUIZ_ANSWERING
 
@@ -668,13 +677,21 @@ async def handle_quiz_short_answer(update: Update, context):
 async def handle_quiz_next(update: Update, context):
     query = update.callback_query
     await query.answer()
-    await _send_quiz_question(update, context, query.message)
+    try:
+        await query.edit_message_reply_markup(reply_markup=None)
+    except Exception:
+        pass
+    await _send_quiz_question(update, context, query.message, new_message=True)
     return QUIZ_ANSWERING
 
 
 async def handle_quiz_end(update: Update, context):
     query = update.callback_query
     await query.answer()
+    try:
+        await query.edit_message_reply_markup(reply_markup=None)
+    except Exception:
+        pass
     await _show_quiz_result(update, context, query.message)
     context.user_data.pop("quiz_session", None)
     return ConversationHandler.END
@@ -687,7 +704,11 @@ async def handle_quiz_retry(update: Update, context):
     session["current"] = 0
     session["answers"] = []
     session["correct"] = 0
-    await _send_quiz_question(update, context, query.message)
+    try:
+        await query.edit_message_reply_markup(reply_markup=None)
+    except Exception:
+        pass
+    await _send_quiz_question(update, context, query.message, new_message=True)
     return QUIZ_ANSWERING
 
 
@@ -754,7 +775,11 @@ async def handle_progress(update: Update, context):
         "In the meantime, keep practicing with quizzes!"
     )
     if query:
-        await query.edit_message_text(text, reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
+        try:
+            await query.edit_message_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+        await query.message.reply_text(text, reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
     else:
         await update.message.reply_text(text, reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
 
@@ -783,7 +808,11 @@ async def handle_socratic_toggle(update: Update, context):
     current = context.user_data.get("socratic_mode", False)
     context.user_data["socratic_mode"] = not current
     status = "ON 🧠" if context.user_data["socratic_mode"] else "OFF"
-    await query.edit_message_text(
+    try:
+        await query.edit_message_reply_markup(reply_markup=None)
+    except Exception:
+        pass
+    await query.message.reply_text(
         f"Socratic Mode is now {status}.\n\n"
         "In Socratic mode, I'll guide you with questions rather than giving direct answers.",
         reply_markup=main_menu_keyboard(not current),
@@ -814,7 +843,11 @@ async def handle_model_selection(update: Update, context):
     api_base = settings.api_base_url
 
     if action == "back":
-        await query.edit_message_text("Main menu:", reply_markup=main_menu_keyboard())
+        try:
+            await query.edit_message_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+        await query.message.reply_text("Main menu:", reply_markup=main_menu_keyboard())
         return
 
     if action == "refresh":
@@ -825,25 +858,33 @@ async def handle_model_selection(update: Update, context):
                 models = resp.json()
                 resp2 = await client.get(f"{api_base}/models/active")
                 active = resp2.json()["model"]
-            await query.edit_message_text(
+            try:
+                await query.edit_message_reply_markup(reply_markup=None)
+            except Exception:
+                pass
+            await query.message.reply_text(
                 "Select a model:",
                 reply_markup=InlineKeyboardMarkup(model_selection_keyboard(models, active)),
             )
         except Exception as e:
             logger.error("model_refresh_error", error=str(e))
-            await query.edit_message_text("Failed to refresh models.", reply_markup=main_menu_keyboard())
+            await query.message.reply_text("Failed to refresh models.", reply_markup=main_menu_keyboard())
         return
 
     try:
         async with httpx.AsyncClient() as client:
             await client.post(f"{api_base}/models/active", json={"model": action})
-        await query.edit_message_text(
+        try:
+            await query.edit_message_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+        await query.message.reply_text(
             f"✅ Active model is now: {action}",
             reply_markup=main_menu_keyboard(),
         )
     except Exception as e:
         logger.error("model_set_error", error=str(e))
-        await query.edit_message_text(f"Failed to set model: {action}", reply_markup=main_menu_keyboard())
+        await query.message.reply_text(f"Failed to set model: {action}", reply_markup=main_menu_keyboard())
 
 
 async def handle_hint(update: Update, context):
@@ -852,20 +893,28 @@ async def handle_hint(update: Update, context):
     hint_level = int(query.data.split("_")[-1])
     reveal = context.user_data.get("reveal_answer", False)
     if reveal:
-        await query.edit_message_text(
+        try:
+            await query.edit_message_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+        await query.message.reply_text(
             "The answer has already been revealed! Ask a new question.",
             reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
         )
         return
     question = context.user_data.get("ask_question", "")
     if not question:
-        await query.edit_message_text(
+        try:
+            await query.edit_message_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+        await query.message.reply_text(
             "No active question. Ask a question first.",
             reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
         )
         return
     context.user_data["hint_level"] = hint_level
-    await query.edit_message_text(f"💡 Hint level {hint_level}/3...")
+    hint_msg = await query.message.reply_text(f"💡 Hint level {hint_level}/3...")
     try:
         router_llm = ModelRouter()
         agent = TutorAgent(llm_router=router_llm, retriever=None)
@@ -881,13 +930,14 @@ async def handle_hint(update: Update, context):
         if result.get("misconception_detected"):
             response += "\n\n💡 I noticed a misunderstanding — gently corrected above."
         await _reply_long(
-            query.message, response,
+            hint_msg, response,
             reply_markup=hint_keyboard(hint_level, False),
+            parse_mode="HTML",
         )
         await router_llm.close()
     except Exception as e:
         logger.error("hint_callback_error", error=str(e))
-        await query.edit_message_text(
+        await hint_msg.edit_text(
             "Sorry, I encountered an error.",
             reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
         )
@@ -898,14 +948,18 @@ async def handle_reveal_answer(update: Update, context):
     await query.answer()
     question = context.user_data.get("ask_question", "")
     if not question:
-        await query.edit_message_text(
+        try:
+            await query.edit_message_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+        await query.message.reply_text(
             "No active question. Ask a question first.",
             reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
         )
         return
     hint_level = context.user_data.get("hint_level", 0)
     context.user_data["reveal_answer"] = True
-    await query.edit_message_text("🔍 Revealing the full answer...")
+    reveal_msg = await query.message.reply_text("🔍 Revealing the full answer...")
     try:
         router_llm = ModelRouter()
         agent = TutorAgent(llm_router=router_llm, retriever=None)
@@ -917,20 +971,17 @@ async def handle_reveal_answer(update: Update, context):
             hint_level=hint_level,
             reveal_answer=True,
         )
-        attempt_msg = f"
-
-📊 You used {hint_level} hint(s) before revealing the answer." if hint_level > 0 else "
-
-📊 You revealed the answer without using hints."
+        attempt_msg = f"\n\n📊 You used {hint_level} hint(s) before revealing the answer." if hint_level > 0 else "\n\n📊 You revealed the answer without using hints."
         response = result["answer"] + attempt_msg
         await _reply_long(
-            query.message, response,
+            reveal_msg, response,
             reply_markup=hint_keyboard(hint_level, True),
+            parse_mode="HTML",
         )
         await router_llm.close()
     except Exception as e:
         logger.error("reveal_answer_error", error=str(e))
-        await query.edit_message_text(
+        await reveal_msg.edit_text(
             "Sorry, I encountered an error.",
             reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
         )
@@ -946,21 +997,24 @@ async def handle_general_message(update: Update, context):
         await router.close()
 
         if intent["intent"] in ("tutor", "general"):
-            await handle_question(update, context)
-        elif intent["intent"] == "quiz":
-            context.user_data["quiz_topic"] = message_text
-            context.user_data["quiz_grade"] = context.user_data.get("grade_level", 10)
-            await update.message.reply_text("Select quiz type:", reply_markup=quiz_type_keyboard())
-            return QUIZ_TYPE
+            return await handle_question(update, context)
+        elif intent["intent"] in ("quiz", "lesson_plan"):
+            await update.message.reply_text(
+                f"I understood: \"{intent['intent']}\" (confidence: {intent['confidence']:.0%})\n\n"
+                f"Use the 📝 Quiz or 📋 Lesson Plan buttons in the menu.",
+                reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+            )
+            return ConversationHandler.END
         else:
             await update.message.reply_text(
                 f"I understood: \"{intent['intent']}\" (confidence: {intent['confidence']:.0%})\n\n"
                 f"Use the menu buttons to access specific features.",
                 reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
             )
+            return ConversationHandler.END
     except Exception as e:
         logger.error("general_message_error", error=str(e))
-        await handle_question(update, context)
+        return await handle_question(update, context)
 
 
 async def error_handler(update: Update, context):
@@ -1070,6 +1124,8 @@ def build_app() -> Application:
             CommandHandler("cancel", cancel),
             CommandHandler("menu", menu),
             CallbackQueryHandler(end_conversation, pattern="^menu$"),
+            CallbackQueryHandler(handle_tutor, pattern="^tutor$"),
+            CallbackQueryHandler(handle_tutor_grade, pattern="^tutor_grade_"),
         ],
         per_user=True,
     )
