@@ -12,6 +12,7 @@ from telegram.ext import (
 from src.agents.lesson_planner import LessonPlannerAgent
 from src.agents.quiz import QuizAgent
 from src.agents.tutor import TutorAgent
+from src.api.gamification import award_xp, update_streak
 from src.config import settings
 from src.database.models import StudentProfile, User, UserRole
 from src.database.session import async_session_factory
@@ -565,6 +566,34 @@ async def _send_quiz_question(update: Update, context, msg=None, new_message=Fal
         await _reply_long(update.effective_message, text, reply_markup=reply_markup, parse_mode="HTML")
 
 
+def _calculate_quiz_xp(pct: int) -> int:
+    xp = 10
+    if pct >= 80:
+        xp += 10
+    if pct >= 100:
+        xp += 15
+    return xp
+
+
+async def _save_quiz_rewards(telegram_id, correct, total, context):
+    from sqlalchemy import select
+    async def _save():
+        factory = async_session_factory()
+        async with factory() as session:
+            result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+            user = result.scalar_one_or_none()
+            if not user:
+                return
+            pct = round(correct / max(total, 1) * 100)
+            xp_amount = _calculate_quiz_xp(pct)
+            meta = {"correct": correct, "total": total, "source": "telegram_bot"}
+            await award_xp(user.id, "quiz_completion", xp_amount, meta, session)
+            await update_streak(user.id, session)
+            await session.commit()
+            context.user_data["last_xp_awarded"] = xp_amount
+    await _db_try(_save)
+
+
 async def _show_quiz_result(update: Update, context, msg=None):
     session = context.user_data.get("quiz_session", {})
     correct = session.get("correct", 0)
@@ -573,7 +602,14 @@ async def _show_quiz_result(update: Update, context, msg=None):
     qs = session.get("questions", [])
     ans = session.get("answers", [])
 
-    lines = [f"📊 Quiz Complete!\nScore: {correct}/{total} ({pct}%)\n"]
+    telegram_id = update.effective_user.id if update.effective_user else None
+    if telegram_id:
+        await _save_quiz_rewards(telegram_id, correct, total, context)
+
+    xp_awarded = context.user_data.get("last_xp_awarded", _calculate_quiz_xp(pct))
+    lines = [f"📊 Quiz Complete!\nScore: {correct}/{total} ({pct}%)"]
+    if xp_awarded:
+        lines.append(f"⭐ XP Earned: +{xp_awarded} XP\n")
     for i, q in enumerate(qs):
         icon = "✅" if i < len(ans) and ans[i] == q.get("correct_answer", "") else "❌"
         lines.append(f"{icon} Q{i+1}: {q.get('question_text', '')[:50]}")

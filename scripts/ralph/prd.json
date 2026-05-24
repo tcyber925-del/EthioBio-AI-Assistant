@@ -31,7 +31,7 @@
       "title": "Quiz Reward Integration",
       "description": "As a student, I want quizzes connected to rewards, so that studying feels motivating.",
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "acceptanceCriteria": [
         "Quiz completion awards XP",
         "Bonus XP for high scores",

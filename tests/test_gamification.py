@@ -28,6 +28,14 @@ def test_xp_for_next_level_max_level():
     assert xp_for_next_level(100000) == 0
 
 
+def test_quiz_xp_calculation():
+    from src.telegram.bot import _calculate_quiz_xp
+    assert _calculate_quiz_xp(50) == 10
+    assert _calculate_quiz_xp(80) == 20
+    assert _calculate_quiz_xp(90) == 20
+    assert _calculate_quiz_xp(100) == 35
+
+
 def test_streak_bonus_thresholds():
     from src.api.gamification import STREAK_BONUS_THRESHOLDS
     assert STREAK_BONUS_THRESHOLDS[7] == 20

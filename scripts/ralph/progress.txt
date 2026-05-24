@@ -153,3 +153,13 @@ Started:
 - Pattern discovered: Activity triggers follow the same wiring pattern as XP — identify trigger points (quiz submit, chat), call the gamification function, commit transaction. Both `award_xp()` and `update_streak()` are public functions importable by other modules.
 - Files changed: src/api/gamification.py, src/api/quiz.py, src/api/chat.py, tests/test_gamification.py, scripts/ralph/prd.json, scripts/ralph/progress.txt
 ---
+
+## 2026-05-24 - GM-005 - Quiz Reward Integration
+- Quiz completion XP already wired from GM-001 (10 base + bonus for >=80% and 100%)
+- Added `_calculate_quiz_xp()` helper to Telegram bot for local XP calculation
+- Added `_save_quiz_rewards()`: saves quiz result to DB and triggers XP/streak from Telegram bot flow
+- Added XP display in `_show_quiz_result()`: shows "⭐ XP Earned: +X XP" in quiz result message
+- Added `test_quiz_xp_calculation` test (7 total gamification tests, all passing)
+- Pattern discovered: Telegram bot quiz flow runs in-memory (not through FastAPI), so XP/streak must be triggered directly via `award_xp()`/`update_streak()` with a local DB session
+- Files changed: src/telegram/bot.py, tests/test_gamification.py, scripts/ralph/prd.json, scripts/ralph/progress.txt
+---
