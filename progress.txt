@@ -88,7 +88,22 @@
   - Dashboard pages follow a consistent pattern: `'use client'`, `fetchWithTimeout`, lucide-react icons, Tailwind custom theme (bg-card, border-border)
   - SVG annotation overlays require parsing the viewBox from the SVG string for coordinate-to-percentage mapping
   - Playwright browser can be driven via `.venv/bin/python -c "from playwright.sync_api import sync_playwright"` with `executable_path` pointing to playwright's cached chromium
-  - When dev server is already running, check its port and pages; a stale server may not pick up new routes - kill and restart
+   - When dev server is already running, check its port and pages; a stale server may not pick up new routes - kill and restart
+---
+## [2026-05-25] - US-005: Build interactive labeling UI
+- Added interactive labeling exercise to diagram page at `dashboard/src/app/diagrams/page.tsx`
+- After diagram generation, users see input fields for each numbered label
+- Submit button calls `POST /diagram/validate` with user's label entries
+- Per-label results: green for correct with checkmark, red for incorrect with X icon + corrected text + explanation
+- Score display (percentage and fraction) with Try Again button to reset
+- Uses placeholder UUID for unauthenticated dashboard users
+- Quality: tsc --noEmit clean, Next.js build passes, 73/81 backend tests pass (same pre-existing failures)
+- Files changed: `dashboard/src/app/diagrams/page.tsx`, `scripts/ralph/prd.json`, `progress.txt`
+- **Learnings for future iterations:**
+  - The `/diagram/validate` endpoint expects `submitted_labels` as full DiagramLabel objects (id, text, x, y) - reconstruct from original labels + user inputs
+  - Dashboard has no auth - use a fixed placeholder UUID for validate endpoint calls
+  - Interactive exercise flow: generate → input → validate → results → try again, managed via state machine in useState
+  - lucide-react icons `CheckCircle2`, `XCircle`, `RefreshCw` are all available in v0.441.0
 ---
 
 
