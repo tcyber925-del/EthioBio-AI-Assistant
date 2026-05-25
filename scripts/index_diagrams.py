@@ -1,18 +1,24 @@
-"""Index extracted textbook diagrams into PostgreSQL and ChromaDB.
+"""Index textbook diagram captions into ChromaDB for RAG retrieval.
 
 Usage:
-    python scripts/index_diagrams.py
+    python scripts/index_diagrams.py                     # all grades
+    python scripts/index_diagrams.py --grade 10          # single grade
+    python scripts/index_diagrams.py --dry-run            # preview only
 """
 
 import argparse
-import glob
+import asyncio
 import sys
-from pathlib import Path
+from typing import Optional
 
 import structlog
+from sqlalchemy import select
+
+from src.database.models import TextbookDiagram
+from src.retrieval.adapter import VectorStoreAdapter
 
 structlog.configure(
-    processors=[structlog.stdlib.filter_by_level, structlog.dev.ConsoleRenderer()],
+    processors=[structlog.dev.ConsoleRenderer()],
     wrapper_class=structlog.stdlib.BoundLogger,
     context_class=dict,
     logger_factory=structlog.PrintLoggerFactory(),
@@ -20,52 +26,112 @@ structlog.configure(
 )
 logger = structlog.get_logger()
 
-DIAGRAMS_BASE = "data/diagrams"
 
+async def index_diagram_captions(
+    records: list[TextbookDiagram],
+    adapter: VectorStoreAdapter | None = None,
+    dry_run: bool = False,
+) -> dict:
+    """Embed and upsert diagram captions into ChromaDB.
 
-def _parse_metadata_from_path(image_path: Path) -> dict:
-    """Reconstruct metadata from directory structure and filename.
+    Args:
+        records: List of TextbookDiagram records to index.
+        adapter: VectorStoreAdapter instance (created if None).
+        dry_run: If True, log what would be indexed without writing.
 
-    Expected path format: data/diagrams/{grade}/{pdf_stem}_{fig_num}.jpg
+    Returns:
+        dict with indexed, skipped counts.
     """
-    parts = image_path.parts
-    grade = int(parts[2])  # data/diagrams/{grade}/
-    stem = image_path.stem
-    fig_num = int(stem.split("_")[-1])
-    pdf_stem = "_".join(stem.split("_")[:-1])
+    own_adapter = adapter is None
+    if own_adapter:
+        adapter = VectorStoreAdapter()
+    assert adapter is not None
 
-    return {
-        "grade": grade,
-        "fig_num": fig_num,
-        "pdf_stem": pdf_stem,
-        "image_path": str(image_path),
-    }
+    try:
+        texts = []
+        metadatas = []
+        ids = []
+        skipped = 0
+
+        for record in records:
+            if not record.caption or not record.caption.strip():
+                skipped += 1
+                continue
+
+            texts.append(f"[Grade {record.grade_level}] {record.caption}")
+            metadatas.append({
+                "source_type": "textbook_diagram",
+                "grade_level": record.grade_level,
+                "unit": record.unit or "",
+                "topic": record.topic or "",
+                "figure_number": record.figure_number,
+                "image_path": record.image_path,
+            })
+            ids.append(f"diagram_caption_{record.id}")
+
+        if dry_run or not texts:
+            if dry_run:
+                for i, t in enumerate(texts):
+                    logger.info("dry_run_document", index=i, text=t[:100], meta=metadatas[i])
+            return {"indexed": 0, "skipped": len(records)}
+
+        embeddings = await adapter.embedder.embed_batch(texts)
+        await adapter.vector_store.add_documents(
+            texts=texts,
+            embeddings=embeddings,
+            metadatas=metadatas,
+            ids=ids,
+        )
+
+        return {"indexed": len(texts), "skipped": skipped}
+    finally:
+        if own_adapter:
+            if hasattr(adapter, 'close'):
+                adapter.close()
+
+
+async def main_async(grade: Optional[int] = None, dry_run: bool = False):
+    from src.database.session import get_session
+
+    async for session in get_session():  # type: ignore[attr-defined]
+        stmt = select(TextbookDiagram)
+        if grade is not None:
+            stmt = stmt.where(TextbookDiagram.grade_level == grade)
+        stmt = stmt.order_by(TextbookDiagram.grade_level, TextbookDiagram.figure_number)
+
+        result = await session.execute(stmt)
+        records = list(result.scalars().all())
+        logger.info("records_loaded", count=len(records), grade=grade or "all")
+
+        outcome = await index_diagram_captions(records, dry_run=dry_run)
+        logger.info(
+            "indexing_complete",
+            indexed=outcome["indexed"],
+            skipped=outcome["skipped"],
+            total=len(records),
+        )
+        return outcome
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Index textbook diagram captions into ChromaDB for RAG retrieval"
+    )
+    parser.add_argument(
+        "--grade", type=int, choices=range(7, 13),
+        help="Single grade to process",
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true",
+        help="Log what would be indexed without writing to ChromaDB",
+    )
+    return parser
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Index textbook diagrams into DB and ChromaDB")
-    parser.add_argument("--grade", type=int, choices=range(7, 13), help="Single grade to index")
+    parser = _build_parser()
     args = parser.parse_args()
-
-    if args.grade:
-        pattern = f"{DIAGRAMS_BASE}/{args.grade}/**/*.jpg"
-    else:
-        pattern = f"{DIAGRAMS_BASE}/**/*.jpg"
-    image_paths = sorted(glob.glob(pattern, recursive=True))
-    logger.info("found_diagrams", count=len(image_paths))
-
-    for img_path_str in image_paths:
-        img_path = Path(img_path_str)
-        meta = _parse_metadata_from_path(img_path)
-        logger.info(
-            "indexing_diagram",
-            grade=meta["grade"],
-            pdf_stem=meta["pdf_stem"],
-            fig_num=meta["fig_num"],
-        )
-
-    logger.info("indexing_complete", total=len(image_paths))
-    return 0
+    asyncio.run(main_async(grade=args.grade, dry_run=args.dry_run))
 
 
 if __name__ == "__main__":
