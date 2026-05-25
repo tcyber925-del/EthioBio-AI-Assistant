@@ -10,6 +10,7 @@ const links = [
   { href: '/lessons', label: 'Lesson Plans', icon: FileText },
   { href: '/students', label: 'Students', icon: Users },
   { href: '/monitoring', label: 'Monitoring', icon: BarChart3 },
+  { href: '/diagrams', label: 'Diagrams', icon: BarChart3 },
   { href: '/ask', label: 'Ask Q&A', icon: MessageSquare },
 ]
 

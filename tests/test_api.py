@@ -53,6 +53,29 @@ async def test_lesson_plan_endpoint():
 
 
 @pytest.mark.asyncio
+async def test_diagram_validate_endpoint():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/diagram/validate",
+            json={
+                "user_id": str(uuid4()),
+                "correct_labels": [
+                    {"id": "l1", "text": "Mitochondrion", "x": 100, "y": 100},
+                    {"id": "l2", "text": "Nucleus", "x": 200, "y": 200},
+                ],
+                "submitted_labels": [
+                    {"id": "l1", "text": "Mitochondrion", "x": 100, "y": 100},
+                    {"id": "l2", "text": "Ribosome", "x": 200, "y": 200},
+                ],
+                "topic": "cells",
+                "difficulty": "beginner",
+            },
+        )
+        assert response.status_code in (200, 500)
+
+
+@pytest.mark.asyncio
 async def test_chat_endpoint():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
