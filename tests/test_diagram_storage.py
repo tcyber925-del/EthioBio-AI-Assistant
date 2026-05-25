@@ -53,3 +53,11 @@ def test_textbook_diagram_response_schema():
     assert resp.grade_level == 10
     assert resp.image_url == "/diagrams/static/10/grade-10_1.jpg"
     assert resp.topic == "Cell Biology"
+
+
+def test_get_textbook_diagrams_endpoint_signature():
+    from src.api.diagram import router
+
+    textbok_routes = [r for r in router.routes if r.path == "/diagram/textbook"]
+    assert len(textbok_routes) == 1
+    assert "GET" in textbok_routes[0].methods

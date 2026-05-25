@@ -1,10 +1,23 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
-from src.api import activity, admin, chat, diagram, export, gamification, lesson, progress, quiz, recovery
+from src.api import (
+    activity,
+    admin,
+    chat,
+    diagram,
+    export,
+    gamification,
+    lesson,
+    progress,
+    quiz,
+    recovery,
+)
 from src.api.graph import router as graph_router
 from src.api.models import router as models_router
 from src.config import settings
@@ -51,6 +64,9 @@ app.include_router(gamification.router)
 app.include_router(recovery.router)
 app.include_router(activity.router)
 
+diagram_static_dir = Path("data/diagrams")
+diagram_static_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/diagrams/static", StaticFiles(directory=str(diagram_static_dir)), name="diagrams")
 
 @app.get("/health", response_model=HealthResponse)
 async def health_check():

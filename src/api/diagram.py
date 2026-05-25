@@ -1,11 +1,14 @@
 from datetime import datetime, timezone
+from pathlib import Path
+from typing import Optional
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.diagram import DiagramAgent, validate_labels
-from src.database.models import DiagramAttempt
+from src.database.models import DiagramAttempt, TextbookDiagram
 from src.database.session import get_session
 from src.llm.router import ModelRouter
 from src.schemas.diagram import (
@@ -14,6 +17,7 @@ from src.schemas.diagram import (
     DiagramLabelResult,
     DiagramValidateRequest,
     DiagramValidateResponse,
+    TextbookDiagramResponse,
 )
 
 logger = structlog.get_logger()
@@ -83,3 +87,35 @@ async def validate_diagram(
         results=[DiagramLabelResult(**r) for r in results],
         attempt_id=attempt.id,
     )
+
+
+@router.get("/textbook", response_model=list[TextbookDiagramResponse])
+async def get_textbook_diagrams(
+    grade: int = Query(..., ge=7, le=12, description="Grade level"),
+    topic: Optional[str] = Query(None, description="Topic filter (case-insensitive)"),
+    session: AsyncSession = Depends(get_session),
+):
+    """Retrieve extracted textbook diagrams filtered by grade and optional topic."""
+    stmt = select(TextbookDiagram).where(TextbookDiagram.grade_level == grade)
+
+    if topic:
+        stmt = stmt.where(TextbookDiagram.topic.ilike(f"%{topic}%"))
+
+    stmt = stmt.order_by(TextbookDiagram.figure_number)
+    result = await session.execute(stmt)
+    diagrams = result.scalars().all()
+
+    return [
+        TextbookDiagramResponse(
+            id=d.id,
+            image_url=f"/diagrams/static/{grade}/{Path(d.image_path).name}",
+            caption=d.caption,
+            grade_level=d.grade_level,
+            unit=d.unit,
+            topic=d.topic,
+            figure_number=d.figure_number,
+            page_number=d.page_number,
+            source_file=d.source_file,
+        )
+        for d in diagrams
+    ]
