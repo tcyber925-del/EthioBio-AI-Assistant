@@ -52,6 +52,7 @@ export default function DiagramsPage() {
   const [labelInputs, setLabelInputs] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [validationResult, setValidationResult] = useState<ValidateResponse | null>(null)
+  const [confirmedCorrectIds, setConfirmedCorrectIds] = useState<Set<string>>(new Set())
 
   const generateDiagram = async () => {
     if (!prompt.trim()) return
@@ -59,6 +60,7 @@ export default function DiagramsPage() {
     setError(null)
     setResult(null)
     setValidationResult(null)
+    setConfirmedCorrectIds(new Set())
     setLabelInputs({})
 
     try {
@@ -107,6 +109,7 @@ export default function DiagramsPage() {
         }),
       })
       setValidationResult(data)
+      setConfirmedCorrectIds(new Set())
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -116,7 +119,21 @@ export default function DiagramsPage() {
 
   const resetExercise = () => {
     setValidationResult(null)
-    if (result) {
+    if (result && validationResult) {
+      const inputs: Record<string, string> = {}
+      const confirmed: Set<string> = new Set()
+      result.labels.forEach(l => {
+        const prev = validationResult.results.find(r => r.label_id === l.id)
+        if (prev?.is_correct) {
+          confirmed.add(l.id)
+          inputs[l.id] = prev.correct_text
+        } else {
+          inputs[l.id] = ''
+        }
+      })
+      setConfirmedCorrectIds(confirmed)
+      setLabelInputs(inputs)
+    } else if (result) {
       const inputs: Record<string, string> = {}
       result.labels.forEach(l => { inputs[l.id] = '' })
       setLabelInputs(inputs)
@@ -262,13 +279,24 @@ export default function DiagramsPage() {
                 const valResult = validationResult?.results.find(r => r.label_id === label.id)
                 const isCorrect = valResult?.is_correct
                 const isRevealed = validationResult !== null
+                const isConfirmed = !isRevealed && confirmedCorrectIds.has(label.id)
 
                 return (
                   <div key={label.id} className="flex items-center gap-3">
-                    <span className="w-7 h-7 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold flex-shrink-0">
+                    <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                      isConfirmed
+                        ? 'bg-green-500/20 text-green-400'
+                        : 'bg-primary/20 text-primary'
+                    }`}>
                       {i + 1}
                     </span>
-                    {isRevealed ? (
+                    {isConfirmed ? (
+                      <div className="flex-1 px-3 py-2 rounded-lg text-sm bg-green-500/10 border border-green-500/30 text-green-400 flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                        <span className="font-medium">{labelInputs[label.id]}</span>
+                        <span className="text-xs text-green-400/60 ml-auto">Confirmed</span>
+                      </div>
+                    ) : isRevealed ? (
                       <div className={`flex-1 px-3 py-2 rounded-lg text-sm border ${
                         isCorrect
                           ? 'bg-green-500/10 border-green-500/30 text-green-400'

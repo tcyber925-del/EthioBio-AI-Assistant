@@ -108,14 +108,22 @@ def validate_labels(
     correct_labels: list[dict],
     submitted_labels: list[dict],
 ) -> list[dict]:
-    correct_map = {l["id"]: l for l in correct_labels}
+    correct_map = {item["id"]: item for item in correct_labels}
     results = []
     for sub in submitted_labels:
         lid = sub["id"]
         if lid in correct_map:
             correct = correct_map[lid]
             is_correct = sub["text"].strip().lower() == correct["text"].strip().lower()
-            explanation = "" if is_correct else f"The correct term is '{correct['text']}'."
+            explanation = (
+                ""
+                if is_correct
+                else (
+                    f"Not quite. The correct label is '{correct['text']}'. "
+                    "Review the diagram structure and try to associate the "
+                    "numbered position with its biological name."
+                )
+            )
             results.append({
                 "label_id": lid,
                 "correct_text": correct["text"],

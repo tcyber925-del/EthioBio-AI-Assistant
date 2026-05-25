@@ -91,8 +91,8 @@
         "Verify in browser using Playwright browser tools"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Retry now preserves correct answers (locked green 'Confirmed' display) and clears only incorrect inputs for re-labeling. Backend explanations improved with educational context. tsc --noEmit passes, 6 diagram validation tests pass."
     },
     {
       "id": "US-007",

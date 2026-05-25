@@ -451,7 +451,7 @@ def test_diagram_validate_labels_some_incorrect():
     assert results[1]["is_correct"] is False
     assert "Ribosome" in results[1]["submitted_text"]
     assert "Nucleus" in results[1]["correct_text"]
-    assert "correct term is 'Nucleus'" in results[1]["explanation"]
+    assert "correct label is 'Nucleus'" in results[1]["explanation"]
 
 
 def test_diagram_validate_labels_case_insensitive():
