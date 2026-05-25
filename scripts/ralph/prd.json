@@ -60,8 +60,8 @@
         "Verify in browser using Playwright browser tools"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented: dashboard/src/app/diagrams/page.tsx with prompt input, topic selector (cells/organ systems/genetics/anatomy), difficulty selector (beginner/intermediate/advanced), Generate button, SVG rendering with numbered annotation overlays (hover to reveal label text), loading/error/empty states. Added /diagram/:path* rewrite to next.config.js. Added Diagrams link to Sidebar.tsx. Build passes, Playwright verified - empty state, selectors, input, and Generate button all present."
     },
     {
       "id": "US-005",

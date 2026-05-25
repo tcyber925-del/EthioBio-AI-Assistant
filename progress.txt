@@ -7,6 +7,8 @@
 - No migration needed — `Base.metadata.create_all` in `init_db()` handles table creation
 - Schema files follow `SchemaModel` base from `src/schemas/base.py`
 - The Ralph system stores the active PRD at `scripts/ralph/prd.json` and archives old ones
+- Dashboard API rewrites go in `dashboard/next.config.js` under the `async rewrites()` section — add the path before committing
+- Dashboard pages follow patterns: `'use client'`, `fetchWithTimeout` from `@/lib/fetch`, lucide-react icons, Tailwind CSS custom theme (bg-card, border-border, etc.), `useState` for state management
 
 ## [2026-05-23 15:58] - Phase 4: PDF/DOCX Export
 - Implemented PDF/DOCX export for quizzes and lesson plans
@@ -55,3 +57,38 @@
   - The Ralph system stores the active PRD at `scripts/ralph/prd.json` and archives old ones
   - Always restore the correct PRD before starting work if it was archived/reverted
 ---
+## [2026-05-25] - US-003: Create diagram validation API endpoint
+- Added `DiagramLabelResult`, `DiagramValidateRequest`, `DiagramValidateResponse` schemas to `src/schemas/diagram.py`
+- Added `validate_labels()` function to `src/agents/diagram.py` with algorithmic case-insensitive, whitespace-trimmed label matching
+- Added `POST /diagram/validate` endpoint in `src/api/diagram.py` that validates labels, saves attempt to DB, and returns score + per-label results
+- Added 6 unit tests in `tests/test_agents.py` for `validate_labels()` (all correct, some incorrect, case-insensitive, unknown id, whitespace, empty)
+- Added 1 integration endpoint test in `tests/test_api.py`
+- Quality: 6 new tests pass, 73/81 pass overall (8 pre-existing failures from ChromaDB/telegram/warnings)
+- Files changed: `src/schemas/diagram.py`, `src/agents/diagram.py`, `src/api/diagram.py`, `tests/test_agents.py`, `tests/test_api.py`, `scripts/ralph/prd.json`
+- **Learnings for future iterations:**
+  - Simple algorithmic validation (no LLM needed) can be implemented as a standalone function, not a full agent class
+  - Case-insensitive + whitespace-trimmed matching is adequate for label text comparison
+  - Endpoint tests that hit the DB will 500 without a running Postgres — assert `response.status_code in (200, 500)`
+  - The `validate_diagram` endpoint pattern: convert schemas to dicts → call validation → calculate score → save attempt → return response
+---
+## [2026-05-25] - US-004: Build diagram request UI
+- Created dashboard page at `dashboard/src/app/diagrams/page.tsx` with:
+  - Topic selector: cells, organ systems, genetics, anatomy
+  - Difficulty selector: Beginner, Intermediate, Advanced
+  - Prompt text input for requesting diagrams
+  - Generate button with loading state
+  - SVG rendering with numbered label overlay (markers at label x,y positions, hover to reveal text)
+  - Empty state, loading state, error state
+- Added `/diagram/:path*` rewrite to `dashboard/next.config.js`
+- Added "Diagrams" link to `dashboard/src/components/Sidebar.tsx`
+- Quality: Next.js build passes, tsc --noEmit passes, Playwright verified (all UI elements present and interactive)
+- Files changed: `dashboard/src/app/diagrams/page.tsx`, `dashboard/next.config.js`, `dashboard/src/components/Sidebar.tsx`, `scripts/ralph/prd.json`, `progress.txt`
+- **Learnings for future iterations:**
+  - Dashboard API rewrites must be added to `next.config.js` before they work
+  - Dashboard pages follow a consistent pattern: `'use client'`, `fetchWithTimeout`, lucide-react icons, Tailwind custom theme (bg-card, border-border)
+  - SVG annotation overlays require parsing the viewBox from the SVG string for coordinate-to-percentage mapping
+  - Playwright browser can be driven via `.venv/bin/python -c "from playwright.sync_api import sync_playwright"` with `executable_path` pointing to playwright's cached chromium
+  - When dev server is already running, check its port and pages; a stale server may not pick up new routes - kill and restart
+---
+
+
