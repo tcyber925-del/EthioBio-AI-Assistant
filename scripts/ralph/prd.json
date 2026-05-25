@@ -118,7 +118,7 @@
         "Ruff, mypy pass"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "New files: scripts/label_textbook_diagrams.py, src/agents/diagram.py (add auto_label_textbook_diagram static method). Data flow: load image -> encode as base64 -> send to vision LLM -> parse JSON labels -> store in DB."
     },
     {

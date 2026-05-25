@@ -259,5 +259,36 @@
   - SQL ILIKE for case-insensitive topic filter works with async SQLAlchemy: `stmt.where(TextbookDiagram.topic.ilike(f"%{topic}%"))`
   - Grade range validation via FastAPI `Query(ge=7, le=12)` prevents out-of-range lookups
   - ChromaDB indexing of captions was deferred to the index script skeleton — full implementation requires async DB session + running ChromaDB, planned for US-008 RAG integration
-  - Path-based metadata parsing (`data/diagrams/{grade}/{stem}_{n}.jpg`) is fragile but pragmatic for MVP; a proper metadata file would be better long-term
+   - Path-based metadata parsing (`data/diagrams/{grade}/{stem}_{n}.jpg`) is fragile but pragmatic for MVP; a proper metadata file would be better long-term
+---
+## [2026-05-25] - US-007: Auto-generate ground truth labels from textbook diagrams
+- Created `scripts/label_textbook_diagrams.py` with:
+  - `_build_vision_messages(base64_image)` — builds OpenAI-compatible vision messages with base64-encoded JPEG
+  - `_parse_labels_from_response(content)` — parses JSON label array from LLM response; returns [] for invalid/empty
+  - `_encode_image(image_path)` — reads JPEG, converts to RGB, thumbnails to 2048px, base64-encodes
+  - `_try_model_with_fallback(router, messages, preferred_model)` — tries models in priority: preferred → openrouter/gpt-4o → openrouter/claude-3.5-sonnet → ollama/llava; returns (labels, model_used)
+  - `label_diagram(image_path, grade, router, preferred_model, dry_run)` — orchestrator for a single diagram; creates/closes its own ModelRouter if none provided
+  - `_parse_metadata_from_path(image_path)` — reconstructs grade from directory structure
+  - `main_async()` / `main()` — CLI with --grade, --model, --dry-run flags; scans data/diagrams/**/*.jpg
+- Created `tests/test_label_diagrams.py` with 7 tests:
+  - `test_build_vision_messages_includes_image` — verifies OpenAI-compatible vision message format
+  - `test_parse_labels_valid_json` — parses correct JSON array
+  - `test_parse_labels_invalid_json` — returns [] for non-JSON
+  - `test_parse_labels_empty_array` — returns [] for empty array
+  - `test_try_model_with_fallback_success_first` — returns from first model
+  - `test_try_model_with_fallback_all_fail` — returns ([], None) when all models return empty
+  - `test_label_diagram_dry_run` — returns None when no image file exists (without crashing)
+- Created `docs/superpowers/plans/2026-05-25-auto-label-textbook-diagrams.md` — implementation plan
+- Created `docs/superpowers/specs/2026-05-25-auto-label-textbook-diagrams.md` — design spec
+- Quality: ruff clean, mypy clean --explicit-package-bases, 7/7 tests pass
+- Files: `scripts/label_textbook_diagrams.py` (new), `tests/test_label_diagrams.py` (new), `docs/superpowers/plans/2026-05-25-auto-label-textbook-diagrams.md` (new), `docs/superpowers/specs/2026-05-25-auto-label-textbook-diagrams.md` (new), `scripts/ralph/prd.json`, `progress.txt`
+- **Learnings for future iterations:**
+  - Vision messages follow OpenAI format: system + user with content array of {type: "text"} and {type: "image_url", image_url: {url: "data:image/jpeg;base64,..."}}
+  - Model fallback is handled in application code (not ProviderManager) because the fallback is across different model providers, not within a single provider
+  - Pillow thumbnail (2048x2048) reduces image size before encoding to stay within API limits
+  - The `label_diagram` function creates its own ModelRouter if none provided, and always closes it — important for resource cleanup
+  - DB storage of ground truth is deferred (logged but not persisted) — requires an async PostgreSQL session in script context
+  - `structlog` with `PrintLogger` should NOT use `filter_by_level` processor (incompatible — use just `ConsoleRenderer`)
+  - `PIL.Image.open() → convert()` return type mismatch: mypy infers `ImageFile` which conflicts with `Image.Image` — use explicit annotation or import as `PILImage.Image`
+  - The `_try_model_with_fallback` `except` handler must not use `exc_info=True` when calling `logger.warning` from within a StructLog `PrintLogger` — the exception is already captured by the `except` clause itself
 ---
