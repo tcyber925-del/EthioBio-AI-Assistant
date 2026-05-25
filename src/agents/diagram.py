@@ -102,3 +102,33 @@ Respond with valid JSON only."""
                 "difficulty": difficulty,
                 "model_used": result.get("model", ""),
             }
+
+
+def validate_labels(
+    correct_labels: list[dict],
+    submitted_labels: list[dict],
+) -> list[dict]:
+    correct_map = {l["id"]: l for l in correct_labels}
+    results = []
+    for sub in submitted_labels:
+        lid = sub["id"]
+        if lid in correct_map:
+            correct = correct_map[lid]
+            is_correct = sub["text"].strip().lower() == correct["text"].strip().lower()
+            explanation = "" if is_correct else f"The correct term is '{correct['text']}'."
+            results.append({
+                "label_id": lid,
+                "correct_text": correct["text"],
+                "submitted_text": sub["text"],
+                "is_correct": is_correct,
+                "explanation": explanation,
+            })
+        else:
+            results.append({
+                "label_id": lid,
+                "correct_text": "",
+                "submitted_text": sub["text"],
+                "is_correct": False,
+                "explanation": "Unknown label position.",
+            })
+    return results

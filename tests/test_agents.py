@@ -419,6 +419,89 @@ def test_state_misconception_fields():
     assert output.misconception_correction == ""
 
 
+def test_diagram_validate_labels_all_correct():
+    from src.agents.diagram import validate_labels
+    correct = [
+        {"id": "l1", "text": "Mitochondrion", "x": 100, "y": 100},
+        {"id": "l2", "text": "Nucleus", "x": 200, "y": 200},
+        {"id": "l3", "text": "Cell Membrane", "x": 300, "y": 300},
+    ]
+    submitted = [
+        {"id": "l1", "text": "Mitochondrion", "x": 100, "y": 100},
+        {"id": "l2", "text": "Nucleus", "x": 200, "y": 200},
+        {"id": "l3", "text": "Cell Membrane", "x": 300, "y": 300},
+    ]
+    results = validate_labels(correct, submitted)
+    assert len(results) == 3
+    assert all(r["is_correct"] for r in results)
+
+
+def test_diagram_validate_labels_some_incorrect():
+    from src.agents.diagram import validate_labels
+    correct = [
+        {"id": "l1", "text": "Mitochondrion", "x": 100, "y": 100},
+        {"id": "l2", "text": "Nucleus", "x": 200, "y": 200},
+    ]
+    submitted = [
+        {"id": "l1", "text": "Mitochondrion", "x": 100, "y": 100},
+        {"id": "l2", "text": "Ribosome", "x": 200, "y": 200},
+    ]
+    results = validate_labels(correct, submitted)
+    assert results[0]["is_correct"] is True
+    assert results[1]["is_correct"] is False
+    assert "Ribosome" in results[1]["submitted_text"]
+    assert "Nucleus" in results[1]["correct_text"]
+    assert "correct term is 'Nucleus'" in results[1]["explanation"]
+
+
+def test_diagram_validate_labels_case_insensitive():
+    from src.agents.diagram import validate_labels
+    correct = [
+        {"id": "l1", "text": "Mitochondrion", "x": 100, "y": 100},
+    ]
+    submitted = [
+        {"id": "l1", "text": "mitochondrion", "x": 100, "y": 100},
+    ]
+    results = validate_labels(correct, submitted)
+    assert results[0]["is_correct"] is True
+
+
+def test_diagram_validate_labels_unknown_id():
+    from src.agents.diagram import validate_labels
+    correct = [
+        {"id": "l1", "text": "Mitochondrion", "x": 100, "y": 100},
+    ]
+    submitted = [
+        {"id": "l1", "text": "Mitochondrion", "x": 100, "y": 100},
+        {"id": "unknown", "text": "Nucleus", "x": 200, "y": 200},
+    ]
+    results = validate_labels(correct, submitted)
+    assert results[0]["is_correct"] is True
+    assert results[1]["is_correct"] is False
+    assert "Unknown label" in results[1]["explanation"]
+
+
+def test_diagram_validate_labels_whitespace_handling():
+    from src.agents.diagram import validate_labels
+    correct = [
+        {"id": "l1", "text": "Cell Membrane", "x": 100, "y": 100},
+    ]
+    submitted = [
+        {"id": "l1", "text": "  cell membrane  ", "x": 100, "y": 100},
+    ]
+    results = validate_labels(correct, submitted)
+    assert results[0]["is_correct"] is True
+
+
+def test_diagram_validate_labels_empty_submitted():
+    from src.agents.diagram import validate_labels
+    correct = [
+        {"id": "l1", "text": "Mitochondrion", "x": 100, "y": 100},
+    ]
+    results = validate_labels(correct, [])
+    assert len(results) == 0
+
+
 def test_student_progress_analysis():
     router = ModelRouter()
     agent = StudentProgressAgent(llm_router=router)
