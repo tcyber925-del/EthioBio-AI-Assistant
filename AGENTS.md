@@ -112,6 +112,16 @@ The recovery plan module tracks student remediation tasks and awards XP for comp
 13. **`UsageInfo` TypedDict** — Provider responses include token usage as `UsageInfo` (`prompt_tokens`, `completion_tokens`, `total_tokens`).
 14. **Misconception detection is heuristic** — Uses `re.split()` sentence splitting + keyword matching on LLM response text. No NLP model needed. Both TutorAgent and TutorNode have parallel `MISCONCEPTION_INDICATORS` lists and `detect_misconception()` helpers that must stay in sync.
 
+## Ralph PRD Generation (`scripts/ralph/`)
+
+When converting a PRD to `prd.json`:
+
+- Use the **Ralph skill** (`skills/ralph`) for the conversion format
+- **Must include** a non-empty top-level `"title"` field matching the feature name (validated by `ralph.sh`)
+- Split large stories into iteration-sized pieces (schema → backend → UI order)
+- Every story must have `"Typecheck passes"` as the final acceptance criterion
+- UI stories must also include `"Verify in browser using Playwright browser tools"`
+
 ## Testing
 
 - `pytest` with `asyncio_mode = "auto"` (set in `pyproject.toml`)

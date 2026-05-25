@@ -124,6 +124,16 @@ require_command "$TOOL"
 require_file "$PRD_FILE"
 require_file "$SCRIPT_DIR/RALPH.md"
 load_required_story_ids
+
+# Auto-fill title from branchName if missing or empty
+if ! jq -e '.title | strings | length > 0' "$PRD_FILE" >/dev/null 2>&1; then
+  NEW_TITLE=$(jq -r '.branchName | split("/") | .[-1] | gsub("-"; " ") | split(" ") | map(. as $w | $w[0:1] | ascii_upcase + $w[1:]) | join(" ")' "$PRD_FILE" 2>/dev/null || echo "")
+  if [ -n "$NEW_TITLE" ]; then
+    echo "Auto-filling missing title in $PRD_FILE -> \"$NEW_TITLE\""
+    jq --arg t "$NEW_TITLE" '. + {"title": $t}' "$PRD_FILE" > "${PRD_FILE}.tmp" && mv "${PRD_FILE}.tmp" "$PRD_FILE"
+  fi
+fi
+
 validate_prd
 
 # Archive previous run if branch changed
