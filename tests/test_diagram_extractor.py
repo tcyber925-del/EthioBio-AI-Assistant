@@ -71,3 +71,12 @@ def test_extract_figures_from_pdf_returns_metadata():
     from src.ingestion.diagram_extractor import extract_figures_from_pdf
 
     assert callable(extract_figures_from_pdf)
+
+
+def test_ingest_script_imports():
+    """Verify the ingest script module imports cleanly."""
+    import importlib.util
+    spec = importlib.util.find_spec("scripts.ingest_diagrams")
+    if spec is not None:
+        import scripts.ingest_diagrams
+        assert callable(scripts.ingest_diagrams.main)
