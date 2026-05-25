@@ -12,6 +12,7 @@ from telegram.ext import (
 from src.agents.lesson_planner import LessonPlannerAgent
 from src.agents.quiz import QuizAgent
 from src.agents.tutor import TutorAgent
+from src.api.gamification import award_xp, check_achievements, update_streak
 from src.config import settings
 from src.database.models import StudentProfile, User, UserRole
 from src.database.session import async_session_factory
@@ -244,6 +245,16 @@ async def ask_command(update: Update, context):
                 response += "\n\n💡 I noticed a misunderstanding — gently corrected above."
             if result.get("sources"):
                 response += "\n\n---\nSources: " + ", ".join(result["sources"][:3])
+            telegram_id = update.effective_user.id if update.effective_user else None
+            if telegram_id:
+                await _save_tutor_rewards(telegram_id, context)
+                xp_awarded = context.user_data.get("last_xp_awarded", 0)
+                level_up = context.user_data.get("last_level_up", False)
+                if xp_awarded:
+                    response += f"\n\n⭐ +{xp_awarded} XP for this session"
+                if level_up:
+                    new_level = context.user_data.get("last_new_level", 1)
+                    response += f"\n🎉 LEVEL UP! You are now Level {new_level}!"
             reply_markup = hint_keyboard(0, False) if socratic else main_menu_keyboard(socratic)
             await _reply_long(update.message, response, reply_markup=reply_markup, parse_mode="HTML")
             await router_llm.close()
@@ -393,6 +404,16 @@ async def handle_question(update: Update, context):
             response += "\n\n💡 I noticed a misunderstanding — gently corrected above."
         if result.get("sources"):
             response += "\n\n---\nSources: " + ", ".join(result["sources"][:3])
+        telegram_id = update.effective_user.id if update.effective_user else None
+        if telegram_id:
+            await _save_tutor_rewards(telegram_id, context)
+            xp_awarded = context.user_data.get("last_xp_awarded", 0)
+            level_up = context.user_data.get("last_level_up", False)
+            if xp_awarded:
+                response += f"\n\n⭐ +{xp_awarded} XP for this session"
+            if level_up:
+                new_level = context.user_data.get("last_new_level", 1)
+                response += f"\n🎉 LEVEL UP! You are now Level {new_level}!"
         reply_markup = hint_keyboard(hint_level, reveal) if socratic else main_menu_keyboard(socratic)
         await _reply_long(thinking_msg, response, reply_markup=reply_markup, parse_mode="HTML")
         await router_llm.close()
@@ -565,6 +586,60 @@ async def _send_quiz_question(update: Update, context, msg=None, new_message=Fal
         await _reply_long(update.effective_message, text, reply_markup=reply_markup, parse_mode="HTML")
 
 
+def _calculate_quiz_xp(pct: int) -> int:
+    xp = 10
+    if pct >= 80:
+        xp += 10
+    if pct >= 100:
+        xp += 15
+    return xp
+
+
+async def _save_quiz_rewards(telegram_id, correct, total, context):
+    from sqlalchemy import select
+    async def _save():
+        factory = async_session_factory()
+        async with factory() as session:
+            result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+            user = result.scalar_one_or_none()
+            if not user:
+                return
+            pct = round(correct / max(total, 1) * 100)
+            xp_amount = _calculate_quiz_xp(pct)
+            meta = {"correct": correct, "total": total, "source": "telegram_bot"}
+            gam_result, _, level_up = await award_xp(user.id, "quiz_completion", xp_amount, meta, session)
+            await update_streak(user.id, session)
+            await check_achievements(user.id, gam_result, session)
+            await session.commit()
+            context.user_data["last_xp_awarded"] = xp_amount
+            context.user_data["last_level_up"] = level_up
+            context.user_data["last_new_level"] = gam_result.level
+    await _db_try(_save)
+
+
+async def _save_tutor_rewards(telegram_id, context):
+    from sqlalchemy import select
+
+    from src.api.gamification import XP_SOURCES
+    async def _save():
+        factory = async_session_factory()
+        async with factory() as session:
+            result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+            user = result.scalar_one_or_none()
+            if not user:
+                return
+            xp_amount = XP_SOURCES.get("tutor_interaction", 5)
+            meta = {"source": "telegram_bot"}
+            gam_result, _, level_up = await award_xp(user.id, "tutor_interaction", xp_amount, meta, session)
+            await update_streak(user.id, session)
+            await check_achievements(user.id, gam_result, session)
+            await session.commit()
+            context.user_data["last_xp_awarded"] = xp_amount
+            context.user_data["last_level_up"] = level_up
+            context.user_data["last_new_level"] = gam_result.level
+    await _db_try(_save)
+
+
 async def _show_quiz_result(update: Update, context, msg=None):
     session = context.user_data.get("quiz_session", {})
     correct = session.get("correct", 0)
@@ -573,7 +648,19 @@ async def _show_quiz_result(update: Update, context, msg=None):
     qs = session.get("questions", [])
     ans = session.get("answers", [])
 
-    lines = [f"📊 Quiz Complete!\nScore: {correct}/{total} ({pct}%)\n"]
+    telegram_id = update.effective_user.id if update.effective_user else None
+    if telegram_id:
+        await _save_quiz_rewards(telegram_id, correct, total, context)
+
+    xp_awarded = context.user_data.get("last_xp_awarded", _calculate_quiz_xp(pct))
+    level_up = context.user_data.pop("last_level_up", False)
+    lines = [f"📊 Quiz Complete!\nScore: {correct}/{total} ({pct}%)"]
+    if xp_awarded:
+        lines.append(f"⭐ XP Earned: +{xp_awarded} XP")
+    if level_up:
+        new_level = context.user_data.get("last_new_level", 1)
+        lines.append(f"🎉 LEVEL UP! You are now Level {new_level}!")
+    lines.append("")
     for i, q in enumerate(qs):
         icon = "✅" if i < len(ans) and ans[i] == q.get("correct_answer", "") else "❌"
         lines.append(f"{icon} Q{i+1}: {q.get('question_text', '')[:50]}")

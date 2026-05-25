@@ -1,0 +1,184 @@
+from datetime import datetime, timezone
+
+import structlog
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from src.api.gamification import (
+    RECOVERY_MILESTONE_THRESHOLDS,
+    XP_SOURCES,
+    award_xp,
+    check_achievements,
+    update_streak,
+)
+from src.database.models import RecoveryPlan, RecoveryTask
+from src.database.session import get_session
+from src.schemas.recovery import (
+    CompleteTaskResponse,
+    CreateRecoveryPlanRequest,
+    RecoveryPlanResponse,
+    RecoveryTaskResponse,
+)
+
+logger = structlog.get_logger()
+router = APIRouter(prefix="/recovery", tags=["Recovery"])
+
+
+@router.post("/plan", response_model=RecoveryPlanResponse)
+async def create_recovery_plan(
+    request: CreateRecoveryPlanRequest,
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        plan = RecoveryPlan(
+            user_id=request.user_id,
+            topic=request.topic,
+            total_tasks=len(request.tasks),
+            status="active",
+        )
+        session.add(plan)
+        await session.flush()
+
+        db_tasks = []
+        for t in request.tasks:
+            task = RecoveryTask(
+                plan_id=plan.id,
+                title=t.title,
+                task_type=t.task_type,
+                description=t.description,
+            )
+            session.add(task)
+            db_tasks.append(task)
+
+        await session.commit()
+        await session.refresh(plan)
+
+        return await _build_plan_response(plan, session)
+    except Exception as e:
+        await session.rollback()
+        logger.error("recovery_plan_create_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/plan/{user_id}", response_model=list[RecoveryPlanResponse])
+async def get_recovery_plans(
+    user_id,
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        result = await session.execute(
+            select(RecoveryPlan)
+            .where(RecoveryPlan.user_id == user_id)
+            .options(selectinload(RecoveryPlan.tasks))
+            .order_by(RecoveryPlan.created_at.desc())
+        )
+        plans = result.scalars().all()
+        return [await _build_plan_response(p, session) for p in plans]
+    except Exception as e:
+        logger.error("recovery_plans_fetch_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/task/complete", response_model=CompleteTaskResponse)
+async def complete_recovery_task(
+    task_id,
+    user_id,
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        result = await session.execute(
+            select(RecoveryTask)
+            .where(RecoveryTask.id == task_id)
+            .options(selectinload(RecoveryTask.plan))
+        )
+        task = result.scalar_one_or_none()
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        if task.is_completed:
+            raise HTTPException(status_code=400, detail="Task already completed")
+        if task.plan.user_id != user_id:
+            raise HTTPException(status_code=403, detail="Task does not belong to this user")
+
+        task.is_completed = True
+        task.completed_at = datetime.now(timezone.utc)
+
+        xp_amount = XP_SOURCES.get("recovery_task_completion", 40)
+        task.xp_awarded = xp_amount
+
+        plan = task.plan
+        plan.completed_tasks += 1
+        if plan.completed_tasks >= plan.total_tasks:
+            plan.status = "completed"
+
+        gam, _, level_up = await award_xp(
+            user_id, "recovery_task_completion", xp_amount,
+            {"task_id": str(task_id), "plan_id": str(plan.id), "topic": plan.topic},
+            session,
+        )
+
+        milestone_bonus = 0
+        completed = plan.completed_tasks
+        if completed in RECOVERY_MILESTONE_THRESHOLDS:
+            milestone_bonus = RECOVERY_MILESTONE_THRESHOLDS[completed]
+            gam, _, _ = await award_xp(
+                user_id, "recovery_milestone", milestone_bonus,
+                {"plan_id": str(plan.id), "completed_tasks": completed, "topic": plan.topic},
+                session,
+            )
+
+        await update_streak(user_id, session)
+        await check_achievements(user_id, gam, session)
+        await session.commit()
+
+        total = xp_amount + milestone_bonus
+        progress = round(plan.completed_tasks / max(plan.total_tasks, 1) * 100, 1)
+
+        return CompleteTaskResponse(
+            task_id=task.id,
+            plan_id=plan.id,
+            xp_awarded=xp_amount,
+            milestone_bonus=milestone_bonus,
+            total_xp=total,
+            level_up=level_up,
+            new_level=gam.level,
+            plan_completed=plan.status == "completed",
+            progress_pct=progress,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        logger.error("recovery_task_complete_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def _build_plan_response(plan: RecoveryPlan, session: AsyncSession) -> RecoveryPlanResponse:
+    tasks = plan.tasks or []
+    progress = round(plan.completed_tasks / max(plan.total_tasks, 1) * 100, 1)
+    return RecoveryPlanResponse(
+        id=plan.id,
+        user_id=plan.user_id,
+        topic=plan.topic,
+        total_tasks=plan.total_tasks,
+        completed_tasks=plan.completed_tasks,
+        status=plan.status,
+        progress_pct=progress,
+        tasks=[
+            RecoveryTaskResponse(
+                id=t.id,
+                plan_id=t.plan_id,
+                title=t.title,
+                task_type=t.task_type,
+                description=t.description,
+                is_completed=t.is_completed,
+                completed_at=t.completed_at,
+                xp_awarded=t.xp_awarded,
+                created_at=t.created_at,
+            )
+            for t in tasks
+        ],
+        created_at=plan.created_at,
+        updated_at=plan.updated_at,
+    )

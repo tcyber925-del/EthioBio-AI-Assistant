@@ -291,7 +291,7 @@ async def test_tutor_agent_socratic_prompt_has_misconception_directive():
 
 
 def test_graph_node_prompt_has_misconception_directive():
-    from src.graph.nodes.tutor import SYSTEM_PROMPT, SOCRATIC_SYSTEM_PROMPT
+    from src.graph.nodes.tutor import SOCRATIC_SYSTEM_PROMPT, SYSTEM_PROMPT
     assert "conceptual error" in SYSTEM_PROMPT
     assert "conceptual error" in SOCRATIC_SYSTEM_PROMPT
     assert "gently" in SYSTEM_PROMPT

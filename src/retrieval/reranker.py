@@ -4,8 +4,8 @@ Uses sentence-transformers cross-encoder to re-rank (query, passage) pairs
 with much higher accuracy than bi-encoder embeddings alone.
 """
 
+
 import structlog
-from typing import Optional
 
 logger = structlog.get_logger()
 

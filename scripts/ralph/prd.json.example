@@ -1,28 +1,34 @@
 {
   "title": "Feature Title",
   "branchName": "ralph/feature-name",
+  "description": "Feature Description - What this feature does",
   "userStories": [
     {
       "id": "US-001",
       "title": "Story title",
-      "description": "Description of what needs to be implemented",
+      "description": "As a [user], I want [feature] so that [benefit]",
+      "acceptanceCriteria": [
+        "Specific verifiable criterion 1",
+        "Specific verifiable criterion 2",
+        "Typecheck passes"
+      ],
       "priority": 1,
       "passes": false,
-      "acceptanceCriteria": [
-        "Criterion 1",
-        "Criterion 2"
-      ]
+      "notes": ""
     },
     {
       "id": "US-002",
       "title": "Another story",
-      "description": "Description of what needs to be implemented",
+      "description": "As a [user], I want [feature] so that [benefit]",
+      "acceptanceCriteria": [
+        "Specific verifiable criterion 1",
+        "Specific verifiable criterion 2",
+        "Typecheck passes",
+        "Verify in browser using Playwright browser tools"
+      ],
       "priority": 2,
       "passes": false,
-      "acceptanceCriteria": [
-        "Criterion 1",
-        "Criterion 2"
-      ]
+      "notes": ""
     }
   ]
 }

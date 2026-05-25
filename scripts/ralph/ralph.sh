@@ -1,14 +1,34 @@
 #!/bin/bash
 # Ralph Wiggum - Long-running AI agent loop for OpenCode
-# Usage: ./ralph.sh [max_iterations]
+# Usage: ./ralph.sh [--tool opencode] [max_iterations]
 
 set -euo pipefail
 
+TOOL="opencode"
 MAX_ITERATIONS=10
 
-if [[ "${1:-}" =~ ^[0-9]+$ ]]; then
-  MAX_ITERATIONS="$1"
-  shift
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --tool)
+      TOOL="$2"
+      shift 2
+      ;;
+    --tool=*)
+      TOOL="${1#*=}"
+      shift
+      ;;
+    *)
+      if [[ "$1" =~ ^[0-9]+$ ]]; then
+        MAX_ITERATIONS="$1"
+      fi
+      shift
+      ;;
+  esac
+done
+
+if [[ "$TOOL" != "opencode" ]]; then
+  echo "Error: Invalid tool '$TOOL'. Must be 'opencode'." >&2
+  exit 1
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -16,7 +36,7 @@ PRD_FILE="$SCRIPT_DIR/prd.json"
 PROGRESS_FILE="$SCRIPT_DIR/progress.txt"
 ARCHIVE_DIR="$SCRIPT_DIR/archive"
 LAST_BRANCH_FILE="$SCRIPT_DIR/.last-branch"
-TASK_PRD_FILE="$SCRIPT_DIR/tasks/PRD-socratic-tutor-mode.md"
+TASK_PRD_FILE="$SCRIPT_DIR/tasks/gamification-system.md"
 REQUIRED_STORY_IDS=()
 
 require_command() {
@@ -39,7 +59,7 @@ require_file() {
 
 load_required_story_ids() {
   if [ -f "$TASK_PRD_FILE" ]; then
-    mapfile -t REQUIRED_STORY_IDS < <(grep -oE 'ST-[0-9]+' "$TASK_PRD_FILE" | awk '!seen[$0]++')
+    mapfile -t REQUIRED_STORY_IDS < <(grep -oE 'GM-[0-9]+' "$TASK_PRD_FILE" | awk '!seen[$0]++')
   fi
 }
 
@@ -100,10 +120,20 @@ initialize_progress_file() {
 }
 
 require_command jq
-require_command opencode
+require_command "$TOOL"
 require_file "$PRD_FILE"
 require_file "$SCRIPT_DIR/RALPH.md"
 load_required_story_ids
+
+# Auto-fill title from branchName if missing or empty
+if ! jq -e '.title | strings | length > 0' "$PRD_FILE" >/dev/null 2>&1; then
+  NEW_TITLE=$(jq -r '.branchName | split("/") | .[-1] | gsub("-"; " ") | split(" ") | map(. as $w | $w[0:1] | ascii_upcase + $w[1:]) | join(" ")' "$PRD_FILE" 2>/dev/null || echo "")
+  if [ -n "$NEW_TITLE" ]; then
+    echo "Auto-filling missing title in $PRD_FILE -> \"$NEW_TITLE\""
+    jq --arg t "$NEW_TITLE" '. + {"title": $t}' "$PRD_FILE" > "${PRD_FILE}.tmp" && mv "${PRD_FILE}.tmp" "$PRD_FILE"
+  fi
+fi
+
 validate_prd
 
 # Archive previous run if branch changed
@@ -139,26 +169,26 @@ fi
 
 initialize_progress_file
 
-echo "Starting Ralph - Tool: opencode - Max iterations: $MAX_ITERATIONS"
+echo "Starting Ralph - Tool: $TOOL - Max iterations: $MAX_ITERATIONS"
 
 for i in $(seq 1 $MAX_ITERATIONS); do
   validate_prd
 
   echo ""
   echo "==============================================================="
-  echo "  Ralph Iteration $i of $MAX_ITERATIONS (opencode)"
+  echo "  Ralph Iteration $i of $MAX_ITERATIONS ($TOOL)"
   echo "==============================================================="
 
   OUTPUT_FILE="$(mktemp)"
   OUTPUT=""
 
-  if opencode run --dangerously-skip-permissions "$(cat "$SCRIPT_DIR/RALPH.md")" 2>&1 | tee "$OUTPUT_FILE"; then
+  if $TOOL run --dangerously-skip-permissions "$(cat "$SCRIPT_DIR/RALPH.md")" 2>&1 | tee "$OUTPUT_FILE"; then
     :
   else
     STATUS=${PIPESTATUS[0]}
     OUTPUT="$(cat "$OUTPUT_FILE")"
     rm -f "$OUTPUT_FILE"
-    echo "Error: opencode run failed during iteration $i with exit code $STATUS." >&2
+    echo "Error: $TOOL run failed during iteration $i with exit code $STATUS." >&2
     exit "$STATUS"
   fi
 

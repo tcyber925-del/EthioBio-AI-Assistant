@@ -48,3 +48,4 @@ class QuizSubmitResponse(SchemaModel):
     total: int
     correct: int
     feedback: list[dict]
+    xp_awarded: int = 0
