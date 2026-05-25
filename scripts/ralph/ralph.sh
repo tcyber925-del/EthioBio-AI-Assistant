@@ -36,7 +36,7 @@ PRD_FILE="$SCRIPT_DIR/prd.json"
 PROGRESS_FILE="$SCRIPT_DIR/progress.txt"
 ARCHIVE_DIR="$SCRIPT_DIR/archive"
 LAST_BRANCH_FILE="$SCRIPT_DIR/.last-branch"
-TASK_PRD_FILE="$SCRIPT_DIR/tasks/gamification-system.md"
+TASK_PRD_FILE=""
 REQUIRED_STORY_IDS=()
 
 require_command() {
@@ -59,7 +59,7 @@ require_file() {
 
 load_required_story_ids() {
   if [ -f "$TASK_PRD_FILE" ]; then
-    mapfile -t REQUIRED_STORY_IDS < <(grep -oE 'GM-[0-9]+' "$TASK_PRD_FILE" | awk '!seen[$0]++')
+    mapfile -t REQUIRED_STORY_IDS < <(grep -oE '[A-Z]+-[0-9]+' "$TASK_PRD_FILE" | awk '!seen[$0]++')
   fi
 }
 
@@ -123,6 +123,13 @@ require_command jq
 require_command "$TOOL"
 require_file "$PRD_FILE"
 require_file "$SCRIPT_DIR/RALPH.md"
+
+# Derive task PRD file from branchName (ralph/xyz -> tasks/xyz.md)
+TASK_NAME=$(jq -r '.branchName | split("/") | .[-1]' "$PRD_FILE" 2>/dev/null || echo "")
+if [ -n "$TASK_NAME" ] && [ -f "$SCRIPT_DIR/tasks/$TASK_NAME.md" ]; then
+  TASK_PRD_FILE="$SCRIPT_DIR/tasks/$TASK_NAME.md"
+fi
+
 load_required_story_ids
 
 # Auto-fill title from branchName if missing or empty
