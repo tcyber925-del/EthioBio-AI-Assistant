@@ -29,8 +29,8 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented: DiagramAgent generates SVG diagrams via LLM. POST /diagram/generate endpoint accepts prompt, topic, difficulty. Returns diagram_svg, labels array, title, metadata. Files: src/agents/diagram.py, src/api/diagram.py, src/schemas/diagram.py, src/main.py."
     },
     {
       "id": "US-003",

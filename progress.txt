@@ -3,6 +3,10 @@
 - Use `fpdf2` subclassing `FPDF` for PDF generation; prefer `cell()` with `new_x="LMARGIN"` / `new_y="NEXT"` over `multi_cell()` for simple text
 - When registering a new API router in `main.py`, add both the import and `app.include_router()` call
 - Export module follows: define exporter in `src/export/`, add endpoint in `src/api/export.py`, add tests in `tests/`
+- Database models follow `QuizAttempt` pattern: UUID PK, FK to users, standard timestamp fields
+- No migration needed — `Base.metadata.create_all` in `init_db()` handles table creation
+- Schema files follow `SchemaModel` base from `src/schemas/base.py`
+- The Ralph system stores the active PRD at `scripts/ralph/prd.json` and archives old ones
 
 ## [2026-05-23 15:58] - Phase 4: PDF/DOCX Export
 - Implemented PDF/DOCX export for quizzes and lesson plans
@@ -22,3 +26,32 @@
 - Reviewed: Fields wired through `GraphOutput` in `orchestrator.py`
 - All 6 misconception tests pass (28/28 agent tests, 55/56 total tests — pre-existing ChromaDB failure)
 - All stories complete: ST-001 (Socratic) ✅ ST-003 (Hint Progression) ✅ ST-004 (Misconception Detection) ✅ ST-005 (Reveal Answer) ✅
+
+## [2026-05-25] - US-002: Create diagram generation API endpoint
+- Implemented DiagramAgent in `src/agents/diagram.py` that generates SVG diagrams via LLM
+- Added POST /diagram/generate endpoint in `src/api/diagram.py` accepting prompt, topic, difficulty
+- Extended `src/schemas/diagram.py` with `DiagramLabel`, `DiagramGenerateRequest`, `DiagramGenerateResponse`
+- Registered diagram router in `src/main.py`
+- SVG-based rendering approach (LLM generates SVG markup with labeled structures)
+- Quality: ruff clean on our files, no new mypy errors, 67/74 tests pass (7 pre-existing failures)
+- **Learnings for future iterations:**
+  - New agent follows `BaseAgent._call_llm()` pattern with JSON parsing (same as quiz/lesson agents)
+  - API endpoint follows existing pattern: `router.post("/generate", ...)` with `ModelRouter()` + `Depends(get_session)`
+  - Router registration requires both import and `app.include_router()` call in `main.py`
+  - Diagram labels use 'id', 'text', 'x', 'y' fields for positioning - frontend needs these for overlays
+  - SVG approach avoids need for external image generation APIs
+---
+## [2026-05-25] - US-001: Add diagram_attempts table to database
+- Added `DiagramAttempt` model to `src/database/models.py` with fields: id, user_id, topic, difficulty, score, labels (JSON), completed (bool), started_at, completed_at
+- Added `diagram_attempts` relationship on User model
+- Created `src/schemas/diagram.py` with `DiagramAttemptCreate` and `DiagramAttemptResponse` schemas
+- Restored interactive diagramming PRD from archive to `scripts/ralph/prd.json`
+- Quality: ruff clean, mypy clean on our files, 67/74 tests pass (7 pre-existing telegram/agent failures)
+- Files changed: `src/database/models.py`, `src/schemas/diagram.py`, `scripts/ralph/prd.json`, `scripts/ralph/archive/2026-05-25-feature/gamification-system/prd.json`
+- **Learnings for future iterations:**
+  - Database models follow `QuizAttempt` pattern: UUID PK, FK to users, standard timestamp fields
+  - No migration needed — `Base.metadata.create_all` in `init_db()` handles table creation
+  - Schema files follow `SchemaModel` base from `src/schemas/base.py`
+  - The Ralph system stores the active PRD at `scripts/ralph/prd.json` and archives old ones
+  - Always restore the correct PRD before starting work if it was archived/reverted
+---

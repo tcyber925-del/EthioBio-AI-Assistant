@@ -6,6 +6,28 @@ from pydantic import Field
 from src.schemas.base import SchemaModel
 
 
+class DiagramLabel(SchemaModel):
+    id: str
+    text: str
+    x: float
+    y: float
+
+
+class DiagramGenerateRequest(SchemaModel):
+    prompt: str = Field(..., min_length=1, max_length=500)
+    topic: str = Field(..., pattern="^(cells|organ systems|genetics|anatomy)$")
+    difficulty: str = Field("beginner", pattern="^(beginner|intermediate|advanced)$")
+
+
+class DiagramGenerateResponse(SchemaModel):
+    diagram_svg: str
+    labels: list[DiagramLabel]
+    title: str
+    topic: str
+    difficulty: str
+    model_used: str = ""
+
+
 class DiagramAttemptCreate(SchemaModel):
     user_id: UUID
     topic: str = Field(..., pattern="^(cells|organ systems|genetics|anatomy)$")
