@@ -2,8 +2,6 @@
 
 from unittest.mock import MagicMock
 
-import pytest
-
 
 def test_detect_figures_returns_figures():
     from src.ingestion.diagram_extractor import _detect_figures
@@ -69,7 +67,6 @@ def test_extract_caption_from_nearby_text():
     assert "Figure 1.1" in result
 
 
-@pytest.mark.xfail(reason="not yet implemented")
 def test_extract_figures_from_pdf_returns_metadata():
     from src.ingestion.diagram_extractor import extract_figures_from_pdf
 
