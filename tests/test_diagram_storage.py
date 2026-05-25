@@ -33,3 +33,23 @@ def test_textbook_diagram_model_columns():
     assert columns["ground_truth_labels"] in (dict, type(None))
     assert "created_at" in columns
     assert "updated_at" in columns
+
+
+def test_textbook_diagram_response_schema():
+    from src.schemas.diagram import TextbookDiagramResponse
+
+    data = {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "image_url": "/diagrams/static/10/grade-10_1.jpg",
+        "caption": "Figure 1: Cell structure",
+        "grade_level": 10,
+        "unit": "Unit 1",
+        "topic": "Cell Biology",
+        "figure_number": 1,
+        "page_number": 5,
+        "source_file": "grade-10.pdf",
+    }
+    resp = TextbookDiagramResponse(**data)
+    assert resp.grade_level == 10
+    assert resp.image_url == "/diagrams/static/10/grade-10_1.jpg"
+    assert resp.topic == "Cell Biology"

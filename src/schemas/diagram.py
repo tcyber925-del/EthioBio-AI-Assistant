@@ -69,3 +69,15 @@ class DiagramAttemptResponse(SchemaModel):
     completed: bool = False
     started_at: str
     completed_at: Optional[str] = None
+
+
+class TextbookDiagramResponse(SchemaModel):
+    id: UUID
+    image_url: str
+    caption: str
+    grade_level: int
+    unit: str
+    topic: str
+    figure_number: int
+    page_number: int
+    source_file: str
