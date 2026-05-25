@@ -126,6 +126,10 @@ async def test_index_script_upserts_to_chromadb():
     }
     assert "animal cell" in call_args.kwargs["texts"][0]
     assert "DNA" in call_args.kwargs["texts"][1]
+    assert call_args.kwargs["ids"] == [
+        "diagram_caption_11111111-1111-1111-1111-111111111111",
+        "diagram_caption_22222222-2222-2222-2222-222222222222",
+    ]
 
 
 @pytest.mark.asyncio
