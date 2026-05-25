@@ -61,3 +61,11 @@ def test_get_textbook_diagrams_endpoint_signature():
     textbok_routes = [r for r in router.routes if r.path == "/diagram/textbook"]
     assert len(textbok_routes) == 1
     assert "GET" in textbok_routes[0].methods
+
+
+def test_index_script_imports():
+    import importlib.util
+    spec = importlib.util.find_spec("scripts.index_diagrams")
+    if spec is not None:
+        import scripts.index_diagrams
+        assert callable(scripts.index_diagrams.main)
