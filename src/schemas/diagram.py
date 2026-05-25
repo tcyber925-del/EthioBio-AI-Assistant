@@ -13,11 +13,19 @@ class DiagramLabel(SchemaModel):
     y: float
 
 
+class TextbookReference(SchemaModel):
+    grade: int
+    unit: str | None = None
+    figure_number: int | None = None
+    caption: str
+
+
 class DiagramGenerateRequest(SchemaModel):
     prompt: str = Field(..., min_length=1, max_length=500)
     topic: str = Field(..., pattern="^(cells|organ systems|genetics|anatomy)$")
     difficulty: str = Field("beginner", pattern="^(beginner|intermediate|advanced)$")
     model: Optional[str] = Field(None, min_length=1)
+    grade: int = Field(default=10, ge=7, le=12)
 
 
 class DiagramGenerateResponse(SchemaModel):
@@ -27,6 +35,7 @@ class DiagramGenerateResponse(SchemaModel):
     topic: str
     difficulty: str
     model_used: str = ""
+    textbook_references: list[TextbookReference] = []
 
 
 class DiagramLabelResult(SchemaModel):

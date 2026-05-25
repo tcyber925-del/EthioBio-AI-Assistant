@@ -56,10 +56,12 @@ class DiagramAgent(BaseAgent):
         difficulty: str = "beginner",
         session: Optional[AsyncSession] = None,
         preferred_model: str | None = None,
+        grade: int = 10,
     ) -> dict:
         user_message = f"""Create a biology diagram for topic: {topic}.
 User request: {prompt}
 Difficulty level: {difficulty}
+Grade level: {grade}
 
 For {difficulty} difficulty:
 - beginner: 3-5 labeled structures, simple shapes, large text

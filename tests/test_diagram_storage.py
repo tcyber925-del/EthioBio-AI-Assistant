@@ -156,3 +156,38 @@ async def test_index_dry_run():
     assert result["indexed"] == 0
     assert result["skipped"] == 1
     mock_adapter.vector_store.add_documents.assert_not_called()
+
+
+def test_textbook_reference_schema():
+    from src.schemas.diagram import TextbookReference
+
+    ref = TextbookReference(grade=10, unit="Unit 2", figure_number=1, caption="Animal cell")
+    assert ref.grade == 10
+    assert ref.caption == "Animal cell"
+
+
+def test_diagram_generate_request_includes_grade():
+    from src.schemas.diagram import DiagramGenerateRequest
+
+    req = DiagramGenerateRequest(prompt="test", topic="cells")
+    assert req.grade == 10
+
+    req2 = DiagramGenerateRequest(prompt="test", topic="cells", grade=12)
+    assert req2.grade == 12
+
+
+def test_diagram_generate_response_includes_textbook_refs():
+    from src.schemas.diagram import DiagramGenerateResponse, TextbookReference
+
+    ref = TextbookReference(grade=10, unit="Unit 2", figure_number=1, caption="Animal cell")
+    resp = DiagramGenerateResponse(
+        title="Test",
+        diagram_svg="<svg></svg>",
+        labels=[],
+        topic="cells",
+        difficulty="beginner",
+        model_used="test",
+        textbook_references=[ref],
+    )
+    assert len(resp.textbook_references) == 1
+    assert resp.textbook_references[0].caption == "Animal cell"

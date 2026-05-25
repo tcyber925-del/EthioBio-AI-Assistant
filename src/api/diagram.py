@@ -18,6 +18,7 @@ from src.schemas.diagram import (
     DiagramValidateRequest,
     DiagramValidateResponse,
     TextbookDiagramResponse,
+    TextbookReference,
 )
 
 logger = structlog.get_logger()
@@ -39,6 +40,7 @@ async def generate_diagram(
             difficulty=request.difficulty,
             session=session,
             preferred_model=request.model,
+            grade=request.grade,
         )
 
         return DiagramGenerateResponse(
@@ -48,6 +50,9 @@ async def generate_diagram(
             topic=result["topic"],
             difficulty=result["difficulty"],
             model_used=result.get("model_used", ""),
+            textbook_references=[
+                TextbookReference(**ref) for ref in result.get("textbook_references", [])
+            ],
         )
     except Exception as e:
         logger.error("diagram_generate_error", error=str(e))
