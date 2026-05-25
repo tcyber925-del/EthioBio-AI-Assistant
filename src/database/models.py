@@ -329,6 +329,23 @@ class DiagramAttempt(Base):
     user: Mapped["User"] = relationship(back_populates="diagram_attempts")
 
 
+class TextbookDiagram(Base):
+    __tablename__ = "textbook_diagrams"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    grade_level: Mapped[int] = mapped_column(Integer)
+    unit: Mapped[str] = mapped_column(String(200), default="")
+    topic: Mapped[str] = mapped_column(String(200), default="")
+    caption: Mapped[str] = mapped_column(Text, default="")
+    image_path: Mapped[str] = mapped_column(String(500))
+    figure_number: Mapped[int] = mapped_column(Integer)
+    page_number: Mapped[int] = mapped_column(Integer)
+    source_file: Mapped[str] = mapped_column(String(300))
+    ground_truth_labels: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
 class FeedbackEvent(Base):
     __tablename__ = "feedback_events"
 
