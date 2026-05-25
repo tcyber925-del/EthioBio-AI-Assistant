@@ -55,6 +55,7 @@ class DiagramAgent(BaseAgent):
         topic: str,
         difficulty: str = "beginner",
         session: Optional[AsyncSession] = None,
+        preferred_model: str | None = None,
     ) -> dict:
         user_message = f"""Create a biology diagram for topic: {topic}.
 User request: {prompt}
@@ -74,6 +75,7 @@ Respond with valid JSON only."""
             temperature=0.7,
             max_tokens=4096,
             request_type="diagram_generation",
+            preferred_model=preferred_model,
         )
 
         try:

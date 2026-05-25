@@ -7,6 +7,7 @@ from src.llm.providers.anthropic_provider import AnthropicProvider
 from src.llm.providers.base import LLMProvider
 from src.llm.providers.ollama import OllamaProvider
 from src.llm.providers.openai_provider import OpenAIProvider
+from src.llm.providers.openrouter import OpenRouterProvider
 from src.llm.registry import ModelRegistry
 
 logger = structlog.get_logger()
@@ -26,6 +27,10 @@ class ProviderManager:
         """Initialize all configured providers."""
         ollama = OllamaProvider()
         self._providers["ollama"] = ollama
+
+        if settings.openrouter_api_key:
+            self._providers["openrouter"] = OpenRouterProvider()
+            self._fallback_chain.append("openrouter")
 
         if settings.fallback_provider and settings.fallback_provider.lower() == "openai":
             self._providers["openai"] = OpenAIProvider()

@@ -21,6 +21,7 @@ class BaseAgent:
         temperature: float = 0.7,
         max_tokens: int = 2048,
         request_type: str = "chat",
+        preferred_model: str | None = None,
     ) -> dict:
         messages = [
             {"role": "system", "content": system_prompt},
@@ -32,4 +33,5 @@ class BaseAgent:
             session=session,
             temperature=temperature,
             max_tokens=max_tokens,
+            preferred_model=preferred_model,
         )

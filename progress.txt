@@ -203,5 +203,21 @@
   - Before starting a new story, always verify if parts of it were already implemented by previous stories to avoid redundant work
   - The prompt-based difficulty control (label count ranges in system prompt + user message) is effective for LLM-generated content
   - Schema validation with pydantic `pattern` regex ensures difficulty values are constrained client-side before reaching the backend
-  - When mocking LLM calls to test prompt construction, mock `router.route` on the router, then inspect `call_args[1]["messages"]` for prompt content
+   - When mocking LLM calls to test prompt construction, mock `router.route` on the router, then inspect `call_args[1]["messages"]` for prompt content
+---
+## [2026-05-25] - US-001-004: OpenRouter provider and diagram model selection
+- **US-001**: Created `src/llm/providers/openrouter.py` — OpenRouterProvider(OpenAIProvider) with HTTP-Referer/X-Title headers, registered in ProviderManager after Ollama. Config vars added to `src/config.py` and `.env.example`.
+- **US-002**: Threaded `preferred_model` through call chain: DiagramAgent.generate() → BaseAgent._call_llm() → ModelRouter.route() → ProviderManager.route(). None preserves Ollama default.
+- **US-003**: Added `DiagramGenerateRequest.model: Optional[str] = None` to `src/schemas/diagram.py`. Endpoint passes `request.model` as `preferred_model`. Response already has `model_used`.
+- **US-004**: Added model selector dropdown to `dashboard/src/app/diagrams/page.tsx` — fetches models from GET /models on mount, populates `<select>` alongside topic/difficulty, sends selected model in request body, shows loading state. Page already displayed `model_used` in metadata.
+- Tests: `test_diagram_generate_with_preferred_model` + `test_diagram_generate_default_model_when_none` verify model threading. 11/11 diagram tests pass.
+- Quality: No new ruff/mypy errors (169 ruff E501 pre-existing, 214 mypy pre-existing).
+- Files: `src/llm/providers/openrouter.py` (new), `src/llm/providers/__init__.py`, `src/llm/manager.py`, `src/config.py`, `src/schemas/diagram.py`, `src/api/diagram.py`, `src/agents/diagram.py`, `src/agents/base.py`, `src/llm/router.py`, `dashboard/src/app/diagrams/page.tsx`, `.env.example`, `tests/test_agents.py`, `scripts/ralph/prd.json`, `progress.txt`
+- **Learnings for future iterations:**
+  - OpenRouter provider pattern: subclass OpenAIProvider (same API), override `chat()` + `_client` init, add provider identifier for model_used
+  - ProviderManager fallback chain order: Ollama → OpenRouter → OpenAI → Anthropic → OpenAI-compatible
+  - `preferred_model` threading is a mechanical pattern: add Optional[str] param at each layer, pass it through, let ProviderManager handle routing
+  - Dashboard model selector pattern: `useEffect` → fetch /models → set state → `<select>` with loading guard → send in request body
+  - The PRD acceptance criteria for "Verify in browser using Playwright browser tools" requires a running dev server — defer to manual verification
+  - Pre-existing test failures (ChromaDB Rust bindings, Postgres unavailable, telegram bot, per_message warning) are unrelated — 8 stable failures
 ---

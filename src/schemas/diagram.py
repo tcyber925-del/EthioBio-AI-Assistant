@@ -17,6 +17,7 @@ class DiagramGenerateRequest(SchemaModel):
     prompt: str = Field(..., min_length=1, max_length=500)
     topic: str = Field(..., pattern="^(cells|organ systems|genetics|anatomy)$")
     difficulty: str = Field("beginner", pattern="^(beginner|intermediate|advanced)$")
+    model: Optional[str] = Field(None, min_length=1)
 
 
 class DiagramGenerateResponse(SchemaModel):

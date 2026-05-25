@@ -34,6 +34,7 @@ async def generate_diagram(
             topic=request.topic,
             difficulty=request.difficulty,
             session=session,
+            preferred_model=request.model,
         )
 
         return DiagramGenerateResponse(

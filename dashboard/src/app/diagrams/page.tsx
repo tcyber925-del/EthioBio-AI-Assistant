@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Image, Send, Loader2, AlertTriangle, CheckCircle2, XCircle, RefreshCw } from 'lucide-react'
 import { fetchWithTimeout } from '@/lib/fetch'
 
@@ -36,6 +36,13 @@ interface ValidateResponse {
   attempt_id: string
 }
 
+interface ModelOption {
+  id: string
+  name: string
+  provider: string
+  is_default: boolean
+}
+
 const TOPICS = ['cells', 'organ systems', 'genetics', 'anatomy']
 const DIFFICULTIES = ['beginner', 'intermediate', 'advanced']
 const PLACEHOLDER_USER_ID = '00000000-0000-0000-0000-000000000001'
@@ -44,6 +51,9 @@ export default function DiagramsPage() {
   const [prompt, setPrompt] = useState('')
   const [topic, setTopic] = useState('cells')
   const [difficulty, setDifficulty] = useState('beginner')
+  const [model, setModel] = useState('')
+  const [models, setModels] = useState<ModelOption[]>([])
+  const [modelsLoading, setModelsLoading] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<DiagramResponse | null>(null)
@@ -53,6 +63,17 @@ export default function DiagramsPage() {
   const [submitting, setSubmitting] = useState(false)
   const [validationResult, setValidationResult] = useState<ValidateResponse | null>(null)
   const [confirmedCorrectIds, setConfirmedCorrectIds] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    fetchWithTimeout('/models', { method: 'GET' })
+      .then((data: ModelOption[]) => {
+        setModels(data)
+        const defaultModel = data.find((m: ModelOption) => m.is_default)
+        if (defaultModel) setModel(defaultModel.id)
+        setModelsLoading(false)
+      })
+      .catch(() => setModelsLoading(false))
+  }, [])
 
   const generateDiagram = async () => {
     if (!prompt.trim()) return
@@ -71,6 +92,7 @@ export default function DiagramsPage() {
           prompt: prompt.trim(),
           topic,
           difficulty,
+          model: model || undefined,
         }),
       }, 120000)
       setResult(data)
@@ -156,7 +178,7 @@ export default function DiagramsPage() {
       </div>
 
       <div className="bg-card rounded-xl border border-border p-5 mb-6">
-        <div className="grid grid-cols-5 gap-3 mb-4">
+        <div className="grid grid-cols-6 gap-3 mb-4">
           <div>
             <label className="text-xs text-foreground-muted block mb-1.5">Topic</label>
             <select value={topic} onChange={e => setTopic(e.target.value)}
@@ -169,6 +191,15 @@ export default function DiagramsPage() {
             <select value={difficulty} onChange={e => setDifficulty(e.target.value)}
               className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
               {DIFFICULTIES.map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-foreground-muted block mb-1.5">Model</label>
+            <select value={model} onChange={e => setModel(e.target.value)}
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+              disabled={modelsLoading}>
+              {models.length === 0 && <option value="">Default</option>}
+              {models.map(m => <option key={m.id} value={m.id}>{m.name} ({m.provider}){m.is_default ? ' ★' : ''}</option>)}
             </select>
           </div>
           <div className="col-span-3">

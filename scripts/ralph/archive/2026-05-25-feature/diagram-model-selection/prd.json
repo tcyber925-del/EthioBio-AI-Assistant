@@ -1,0 +1,113 @@
+{
+  "project": "EthioBio AI Assistant",
+  "title": "Interactive Biology Diagramming",
+  "branchName": "ralph/interactive-diagramming",
+  "description": "Interactive Biology Diagramming - Generate biology diagrams, label structures, complete drag-and-drop labeling exercises for visual biology learning.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add diagram_attempts table to database",
+      "description": "As a developer, I need a database table to store student diagram attempt data.",
+      "acceptanceCriteria": [
+        "Add diagram_attempts model with fields: user_id, topic, score, difficulty, completed_at",
+        "Run migration successfully",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Create diagram generation API endpoint",
+      "description": "As a developer, I need a POST /diagram/generate endpoint that returns a diagram with labels and metadata.",
+      "acceptanceCriteria": [
+        "POST /diagram/generate accepts prompt and topic parameters",
+        "Returns diagram, labels, and metadata in response",
+        "Supported topics: cells, organ systems, genetics, anatomy",
+        "Integrates with AI image generation or SVG rendering",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Create diagram validation API endpoint",
+      "description": "As a developer, I need a POST /diagram/validate endpoint that scores labels and returns corrections with explanations.",
+      "acceptanceCriteria": [
+        "POST /diagram/validate accepts label submissions",
+        "Returns score, corrections, and explanations",
+        "Structure matching and label correctness scoring implemented",
+        "Saves attempt record to diagram_attempts table",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Build diagram request UI",
+      "description": "As a student, I want to request biology diagrams by topic so that I can study visually.",
+      "acceptanceCriteria": [
+        "Prompt input field for requesting diagrams",
+        "Topic selector: cells, organ systems, genetics, anatomy",
+        "Difficulty selector: Beginner, Intermediate, Advanced",
+        "Generated diagram displayed with annotation overlay",
+        "Typecheck passes",
+        "Verify in browser using Playwright browser tools"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Build interactive labeling UI",
+      "description": "As a student, I want to drag-and-drop or select labels on a diagram so that I can test my visual understanding.",
+      "acceptanceCriteria": [
+        "Labels are draggable or selectable on the diagram",
+        "Submit button sends labels for validation",
+        "Correctness feedback displayed per label",
+        "Validation results shown inline on the diagram",
+        "Typecheck passes",
+        "Verify in browser using Playwright browser tools"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Build diagram explanation feedback UI",
+      "description": "As a student, I want explanations for incorrect labels so that I can learn from my mistakes.",
+      "acceptanceCriteria": [
+        "Incorrect labels are highlighted with explanations",
+        "Explanations generated based on correct answer",
+        "Retry button allows re-labeling incorrect items",
+        "Typecheck passes",
+        "Verify in browser using Playwright browser tools"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Add difficulty level selector to diagram system",
+      "description": "As a student, I want diagrams at different difficulty levels so that learning adapts to my ability.",
+      "acceptanceCriteria": [
+        "Beginner/Intermediate/Advanced modes functional",
+        "Label quantity increases with difficulty",
+        "Difficulty selection persisted in diagram_attempts table",
+        "Typecheck passes",
+        "Verify in browser using Playwright browser tools"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

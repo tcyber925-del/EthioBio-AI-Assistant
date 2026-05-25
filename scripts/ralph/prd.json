@@ -16,7 +16,7 @@
         "Ruff, mypy, pytest pass"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "New file: src/llm/providers/openrouter.py. Modify: src/config.py, src/llm/manager.py, .env.example."
     },
     {
@@ -32,7 +32,7 @@
         "Ruff, mypy, pytest pass"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Files: src/agents/diagram.py, src/agents/base.py, src/llm/router.py. The ProviderManager.route() already accepts preferred_model."
     },
     {
@@ -49,7 +49,7 @@
         "Ruff, mypy, pytest pass"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Files: src/schemas/diagram.py, src/api/diagram.py, tests/test_agents.py, tests/test_api.py."
     },
     {
@@ -66,7 +66,7 @@
         "Verify in browser using Playwright browser tools"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "File: dashboard/src/app/diagrams/page.tsx. Fetch /models on mount, populate a select dropdown alongside topic/difficulty."
     },
     {

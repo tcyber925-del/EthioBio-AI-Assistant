@@ -603,3 +603,45 @@ def test_student_progress_analysis():
     assert "weak_areas" in result
     assert "Genetics" in result["weak_areas"]
     assert result["overall_score"] > 0
+
+
+@pytest.mark.asyncio
+async def test_diagram_generate_with_preferred_model():
+    from src.agents.diagram import DiagramAgent
+
+    router = AsyncMock()
+    router.route = AsyncMock(return_value={
+        "content": '{"title": "Test", "diagram_svg": "<svg></svg>", "labels": []}',
+        "model": "openrouter/openai/gpt-4o",
+    })
+
+    agent = DiagramAgent(llm_router=router)
+    result = await agent.generate(
+        prompt="Test cell",
+        topic="cells",
+        difficulty="beginner",
+        preferred_model="openrouter/openai/gpt-4o",
+    )
+    call_args = router.route.call_args
+    assert call_args[1]["preferred_model"] == "openrouter/openai/gpt-4o"
+    assert result["model_used"] == "openrouter/openai/gpt-4o"
+
+
+@pytest.mark.asyncio
+async def test_diagram_generate_default_model_when_none():
+    from src.agents.diagram import DiagramAgent
+
+    router = AsyncMock()
+    router.route = AsyncMock(return_value={
+        "content": '{"title": "Test", "diagram_svg": "<svg></svg>", "labels": []}',
+        "model": "ollama/tinyllama",
+    })
+
+    agent = DiagramAgent(llm_router=router)
+    result = await agent.generate(
+        prompt="Test cell",
+        topic="cells",
+    )
+    call_args = router.route.call_args
+    assert call_args[1]["preferred_model"] is None
+    assert result["model_used"] == "ollama/tinyllama"

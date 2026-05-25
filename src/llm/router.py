@@ -57,6 +57,7 @@ class ModelRouter:
         session: Optional[AsyncSession] = None,
         temperature: float = 0.7,
         max_tokens: int = 2048,
+        preferred_model: str | None = None,
     ) -> dict:
         start_time = time.monotonic()
         fallback_triggered = False
@@ -68,6 +69,7 @@ class ModelRouter:
                 session=session,
                 temperature=temperature,
                 max_tokens=max_tokens,
+                preferred_model=preferred_model,
             )
             confidence = self._estimate_confidence(result["content"])
 
