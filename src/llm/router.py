@@ -7,7 +7,6 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.models import ModelRoutingLog
-from src.llm.fallback import FallbackProvider
 from src.llm.manager import ProviderManager
 from src.llm.ollama_client import OllamaClient
 from src.llm.registry import ModelRegistry
@@ -124,7 +123,6 @@ class ModelRouter:
         return health.get("ollama", {}).get("healthy", False)
 
     async def generate_embedding(self, text: str) -> list[float]:
-        from src.llm.ollama_client import OllamaClient
         client = OllamaClient()
         try:
             return await client.generate_embedding(text)

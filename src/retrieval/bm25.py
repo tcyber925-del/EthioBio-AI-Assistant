@@ -7,10 +7,9 @@ Persisted to disk via pickle for fast reload.
 import os
 import pickle
 import re
-import structlog
-from pathlib import Path
 from typing import Optional
 
+import structlog
 from rank_bm25 import BM25Okapi
 
 logger = structlog.get_logger()

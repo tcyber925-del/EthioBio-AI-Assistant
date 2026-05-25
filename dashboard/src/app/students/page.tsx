@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Users, AlertTriangle } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
 import { fetchWithTimeout } from '@/lib/fetch'
@@ -13,6 +14,7 @@ interface Student {
 }
 
 export default function StudentsPage() {
+  const router = useRouter()
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -61,8 +63,8 @@ export default function StudentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {students.map((s: any) => (
-                  <tr key={s.id} className="hover:bg-background-secondary/50">
+                  {students.map((s: any) => (
+                  <tr key={s.id} onClick={() => router.push(`/students/${s.id}`)} className="hover:bg-background-secondary/50 cursor-pointer">
                     <td className="px-5 py-3 text-sm text-foreground font-mono text-xs">{s.telegram_id || '—'}</td>
                     <td className="px-5 py-3">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${

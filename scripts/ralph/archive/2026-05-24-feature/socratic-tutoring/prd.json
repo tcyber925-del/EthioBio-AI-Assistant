@@ -1,0 +1,144 @@
+{
+  "title": "Gamification System",
+  "project": "EthioBio AI Assistant",
+  "branchName": "feature/gamification-system",
+  "description": "Gamification System - XP, mastery levels, streaks, achievements, progress tracking, and contextual learning rewards integrated directly into the biology learning experience.",
+  "userStories": [
+    {
+      "id": "GM-001",
+      "title": "XP Reward Engine",
+      "description": "As a student, I want to earn XP, so that learning feels rewarding.",
+      "priority": 1,
+      "passes": true,
+      "acceptanceCriteria": [
+        "XP awarded after activities",
+        "XP persisted in database",
+        "XP visible across UI surfaces",
+        "XP calculations deterministic",
+        "Typecheck passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "GM-002",
+      "title": "Daily Streak Tracking",
+      "description": "As a student, I want study streaks tracked, so that I stay consistent.",
+      "priority": 1,
+      "passes": true,
+      "acceptanceCriteria": [
+        "Consecutive study days counted",
+        "Missed days reset streak",
+        "Current streak visible",
+        "Longest streak stored",
+        "Typecheck passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "GM-003",
+      "title": "Mastery Level System",
+      "description": "As a student, I want mastery levels, so that I can track biology growth.",
+      "priority": 1,
+      "passes": true,
+      "acceptanceCriteria": [
+        "Levels derived from XP",
+        "Progress bar displayed",
+        "Level-up events shown",
+        "Level thresholds configurable",
+        "Typecheck passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "GM-005",
+      "title": "Quiz Reward Integration",
+      "description": "As a student, I want quizzes connected to rewards, so that studying feels motivating.",
+      "priority": 1,
+      "passes": true,
+      "acceptanceCriteria": [
+        "Quiz completion grants XP",
+        "Bonus XP for high scores",
+        "Reward modal displayed",
+        "Achievement checks triggered",
+        "Typecheck passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "GM-006",
+      "title": "Dashboard Gamification Widgets",
+      "description": "As a student, I want progression visible on my dashboard, so that I stay motivated.",
+      "priority": 1,
+      "passes": false,
+      "acceptanceCriteria": [
+        "XP card implemented",
+        "Streak widget implemented",
+        "Mastery progress bar implemented",
+        "Achievement panel implemented",
+        "Typecheck passes",
+        "Verify in browser using Playwright browser tools"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "GM-004",
+      "title": "Achievement Badge System",
+      "description": "As a student, I want achievements, so that milestones feel meaningful.",
+      "priority": 2,
+      "passes": true,
+      "acceptanceCriteria": [
+        "Badge unlock conditions configurable",
+        "Badge persistence implemented",
+        "Unlock notifications displayed",
+        "Achievement panel functional",
+        "Typecheck passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "GM-007",
+      "title": "Tutoring Reward Integration",
+      "description": "As a student, I want tutoring participation rewarded, so that active learning feels engaging.",
+      "priority": 2,
+      "passes": false,
+      "acceptanceCriteria": [
+        "Tutoring sessions grant XP",
+        "Feedback notifications displayed",
+        "Reward triggers configurable",
+        "Typecheck passes",
+        "Verify in browser using Playwright browser tools"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "GM-008",
+      "title": "Recovery Plan Rewards",
+      "description": "As a student, I want recovery progress rewarded, so that remediation feels motivating.",
+      "priority": 2,
+      "passes": false,
+      "acceptanceCriteria": [
+        "Recovery tasks grant XP",
+        "Milestone rewards implemented",
+        "Progress rewards displayed",
+        "Typecheck passes",
+        "Verify in browser using Playwright browser tools"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "GM-009",
+      "title": "Level-Up Notifications",
+      "description": "As a student, I want visible level-up feedback, so that progression feels exciting.",
+      "priority": 3,
+      "passes": false,
+      "acceptanceCriteria": [
+        "Level-up modal implemented",
+        "Animation supported",
+        "Rewards displayed clearly",
+        "Typecheck passes",
+        "Verify in browser using Playwright browser tools"
+      ],
+      "notes": ""
+    }
+  ]
+}

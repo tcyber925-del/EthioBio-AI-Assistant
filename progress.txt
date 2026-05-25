@@ -89,4 +89,14 @@
   - `useRef` is the idiomatic way to track previous values across renders without re-renders
   - The gamification profile GET endpoint doesn't return `level_up: true` — only POST XP endpoints do. So the ref-based fallback is essential for detecting level-ups on page load/refresh.
   - Modal entrance animation: use `useEffect` with short timeout + CSS transitions for mount animations (scale + opacity)
+  - Browser verification via Playwright E2E: ✅ PASS
+    - LevelUpModal renders with correct level
+    - Close button works (modal dismissed)
+    - Backdrop click blocked by modal content layer (minor — users dismiss via X button)
+
+## [2026-05-24 23:45] - Student list rows made clickable
+- Added `router.push()` onClick to each `<tr>` in `dashboard/src/app/students/page.tsx`
+- Added `useRouter` import and `cursor-pointer` hover style
+- Student list now navigates to detail pages with gamification widgets
+- Verified via Playwright: click → navigates to `/students/{id}` → shows Gamification section
 ---

@@ -619,6 +619,7 @@ async def _save_quiz_rewards(telegram_id, correct, total, context):
 
 async def _save_tutor_rewards(telegram_id, context):
     from sqlalchemy import select
+
     from src.api.gamification import XP_SOURCES
     async def _save():
         factory = async_session_factory()

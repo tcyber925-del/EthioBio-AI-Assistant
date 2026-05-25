@@ -6,9 +6,9 @@ for pages with font encoding issues. Produces clean, structured text with
 hierarchical chunking optimized for RAG.
 """
 
-import structlog
-from typing import Optional
 from pathlib import Path
+
+import structlog
 
 logger = structlog.get_logger()
 
@@ -192,12 +192,12 @@ def chunk_with_docling(filepath: str, max_tokens: int = 512) -> list[dict]:
     Returns:
         List of {text: str, page_number: int, heading: str} dicts.
     """
-    from docling.document_converter import DocumentConverter, PdfFormatOption
+    from docling.backend.pypdfium2_backend import PyPdfiumDocumentBackend
+    from docling.chunking import HybridChunker
     from docling.datamodel.base_models import InputFormat
     from docling.datamodel.pipeline_options import PdfPipelineOptions, RapidOcrOptions
-    from docling.chunking import HybridChunker
+    from docling.document_converter import DocumentConverter, PdfFormatOption
     from transformers import AutoTokenizer
-    from docling.backend.pypdfium2_backend import PyPdfiumDocumentBackend
 
     pipeline_options = PdfPipelineOptions(
         do_ocr=True,

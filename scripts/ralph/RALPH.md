@@ -82,7 +82,16 @@ Key architecture:
 
 Reference the project's AGENTS.md for full details on architecture, gotchas, and conventions.
 
-If a story changes UI behavior, verify it interactively before marking it complete.
+Ralph skills (PRD generator, PRD converter) live globally at `~/.opencode/skills/ralph-skills/skills/`.
+
+## Browser Testing (Required for Frontend Stories)
+
+For any story that changes UI, verify it works:
+1. Use OpenCode's Playwright browser tools to navigate to the relevant page
+2. Interact with the UI and confirm changes work as expected
+3. If no browser tools are available, note in the progress report that manual verification is needed
+
+A frontend story is NOT complete until browser verification passes.
 
 ## Stop Condition
 

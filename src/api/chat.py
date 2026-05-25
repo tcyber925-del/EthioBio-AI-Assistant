@@ -3,12 +3,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.tutor import TutorAgent
-from src.api.gamification import award_xp, check_achievements, update_streak
+from src.api.gamification import XP_SOURCES, award_xp, check_achievements, update_streak
 from src.database.session import get_session
 from src.llm.router import ModelRouter
 from src.rag.retriever import Retriever
 from src.schemas.chat import TutorRequest, TutorResponse
-from src.api.gamification import XP_SOURCES
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/chat", tags=["Chat"])
