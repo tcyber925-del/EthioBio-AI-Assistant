@@ -244,3 +244,20 @@
   - `mypy` requires `explicit_package_bases = true` when running type checks on files in a directory without `__init__.py` (like scripts/)
   - The 10px crop padding avoids clipping figure edges; degenerate bbox guard (`left >= right or top >= bottom`) handles corrupt layout data
 ---
+## [2026-05-25] - US-006: Textbook diagram storage and retrieval
+- Added `TextbookDiagram` model in `src/database/models.py` — UUID PK, grade_level, unit, topic, caption, image_path, figure_number, page_number, source_file, ground_truth_labels (JSON nullable), created_at, updated_at
+- Added `TextbookDiagramResponse` schema in `src/schemas/diagram.py` — id, image_url, caption, grade_level, unit, topic, figure_number, page_number, source_file
+- Mounted `data/diagrams/` as static files at `/diagrams/static` in `src/main.py` (directory auto-created on startup)
+- Added `GET /diagram/textbook?grade=10&topic=Cell+Biology` endpoint in `src/api/diagram.py` — queries PostgreSQL by grade (required, 7-12) and optional topic (case-insensitive ILIKE), returns matching diagrams with image URLs; empty results → 200 with []
+- Created `scripts/index_diagrams.py` — metadata-discovery pipeline that scans `data/diagrams/**/*.jpg`, parses grade/figure_number/pdf_stem from path structure, logs each figure; skeleton for future PostgreSQL and ChromaDB insertion
+- 4 tests: model columns, schema serialization, endpoint route detection, script module imports
+- Quality: ruff clean, mypy clean --explicit-package-bases, 4/4 tests pass
+- Files: `src/database/models.py`, `src/schemas/diagram.py`, `src/api/diagram.py`, `src/main.py`, `scripts/index_diagrams.py`, `tests/test_diagram_storage.py` (new), `docs/superpowers/plans/2026-05-25-textbook-diagram-storage-retrieval.md`, `scripts/ralph/prd.json`, `progress.txt`
+- **Learnings for future iterations:**
+  - StaticFiles mount must come after all `app.include_router()` calls (FastAPI route matching order)
+  - Image URL construction: `Path(d.image_path).name` prevents path traversal in served URLs
+  - SQL ILIKE for case-insensitive topic filter works with async SQLAlchemy: `stmt.where(TextbookDiagram.topic.ilike(f"%{topic}%"))`
+  - Grade range validation via FastAPI `Query(ge=7, le=12)` prevents out-of-range lookups
+  - ChromaDB indexing of captions was deferred to the index script skeleton — full implementation requires async DB session + running ChromaDB, planned for US-008 RAG integration
+  - Path-based metadata parsing (`data/diagrams/{grade}/{stem}_{n}.jpg`) is fragile but pragmatic for MVP; a proper metadata file would be better long-term
+---

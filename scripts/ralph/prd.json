@@ -100,7 +100,7 @@
         "Ruff, mypy, pytest pass"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "Files: src/database/models.py, src/retrieval/adapter.py (extend ChromaDB indexing for diagram captions), src/api/diagram.py (new GET endpoint), tests/. Image serving via static files or base64."
     },
     {
