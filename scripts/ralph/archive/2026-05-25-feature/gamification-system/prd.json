@@ -14,8 +14,8 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": true,
-      "notes": "Extended with labels JSON, completed bool, started_at fields. Schema uses Base.metadata.create_all (no manual migration). Created src/schemas/diagram.py alongside."
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-002",
