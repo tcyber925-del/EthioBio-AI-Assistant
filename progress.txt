@@ -221,3 +221,26 @@
   - The PRD acceptance criteria for "Verify in browser using Playwright browser tools" requires a running dev server — defer to manual verification
   - Pre-existing test failures (ChromaDB Rust bindings, Postgres unavailable, telegram bot, per_message warning) are unrelated — 8 stable failures
 ---
+## [2026-05-25] - US-005: Textbook figure extraction pipeline
+- Created `src/ingestion/diagram_extractor.py` with 6 functions:
+  - `_detect_figures(doc) -> list` — finds figure/picture items in Docling document body
+  - `_render_page(filepath, page_num, dpi=200) -> Image.Image` — renders PDF page via pypdfium2
+  - `_crop_figure(page_image, bbox, dpi=200) -> Image.Image` — crops figure using Docling bbox with Y-flip coordinate transform and 10px padding; guards against degenerate bounding boxes
+  - `_map_unit_topic(doc, figure) -> tuple[str, str]` — walks document heading hierarchy before figure to determine unit+topic; parses "Unit X: Topic" format
+  - `_extract_caption(doc, figure, max_distance=3) -> str` — searches caption items near figure in document order; fallback label-match for tests
+  - `extract_figures_from_pdf(filepath, grade, output_dir, dpi) -> list[dict]` — orchestrator: converts PDF via Docling, detects figures, renders+crops each, saves to `data/diagrams/{grade}/{stem}_{n}.jpg` (JPEG Q85), returns metadata list
+- Created `scripts/ingest_diagrams.py` — CLI script (`python scripts/ingest_diagrams.py` or `--grade 9`) that iterates Grade{7..12}/*.pdf, calls extractor per PDF, logs progress. Grades 7-8: logs and skips. Per-PDF try/except for corrupt PDFs.
+- Added Pillow>=10.0.0 to requirements.txt
+- Added explicit_package_bases=true to mypy config in pyproject.toml (fixes scripts/ module naming)
+- 6 tests: figure detection (with+without figures), unit/topic heading mapping, caption extraction, orchestration smoke test, script import test
+- Quality: ruff clean, mypy clean --explicit-package-bases, 6/6 tests pass
+- Files: `src/ingestion/__init__.py` (new), `src/ingestion/diagram_extractor.py` (new), `scripts/ingest_diagrams.py` (new), `tests/test_diagram_extractor.py` (new), `requirements.txt`, `pyproject.toml`, `scripts/ralph/prd.json`, `progress.txt`
+- **Learnings for future iterations:**
+  - Docling layout items in `doc.body` have `.label` (string or enum) and `.prov[0].bbox` (l,t,r,b in PDF points, origin bottom-left)
+  - PDF→image coordinate transform: scale by dpi/72, flip Y via `page_pts_height - coord`
+  - `pypdfium2` page rendering: `page.render(scale=scale)`, then `Image.frombytes("RGB", ...)` with the bitmap data
+  - Unit/topic mapping by traversing document body in order before the figure item — works because Docling preserves reading order
+  - Identity comparison (`item is figure`) can fail with mocked objects; fallback to label-string matching for test compatibility
+  - `mypy` requires `explicit_package_bases = true` when running type checks on files in a directory without `__init__.py` (like scripts/)
+  - The 10px crop padding avoids clipping figure edges; degenerate bbox guard (`left >= right or top >= bottom`) handles corrupt layout data
+---

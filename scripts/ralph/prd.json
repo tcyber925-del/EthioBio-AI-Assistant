@@ -84,7 +84,7 @@
         "Ruff, mypy pass"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Uses docling >=2.12.0 (already a dependency). New files: src/ingestion/diagram_extractor.py, scripts/ingest_diagrams.py."
     },
     {
