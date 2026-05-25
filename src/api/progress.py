@@ -1,14 +1,21 @@
-import structlog
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.parent_summary import ParentSummaryAgent
 from src.agents.student_progress import StudentProgressAgent
-from src.database.models import ParentSummary, ProgressRecord, StudentProfile, User, UserRole, QuizAttempt, Question
+from src.database.models import (
+    ParentSummary,
+    ProgressRecord,
+    Question,
+    QuizAttempt,
+    StudentProfile,
+    User,
+)
 from src.database.session import get_session
 from src.llm.router import ModelRouter
 from src.schemas.progress import (

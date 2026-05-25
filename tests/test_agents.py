@@ -291,7 +291,7 @@ async def test_tutor_agent_socratic_prompt_has_misconception_directive():
 
 
 def test_graph_node_prompt_has_misconception_directive():
-    from src.graph.nodes.tutor import SYSTEM_PROMPT, SOCRATIC_SYSTEM_PROMPT
+    from src.graph.nodes.tutor import SOCRATIC_SYSTEM_PROMPT, SYSTEM_PROMPT
     assert "conceptual error" in SYSTEM_PROMPT
     assert "conceptual error" in SOCRATIC_SYSTEM_PROMPT
     assert "gently" in SYSTEM_PROMPT
@@ -500,6 +500,79 @@ def test_diagram_validate_labels_empty_submitted():
     ]
     results = validate_labels(correct, [])
     assert len(results) == 0
+
+
+@pytest.mark.asyncio
+async def test_diagram_generate_prompt_difficulty():
+    from src.agents.diagram import DiagramAgent
+
+    router = AsyncMock()
+    router.route = AsyncMock(return_value={
+        "content": '{"title": "Test", "diagram_svg": "<svg></svg>", "labels": []}',
+        "model": "test",
+    })
+
+    agent = DiagramAgent(llm_router=router)
+
+    for difficulty, expected_range in [
+        ("beginner", "3-5"),
+        ("intermediate", "6-10"),
+        ("advanced", "10-15"),
+    ]:
+        router.route.reset_mock()
+        result = await agent.generate(
+            prompt="Label a cell",
+            topic="cells",
+            difficulty=difficulty,
+        )
+        assert result["difficulty"] == difficulty
+        call_args = router.route.call_args
+        user_msg = call_args[1]["messages"][1]["content"]
+        assert expected_range in user_msg, f"{expected_range} not in user message for {difficulty}"
+
+
+def test_diagram_schema_validates_difficulty():
+    from pydantic import ValidationError
+
+    from src.schemas.diagram import DiagramGenerateRequest
+
+    valid = DiagramGenerateRequest(prompt="Test", topic="cells", difficulty="advanced")
+    assert valid.difficulty == "advanced"
+
+    try:
+        DiagramGenerateRequest(prompt="Test", topic="cells", difficulty="expert")
+        assert False, "Should have raised ValidationError"
+    except ValidationError:
+        pass
+
+
+def test_diagram_validate_request_schema():
+    from uuid import uuid4
+
+    from pydantic import ValidationError
+
+    from src.schemas.diagram import DiagramValidateRequest
+
+    valid = DiagramValidateRequest(
+        user_id=uuid4(),
+        correct_labels=[{"id": "l1", "text": "Nucleus", "x": 100, "y": 100}],
+        submitted_labels=[{"id": "l1", "text": "Nucleus", "x": 100, "y": 100}],
+        topic="cells",
+        difficulty="intermediate",
+    )
+    assert valid.difficulty == "intermediate"
+
+    try:
+        DiagramValidateRequest(
+            user_id=uuid4(),
+            correct_labels=[{"id": "l1", "text": "Nucleus", "x": 100, "y": 100}],
+            submitted_labels=[{"id": "l1", "text": "Nucleus", "x": 100, "y": 100}],
+            topic="cells",
+            difficulty="invalid",
+        )
+        assert False, "Should have raised ValidationError"
+    except ValidationError:
+        pass
 
 
 def test_student_progress_analysis():

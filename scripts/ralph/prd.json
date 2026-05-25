@@ -106,8 +106,8 @@
         "Verify in browser using Playwright browser tools"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Difficulty selector already implemented in US-004 (UI) and US-002 (backend prompt with label count ranges per difficulty: beginner 3-5, intermediate 6-10, advanced 10-15). DB persistence added in US-001. Added tests: test_diagram_generate_prompt_difficulty (verifies prompt construction per difficulty), test_diagram_schema_validates_difficulty (schema validates correct values), test_diagram_validate_request_schema (validate endpoint accepts diffs). Files: tests/test_agents.py."
     }
   ]
 }

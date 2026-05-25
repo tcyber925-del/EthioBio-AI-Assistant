@@ -103,7 +103,28 @@
   - The `/diagram/validate` endpoint expects `submitted_labels` as full DiagramLabel objects (id, text, x, y) - reconstruct from original labels + user inputs
   - Dashboard has no auth - use a fixed placeholder UUID for validate endpoint calls
   - Interactive exercise flow: generate → input → validate → results → try again, managed via state machine in useState
-  - lucide-react icons `CheckCircle2`, `XCircle`, `RefreshCw` are all available in v0.441.0
+   - lucide-react icons `CheckCircle2`, `XCircle`, `RefreshCw` are all available in v0.441.0
 ---
-
-
+## [2026-05-25] - US-006: Build diagram explanation feedback UI
+- Modified retry behavior: correct answers are now preserved as locked green "Confirmed" labels; only incorrect inputs are cleared for re-labeling
+- Added `confirmedCorrectIds` state (Set<string>) to track which labels were answered correctly between retry cycles
+- Improved backend explanations with educational context (was "The correct term is X", now provides guidance to associate position with biological name)
+- Fixed ruff E501 line length in `src/agents/diagram.py` by breaking up explanation string
+- Files changed: `dashboard/src/app/diagrams/page.tsx`, `src/agents/diagram.py`, `tests/test_agents.py`, `scripts/ralph/prd.json`
+- Quality: ruff clean on our files, tsc --noEmit passes, 6/6 diagram validation tests pass
+- **Learnings for future iterations:**
+  - When modifying retry behavior on a labeling exercise, use a `confirmedCorrectIds` Set to track preserved answers — it cleanly separates confirmed state from validation result state
+  - The `confirmedCorrectIds` must be reset when generating a new diagram AND when validation results come back (so normal results view takes over)
+  - Locked labels in retry mode need distinct visual treatment: green badge color, green background, "Confirmed" label, disabled interaction
+---
+## [2026-05-25] - US-007: Add difficulty level selector to diagram system
+- Added tests: `test_diagram_generate_prompt_difficulty` (verifies prompt construction with difficulty-specific label counts: beginner→3-5, intermediate→6-10, advanced→10-15), `test_diagram_schema_validates_difficulty` (valid/reject difficulty values), `test_diagram_validate_request_schema` (difficulty validation on validate endpoint)
+- Feature was already substantially implemented by US-002 (backend prompt with per-difficulty label count ranges), US-004 (UI difficulty selector), and US-001 (DB persistence with difficulty field). Gap was test coverage.
+- Files changed: `tests/test_agents.py`, `scripts/ralph/prd.json`, `progress.txt`
+- Quality: 79/84 tests pass (8 pre-existing failures: ChromaDB Rust bindings, Postgres unavailable, telegram bot attribute errors, per_message warning)
+- **Learnings for future iterations:**
+  - Before starting a new story, always verify if parts of it were already implemented by previous stories to avoid redundant work
+  - The prompt-based difficulty control (label count ranges in system prompt + user message) is effective for LLM-generated content
+  - Schema validation with pydantic `pattern` regex ensures difficulty values are constrained client-side before reaching the backend
+  - When mocking LLM calls to test prompt construction, mock `router.route` on the router, then inspect `call_args[1]["messages"]` for prompt content
+---
