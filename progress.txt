@@ -322,5 +322,26 @@
   - Grade filter in retrieval respects the curriculum level, preventing irrelevant cross-grade results
   - The `adapter.close()` guard pattern: check `hasattr(adapter, 'close')` before calling — VectorStoreAdapter may not have the method if it's an injected mock
   - Dry-run `skipped` count = `len(records)` (all records are "skipped" in dry-run mode since none are indexed)
-  - ID namespace convention: `diagram_caption_{uuid}` prevents collisions with general document IDs in ChromaDB
+   - ID namespace convention: `diagram_caption_{uuid}` prevents collisions with general document IDs in ChromaDB
+---
+## [2026-05-25] - US-009: Ground truth diagram validation endpoint
+- Added `textbook_diagram_id: Optional[UUID] = None` to `DiagramValidateRequest`
+- Added `source: str = "ai_generated"` to `DiagramValidateResponse` ("textbook" | "ai_generated")
+- Modified `/diagram/validate` endpoint:
+  - When `textbook_diagram_id` provided: loads TextbookDiagram, uses `ground_truth_labels.labels` as answer key, returns `source='textbook'`
+  - When absent: uses `request.correct_labels`, returns `source='ai_generated'`
+  - 404 if textbook_diagram_id not found in DB
+  - 400 if diagram exists but ground_truth_labels is null or empty
+- 7 new tests: schema field, response field, default source, textbook path, no-textbook path, 404 error, 400 error
+- Quality: ruff clean (pre-existing E741 in api/diagram.py unchanged), mypy clean, 20/20 storage tests pass
+- All 9 US stories now complete: US-001 through US-009 all marked passes: true in PRD
+- Files: `src/schemas/diagram.py`, `src/api/diagram.py`, `tests/test_diagram_storage.py`, `scripts/ralph/prd.json`, `progress.txt`
+- **Learnings for future iterations:**
+  - The `ground_truth_labels` JSON field stores `{labels: [...], proposed: true, human_reviewed: false, model_used: "..."}` — extract `.labels` for the answer key
+  - Textbook validation reuses the same `validate_labels()` function — no new validation logic needed
+  - The `source` field in the response lets frontend display "validated against textbook" vs "AI-generated"
+  - `session.get(Model, id)` is the standard SQLAlchemy async pattern for single-record lookup by PK
+  - The validate endpoint now has two distinct code paths sharing the same attempt-save logic
+  - When `textbook_diagram_id` is None, the endpoint is functionally identical to pre-US-009 behavior — fully backward compatible
+  - All 9 PRD stories are now complete: OpenRouter → model selection → schema → dashboard → extraction → storage → auto-label → RAG → validation
 ---

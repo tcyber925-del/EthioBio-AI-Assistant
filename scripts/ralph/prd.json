@@ -152,7 +152,7 @@
         "Ruff, mypy, pytest pass"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": "Files: src/api/diagram.py, src/schemas/diagram.py, src/agents/diagram.py (validate_labels extended). Requires US-007 for populated ground_truth_labels."
     }
   ]
