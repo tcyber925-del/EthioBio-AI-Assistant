@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- Testing async SQLAlchemy mocks: For single `session.execute()` calls, use `AsyncMock(return_value=_make_result(...))`. For multiple sequential calls, use `session.execute = AsyncMock()` with `session.execute.side_effect = [result1, result2, ...]` where results are plain `MagicMock` objects (AsyncMock wraps them into coroutine return values automatically). Explicitly set `session.add = MagicMock()` since AsyncMock defaults return CoroutineMocks that don't track sync calls correctly.
 - Recovery dashboard pattern: create `GET /recovery/dashboard/{user_id}` combined endpoint returning weak topics + active plans + AI recommendations; frontend page at `dashboard/src/app/recovery/page.tsx` with student selector
 - Dashboard page pattern for standalone pages: 'use client', student/user ID selector, fetchWithTimeout, three states (loading/error/data), grid layout with stat cards
 - Mastery history tracking pattern: `TopicMasteryHistory` model records a snapshot on every `_update_mastery()` call; history endpoint at `GET /recovery/history/{user_id}/{topic}`; frontend mini SVG line chart in recovery dashboard
