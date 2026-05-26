@@ -101,3 +101,15 @@ async def test_admin_dashboard_endpoint():
         if response.status_code == 200:
             data = response.json()
             assert "users" in data
+
+
+@pytest.mark.asyncio
+async def test_quiz_recommend_endpoint():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(f"/quiz/recommend/{uuid4()}")
+        assert response.status_code in (200, 500)
+        if response.status_code == 200:
+            data = response.json()
+            assert "recommendations" in data
+            assert "total_recommendations" in data

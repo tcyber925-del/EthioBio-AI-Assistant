@@ -346,6 +346,103 @@ class TextbookDiagram(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
 
+class StudentMastery(Base):
+    __tablename__ = "student_mastery"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    topic: Mapped[str] = mapped_column(String(300))
+    unit: Mapped[str] = mapped_column(String(200), nullable=True)
+    grade_level: Mapped[int] = mapped_column(Integer)
+    average_score: Mapped[float] = mapped_column(Float, default=0.0)
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    total_questions_attempted: Mapped[int] = mapped_column(Integer, default=0)
+    correct_answers: Mapped[int] = mapped_column(Integer, default=0)
+    severity: Mapped[str] = mapped_column(String(20), default="good")
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    last_assessed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    user: Mapped["User"] = relationship(backref="mastery_records")
+
+
+class MisconceptionPattern(Base):
+    __tablename__ = "misconception_patterns"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    topic: Mapped[str] = mapped_column(String(300))
+    pattern_type: Mapped[str] = mapped_column(String(50))
+    pattern_description: Mapped[str] = mapped_column(Text)
+    frequency: Mapped[int] = mapped_column(Integer, default=1)
+    common_wrong_answer: Mapped[str] = mapped_column(String(500), nullable=True)
+    related_question_ids: Mapped[dict] = mapped_column(JSON, default=list)
+    first_detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    resolved: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    user: Mapped["User"] = relationship(backref="misconception_patterns")
+
+
+class TopicMasteryHistory(Base):
+    __tablename__ = "topic_mastery_history"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    topic: Mapped[str] = mapped_column(String(300))
+    unit: Mapped[str] = mapped_column(String(200), nullable=True)
+    grade_level: Mapped[int] = mapped_column(Integer)
+    average_score: Mapped[float] = mapped_column(Float)
+    attempt_count: Mapped[int] = mapped_column(Integer)
+    severity: Mapped[str] = mapped_column(String(20))
+    confidence: Mapped[float] = mapped_column(Float)
+    source: Mapped[str] = mapped_column(String(50))
+    source_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    user: Mapped["User"] = relationship(backref="mastery_history")
+
+
+class SpacedRepetitionSchedule(Base):
+    __tablename__ = "spaced_repetition_schedule"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    topic: Mapped[str] = mapped_column(String(300))
+    unit: Mapped[str] = mapped_column(String(200), nullable=True)
+    grade_level: Mapped[int] = mapped_column(Integer, default=0)
+    mastery_score: Mapped[float] = mapped_column(Float, default=0.0)
+    interval_days: Mapped[int] = mapped_column(Integer, default=1)
+    ease_factor: Mapped[float] = mapped_column(Float, default=2.5)
+    next_review_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    review_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    user: Mapped["User"] = relationship(backref="spaced_repetition_schedules")
+
+
+class RecoveryNotification(Base):
+    __tablename__ = "recovery_notifications"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), index=True)
+    topic: Mapped[str] = mapped_column(String(300))
+    event_type: Mapped[str] = mapped_column(String(50))
+    message: Mapped[str] = mapped_column(Text)
+    improvement_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    old_value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    new_value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    user: Mapped["User"] = relationship(backref="recovery_notifications")
+
+
 class FeedbackEvent(Base):
     __tablename__ = "feedback_events"
 

@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
@@ -645,3 +645,99 @@ async def test_diagram_generate_default_model_when_none():
     call_args = router.route.call_args
     assert call_args[1]["preferred_model"] is None
     assert result["model_used"] == "ollama/tinyllama"
+
+
+@pytest.mark.asyncio
+async def test_quiz_generation_with_weak_topics(mock_router):
+    mock_adapter = AsyncMock()
+    mock_adapter.search = AsyncMock(return_value=[])
+    mock_adapter.format_context.return_value = "Test curriculum context"
+    agent = QuizAgent(llm_router=mock_router, adapter=mock_adapter)
+    agent._call_llm = AsyncMock()
+    agent._call_llm.return_value = {
+        "content": '{"title": "Adaptive Quiz", "questions": [{"question_type": "multiple_choice", "question_text": "What is a cell?", "correct_answer": "Basic unit of life", "difficulty": "easy"}], "answer_key": "1. Basic unit of life"}',
+        "model": "ollama/test",
+    }
+
+    weak_topics = [
+        {"topic": "Cell Biology", "unit": "Unit 1", "grade_level": 10,
+         "average_score": 35.0, "attempt_count": 2, "severity": "critical",
+         "confidence": 0.67, "misconceptions": [], "last_assessed_at": None},
+    ]
+
+    result = await agent.generate(
+        grade_level=10,
+        topic="Cell Biology",
+        question_count=1,
+        weak_topics=weak_topics,
+        target_difficulty="easy",
+    )
+    assert "questions" in result
+    assert len(result["questions"]) > 0
+    call_args = agent._call_llm.call_args
+    user_msg = call_args[1]["user_message"]
+    assert "WEAK TOPICS" in user_msg
+    assert "35% mastery" in user_msg
+    assert "critical" in user_msg
+
+
+@pytest.mark.asyncio
+async def test_quiz_generation_weak_topics_difficulty_adaptation(mock_router):
+    mock_adapter = AsyncMock()
+    mock_adapter.search = AsyncMock(return_value=[])
+    mock_adapter.format_context.return_value = "Test context"
+    agent = QuizAgent(llm_router=mock_router, adapter=mock_adapter)
+    agent._call_llm = AsyncMock()
+    agent._call_llm.return_value = {
+        "content": '{"title": "Adaptive Quiz", "questions": [], "answer_key": ""}',
+        "model": "ollama/test",
+    }
+
+    weak_critical = [
+        {"topic": "Cell Biology", "unit": "Unit 1", "grade_level": 10,
+         "average_score": 30.0, "attempt_count": 1, "severity": "critical",
+         "confidence": 0.33, "misconceptions": [], "last_assessed_at": None},
+    ]
+    weak_moderate = [
+        {"topic": "Cell Biology", "unit": "Unit 1", "grade_level": 10,
+         "average_score": 55.0, "attempt_count": 2, "severity": "moderate",
+         "confidence": 0.67, "misconceptions": [], "last_assessed_at": None},
+    ]
+    weak_mild = [
+        {"topic": "Cell Biology", "unit": "Unit 1", "grade_level": 10,
+         "average_score": 70.0, "attempt_count": 3, "severity": "mild",
+         "confidence": 1.0, "misconceptions": [], "last_assessed_at": None},
+    ]
+
+    await agent.generate(grade_level=10, topic="Cell Biology", weak_topics=weak_critical)
+    msg1 = agent._call_llm.call_args[1]["user_message"]
+    assert "EASY" in msg1
+
+    await agent.generate(grade_level=10, topic="Cell Biology", weak_topics=weak_moderate)
+    msg2 = agent._call_llm.call_args[1]["user_message"]
+    assert "MIXED" in msg2
+
+    await agent.generate(grade_level=10, topic="Cell Biology", weak_topics=weak_mild)
+    msg3 = agent._call_llm.call_args[1]["user_message"]
+    assert "MEDIUM/HARD" in msg3
+
+
+@pytest.mark.asyncio
+async def test_quiz_generation_target_difficulty_override(mock_router):
+    mock_adapter = AsyncMock()
+    mock_adapter.search = AsyncMock(return_value=[])
+    mock_adapter.format_context.return_value = "Test context"
+    agent = QuizAgent(llm_router=mock_router, adapter=mock_adapter)
+    agent._call_llm = AsyncMock()
+    agent._call_llm.return_value = {
+        "content": '{"title": "Hard Quiz", "questions": [], "answer_key": ""}',
+        "model": "ollama/test",
+    }
+
+    await agent.generate(grade_level=10, topic="Cell Biology", target_difficulty="hard")
+    msg = agent._call_llm.call_args[1]["user_message"]
+    assert "HARD questions" in msg
+
+    await agent.generate(grade_level=10, topic="Cell Biology", target_difficulty="easy")
+    msg = agent._call_llm.call_args[1]["user_message"]
+    assert "EASY questions" in msg

@@ -1,5 +1,11 @@
 # Ralph Progress Log
-Started: Mon May 25 08:00:00 AM EAT 2026
+Started: Tue May 26 07:23:16 PM EAT 2026
 ---
-## Interactive Biology Diagramming
 
+## [2026-05-26 07:30] - RP-001: Weak Topic Detection
+- Added StudentMastery + MisconceptionPattern DB models
+- Created weak_topic_detection.py analysis module
+- Added GET /recovery/weak-topics/{user_id} endpoint
+- Wired analysis into POST /quiz/submit endpoint
+- 13 tests, 81/81 pass, ruff clean, mypy clean (pre-existing session.py only)
+- PRD updated: RP-001 passes: true

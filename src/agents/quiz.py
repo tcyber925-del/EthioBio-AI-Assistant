@@ -49,6 +49,8 @@ class QuizAgent(BaseAgent):
         types: list[str] = None,
         language: str = "en",
         session: Optional[AsyncSession] = None,
+        weak_topics: Optional[list[dict]] = None,
+        target_difficulty: Optional[str] = None,
     ) -> dict:
         types_str = ", ".join(types or ["multiple_choice", "true_false"])
         lang_instruction = "Generate all content in English." if language == "en" else "Generate questions in English with Amharic answer explanations."
@@ -59,10 +61,44 @@ class QuizAgent(BaseAgent):
         context = self.adapter.format_context(results) if results else f"Grade {grade_level} biology curriculum - {topic}"
         system_prompt = QUIZ_SYSTEM_PROMPT.replace("{context}", context)
 
+        weak_topic_block = ""
+        if weak_topics:
+            weak_list = "\n".join(
+                f"- {wt['topic']}: {wt['average_score']:.0f}% mastery (severity: {wt['severity']})"
+                for wt in weak_topics
+            )
+            weak_topic_block = f"""
+STUDENT WEAK TOPICS (focus on these):
+{weak_list}
+
+"""
+
+        diff_instruction = ""
+        if target_difficulty == "easy":
+            diff_instruction = "Generate mostly EASY questions to build confidence."
+        elif target_difficulty == "hard":
+            diff_instruction = "Generate mostly HARD questions for advanced challenge."
+        elif target_difficulty == "medium":
+            diff_instruction = "Mix EASY, MEDIUM, and HARD questions in balanced proportion."
+        elif weak_topics:
+            critical = [wt for wt in weak_topics if wt["severity"] == "critical"]
+            moderate = [wt for wt in weak_topics if wt["severity"] == "moderate"]
+            mild = [wt for wt in weak_topics if wt["severity"] == "mild"]
+            hints = []
+            if critical:
+                hints.append(f"Focus on EASY questions for critical topics ({', '.join(w['topic'] for w in critical)})")
+            if moderate:
+                hints.append(f"Use MIXED difficulty for moderate topics ({', '.join(w['topic'] for w in moderate)})")
+            if mild:
+                hints.append(f"Include MEDIUM/HARD questions for mild topics ({', '.join(w['topic'] for w in mild)})")
+            if hints:
+                diff_instruction = " ".join(hints)
+
         user_message = f"""Generate a biology quiz for Grade {grade_level} on topic: {topic}.
 - Question count: {question_count}
 - Question types: {types_str}
 - {lang_instruction}
+{weak_topic_block}{diff_instruction}
 
 IMPORTANT: Base ALL questions on the curriculum context provided above. Do NOT use external knowledge.
 

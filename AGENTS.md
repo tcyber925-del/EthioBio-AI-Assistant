@@ -90,9 +90,10 @@ The recovery plan module tracks student remediation tasks and awards XP for comp
 
 - **Models**: `RecoveryPlan` (user_id, topic, total_tasks, completed_tasks, status) and `RecoveryTask` (plan_id, title, task_type, is_completed, xp_awarded) in `src/database/models.py`
 - **XP sources**: `recovery_task_completion` (40 XP per task) and `recovery_milestone` (bonus XP at 3/5/10/15 tasks) — both defined in `XP_SOURCES` and `RECOVERY_MILESTONE_THRESHOLDS` in `src/api/gamification.py`
-- **Endpoints**: `POST /recovery/plan` (create), `GET /recovery/plan/{user_id}` (list), `POST /recovery/task/complete?task_id=&user_id=` (complete task → awards XP + milestone checks)
+- **Endpoints**: `POST /recovery/plan` (create), `GET /recovery/plan/{user_id}` (list), `POST /recovery/task/complete?task_id=&user_id=` (complete task → awards XP + milestone checks), `GET /recovery/dashboard/{user_id}` (combined: weak topics + active plans + recommendations)
 - **Profile integration**: `GamificationProfileResponse` includes optional `recovery_progress` field showing active plans, task counts, and overall progress %
 - **Frontend**: `RecoveryProgressCard.tsx` shows recovery progress in the student dashboard via `GamificationProfile`
+- **Recovery dashboard page**: `dashboard/src/app/recovery/page.tsx` — standalone page with student UUID selector, shows weak topics with severity, active plans with task timeline, rule-based recommendations (prioritized: high/medium/low). Add both sidebar link and `/recovery/:path*` API rewrite.
 - **Router registration**: Add `recovery` to imports and `app.include_router(recovery.router)` in `src/main.py`
 
 ## Key Gotchas
@@ -111,6 +112,8 @@ The recovery plan module tracks student remediation tasks and awards XP for comp
 12. **`__model__:` system message convention** — OllamaProvider prepends `__model__:<name>` to system prompt for per-request model selection.
 13. **`UsageInfo` TypedDict** — Provider responses include token usage as `UsageInfo` (`prompt_tokens`, `completion_tokens`, `total_tokens`).
 14. **Misconception detection is heuristic** — Uses `re.split()` sentence splitting + keyword matching on LLM response text. No NLP model needed. Both TutorAgent and TutorNode have parallel `MISCONCEPTION_INDICATORS` lists and `detect_misconception()` helpers that must stay in sync.
+15. **Weak topic detection** — After quiz submit, `analyze_quiz_attempt()` in `src/agents/weak_topic_detection.py` analyzes per-topic scores, updates/creates `StudentMastery` records, detects `MisconceptionPattern` from repeated wrong answers, and syncs `StudentProfile.weak_areas`/`topic_mastery`. Wire into endpoint AFTER gamification, BEFORE session.commit().
+16. **`QuizAttempt.answers` is `Mapped[dict]` but stores list data** — when accessing, safely cast with `cast(list[Any], raw) if isinstance(raw, list) else []` to satisfy mypy.
 
 ## Ralph PRD Generation (`scripts/ralph/`)
 

@@ -1,4 +1,38 @@
 ## Codebase Patterns
+- Testing async SQLAlchemy mocks: For single `session.execute()` calls, use `AsyncMock(return_value=_make_result(...))`. For multiple sequential calls, use `session.execute = AsyncMock()` with `session.execute.side_effect = [result1, result2, ...]` where results are plain `MagicMock` objects (AsyncMock wraps them into coroutine return values automatically). Explicitly set `session.add = MagicMock()` since AsyncMock defaults return CoroutineMocks that don't track sync calls correctly.
+- Recovery dashboard pattern: create `GET /recovery/dashboard/{user_id}` combined endpoint returning weak topics + active plans + AI recommendations; frontend page at `dashboard/src/app/recovery/page.tsx` with student selector
+- Dashboard page pattern for standalone pages: 'use client', student/user ID selector, fetchWithTimeout, three states (loading/error/data), grid layout with stat cards
+- Mastery history tracking pattern: `TopicMasteryHistory` model records a snapshot on every `_update_mastery()` call; history endpoint at `GET /recovery/history/{user_id}/{topic}`; frontend mini SVG line chart in recovery dashboard
+- When adding history snapshots, record them in `_update_mastery` (weak_topic_detection.py) for quizzes, and use the `record_mastery_history()` helper for other sources like task completion
+
+- Weak topic detection follows: `analyze_quiz_attempt()` wired into quiz submit endpoint → creates/updates `StudentMastery` and `MisconceptionPattern` records → `_update_student_profile_weak_areas()` syncs `StudentProfile.weak_areas` and `topic_mastery` JSON fields
+- New database models for recovery features follow existing patterns: UUID PK, FK to users, timestamps, JSON for flexible fields
+- Weak topic analysis is non-blocking (called after XP/streak/achievement logic, before commit)
+- When adding analysis to existing endpoints, call analysis functions AFTER gamification logic but BEFORE session.commit()
+- The `QuizAttempt.answers` field is `Mapped[dict]` in SQLAlchemy but stores list data — always `cast(list[Any], ...)` when accessing
+- RecoveryAgent follows the same BaseAgent._call_llm() pattern as QuizAgent/DiagramAgent, but generates plan data + saves to DB in one call
+- AI generation endpoint pattern for recovery: get weak data → build prompt with weak topics → call LLM → parse JSON → save plan+tasks → return
+
+---
+## [2026-05-26 07:30] - RP-001: Weak Topic Detection
+- Added `StudentMastery` model (user_id, topic, unit, grade_level, average_score, attempt_count, total_questions_attempted, correct_answers, severity, confidence, last_assessed_at)
+- Added `MisconceptionPattern` model (user_id, topic, pattern_type, pattern_description, frequency, common_wrong_answer, related_question_ids, resolved)
+- Created `src/agents/weak_topic_detection.py` with:
+  - `calculate_severity()` — maps average score to critical/moderate/mild/good
+  - `calculate_confidence()` — confidence metric based on sample size (capped at 1.0 at 3+ attempts)
+  - `analyze_quiz_attempt()` — analyzes quiz results per-topic, updates/creates StudentMastery, detects misconceptions, syncs StudentProfile fields
+  - `get_weak_topics()` — retrieves weak topics with severity, confidence, and misconception patterns
+- Added `GET /recovery/weak-topics/{user_id}` endpoint returning WeakTopicsResponse with per-topic details
+- Wired `analyze_quiz_attempt()` into `POST /quiz/submit` after gamification logic
+- Added schemas: `MisconceptionInfo`, `WeakTopicDetail`, `WeakTopicsResponse` in `src/schemas/recovery.py`
+- 13 tests: severity thresholds, confidence, schema validation, get_weak_topics filtering, empty results, all-good results
+- 81/81 non-LLM tests pass (no regressions)
+- **Learnings for future iterations:**
+  - The `QuizAttempt.answers` field is typed `Mapped[dict]` in SQLAlchemy but stores list data — cast safely when accessing
+  - Weak topic analysis must be called BEFORE `session.commit()` in the quiz submit endpoint
+  - `MisconceptionPattern.resolved == False` requires `.is_(False)` for SQLAlchemy compatibility (not `not col`)
+  - Pydantic UUID fields auto-convert strings — tests should compare to UUID objects
+- Files: `src/database/models.py`, `src/agents/weak_topic_detection.py` (new), `src/schemas/recovery.py`, `src/api/recovery.py`, `src/api/quiz.py`, `tests/test_weak_topics.py` (new), `progress.txt`
 - Use `python-docx` `Document` with `BytesIO` buffer for in-memory DOCX generation
 - Use `fpdf2` subclassing `FPDF` for PDF generation; prefer `cell()` with `new_x="LMARGIN"` / `new_y="NEXT"` over `multi_cell()` for simple text
 - When registering a new API router in `main.py`, add both the import and `app.include_router()` call
@@ -343,5 +377,138 @@
   - `session.get(Model, id)` is the standard SQLAlchemy async pattern for single-record lookup by PK
   - The validate endpoint now has two distinct code paths sharing the same attempt-save logic
   - When `textbook_diagram_id` is None, the endpoint is functionally identical to pre-US-009 behavior — fully backward compatible
-  - All 9 PRD stories are now complete: OpenRouter → model selection → schema → dashboard → extraction → storage → auto-label → RAG → validation
+   - All 9 PRD stories are now complete: OpenRouter → model selection → schema → dashboard → extraction → storage → auto-label → RAG → validation
 ---
+## [2026-05-26] - RP-002: AI Recovery Plan Generation
+- Created `src/agents/recovery_agent.py` with `RecoveryAgent(BaseAgent)` that:
+  - Takes weak topic data from `get_weak_topics()` and generates personalized recovery plans via LLM
+  - `generate_plan(user_id, session, topic_filter)` — gets weak topics, builds prompt, calls LLM, parses JSON, saves plan+tasks to DB
+  - Format helper methods: `_format_weak_topics()`, `_get_severity_summary()`
+  - Prompt includes task type guidance (review_notes, guided_quiz, diagram_exercise, retake_assessment, practice_questions) and difficulty adaptation based on severity
+  - Handles edge cases: no weak topics, topic filter with no match, JSON parse errors
+- Added schemas to `src/schemas/recovery.py`: `GeneratedTaskInfo`, `GeneratedPlanInfo`, `GenerateRecoveryPlanResponse`, `GenerateRecoveryPlanRequest`
+- Added `POST /recovery/auto-generate/{user_id}` endpoint in `src/api/recovery.py` — creates ModelRouter, instantiates RecoveryAgent, calls generate_plan
+- 11 tests in `tests/test_recovery_agent.py`: no weak topics, success path, format helpers, severity summary, JSON parse error, topic filter no match, schema validation
+- Quality: ruff clean, no new mypy errors, 47/47 recovery+gamification tests pass
+- **Learnings for future iterations:**
+  - RecoveryAgent follows BaseAgent pattern but also handles DB persistence — unlike pure-analysis agents, it creates and saves models
+  - The LLM prompt uses double-brace `{{}}` for JSON schema template escaping within Python f-strings and triple-quoted strings
+  - Mocking `session.add()` is tricky with AsyncMock — `session.add()` is synchronous in SQLAlchemy 2.0 so test warnings about unawaited coroutines are harmless
+  - `_format_weak_topics()` method made testable by keeping it separate from the LLM call (tested independently)
+  - Topic filtering is done post-hoc on the weak topics list (not in the DB query) — simple and sufficient for MVP
+- Files: `src/agents/recovery_agent.py` (new), `src/schemas/recovery.py`, `src/api/recovery.py`, `tests/test_recovery_agent.py` (new), `scripts/ralph/prd.json`, `progress.txt`
+
+---
+## [2026-05-26 20:10] - RP-003: Recovery Dashboard
+- Added `RecommendationInfo` and `RecoveryDashboardResponse` schemas to `src/schemas/recovery.py`
+- Added `GET /recovery/dashboard/{user_id}` endpoint in `src/api/recovery.py` — fetches weak topics + active plans + generates rule-based recommendations (generate_plan for critical, practice_quiz for moderate, review_misconception, continue_plan)
+- Created `dashboard/src/app/recovery/page.tsx` — recovery dashboard page with:
+  - Student UUID input + quick-select from recent students
+  - Stat cards (Weak Topics, Active Plans, Recommendations, Critical Topics)
+  - Recommendations section with priority-coded left border (red/yellow/blue)
+  - Weak topics list with severity badges, score/attempts/confidence metrics, misconception details
+  - Active recovery plans with progress bars, task timeline with XP awards
+  - Empty states for no weak topics / no active plans
+  - Loading, error, and empty states
+- Added "Recovery" link to sidebar navigation (Activity icon, between Dashboard and Quizzes)
+- Added `/recovery/:path*` API rewrite to `next.config.js`
+- Quality: ruff clean, mypy errors are pre-existing only, 19/19 recovery tests pass, tsc --noEmit clean
+- **Learnings for future iterations:**
+  - The `GET /recovery/dashboard/{user_id}` combined endpoint pattern is useful — calls `get_weak_topics()` + recovery plan query, then generates recommendations
+  - Rule-based recommendations are sufficient for MVP — sort by priority (high → low)
+  - Dashboard pages follow: `useEffect` fetch → loading skeleton → error with `AlertTriangle` → data layout with stat cards → per-section detail
+  - `get_weak_topics()` returns `list[dict]` not `list[WeakTopicDetail]` — Pydantic converts at runtime but mypy complains
+  - The recommendation generation in the endpoint follows a simple if/elif chain — extract to a helper if logic gets more complex
+  - Pre-existing test failures: 7 stable failures (ChromaDB, Telegram, warnings), 166 tests pass
+  - Sidebar link ordering matters — placed Recovery after Dashboard as it's a primary navigation item
+- Files: `src/schemas/recovery.py`, `src/api/recovery.py`, `dashboard/src/app/recovery/page.tsx` (new), `dashboard/src/components/Sidebar.tsx`, `dashboard/next.config.js`, `scripts/ralph/prd.json`, `progress.txt`
+
+---
+## [2026-05-26 20:50] - RP-004: Adaptive Quiz Recommendation
+- Added `user_id: Optional[UUID]` to `QuizGenerateRequest` for adaptive quiz generation
+- Added `QuizRecommendation` and `QuizRecommendResponse` schemas to `src/schemas/quiz.py`
+- Added `recommendations: Optional[list[QuizRecommendation]]` to `QuizSubmitResponse`
+- Extended `QuizAgent.generate()` with `weak_topics` and `target_difficulty` parameters that:
+  - Inject weak topic context into the LLM prompt (topic names + mastery % + severity)
+  - Adapt difficulty instruction based on severity (EASY for critical, MIXED for moderate, MEDIUM/HARD for mild)
+  - Support explicit `target_difficulty` override ("easy", "medium", "hard")
+- Added `GET /quiz/recommend/{user_id}` endpoint returning sorted recommendations with topic, mastery, severity, recommended difficulty, priority, and misconception info
+- Modified `POST /quiz/generate` to fetch weak topics when `user_id` is provided, selecting matching topics for difficulty adaptation
+- Modified `POST /quiz/submit` to include updated recommendations in the response after quiz analysis
+- Added 4 tests: weak topic injection, severity-based difficulty adaptation, target difficulty override, API recommend endpoint
+- All 4 tests pass; 143/151 broader tests pass (same 8 pre-existing Postgres/Telegram failures)
+- **Learnings for future iterations:**
+  - QuizAgent creates a VectorStoreAdapter by default in `__init__` — must pass `adapter=MagicMock()` or `AsyncMock()` in unit tests that don't need ChromaDB
+  - The VectorStoreAdapter.search() is async, so the mock adapter needs `search = AsyncMock(return_value=[])` 
+  - Adaptive difficulty logic follows: severity="critical"→easy, "moderate"→medium, "mild"→hard
+  - The quiz submit endpoint already calls `analyze_quiz_attempt()` — re-querying `get_weak_topics()` after that gives updated recommendations
+  - Quiz recommend endpoint follows same pattern as recovery dashboard (fetch weak topics → build recommendations → sort by priority)
+- Files: `src/schemas/quiz.py`, `src/agents/quiz.py`, `src/api/quiz.py`, `tests/test_agents.py`, `tests/test_api.py`, `scripts/ralph/prd.json`, `progress.txt`
+
+---
+## [2026-05-26] - RP-005: Recovery Progress Tracking
+- Added `TopicMasteryHistory` model to `src/database/models.py` — records mastery snapshots per user+topic with source tracking (quiz/task_completion)
+- Added `MasteryHistoryPoint`, `MasteryHistoryResponse` schemas to `src/schemas/recovery.py`
+- Added `record_mastery_history()` helper function to `src/agents/weak_topic_detection.py` — reusable function for any source type
+- Wired automatic history recording into `_update_mastery()` (fires on every quiz submit → mastery change)
+- Wired `record_mastery_history()` into recovery task completion endpoint (`POST /recovery/task/complete`)
+- Added `GET /recovery/history/{user_id}/{topic}` endpoint returning ordered mastery timeline
+- Added `SimpleMiniChart` SVG line chart to recovery dashboard that fetches history for each weak topic and shows score progression over time
+- 7 new tests: history point schema, history response schema, empty history, dashboard integration, record_mastery_history creates entry, record_mastery_history no-op for unknown topic
+- All 54 recovery/gamification/weak-topic tests pass
+- **Learnings for future iterations:**
+  - Mastery history is recorded automatically in `_update_mastery()` — any new source of mastery changes should call `record_mastery_history()` as well
+  - The `SimpleMiniChart` SVG component uses polyline with dynamic viewBox — keep it simple and avoid external charting libraries
+  - History endpoint returns empty list for unknown topics (no 404) — consistent with collection endpoint pattern
+  - The `source` field on TopicMasteryHistory distinguishes quiz vs task_completion — useful for filtering in future
+  - When fetching history for all weak topics, use Promise.all for parallel requests
+- Files: `src/database/models.py`, `src/schemas/recovery.py`, `src/agents/weak_topic_detection.py`, `src/api/recovery.py`, `dashboard/src/app/recovery/page.tsx`, `tests/test_recovery.py`, `tests/test_weak_topics.py`, `scripts/ralph/prd.json`, `progress.txt`
+
+---
+## [2026-05-26] - RP-006: Spaced Repetition Scheduling
+- Added `SpacedRepetitionSchedule` model to `src/database/models.py` with fields: id, user_id, topic, unit, grade_level, mastery_score, interval_days, ease_factor, next_review_at, last_reviewed_at, review_count
+- Created `src/agents/spaced_repetition.py` with SM-2 inspired algorithm:
+  - `calculate_next_interval()` — initial intervals based on severity (1-7 days), then SM-2 style adaptation: good retention → interval * ease, acceptable → same, poor → reset
+  - `generate_schedule()` — creates/updates schedules for all student mastery topics
+  - `get_due_reviews()` — queries schedules past next_review_at, returns with days_overdue
+  - `get_all_schedules()` — returns all schedules with is_due/days_overdue flags
+  - `update_review()` — updates schedule after re-assessment, adapts interval
+- Added 6 new schemas to `src/schemas/recovery.py`: SpacedRepetitionItem, SpacedRepetitionScheduleResponse, DueReviewsResponse, SpacedRepetitionGenerateResponse, SpacedRepetitionReviewRequest, SpacedRepetitionReviewResponse
+- Added `due_reviews`/`total_due_reviews` fields to RecoveryDashboardResponse
+- Added 4 API endpoints to `src/api/recovery.py`: GET /recovery/schedule/{user_id}, GET /recovery/schedule/due/{user_id}, POST /recovery/schedule/generate/{user_id}, POST /recovery/schedule/review
+- Wired due reviews into recovery dashboard endpoint (included in dashboard response)
+- Updated recovery dashboard frontend (`dashboard/src/app/recovery/page.tsx`): added "Due for Review" stat card + collapsible section showing overdue topics with mastery score, review count, interval, and overdue days
+- 22 tests in `tests/test_spaced_repetition.py`: interval calculation (6), generate schedule (3), due reviews (2), all schedules (1), update review (2), schema validation (8)
+- **Learnings for future iterations:**
+  - SM-2 ease factor follows: floor 1.3, ceiling 3.0; good retention (>=80%) increments by 0.1, poor (<60%) decrements by 0.2
+  - AsyncMock with side_effect for multiple execute calls: pass plain MagicMock objects as side_effect values; AsyncMock wraps them into coroutine return values automatically
+  - When setting `scalar_one_or_none.return_value = None` on a MagicMock, use direct assignment not `is not None` guard — None is a valid return that signals "no result"
+  - `session.add` and `session.commit` need explicit setup: `add = MagicMock()`, `commit = AsyncMock()` since default AsyncMock attributes return CoroutineMocks which don't track sync calls correctly
+  - Dashboard frontend pattern for due reviews: orange theme (RotateCcw icon, orange-400 text, orange-500/20 border), shows mastery %, review count, and days overdue
+- Files: `src/database/models.py`, `src/agents/spaced_repetition.py` (new), `src/schemas/recovery.py`, `src/api/recovery.py`, `dashboard/src/app/recovery/page.tsx`, `tests/test_spaced_repetition.py` (new), `scripts/ralph/prd.json`, `progress.txt`
+
+---
+## [2026-05-26] - RP-007: Recovery Notifications
+- Added `RecoveryNotification` model to `src/database/models.py` — tracks per-user improvement notifications with fields: id, user_id, topic, event_type, message, improvement_pct, old_value, new_value, is_read, created_at
+- Added `_generate_improvement_notification()` helper to `src/agents/weak_topic_detection.py` — creates RecoveryNotification records
+- Wired notification generation into `_update_mastery()` — detects mastery improvement (>=5% gain) and severity upgrades (e.g., critical→moderate) from quiz results
+- Extended `record_mastery_history()` with optional `old_score` param — generates mastery improvement notifications for non-quiz sources (task completion)
+- Added plan completion notification in `complete_recovery_task()` handler in `src/api/recovery.py` — adds "plan_completed" notification when a plan finishes
+- Added schemas: `RecoveryNotificationResponse`, `RecoveryNotificationListResponse` in `src/schemas/recovery.py`
+- Updated `RecoveryDashboardResponse` with `unread_notifications: int` and `notifications: list[RecoveryNotificationResponse]`
+- Added 3 API endpoints in `src/api/recovery.py`: `GET /recovery/notifications/{user_id}`, `PATCH /recovery/notifications/{notification_id}/read`, `PUT /recovery/notifications/read-all/{user_id}`
+- Added `_fetch_recovery_notifications()` and `_format_notification_messages()` helpers in `src/telegram/bot.py`
+- Wired notification checks into `_save_quiz_rewards()` and `_save_tutor_rewards()` — fetches unread notifications after XP award
+- Wired notification display into `_show_quiz_result()`, `ask_command`, and `handle_question` — appends notification messages to bot responses
+- Updated recovery dashboard frontend (`dashboard/src/app/recovery/page.tsx`): notifications stat card with bell icon and unread badge, collapsible notifications panel with event-type icons (TrendingUp/PartyPopper/Sparkles), mark-all-read button, improvement percentage display
+- Added 6 schema tests: notification response, list response, empty list, different event types, dashboard notification fields
+- 61 total recovery/weak-topic/spaced-repetition tests pass (55 + 6 new)
+- **Learnings for future iterations:**
+  - Notification generation pattern: capture old score/severity before update, compare after, generate in `_update_mastery()` using the `_generate_improvement_notification()` helper
+  - Severity upgrade detection uses a rank mapping: critical=0, moderate=1, mild=2, good=3
+  - Bot notification flow follows same pattern as XP rewards: fetch after commit → store in context.user_data → pop and display in response handler
+  - Bot `_fetch_recovery_notifications()` runs in the bot's own DB session (separate factory), works because notifications are committed by the API endpoint
+  - Dashboard notification UX: collapsible panel with event-type-specific icons/colors, stat card has bell + unread badge, mark-all-read calls PUT endpoint
+  - The `notifications` field in the dashboard response now returns the 10 most recent unread notifications directly (avoids a separate API call)
+  - Three notification event types: mastery_improvement (≥5% score gain), severity_upgrade (e.g., critical→moderate), plan_completed (all tasks done)
+- Files: `src/database/models.py`, `src/agents/weak_topic_detection.py`, `src/schemas/recovery.py`, `src/api/recovery.py`, `src/telegram/bot.py`, `dashboard/src/app/recovery/page.tsx`, `tests/test_recovery.py`, `scripts/ralph/prd.json`, `progress.txt`
