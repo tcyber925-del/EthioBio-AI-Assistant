@@ -1,159 +1,119 @@
 {
   "project": "EthioBio AI Assistant",
-  "title": "Curriculum-Grounded Diagram Generation with Model Selection",
-  "branchName": "ralph/diagram-model-selection",
-  "description": "Add OpenRouter provider support with per-request model selection for diagram generation, then extract textbook diagrams from Ethiopian biology PDFs (grades 7-12) as ground truth for curriculum-aligned diagram labeling and validation.",
+  "title": "Personalized Recovery Plans",
+  "branchName": "ralph/recovery-plans",
+  "description": "Implement an AI-powered adaptive recovery planning system that automatically detects weak biology topics from quiz/assessment performance and generates personalized remediation plans with adaptive quizzes, guided remediation flows, spaced review recommendations, and mastery tracking.",
   "userStories": [
     {
-      "id": "US-001",
-      "title": "Add OpenRouter provider",
-      "description": "As a user, I want the system to support OpenRouter models so I can choose from a wider range of LLMs for diagram generation.",
+      "id": "RP-001",
+      "title": "Weak Topic Detection",
+      "description": "As a student, I want weak biology topics identified from my assessment performance so that I know what to improve.",
       "acceptanceCriteria": [
-        "OPENROUTER_API_KEY, OPENROUTER_BASE_URL, OPENROUTER_DEFAULT_MODEL configurable via .env",
-        "OpenRouterProvider subclass of OpenAIProvider with HTTP-Referer and X-Title headers",
-        "Registered in ProviderManager._init_providers() with fallback priority after Ollama",
-        "OpenRouter models visible in GET /models and POST /models/health responses",
-        "Ruff, mypy, pytest pass"
+        "Quiz and assessment scores analyzed automatically after completion",
+        "Subtopic-level weaknesses detected and scored (not just overall score)",
+        "Weak topics displayed with severity scores and confidence metrics",
+        "Misconception patterns detected from repeated mistakes and hint usage",
+        "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "New file: src/llm/providers/openrouter.py. Modify: src/config.py, src/llm/manager.py, .env.example."
+      "notes": "Backend analysis logic. Requires new database tables: student_mastery, misconception_patterns."
     },
     {
-      "id": "US-002",
-      "title": "Thread preferred_model through diagram call chain",
-      "description": "As a developer, I need preferred_model to flow from the API endpoint through to ProviderManager.route() so model selection actually works.",
+      "id": "RP-002",
+      "title": "AI Recovery Plan Generation",
+      "description": "As a student, I want personalized recovery plans generated automatically when I score below 60% on a unit, so that I can improve efficiently.",
       "acceptanceCriteria": [
-        "preferred_model param added to DiagramAgent.generate()",
-        "preferred_model param added to BaseAgent._call_llm()",
-        "preferred_model param added to ModelRouter.route()",
-        "Param passed through to ProviderManager.route() which already accepts it",
-        "When preferred_model is None, existing default behavior is preserved",
-        "Ruff, mypy, pytest pass"
+        "Recovery plan auto-triggered when unit score < 60% or repeated failures detected",
+        "Plan includes topic-specific remediation tasks ordered by intelligence",
+        "Tasks can include: review notes, guided quizzes, diagram exercises, retake assessments",
+        "Plan adapts difficulty based on weakness severity",
+        "Plans stored and retrievable via API",
+        "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Files: src/agents/diagram.py, src/agents/base.py, src/llm/router.py. The ProviderManager.route() already accepts preferred_model."
+      "passes": false,
+      "notes": "Requires RP-001. New tables: recovery_plans, recovery_tasks. AI agent logic in Student Progress Agent."
     },
     {
-      "id": "US-003",
-      "title": "Add model field to diagram schemas and API",
-      "description": "As a user, I want to specify which model to use for diagram generation via the API.",
+      "id": "RP-003",
+      "title": "Recovery Dashboard",
+      "description": "As a student, I want a dedicated recovery dashboard so that I can track my weaknesses and improvement clearly in one place.",
       "acceptanceCriteria": [
-        "DiagramGenerateRequest.model: Optional[str] = None",
-        "Endpoint passes request.model as preferred_model to agent",
-        "Response echoes model_used (set by provider after actual model selected)",
-        "Schema validation allows any non-empty string for model",
-        "When model is None, uses default (Ollama)",
-        "Tests verify model threading at schema, agent, and API layer",
-        "Ruff, mypy, pytest pass"
+        "Dashboard accessible from main navigation",
+        "Displays weak topics list with mastery percentages",
+        "Shows active recovery plan with task timeline",
+        "Shows recommended quizzes and review schedule",
+        "Shows AI-generated recommendations",
+        "Typecheck passes",
+        "Verify in browser using Playwright browser tools"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "Files: src/schemas/diagram.py, src/api/diagram.py, tests/test_agents.py, tests/test_api.py."
+      "passes": false,
+      "notes": "New dashboard page/component. Requires RP-001 and RP-002 for data."
     },
     {
-      "id": "US-004",
-      "title": "Add model selector to diagram dashboard UI",
-      "description": "As a student, I want to pick which AI model generates my diagram from a dropdown in the dashboard.",
+      "id": "RP-004",
+      "title": "Adaptive Quiz Recommendation",
+      "description": "As a student, I want targeted quizzes focused on my weak areas so that I can practice effectively.",
       "acceptanceCriteria": [
-        "Model dropdown in diagram page populated from GET /models endpoint",
-        "Selected model sent with generate request",
-        "model_used shown in response metadata (e.g., 'ollama/gemma4:31b-cloud')",
-        "Dropdown defaults to system default model",
-        "Loading state while fetching model list",
-        "tsc --noEmit passes, Next.js build passes",
+        "Quiz difficulty adapts based on current mastery level",
+        "Quiz content focuses on detected weak subtopics",
+        "Recommendations update dynamically after each completed quiz",
+        "Quiz completion triggers re-evaluation of topic mastery",
+        "Typecheck passes",
         "Verify in browser using Playwright browser tools"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "File: dashboard/src/app/diagrams/page.tsx. Fetch /models on mount, populate a select dropdown alongside topic/difficulty."
+      "passes": false,
+      "notes": "Enhances existing quiz agent with adaptive difficulty and weakness targeting. Requires RP-001."
     },
     {
-      "id": "US-005",
-      "title": "Textbook figure extraction pipeline",
-      "description": "As a developer, I want to extract diagrams, figures, and illustrations from the Ethiopian biology PDF textbooks as reference images.",
+      "id": "RP-005",
+      "title": "Recovery Progress Tracking",
+      "description": "As a student, I want my recovery progress tracked over time so that I can measure improvement.",
       "acceptanceCriteria": [
-        "New module src/ingestion/diagram_extractor.py uses Docling layout analysis to detect figures on each PDF page",
-        "Extracted figures saved as JPEG (quality 85) to data/diagrams/{grade}/{source_file}_{figure_number}.jpg",
-        "Caption text extracted alongside each figure",
-        "Metadata recorded: grade, unit, topic, figure_number, page_number, source_file",
-        "Script scripts/ingest_diagrams.py processes all grades (9-12) with progress logging",
-        "Grades 7-8 pipeline stubbed — logs message and skips gracefully when no PDFs found",
-        "Unit and topic mapped from PDF document structure (not regex from text)",
-        "Ruff, mypy pass"
+        "Progress percentages visible per topic on dashboard",
+        "Mastery scores update automatically after each completed task or quiz",
+        "Topic improvement tracked over time with history",
+        "Mastery data persisted in topic_mastery_history table",
+        "Typecheck passes",
+        "Verify in browser using Playwright browser tools"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "Uses docling >=2.12.0 (already a dependency). New files: src/ingestion/diagram_extractor.py, scripts/ingest_diagrams.py."
+      "passes": false,
+      "notes": "New table: topic_mastery_history. Integrates with gamification XP system via recovery_task_completion source."
     },
     {
-      "id": "US-006",
-      "title": "Textbook diagram storage and retrieval",
-      "description": "As a developer, I want extracted diagrams stored in the database with searchable metadata so the system can retrieve relevant diagrams by grade and topic.",
+      "id": "RP-006",
+      "title": "Spaced Repetition Scheduling",
+      "description": "As a student, I want review reminders so that I retain biology concepts over time.",
       "acceptanceCriteria": [
-        "TextbookDiagram DB model with: id (UUID PK), grade_level, unit, topic, caption, image_path, figure_number, page_number, source_file, ground_truth_labels (JSON, nullable), created_at",
-        "Figure captions embedded via sentence-transformers and indexed in ChromaDB with source_type: 'textbook_diagram'",
-        "GET /diagram/textbook?grade=&topic= endpoint returns matching diagrams with image URLs and captions",
-        "Endpoint returns 200 with empty list when no matches (graceful degradation for grades 7-8)",
-        "Tests verify model, endpoint, and retrieval",
-        "Ruff, mypy, pytest pass"
+        "Review intervals generated based on topic mastery and retention decay",
+        "Reminder schedule stored in spaced_repetition_schedule table",
+        "Repeat practice tasks appear on dashboard when due for review",
+        "Intervals adapt based on re-assessment performance",
+        "Typecheck passes"
       ],
       "priority": 6,
-      "passes": true,
-      "notes": "Files: src/database/models.py, src/retrieval/adapter.py (extend ChromaDB indexing for diagram captions), src/api/diagram.py (new GET endpoint), tests/. Image serving via static files or base64."
+      "passes": false,
+      "notes": "New table: spaced_repetition_schedule. Schedule logic in Mastery Engine."
     },
     {
-      "id": "US-007",
-      "title": "Auto-generate ground truth labels from textbook diagrams",
-      "description": "As a developer, I want a pipeline that uses vision-capable LLMs to analyze each extracted textbook diagram and generate structured labels serving as ground truth for validation.",
+      "id": "RP-007",
+      "title": "Recovery Notifications",
+      "description": "As a student, I want motivational progress notifications so that I stay engaged with my recovery.",
       "acceptanceCriteria": [
-        "Script scripts/label_textbook_diagrams.py processes all extracted diagrams",
-        "Uses OpenRouter vision models (gpt-4o, claude-3.5-sonnet) as primary with Ollama vision fallback (llava, gemma4)",
-        "Vision prompt instructs LLM to output JSON labels: [{id, text, x, y}] matching diagram structures",
-        "Generated labels stored in TextbookDiagram.ground_truth_labels",
-        "Labels marked as proposed: true initially, with human_reviewed: false flag",
-        "Script accepts --model flag to override which vision model to use",
-        "Graceful fallback: if both OpenRouter and Ollama vision fail, skip diagram with warning",
-        "Ruff, mypy pass"
+        "Notifications triggered when topic mastery improves significantly",
+        "Messages highlight milestone improvements (e.g., 'You improved 18% in Cell Biology')",
+        "Messaging is supportive and encouraging, avoids negative wording",
+        "Notifications appear in chat and dashboard",
+        "Typecheck passes",
+        "Verify in browser using Playwright browser tools"
       ],
       "priority": 7,
-      "passes": true,
-      "notes": "New files: scripts/label_textbook_diagrams.py, src/agents/diagram.py (add auto_label_textbook_diagram static method). Data flow: load image -> encode as base64 -> send to vision LLM -> parse JSON labels -> store in DB."
-    },
-    {
-      "id": "US-008",
-      "title": "Curriculum-aligned diagram generation with RAG",
-      "description": "As a student, I want AI-generated diagrams to use correct Ethiopian biology curriculum terminology and conventions by referencing the textbook.",
-      "acceptanceCriteria": [
-        "DiagramAgent.generate() retrieves relevant textbook chunks + diagram captions via ChromaDB before calling LLM",
-        "Retrieved context injected into the system prompt as curriculum reference material",
-        "Generated labels use terminology from the textbook, not arbitrary AI choices",
-        "Response includes textbook_references: [{grade, unit, figure_number, caption}] when textbook matches found",
-        "When no textbook content matches, falls back to current behavior (no RAG context)",
-        "Tests verify RAG context injection",
-        "Ruff, mypy, pytest pass"
-      ],
-      "priority": 8,
-      "passes": true,
-      "notes": "File: src/agents/diagram.py (modify generate()). Schema: src/schemas/diagram.py (add textbook_references to response). Requires US-006 first for the retrieval index."
-    },
-    {
-      "id": "US-009",
-      "title": "Ground truth diagram validation endpoint",
-      "description": "As a student, I want my label submissions validated against actual textbook diagrams when available, so I learn the curriculum's official terminology.",
-      "acceptanceCriteria": [
-        "POST /diagram/validate accepts optional textbook_diagram_id: Optional[str]",
-        "When textbook_diagram_id provided, validates against TextbookDiagram.ground_truth_labels instead of submitted correct_labels",
-        "Response includes source field: 'textbook' or 'ai_generated'",
-        "When textbook_diagram_id is None, uses current behavior (correct_labels from AI generation)",
-        "Error handling: returns 404 if textbook_diagram_id not found, 400 if textbook diagram has no ground truth labels",
-        "Tests cover: textbook validation path, fallback path, error cases",
-        "Ruff, mypy, pytest pass"
-      ],
-      "priority": 9,
-      "passes": true,
-      "notes": "Files: src/api/diagram.py, src/schemas/diagram.py, src/agents/diagram.py (validate_labels extended). Requires US-007 for populated ground_truth_labels."
+      "passes": false,
+      "notes": "Notification logic in Recovery Orchestrator. Display in dashboard and chat."
     }
   ]
 }

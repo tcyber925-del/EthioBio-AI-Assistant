@@ -1,4 +1,30 @@
 ## Codebase Patterns
+- Weak topic detection follows: `analyze_quiz_attempt()` wired into quiz submit endpoint → creates/updates `StudentMastery` and `MisconceptionPattern` records → `_update_student_profile_weak_areas()` syncs `StudentProfile.weak_areas` and `topic_mastery` JSON fields
+- New database models for recovery features follow existing patterns: UUID PK, FK to users, timestamps, JSON for flexible fields
+- Weak topic analysis is non-blocking (called after XP/streak/achievement logic, before commit)
+- When adding analysis to existing endpoints, call analysis functions AFTER gamification logic but BEFORE session.commit()
+- The `QuizAttempt.answers` field is `Mapped[dict]` in SQLAlchemy but stores list data — always `cast(list[Any], ...)` when accessing
+
+---
+## [2026-05-26 07:30] - RP-001: Weak Topic Detection
+- Added `StudentMastery` model (user_id, topic, unit, grade_level, average_score, attempt_count, total_questions_attempted, correct_answers, severity, confidence, last_assessed_at)
+- Added `MisconceptionPattern` model (user_id, topic, pattern_type, pattern_description, frequency, common_wrong_answer, related_question_ids, resolved)
+- Created `src/agents/weak_topic_detection.py` with:
+  - `calculate_severity()` — maps average score to critical/moderate/mild/good
+  - `calculate_confidence()` — confidence metric based on sample size (capped at 1.0 at 3+ attempts)
+  - `analyze_quiz_attempt()` — analyzes quiz results per-topic, updates/creates StudentMastery, detects misconceptions, syncs StudentProfile fields
+  - `get_weak_topics()` — retrieves weak topics with severity, confidence, and misconception patterns
+- Added `GET /recovery/weak-topics/{user_id}` endpoint returning WeakTopicsResponse with per-topic details
+- Wired `analyze_quiz_attempt()` into `POST /quiz/submit` after gamification logic
+- Added schemas: `MisconceptionInfo`, `WeakTopicDetail`, `WeakTopicsResponse` in `src/schemas/recovery.py`
+- 13 tests: severity thresholds, confidence, schema validation, get_weak_topics filtering, empty results, all-good results
+- 81/81 non-LLM tests pass (no regressions)
+- **Learnings for future iterations:**
+  - The `QuizAttempt.answers` field is typed `Mapped[dict]` in SQLAlchemy but stores list data — cast safely when accessing
+  - Weak topic analysis must be called BEFORE `session.commit()` in the quiz submit endpoint
+  - `MisconceptionPattern.resolved == False` requires `.is_(False)` for SQLAlchemy compatibility (not `not col`)
+  - Pydantic UUID fields auto-convert strings — tests should compare to UUID objects
+- Files: `src/database/models.py`, `src/agents/weak_topic_detection.py` (new), `src/schemas/recovery.py`, `src/api/recovery.py`, `src/api/quiz.py`, `tests/test_weak_topics.py` (new), `progress.txt`
 - Use `python-docx` `Document` with `BytesIO` buffer for in-memory DOCX generation
 - Use `fpdf2` subclassing `FPDF` for PDF generation; prefer `cell()` with `new_x="LMARGIN"` / `new_y="NEXT"` over `multi_cell()` for simple text
 - When registering a new API router in `main.py`, add both the import and `app.include_router()` call

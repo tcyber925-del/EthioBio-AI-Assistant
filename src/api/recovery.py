@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.agents.weak_topic_detection import get_weak_topics
 from src.api.gamification import (
     RECOVERY_MILESTONE_THRESHOLDS,
     XP_SOURCES,
@@ -20,6 +21,7 @@ from src.schemas.recovery import (
     CreateRecoveryPlanRequest,
     RecoveryPlanResponse,
     RecoveryTaskResponse,
+    WeakTopicsResponse,
 )
 
 logger = structlog.get_logger()
@@ -151,6 +153,20 @@ async def complete_recovery_task(
     except Exception as e:
         await session.rollback()
         logger.error("recovery_task_complete_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/weak-topics/{user_id}", response_model=WeakTopicsResponse)
+async def get_weak_topics_endpoint(user_id, session: AsyncSession = Depends(get_session)):
+    try:
+        weak_topics = await get_weak_topics(user_id, session)
+        return WeakTopicsResponse(
+            user_id=user_id,
+            weak_topics=weak_topics,
+            total_weak_topics=len(weak_topics),
+        )
+    except Exception as e:
+        logger.error("weak_topics_error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -5,6 +5,30 @@ from uuid import UUID
 from src.schemas.base import SchemaModel
 
 
+class MisconceptionInfo(SchemaModel):
+    pattern_type: str
+    description: str
+    frequency: int
+
+
+class WeakTopicDetail(SchemaModel):
+    topic: str
+    unit: str = ""
+    grade_level: int = 0
+    average_score: float
+    attempt_count: int = 0
+    severity: str
+    confidence: float = 0.0
+    misconceptions: list[MisconceptionInfo] = []
+    last_assessed_at: Optional[datetime] = None
+
+
+class WeakTopicsResponse(SchemaModel):
+    user_id: UUID
+    weak_topics: list[WeakTopicDetail] = []
+    total_weak_topics: int = 0
+
+
 class RecoveryTaskResponse(SchemaModel):
     id: UUID
     plan_id: UUID
