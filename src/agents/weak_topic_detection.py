@@ -10,6 +10,7 @@ from src.database.models import (
     Question,
     Quiz,
     QuizAttempt,
+    RecoveryNotification,
     StudentMastery,
     StudentProfile,
     TopicMasteryHistory,
@@ -99,7 +100,12 @@ async def _update_mastery(user_id: Any, topic: str, pct: float, total_questions:
     )
     mastery = result.scalar_one_or_none()
 
+    old_score = None
+    old_severity = None
+
     if mastery:
+        old_score = mastery.average_score
+        old_severity = mastery.severity
         new_total = mastery.total_questions_attempted + total_questions
         new_correct = mastery.correct_answers + correct_count
         new_avg = (new_correct / new_total * 100) if new_total > 0 else 0
@@ -146,6 +152,37 @@ async def _update_mastery(user_id: Any, topic: str, pct: float, total_questions:
     session.add(history_entry)
 
     await session.flush()
+
+    if old_score is not None and mastery.average_score > old_score:
+        improvement = round(mastery.average_score - old_score, 1)
+        if improvement >= 5:
+            await _generate_improvement_notification(
+                user_id=user_id, topic=topic, event_type="mastery_improvement",
+                improvement_pct=improvement,
+                message=(
+                    f"Great progress in {topic}! Your mastery improved from "
+                    f"{old_score:.0f}% to {mastery.average_score:.0f}% (+{improvement:.0f}%). "
+                    f"Keep up the excellent work!"
+                ),
+                old_value=old_score, new_value=mastery.average_score,
+                session=session,
+            )
+        if old_severity and mastery.severity != old_severity:
+            severity_rank = {"critical": 0, "moderate": 1, "mild": 2, "good": 3}
+            old_rank = severity_rank.get(old_severity, 0)
+            new_rank = severity_rank.get(mastery.severity, 0)
+            if new_rank > old_rank:
+                await _generate_improvement_notification(
+                    user_id=user_id, topic=topic, event_type="severity_upgrade",
+                    improvement_pct=improvement if improvement >= 0 else None,
+                    message=(
+                        f"Excellent work! Your understanding of {topic} has improved "
+                        f"from {old_severity} to {mastery.severity}. "
+                        f"You're making great progress!"
+                    ),
+                    old_value=old_rank, new_value=new_rank,
+                    session=session,
+                )
 
 
 async def _detect_misconceptions(user_id: Any, topic: str,
@@ -228,6 +265,7 @@ async def _update_student_profile_weak_areas(user_id: Any, session: AsyncSession
 async def record_mastery_history(
     user_id: Any, topic: str, unit: str | None, grade_level: int,
     session: AsyncSession, source: str = "quiz", source_id: Any = None,
+    old_score: float | None = None,
 ) -> None:
     result = await session.execute(
         select(StudentMastery).where(
@@ -253,6 +291,39 @@ async def record_mastery_history(
         recorded_at=mastery.last_assessed_at,
     )
     session.add(entry)
+
+    if old_score is not None and mastery.average_score > old_score:
+        improvement = round(mastery.average_score - old_score, 1)
+        if improvement >= 5:
+            await _generate_improvement_notification(
+                user_id=user_id, topic=topic, event_type="mastery_improvement",
+                improvement_pct=improvement,
+                message=(
+                    f"Great progress in {topic}! Your mastery improved from "
+                    f"{old_score:.0f}% to {mastery.average_score:.0f}% (+{improvement:.0f}%). "
+                    f"Keep up the excellent work!"
+                ),
+                old_value=old_score, new_value=mastery.average_score,
+                session=session,
+            )
+
+
+async def _generate_improvement_notification(
+    user_id: Any, topic: str, event_type: str, improvement_pct: float | None,
+    message: str, old_value: float | None = None, new_value: float | None = None,
+    session: AsyncSession = None,
+) -> None:
+    notification = RecoveryNotification(
+        user_id=user_id,
+        topic=topic,
+        event_type=event_type,
+        message=message,
+        improvement_pct=improvement_pct,
+        old_value=old_value,
+        new_value=new_value,
+        is_read=False,
+    )
+    session.add(notification)
 
 
 async def get_weak_topics(user_id: Any, session: AsyncSession) -> list[dict[str, Any]]:

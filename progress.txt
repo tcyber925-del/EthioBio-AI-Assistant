@@ -486,3 +486,29 @@
   - `session.add` and `session.commit` need explicit setup: `add = MagicMock()`, `commit = AsyncMock()` since default AsyncMock attributes return CoroutineMocks which don't track sync calls correctly
   - Dashboard frontend pattern for due reviews: orange theme (RotateCcw icon, orange-400 text, orange-500/20 border), shows mastery %, review count, and days overdue
 - Files: `src/database/models.py`, `src/agents/spaced_repetition.py` (new), `src/schemas/recovery.py`, `src/api/recovery.py`, `dashboard/src/app/recovery/page.tsx`, `tests/test_spaced_repetition.py` (new), `scripts/ralph/prd.json`, `progress.txt`
+
+---
+## [2026-05-26] - RP-007: Recovery Notifications
+- Added `RecoveryNotification` model to `src/database/models.py` — tracks per-user improvement notifications with fields: id, user_id, topic, event_type, message, improvement_pct, old_value, new_value, is_read, created_at
+- Added `_generate_improvement_notification()` helper to `src/agents/weak_topic_detection.py` — creates RecoveryNotification records
+- Wired notification generation into `_update_mastery()` — detects mastery improvement (>=5% gain) and severity upgrades (e.g., critical→moderate) from quiz results
+- Extended `record_mastery_history()` with optional `old_score` param — generates mastery improvement notifications for non-quiz sources (task completion)
+- Added plan completion notification in `complete_recovery_task()` handler in `src/api/recovery.py` — adds "plan_completed" notification when a plan finishes
+- Added schemas: `RecoveryNotificationResponse`, `RecoveryNotificationListResponse` in `src/schemas/recovery.py`
+- Updated `RecoveryDashboardResponse` with `unread_notifications: int` and `notifications: list[RecoveryNotificationResponse]`
+- Added 3 API endpoints in `src/api/recovery.py`: `GET /recovery/notifications/{user_id}`, `PATCH /recovery/notifications/{notification_id}/read`, `PUT /recovery/notifications/read-all/{user_id}`
+- Added `_fetch_recovery_notifications()` and `_format_notification_messages()` helpers in `src/telegram/bot.py`
+- Wired notification checks into `_save_quiz_rewards()` and `_save_tutor_rewards()` — fetches unread notifications after XP award
+- Wired notification display into `_show_quiz_result()`, `ask_command`, and `handle_question` — appends notification messages to bot responses
+- Updated recovery dashboard frontend (`dashboard/src/app/recovery/page.tsx`): notifications stat card with bell icon and unread badge, collapsible notifications panel with event-type icons (TrendingUp/PartyPopper/Sparkles), mark-all-read button, improvement percentage display
+- Added 6 schema tests: notification response, list response, empty list, different event types, dashboard notification fields
+- 61 total recovery/weak-topic/spaced-repetition tests pass (55 + 6 new)
+- **Learnings for future iterations:**
+  - Notification generation pattern: capture old score/severity before update, compare after, generate in `_update_mastery()` using the `_generate_improvement_notification()` helper
+  - Severity upgrade detection uses a rank mapping: critical=0, moderate=1, mild=2, good=3
+  - Bot notification flow follows same pattern as XP rewards: fetch after commit → store in context.user_data → pop and display in response handler
+  - Bot `_fetch_recovery_notifications()` runs in the bot's own DB session (separate factory), works because notifications are committed by the API endpoint
+  - Dashboard notification UX: collapsible panel with event-type-specific icons/colors, stat card has bell + unread badge, mark-all-read calls PUT endpoint
+  - The `notifications` field in the dashboard response now returns the 10 most recent unread notifications directly (avoids a separate API call)
+  - Three notification event types: mastery_improvement (≥5% score gain), severity_upgrade (e.g., critical→moderate), plan_completed (all tasks done)
+- Files: `src/database/models.py`, `src/agents/weak_topic_detection.py`, `src/schemas/recovery.py`, `src/api/recovery.py`, `src/telegram/bot.py`, `dashboard/src/app/recovery/page.tsx`, `tests/test_recovery.py`, `scripts/ralph/prd.json`, `progress.txt`

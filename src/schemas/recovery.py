@@ -173,6 +173,25 @@ class SpacedRepetitionReviewResponse(SchemaModel):
     review_count: int
 
 
+class RecoveryNotificationResponse(SchemaModel):
+    id: UUID
+    topic: str
+    event_type: str
+    message: str
+    improvement_pct: Optional[float] = None
+    old_value: Optional[float] = None
+    new_value: Optional[float] = None
+    is_read: bool = False
+    created_at: datetime
+
+
+class RecoveryNotificationListResponse(SchemaModel):
+    user_id: UUID
+    notifications: list[RecoveryNotificationResponse] = []
+    total_unread: int = 0
+    total: int = 0
+
+
 class RecoveryDashboardResponse(SchemaModel):
     user_id: UUID
     weak_topics: list[WeakTopicDetail] = []
@@ -182,3 +201,5 @@ class RecoveryDashboardResponse(SchemaModel):
     recommendations: list[RecommendationInfo] = []
     due_reviews: list[SpacedRepetitionItem] = []
     total_due_reviews: int = 0
+    unread_notifications: int = 0
+    notifications: list[RecoveryNotificationResponse] = []

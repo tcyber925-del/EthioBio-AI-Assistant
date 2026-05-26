@@ -255,6 +255,9 @@ async def ask_command(update: Update, context):
                 if level_up:
                     new_level = context.user_data.get("last_new_level", 1)
                     response += f"\n🎉 LEVEL UP! You are now Level {new_level}!"
+                notifications = context.user_data.pop("last_notifications", None)
+                if notifications:
+                    response += "\n\n" + "\n".join(notifications)
             reply_markup = hint_keyboard(0, False) if socratic else main_menu_keyboard(socratic)
             await _reply_long(update.message, response, reply_markup=reply_markup, parse_mode="HTML")
             await router_llm.close()
@@ -414,6 +417,9 @@ async def handle_question(update: Update, context):
             if level_up:
                 new_level = context.user_data.get("last_new_level", 1)
                 response += f"\n🎉 LEVEL UP! You are now Level {new_level}!"
+            notifications = context.user_data.pop("last_notifications", None)
+            if notifications:
+                response += "\n\n" + "\n".join(notifications)
         reply_markup = hint_keyboard(hint_level, reveal) if socratic else main_menu_keyboard(socratic)
         await _reply_long(thinking_msg, response, reply_markup=reply_markup, parse_mode="HTML")
         await router_llm.close()
@@ -595,6 +601,29 @@ def _calculate_quiz_xp(pct: int) -> int:
     return xp
 
 
+async def _fetch_recovery_notifications(user_id, session):
+    from src.database.models import RecoveryNotification
+    from sqlalchemy import select
+    result = await session.execute(
+        select(RecoveryNotification)
+        .where(
+            RecoveryNotification.user_id == user_id,
+            not RecoveryNotification.is_read,
+        )
+        .order_by(RecoveryNotification.created_at.desc())
+        .limit(5)
+    )
+    return list(result.scalars().all())
+
+
+async def _format_notification_messages(notifications):
+    messages = []
+    for n in notifications:
+        icon = "📈" if n.event_type == "mastery_improvement" else "🎯" if n.event_type == "severity_upgrade" else "🎉"
+        messages.append(f"{icon} {n.message}")
+    return messages
+
+
 async def _save_quiz_rewards(telegram_id, correct, total, context):
     from sqlalchemy import select
     async def _save():
@@ -614,6 +643,9 @@ async def _save_quiz_rewards(telegram_id, correct, total, context):
             context.user_data["last_xp_awarded"] = xp_amount
             context.user_data["last_level_up"] = level_up
             context.user_data["last_new_level"] = gam_result.level
+            notifications = await _fetch_recovery_notifications(user.id, session)
+            if notifications:
+                context.user_data["last_notifications"] = await _format_notification_messages(notifications)
     await _db_try(_save)
 
 
@@ -637,6 +669,9 @@ async def _save_tutor_rewards(telegram_id, context):
             context.user_data["last_xp_awarded"] = xp_amount
             context.user_data["last_level_up"] = level_up
             context.user_data["last_new_level"] = gam_result.level
+            notifications = await _fetch_recovery_notifications(user.id, session)
+            if notifications:
+                context.user_data["last_notifications"] = await _format_notification_messages(notifications)
     await _db_try(_save)
 
 
@@ -660,6 +695,10 @@ async def _show_quiz_result(update: Update, context, msg=None):
     if level_up:
         new_level = context.user_data.get("last_new_level", 1)
         lines.append(f"🎉 LEVEL UP! You are now Level {new_level}!")
+    notifications = context.user_data.pop("last_notifications", None)
+    if notifications:
+        lines.append("")
+        lines.extend(notifications)
     lines.append("")
     for i, q in enumerate(qs):
         icon = "✅" if i < len(ans) and ans[i] == q.get("correct_answer", "") else "❌"

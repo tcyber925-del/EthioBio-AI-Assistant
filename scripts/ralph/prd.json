@@ -112,8 +112,8 @@
         "Verify in browser using Playwright browser tools"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": "Notification logic in Recovery Orchestrator. Display in dashboard and chat."
+      "passes": true,
+      "notes": "Notification logic in weak_topic_detection.py (_generate_improvement_notification). Display in dashboard (notifications panel in recovery page) and chat (Telegram bot _fetch_recovery_notifications + _format_notification_messages). Three event types: mastery_improvement, severity_upgrade, plan_completed."
     }
   ]
 }

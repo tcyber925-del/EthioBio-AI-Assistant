@@ -21,7 +21,7 @@ from src.api.gamification import (
     check_achievements,
     update_streak,
 )
-from src.database.models import RecoveryPlan, RecoveryTask, TopicMasteryHistory
+from src.database.models import RecoveryNotification, RecoveryPlan, RecoveryTask, StudentMastery, TopicMasteryHistory
 from src.database.session import get_session
 from src.llm.router import ModelRouter
 from src.schemas.recovery import (
@@ -34,6 +34,8 @@ from src.schemas.recovery import (
     MasteryHistoryResponse,
     RecommendationInfo,
     RecoveryDashboardResponse,
+    RecoveryNotificationListResponse,
+    RecoveryNotificationResponse,
     RecoveryPlanResponse,
     RecoveryTaskResponse,
     SpacedRepetitionGenerateResponse,
@@ -153,16 +155,39 @@ async def complete_recovery_task(
         await update_streak(user_id, session)
         await check_achievements(user_id, gam, session)
 
+        old_mastery_result = await session.execute(
+            select(StudentMastery).where(
+                StudentMastery.user_id == user_id,
+                StudentMastery.topic == plan.topic,
+            )
+        )
+        old_mastery = old_mastery_result.scalar_one_or_none()
+        old_score = old_mastery.average_score if old_mastery else None
+
         await record_mastery_history(
             user_id=user_id, topic=plan.topic, unit=None,
             grade_level=0, session=session, source="task_completion",
-            source_id=task.id,
+            source_id=task.id, old_score=old_score,
         )
 
         await session.commit()
 
         total = xp_amount + milestone_bonus
         progress = round(plan.completed_tasks / max(plan.total_tasks, 1) * 100, 1)
+
+        if plan.status == "completed":
+            notification = RecoveryNotification(
+                user_id=user_id,
+                topic=plan.topic,
+                event_type="plan_completed",
+                message=(
+                    f"Congratulations! You completed the recovery plan for {plan.topic}! "
+                    f"All {plan.total_tasks} tasks finished. "
+                    f"Great dedication to your learning!"
+                ),
+                improvement_pct=progress,
+            )
+            session.add(notification)
 
         return CompleteTaskResponse(
             task_id=task.id,
@@ -317,6 +342,17 @@ async def get_recovery_dashboard(user_id, session: AsyncSession = Depends(get_se
 
         due_items = await get_due_reviews(user_id, session)
 
+        notifications_result = await session.execute(
+            select(RecoveryNotification)
+            .where(
+                RecoveryNotification.user_id == user_id,
+                RecoveryNotification.is_read == False,  # noqa: E712
+            )
+            .order_by(RecoveryNotification.created_at.desc())
+            .limit(10)
+        )
+        unread_notifications = notifications_result.scalars().all()
+
         return RecoveryDashboardResponse(
             user_id=user_id,
             weak_topics=weak_topics,
@@ -326,6 +362,21 @@ async def get_recovery_dashboard(user_id, session: AsyncSession = Depends(get_se
             recommendations=recommendations,
             due_reviews=[SpacedRepetitionItem(**i) for i in due_items],
             total_due_reviews=len(due_items),
+            unread_notifications=len(unread_notifications),
+            notifications=[
+                RecoveryNotificationResponse(
+                    id=n.id,
+                    topic=n.topic,
+                    event_type=n.event_type,
+                    message=n.message,
+                    improvement_pct=n.improvement_pct,
+                    old_value=n.old_value,
+                    new_value=n.new_value,
+                    is_read=n.is_read,
+                    created_at=n.created_at,
+                )
+                for n in unread_notifications
+            ],
         )
     except Exception as e:
         logger.error("recovery_dashboard_error", error=str(e))
@@ -388,6 +439,104 @@ async def spaced_repetition_review(request: SpacedRepetitionReviewRequest,
         raise
     except Exception as e:
         logger.error("spaced_repetition_review_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/notifications/{user_id}", response_model=RecoveryNotificationListResponse)
+async def get_recovery_notifications(
+    user_id,
+    unread_only: bool = False,
+    limit: int = 50,
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        stmt = (
+            select(RecoveryNotification)
+            .where(RecoveryNotification.user_id == user_id)
+            .order_by(RecoveryNotification.created_at.desc())
+        )
+        if unread_only:
+            stmt = stmt.where(RecoveryNotification.is_read == False)  # noqa: E712
+        result = await session.execute(stmt.limit(limit))
+        notifications = result.scalars().all()
+
+        unread_result = await session.execute(
+            select(RecoveryNotification)
+            .where(
+                RecoveryNotification.user_id == user_id,
+                RecoveryNotification.is_read == False,  # noqa: E712
+            )
+        )
+        total_unread = len(unread_result.scalars().all())
+
+        return RecoveryNotificationListResponse(
+            user_id=user_id,
+            notifications=[
+                RecoveryNotificationResponse(
+                    id=n.id,
+                    topic=n.topic,
+                    event_type=n.event_type,
+                    message=n.message,
+                    improvement_pct=n.improvement_pct,
+                    old_value=n.old_value,
+                    new_value=n.new_value,
+                    is_read=n.is_read,
+                    created_at=n.created_at,
+                )
+                for n in notifications
+            ],
+            total_unread=total_unread,
+            total=len(notifications),
+        )
+    except Exception as e:
+        logger.error("recovery_notifications_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.patch("/notifications/{notification_id}/read")
+async def mark_notification_read(
+    notification_id,
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        result = await session.execute(
+            select(RecoveryNotification).where(RecoveryNotification.id == notification_id)
+        )
+        notification = result.scalar_one_or_none()
+        if not notification:
+            raise HTTPException(status_code=404, detail="Notification not found")
+        notification.is_read = True
+        await session.commit()
+        return {"status": "ok"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        logger.error("mark_notification_read_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/notifications/read-all/{user_id}")
+async def mark_all_notifications_read(
+    user_id,
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        result = await session.execute(
+            select(RecoveryNotification)
+            .where(
+                RecoveryNotification.user_id == user_id,
+                RecoveryNotification.is_read == False,  # noqa: E712
+            )
+        )
+        notifications = result.scalars().all()
+        for n in notifications:
+            n.is_read = True
+        await session.commit()
+        return {"status": "ok", "marked": len(notifications)}
+    except Exception as e:
+        await session.rollback()
+        logger.error("mark_all_notifications_read_error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ClipboardList, AlertTriangle, Loader2, Search, CheckCircle2, Clock, BookOpen, Lightbulb, ArrowRight, Target, Brain, TrendingUp, RotateCcw } from 'lucide-react'
+import { ClipboardList, AlertTriangle, Loader2, Search, CheckCircle2, Clock, BookOpen, Lightbulb, ArrowRight, Target, Brain, TrendingUp, RotateCcw, Bell, PartyPopper, Sparkles } from 'lucide-react'
 import { fetchWithTimeout } from '@/lib/fetch'
 import { CardSkeleton } from '@/components/Skeleton'
 
@@ -79,6 +79,16 @@ interface DueReview {
   days_overdue: number
 }
 
+interface Notification {
+  id: string
+  topic: string
+  event_type: string
+  message: string
+  improvement_pct: number | null
+  is_read: boolean
+  created_at: string
+}
+
 interface DashboardData {
   user_id: string
   weak_topics: WeakTopic[]
@@ -88,6 +98,8 @@ interface DashboardData {
   recommendations: Recommendation[]
   due_reviews: DueReview[]
   total_due_reviews: number
+  unread_notifications: number
+  notifications: Notification[]
 }
 
 interface Student {
@@ -109,6 +121,7 @@ export default function RecoveryPage() {
   const [historyLoading, setHistoryLoading] = useState(false)
   const [students, setStudents] = useState<Student[]>([])
   const [studentsLoading, setStudentsLoading] = useState(true)
+  const [notificationsExpanded, setNotificationsExpanded] = useState(false)
 
   useEffect(() => {
     fetchWithTimeout('/api/admin/dashboard')
@@ -152,6 +165,32 @@ export default function RecoveryPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (userId.trim()) fetchDashboard(userId.trim())
+  }
+
+  const markAllRead = async () => {
+    if (!data) return
+    try {
+      await fetchWithTimeout(`/recovery/notifications/read-all/${data.user_id}`, { method: 'PUT' })
+      setData({ ...data, notifications: [], unread_notifications: 0 })
+    } catch { /* ignore */ }
+  }
+
+  const notificationIcon = (eventType: string) => {
+    switch (eventType) {
+      case 'mastery_improvement': return TrendingUp
+      case 'severity_upgrade': return PartyPopper
+      case 'plan_completed': return Sparkles
+      default: return Bell
+    }
+  }
+
+  const notificationColor = (eventType: string) => {
+    switch (eventType) {
+      case 'mastery_improvement': return 'text-green-400 bg-green-500/10'
+      case 'severity_upgrade': return 'text-purple-400 bg-purple-500/10'
+      case 'plan_completed': return 'text-blue-400 bg-blue-500/10'
+      default: return 'text-yellow-400 bg-yellow-500/10'
+    }
   }
 
   const severityColor = (severity: string) => {
@@ -312,7 +351,60 @@ export default function RecoveryPage() {
                 {data.total_due_reviews}
               </p>
             </div>
+            <div
+              className="bg-card rounded-xl border border-border p-5 cursor-pointer hover:bg-background-secondary/50 transition-colors relative"
+              onClick={() => setNotificationsExpanded(!notificationsExpanded)}
+            >
+              <p className="text-sm text-foreground-muted">Notifications</p>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-2xl font-bold text-foreground">{data.unread_notifications}</p>
+                <Bell className="w-4 h-4 text-yellow-400" />
+              </div>
+              {data.unread_notifications > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-white">{data.unread_notifications}</span>
+                </span>
+              )}
+            </div>
           </div>
+
+          {notificationsExpanded && data.notifications.length > 0 && (
+            <div className="bg-card rounded-xl border border-border p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Bell className={`w-5 h-5 ${data.unread_notifications > 0 ? 'text-yellow-400' : 'text-foreground-muted'}`} />
+                  <h2 className="text-lg font-semibold text-foreground">Recent Notifications</h2>
+                </div>
+                {data.unread_notifications > 0 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); markAllRead() }}
+                    className="text-xs text-primary hover:text-primary-hover transition-colors"
+                  >
+                    Mark all as read
+                  </button>
+                )}
+              </div>
+              <div className="space-y-2">
+                {data.notifications.map((n, i) => {
+                  const Icon = notificationIcon(n.event_type)
+                  return (
+                    <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-background-secondary/50">
+                      <div className={`p-2 rounded-full ${notificationColor(n.event_type)}`}>
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-foreground">{n.message}</p>
+                        <p className="text-xs text-foreground-muted mt-1">
+                          {n.topic} · {new Date(n.created_at).toLocaleDateString()}
+                          {n.improvement_pct && ` · +${n.improvement_pct.toFixed(0)}%`}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {data.recommendations.length > 0 && (
             <div className="bg-card rounded-xl border border-border p-5">

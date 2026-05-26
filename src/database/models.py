@@ -426,6 +426,23 @@ class SpacedRepetitionSchedule(Base):
     user: Mapped["User"] = relationship(backref="spaced_repetition_schedules")
 
 
+class RecoveryNotification(Base):
+    __tablename__ = "recovery_notifications"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), index=True)
+    topic: Mapped[str] = mapped_column(String(300))
+    event_type: Mapped[str] = mapped_column(String(50))
+    message: Mapped[str] = mapped_column(Text)
+    improvement_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    old_value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    new_value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    user: Mapped["User"] = relationship(backref="recovery_notifications")
+
+
 class FeedbackEvent(Base):
     __tablename__ = "feedback_events"
 
