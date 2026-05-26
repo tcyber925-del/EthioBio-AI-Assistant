@@ -23,6 +23,8 @@ from src.schemas.recovery import (
     CreateRecoveryPlanRequest,
     GenerateRecoveryPlanRequest,
     GenerateRecoveryPlanResponse,
+    RecommendationInfo,
+    RecoveryDashboardResponse,
     RecoveryPlanResponse,
     RecoveryTaskResponse,
     WeakTopicsResponse,
@@ -196,6 +198,80 @@ async def get_weak_topics_endpoint(user_id, session: AsyncSession = Depends(get_
         )
     except Exception as e:
         logger.error("weak_topics_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/dashboard/{user_id}", response_model=RecoveryDashboardResponse)
+async def get_recovery_dashboard(user_id, session: AsyncSession = Depends(get_session)):
+    try:
+        weak_topics = await get_weak_topics(user_id, session)
+
+        plans_result = await session.execute(
+            select(RecoveryPlan)
+            .where(RecoveryPlan.user_id == user_id, RecoveryPlan.status == "active")
+            .options(selectinload(RecoveryPlan.tasks))
+            .order_by(RecoveryPlan.created_at.desc())
+        )
+        plans = plans_result.scalars().all()
+        plan_responses = [await _build_plan_response(p, session) for p in plans]
+
+        recommendations: list[RecommendationInfo] = []
+        for wt in weak_topics:
+            if wt["severity"] == "critical":
+                recommendations.append(RecommendationInfo(
+                    type="generate_plan",
+                    message=(
+                        f"Generate a recovery plan for {wt['topic']}"
+                        f" (severity: critical, {wt['average_score']:.0f}% average)"
+                    ),
+                    priority="high",
+                ))
+            elif wt["severity"] == "moderate" and wt["confidence"] >= 0.5:
+                recommendations.append(RecommendationInfo(
+                    type="practice_quiz",
+                    message=(
+                        f"Practice {wt['topic']} with targeted quizzes"
+                        f" ({wt['average_score']:.0f}% average)"
+                    ),
+                    priority="medium",
+                ))
+            if wt.get("misconceptions"):
+                for mc in wt["misconceptions"]:
+                    suffix = "s" if mc["frequency"] > 1 else ""
+                    recommendations.append(RecommendationInfo(
+                        type="review_misconception",
+                        message=(
+                            f"Review '{mc['pattern_type']}' misconception"
+                            f" in {wt['topic']} ({mc['frequency']} occurrence{suffix})"
+                        ),
+                        priority="medium",
+                    ))
+
+        if recommendations:
+            for plan_resp in plan_responses:
+                if plan_resp.status == "active":
+                    recommendations.append(RecommendationInfo(
+                        type="continue_plan",
+                        message=(
+                            f"Continue {plan_resp.topic} recovery plan"
+                            f" ({plan_resp.completed_tasks}/{plan_resp.total_tasks}"
+                            f" tasks completed)"
+                        ),
+                        priority="medium",
+                    ))
+
+        recommendations.sort(key=lambda r: {"high": 0, "medium": 1, "low": 2}[r.priority])
+
+        return RecoveryDashboardResponse(
+            user_id=user_id,
+            weak_topics=weak_topics,
+            total_weak_topics=len(weak_topics),
+            active_plans=plan_responses,
+            total_active_plans=len(plan_responses),
+            recommendations=recommendations,
+        )
+    except Exception as e:
+        logger.error("recovery_dashboard_error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 

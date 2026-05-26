@@ -1,9 +1,14 @@
 ## Codebase Patterns
+- Recovery dashboard pattern: create `GET /recovery/dashboard/{user_id}` combined endpoint returning weak topics + active plans + AI recommendations; frontend page at `dashboard/src/app/recovery/page.tsx` with student selector
+- Dashboard page pattern for standalone pages: 'use client', student/user ID selector, fetchWithTimeout, three states (loading/error/data), grid layout with stat cards
+
 - Weak topic detection follows: `analyze_quiz_attempt()` wired into quiz submit endpoint → creates/updates `StudentMastery` and `MisconceptionPattern` records → `_update_student_profile_weak_areas()` syncs `StudentProfile.weak_areas` and `topic_mastery` JSON fields
 - New database models for recovery features follow existing patterns: UUID PK, FK to users, timestamps, JSON for flexible fields
 - Weak topic analysis is non-blocking (called after XP/streak/achievement logic, before commit)
 - When adding analysis to existing endpoints, call analysis functions AFTER gamification logic but BEFORE session.commit()
 - The `QuizAttempt.answers` field is `Mapped[dict]` in SQLAlchemy but stores list data — always `cast(list[Any], ...)` when accessing
+- RecoveryAgent follows the same BaseAgent._call_llm() pattern as QuizAgent/DiagramAgent, but generates plan data + saves to DB in one call
+- AI generation endpoint pattern for recovery: get weak data → build prompt with weak topics → call LLM → parse JSON → save plan+tasks → return
 
 ---
 ## [2026-05-26 07:30] - RP-001: Weak Topic Detection
@@ -369,5 +374,48 @@
   - `session.get(Model, id)` is the standard SQLAlchemy async pattern for single-record lookup by PK
   - The validate endpoint now has two distinct code paths sharing the same attempt-save logic
   - When `textbook_diagram_id` is None, the endpoint is functionally identical to pre-US-009 behavior — fully backward compatible
-  - All 9 PRD stories are now complete: OpenRouter → model selection → schema → dashboard → extraction → storage → auto-label → RAG → validation
+   - All 9 PRD stories are now complete: OpenRouter → model selection → schema → dashboard → extraction → storage → auto-label → RAG → validation
 ---
+## [2026-05-26] - RP-002: AI Recovery Plan Generation
+- Created `src/agents/recovery_agent.py` with `RecoveryAgent(BaseAgent)` that:
+  - Takes weak topic data from `get_weak_topics()` and generates personalized recovery plans via LLM
+  - `generate_plan(user_id, session, topic_filter)` — gets weak topics, builds prompt, calls LLM, parses JSON, saves plan+tasks to DB
+  - Format helper methods: `_format_weak_topics()`, `_get_severity_summary()`
+  - Prompt includes task type guidance (review_notes, guided_quiz, diagram_exercise, retake_assessment, practice_questions) and difficulty adaptation based on severity
+  - Handles edge cases: no weak topics, topic filter with no match, JSON parse errors
+- Added schemas to `src/schemas/recovery.py`: `GeneratedTaskInfo`, `GeneratedPlanInfo`, `GenerateRecoveryPlanResponse`, `GenerateRecoveryPlanRequest`
+- Added `POST /recovery/auto-generate/{user_id}` endpoint in `src/api/recovery.py` — creates ModelRouter, instantiates RecoveryAgent, calls generate_plan
+- 11 tests in `tests/test_recovery_agent.py`: no weak topics, success path, format helpers, severity summary, JSON parse error, topic filter no match, schema validation
+- Quality: ruff clean, no new mypy errors, 47/47 recovery+gamification tests pass
+- **Learnings for future iterations:**
+  - RecoveryAgent follows BaseAgent pattern but also handles DB persistence — unlike pure-analysis agents, it creates and saves models
+  - The LLM prompt uses double-brace `{{}}` for JSON schema template escaping within Python f-strings and triple-quoted strings
+  - Mocking `session.add()` is tricky with AsyncMock — `session.add()` is synchronous in SQLAlchemy 2.0 so test warnings about unawaited coroutines are harmless
+  - `_format_weak_topics()` method made testable by keeping it separate from the LLM call (tested independently)
+  - Topic filtering is done post-hoc on the weak topics list (not in the DB query) — simple and sufficient for MVP
+- Files: `src/agents/recovery_agent.py` (new), `src/schemas/recovery.py`, `src/api/recovery.py`, `tests/test_recovery_agent.py` (new), `scripts/ralph/prd.json`, `progress.txt`
+
+---
+## [2026-05-26 20:10] - RP-003: Recovery Dashboard
+- Added `RecommendationInfo` and `RecoveryDashboardResponse` schemas to `src/schemas/recovery.py`
+- Added `GET /recovery/dashboard/{user_id}` endpoint in `src/api/recovery.py` — fetches weak topics + active plans + generates rule-based recommendations (generate_plan for critical, practice_quiz for moderate, review_misconception, continue_plan)
+- Created `dashboard/src/app/recovery/page.tsx` — recovery dashboard page with:
+  - Student UUID input + quick-select from recent students
+  - Stat cards (Weak Topics, Active Plans, Recommendations, Critical Topics)
+  - Recommendations section with priority-coded left border (red/yellow/blue)
+  - Weak topics list with severity badges, score/attempts/confidence metrics, misconception details
+  - Active recovery plans with progress bars, task timeline with XP awards
+  - Empty states for no weak topics / no active plans
+  - Loading, error, and empty states
+- Added "Recovery" link to sidebar navigation (Activity icon, between Dashboard and Quizzes)
+- Added `/recovery/:path*` API rewrite to `next.config.js`
+- Quality: ruff clean, mypy errors are pre-existing only, 19/19 recovery tests pass, tsc --noEmit clean
+- **Learnings for future iterations:**
+  - The `GET /recovery/dashboard/{user_id}` combined endpoint pattern is useful — calls `get_weak_topics()` + recovery plan query, then generates recommendations
+  - Rule-based recommendations are sufficient for MVP — sort by priority (high → low)
+  - Dashboard pages follow: `useEffect` fetch → loading skeleton → error with `AlertTriangle` → data layout with stat cards → per-section detail
+  - `get_weak_topics()` returns `list[dict]` not `list[WeakTopicDetail]` — Pydantic converts at runtime but mypy complains
+  - The recommendation generation in the endpoint follows a simple if/elif chain — extract to a helper if logic gets more complex
+  - Pre-existing test failures: 7 stable failures (ChromaDB, Telegram, warnings), 166 tests pass
+  - Sidebar link ordering matters — placed Recovery after Dashboard as it's a primary navigation item
+- Files: `src/schemas/recovery.py`, `src/api/recovery.py`, `dashboard/src/app/recovery/page.tsx` (new), `dashboard/src/components/Sidebar.tsx`, `dashboard/next.config.js`, `scripts/ralph/prd.json`, `progress.txt`

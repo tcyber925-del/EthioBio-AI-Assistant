@@ -90,9 +90,10 @@ The recovery plan module tracks student remediation tasks and awards XP for comp
 
 - **Models**: `RecoveryPlan` (user_id, topic, total_tasks, completed_tasks, status) and `RecoveryTask` (plan_id, title, task_type, is_completed, xp_awarded) in `src/database/models.py`
 - **XP sources**: `recovery_task_completion` (40 XP per task) and `recovery_milestone` (bonus XP at 3/5/10/15 tasks) — both defined in `XP_SOURCES` and `RECOVERY_MILESTONE_THRESHOLDS` in `src/api/gamification.py`
-- **Endpoints**: `POST /recovery/plan` (create), `GET /recovery/plan/{user_id}` (list), `POST /recovery/task/complete?task_id=&user_id=` (complete task → awards XP + milestone checks)
+- **Endpoints**: `POST /recovery/plan` (create), `GET /recovery/plan/{user_id}` (list), `POST /recovery/task/complete?task_id=&user_id=` (complete task → awards XP + milestone checks), `GET /recovery/dashboard/{user_id}` (combined: weak topics + active plans + recommendations)
 - **Profile integration**: `GamificationProfileResponse` includes optional `recovery_progress` field showing active plans, task counts, and overall progress %
 - **Frontend**: `RecoveryProgressCard.tsx` shows recovery progress in the student dashboard via `GamificationProfile`
+- **Recovery dashboard page**: `dashboard/src/app/recovery/page.tsx` — standalone page with student UUID selector, shows weak topics with severity, active plans with task timeline, rule-based recommendations (prioritized: high/medium/low). Add both sidebar link and `/recovery/:path*` API rewrite.
 - **Router registration**: Add `recovery` to imports and `app.include_router(recovery.router)` in `src/main.py`
 
 ## Key Gotchas

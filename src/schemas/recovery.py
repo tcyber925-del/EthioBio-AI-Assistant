@@ -103,3 +103,18 @@ class GenerateRecoveryPlanResponse(SchemaModel):
 
 class GenerateRecoveryPlanRequest(SchemaModel):
     topic_filter: Optional[str] = None
+
+
+class RecommendationInfo(SchemaModel):
+    type: str
+    message: str
+    priority: str = "medium"
+
+
+class RecoveryDashboardResponse(SchemaModel):
+    user_id: UUID
+    weak_topics: list[WeakTopicDetail] = []
+    total_weak_topics: int = 0
+    active_plans: list[RecoveryPlanResponse] = []
+    total_active_plans: int = 0
+    recommendations: list[RecommendationInfo] = []

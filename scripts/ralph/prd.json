@@ -49,7 +49,7 @@
         "Verify in browser using Playwright browser tools"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "New dashboard page/component. Requires RP-001 and RP-002 for data."
     },
     {
