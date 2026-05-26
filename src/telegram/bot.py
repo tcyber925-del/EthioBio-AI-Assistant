@@ -1357,6 +1357,39 @@ async def handle_recovery_view(update: Update, context):
     await recovery_command(update, context)
 
 
+async def progress_command(update: Update, context):
+    from sqlalchemy import select
+
+    async def _handle():
+        factory = async_session_factory()
+        async with factory() as session:
+            result = await session.execute(select(User).where(User.telegram_id == update.effective_user.id))
+            user = result.scalar_one_or_none()
+            if not user:
+                await _reply_long(update, "❌ You need to /start first.")
+                return
+
+            from src.agents.weak_topic_detection import get_weak_topics
+            weak_topics = await get_weak_topics(user.id, session)
+
+            if not weak_topics:
+                await _reply_long(update, "📊 *Mastery Progress*\n\nNo weak topics detected! You're doing great across all subjects.", parse_mode="Markdown")
+                return
+
+            lines = ["📊 *Mastery Progress*"]
+            for wt in sorted(weak_topics, key=lambda x: x["average_score"]):
+                bar_len = max(1, int(wt["average_score"] / 10))
+                bar = "█" * bar_len + "░" * (10 - bar_len)
+                icon = "🔴" if wt["average_score"] < 40 else "🟡" if wt["average_score"] < 60 else "🟢" if wt["average_score"] < 80 else "💚"
+                lines.append(f"\n{icon} *{wt['topic']}*")
+                lines.append(f"`{bar}` {wt['average_score']:.0f}%")
+                lines.append(f"Confidence: {wt['confidence']*100:.0f}% | Attempts: {wt['attempt_count']}")
+
+            await _reply_long(update, "\n".join(lines), parse_mode="Markdown")
+
+    await _db_try(_handle)
+
+
 def build_app() -> Application:
     from telegram.request import HTTPXRequest
     _request = HTTPXRequest(
@@ -1377,6 +1410,7 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("hint", hint_command))
     app.add_handler(CommandHandler("reveal", reveal_command))
     app.add_handler(CommandHandler("recovery", recovery_command))
+    app.add_handler(CommandHandler("progress", progress_command))
 
     quiz_handler = ConversationHandler(
         entry_points=[
