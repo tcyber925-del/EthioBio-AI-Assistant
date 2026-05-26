@@ -1354,7 +1354,6 @@ async def handle_recovery_complete_task(update: Update, context):
 async def handle_recovery_view(update: Update, context):
     query = update.callback_query
     await query.answer()
-    update.effective_message = query.message
     await recovery_command(update, context)
 
 
