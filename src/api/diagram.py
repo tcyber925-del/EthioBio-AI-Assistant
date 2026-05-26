@@ -64,8 +64,22 @@ async def validate_diagram(
     request: DiagramValidateRequest,
     session: AsyncSession = Depends(get_session),
 ):
-    correct = [l.model_dump() for l in request.correct_labels]
     submitted = [l.model_dump() for l in request.submitted_labels]
+
+    if request.textbook_diagram_id:
+        diagram = await session.get(TextbookDiagram, request.textbook_diagram_id)
+        if not diagram:
+            raise HTTPException(status_code=404, detail="Textbook diagram not found")
+        if not diagram.ground_truth_labels or not diagram.ground_truth_labels.get("labels"):
+            raise HTTPException(
+                status_code=400,
+                detail="Textbook diagram has no ground truth labels",
+            )
+        correct = diagram.ground_truth_labels["labels"]
+        source = "textbook"
+    else:
+        correct = [l.model_dump() for l in request.correct_labels]
+        source = "ai_generated"
 
     results = validate_labels(correct, submitted)
     correct_count = sum(1 for r in results if r["is_correct"])
@@ -91,6 +105,7 @@ async def validate_diagram(
         correct_count=correct_count,
         results=[DiagramLabelResult(**r) for r in results],
         attempt_id=attempt.id,
+        source=source,
     )
 
 

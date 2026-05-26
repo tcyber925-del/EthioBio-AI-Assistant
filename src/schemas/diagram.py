@@ -52,6 +52,7 @@ class DiagramValidateRequest(SchemaModel):
     submitted_labels: list[DiagramLabel]
     topic: str = Field(..., pattern="^(cells|organ systems|genetics|anatomy)$")
     difficulty: str = Field("beginner", pattern="^(beginner|intermediate|advanced)$")
+    textbook_diagram_id: Optional[UUID] = None
 
 
 class DiagramValidateResponse(SchemaModel):
@@ -60,6 +61,7 @@ class DiagramValidateResponse(SchemaModel):
     correct_count: int
     results: list[DiagramLabelResult]
     attempt_id: UUID
+    source: str = "ai_generated"
 
 
 class DiagramAttemptCreate(SchemaModel):

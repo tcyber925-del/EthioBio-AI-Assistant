@@ -4,6 +4,7 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from fastapi import HTTPException
 from sqlalchemy import inspect
 
 from src.database.models import TextbookDiagram
@@ -314,3 +315,160 @@ async def test_rag_respects_grade_filter():
     call_kwargs = mock_adapter.search.call_args.kwargs
     assert call_kwargs["filter_obj"].grade_level == 11
     assert call_kwargs["filter_obj"].source_type == "textbook_diagram"
+
+
+def test_validate_request_accepts_textbook_diagram_id():
+    from src.schemas.diagram import DiagramValidateRequest
+
+    req = DiagramValidateRequest(
+        user_id=uuid.uuid4(),
+        correct_labels=[],
+        submitted_labels=[],
+        topic="cells",
+        difficulty="beginner",
+        textbook_diagram_id=uuid.uuid4(),
+    )
+    assert req.textbook_diagram_id is not None
+
+
+def test_validate_response_includes_source():
+    from src.schemas.diagram import DiagramLabelResult, DiagramValidateResponse
+
+    resp = DiagramValidateResponse(
+        score=100.0,
+        total_labels=2,
+        correct_count=2,
+        results=[
+            DiagramLabelResult(
+                label_id="1", correct_text="X", submitted_text="X", is_correct=True
+            ),
+        ],
+        attempt_id=uuid.uuid4(),
+        source="textbook",
+    )
+    assert resp.source == "textbook"
+
+
+def test_validate_response_defaults_to_ai_generated():
+    from src.schemas.diagram import DiagramLabelResult, DiagramValidateResponse
+
+    resp = DiagramValidateResponse(
+        score=100.0,
+        total_labels=2,
+        correct_count=2,
+        results=[
+            DiagramLabelResult(
+                label_id="1", correct_text="X", submitted_text="X", is_correct=True
+            ),
+        ],
+        attempt_id=uuid.uuid4(),
+    )
+    assert resp.source == "ai_generated"
+
+
+@pytest.mark.asyncio
+async def test_validate_with_textbook_labels():
+    from src.api.diagram import validate_diagram
+    from src.schemas.diagram import DiagramLabel, DiagramValidateRequest
+
+    fake_labels = [{"id": "1", "text": "Nucleus", "x": 0.5, "y": 0.3}]
+    textbook_id = uuid.uuid4()
+
+    mock_session = AsyncMock()
+    mock_diagram = MagicMock()
+    mock_diagram.ground_truth_labels = {
+        "labels": fake_labels, "proposed": True, "human_reviewed": False
+    }
+    mock_session.get = AsyncMock(return_value=mock_diagram)
+
+    async def _fake_refresh(instance):
+        instance.id = uuid.uuid4()
+
+    mock_session.refresh = AsyncMock(side_effect=_fake_refresh)
+
+    request = DiagramValidateRequest(
+        user_id=uuid.uuid4(),
+        correct_labels=[DiagramLabel(id="ignored", text="should not be used", x=0, y=0)],
+        submitted_labels=[DiagramLabel(id="1", text="Nucleus", x=0.5, y=0.3)],
+        topic="cells",
+        difficulty="beginner",
+        textbook_diagram_id=textbook_id,
+    )
+
+    result = await validate_diagram(request, session=mock_session)
+    assert result.source == "textbook"
+    assert result.score == 100.0
+    assert result.correct_count == 1
+    mock_session.add.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_validate_without_textbook_id():
+    from src.api.diagram import validate_diagram
+    from src.schemas.diagram import DiagramLabel, DiagramValidateRequest
+
+    mock_session = AsyncMock()
+    mock_session.get = AsyncMock(return_value=None)
+
+    async def _fake_refresh(instance):
+        instance.id = uuid.uuid4()
+
+    mock_session.refresh = AsyncMock(side_effect=_fake_refresh)
+
+    request = DiagramValidateRequest(
+        user_id=uuid.uuid4(),
+        correct_labels=[DiagramLabel(id="1", text="Nucleus", x=0.5, y=0.3)],
+        submitted_labels=[DiagramLabel(id="1", text="Nucleus", x=0.5, y=0.3)],
+        topic="cells",
+        difficulty="beginner",
+    )
+
+    result = await validate_diagram(request, session=mock_session)
+    assert result.source == "ai_generated"
+    assert result.score == 100.0
+
+
+@pytest.mark.asyncio
+async def test_validate_textbook_not_found():
+    from src.api.diagram import validate_diagram
+    from src.schemas.diagram import DiagramLabel, DiagramValidateRequest
+
+    mock_session = AsyncMock()
+    mock_session.get = AsyncMock(return_value=None)
+
+    request = DiagramValidateRequest(
+        user_id=uuid.uuid4(),
+        correct_labels=[DiagramLabel(id="1", text="N", x=0, y=0)],
+        submitted_labels=[DiagramLabel(id="1", text="N", x=0, y=0)],
+        topic="cells",
+        difficulty="beginner",
+        textbook_diagram_id=uuid.uuid4(),
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        await validate_diagram(request, session=mock_session)
+    assert exc.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_validate_textbook_no_ground_truth():
+    from src.api.diagram import validate_diagram
+    from src.schemas.diagram import DiagramLabel, DiagramValidateRequest
+
+    mock_session = AsyncMock()
+    mock_diagram = MagicMock()
+    mock_diagram.ground_truth_labels = None
+    mock_session.get = AsyncMock(return_value=mock_diagram)
+
+    request = DiagramValidateRequest(
+        user_id=uuid.uuid4(),
+        correct_labels=[DiagramLabel(id="1", text="N", x=0, y=0)],
+        submitted_labels=[DiagramLabel(id="1", text="N", x=0, y=0)],
+        topic="cells",
+        difficulty="beginner",
+        textbook_diagram_id=uuid.uuid4(),
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        await validate_diagram(request, session=mock_session)
+    assert exc.value.status_code == 400
