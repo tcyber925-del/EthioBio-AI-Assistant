@@ -5,7 +5,6 @@ import { ClipboardList, AlertTriangle, Loader2, Search, CheckCircle2, Clock, Boo
 import { fetchWithTimeout } from '@/lib/fetch'
 import { CardSkeleton } from '@/components/Skeleton'
 import { MasteryRadarChart } from '@/components/recovery/MasteryRadarChart'
-import { ProgressTrendGraph } from '@/components/recovery/ProgressTrendGraph'
 import { TopicHeatmap } from '@/components/recovery/TopicHeatmap'
 import { LearningTree } from '@/components/recovery/LearningTree'
 
@@ -194,15 +193,6 @@ export default function RecoveryPage() {
       case 'severity_upgrade': return 'text-purple-400 bg-purple-500/10'
       case 'plan_completed': return 'text-blue-400 bg-blue-500/10'
       default: return 'text-yellow-400 bg-yellow-500/10'
-    }
-  }
-
-  const severityColor = (severity: string) => {
-    switch (severity) {
-      case 'critical': return 'text-red-400 bg-red-500/10 border-red-500/20'
-      case 'moderate': return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20'
-      case 'mild': return 'text-blue-400 bg-blue-500/10 border-blue-500/20'
-      default: return 'text-green-400 bg-green-500/10 border-green-500/20'
     }
   }
 

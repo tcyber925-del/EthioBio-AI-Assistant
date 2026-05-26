@@ -727,7 +727,9 @@ async def _show_quiz_result(update: Update, context, msg=None):
                     if plan:
                         from telegram import InlineKeyboardButton
                         recovery_row = [InlineKeyboardButton("📋 View Recovery Plan", callback_data="recovery_view")]
-                        reply_markup.inline_keyboard.append(recovery_row)
+                        from telegram import InlineKeyboardMarkup
+                        new_buttons = list(reply_markup.inline_keyboard) + [tuple(recovery_row)]
+                        reply_markup = InlineKeyboardMarkup(new_buttons)
     except Exception:
         pass
     await dest.reply_text(text, reply_markup=reply_markup, parse_mode="HTML")
