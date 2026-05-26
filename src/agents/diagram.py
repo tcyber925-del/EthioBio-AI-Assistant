@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.base import BaseAgent
 from src.llm.router import ModelRouter
+from src.retrieval.adapter import RetrievalFilter, VectorStoreAdapter
 
 logger = structlog.get_logger()
 
@@ -44,10 +45,25 @@ Rules for SVG:
 - For advanced: detailed diagrams with 10-15 labels
 """
 
+CURRICULUM_CONTEXT_BLOCK = """
+
+Curriculum reference materials (textbook diagrams with captions):
+{context}
+
+Use the exact biological terminology from these references when labeling diagram structures.
+"""
+
 
 class DiagramAgent(BaseAgent):
-    def __init__(self, llm_router: ModelRouter):
+    def __init__(self, llm_router: ModelRouter, adapter: Optional[VectorStoreAdapter] = None):
         super().__init__(llm_router, name="diagram")
+        self._adapter = adapter
+
+    @property
+    def adapter(self) -> VectorStoreAdapter:
+        if self._adapter is None:
+            self._adapter = VectorStoreAdapter()
+        return self._adapter
 
     async def generate(
         self,
@@ -58,6 +74,26 @@ class DiagramAgent(BaseAgent):
         preferred_model: str | None = None,
         grade: int = 10,
     ) -> dict:
+        textbook_references = []
+        system_prompt = DIAGRAM_SYSTEM_PROMPT
+        try:
+            filter_obj = RetrievalFilter(grade_level=grade, source_type="textbook_diagram")
+            results = await self.adapter.search(query=topic, n_results=3, filter_obj=filter_obj)
+            if results:
+                context = self.adapter.format_context(results)
+                system_prompt = (
+                    DIAGRAM_SYSTEM_PROMPT + CURRICULUM_CONTEXT_BLOCK.format(context=context)
+                )
+                for r in results:
+                    textbook_references.append({
+                        "grade": r.metadata.get("grade_level", grade),
+                        "unit": r.metadata.get("unit"),
+                        "figure_number": r.metadata.get("figure_number"),
+                        "caption": r.content,
+                    })
+        except Exception:
+            logger.warning("rag_retrieval_failed", exc_info=True)
+
         user_message = f"""Create a biology diagram for topic: {topic}.
 User request: {prompt}
 Difficulty level: {difficulty}
@@ -71,7 +107,7 @@ For {difficulty} difficulty:
 Respond with valid JSON only."""
 
         result = await self._call_llm(
-            system_prompt=DIAGRAM_SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             user_message=user_message,
             session=session,
             temperature=0.7,
@@ -95,6 +131,7 @@ Respond with valid JSON only."""
                 "topic": topic,
                 "difficulty": difficulty,
                 "model_used": result.get("model", ""),
+                "textbook_references": textbook_references,
             }
         except (json.JSONDecodeError, KeyError) as e:
             logger.error("diagram_parse_error", error=str(e), content=result["content"][:300])
@@ -105,6 +142,7 @@ Respond with valid JSON only."""
                 "topic": topic,
                 "difficulty": difficulty,
                 "model_used": result.get("model", ""),
+                "textbook_references": textbook_references,
             }
 
 

@@ -191,3 +191,126 @@ def test_diagram_generate_response_includes_textbook_refs():
     )
     assert len(resp.textbook_references) == 1
     assert resp.textbook_references[0].caption == "Animal cell"
+
+
+@pytest.mark.asyncio
+async def test_rag_injects_context_when_found():
+    from unittest.mock import AsyncMock, MagicMock
+
+    from src.agents.diagram import DiagramAgent
+    from src.llm.router import ModelRouter
+
+    mock_router = AsyncMock(spec=ModelRouter)
+    mock_router.route = AsyncMock(return_value={
+        "content": '{"title":"Cell","diagram_svg":"<svg></svg>","labels":[]}',
+        "model": "ollama/test",
+    })
+
+    mock_adapter = MagicMock()
+    mock_adapter.search = AsyncMock(return_value=[
+        MagicMock(
+            content="Diagram of an animal cell",
+            metadata={
+                "source_type": "textbook_diagram",
+                "grade_level": 10,
+                "unit": "Unit 2",
+                "topic": "Cell Biology",
+                "figure_number": 1,
+                "image_path": "data/diagrams/10/animal_cell_1.jpg",
+            },
+            score=0.95,
+            source_id="diagram_caption_1",
+        ),
+    ])
+    mock_adapter.format_context = MagicMock(return_value="[Grade 10] Diagram of an animal cell")
+
+    agent = DiagramAgent(llm_router=mock_router, adapter=mock_adapter)
+    result = await agent.generate(
+        prompt="Draw a cell",
+        topic="Cell Biology",
+        grade=10,
+    )
+
+    assert len(result.get("textbook_references", [])) == 1
+    assert result["textbook_references"][0]["caption"] == "Diagram of an animal cell"
+    assert result["textbook_references"][0]["grade"] == 10
+    assert "animal cell" in mock_router.route.call_args.kwargs["messages"][0]["content"]
+
+
+@pytest.mark.asyncio
+async def test_rag_fallback_when_not_found():
+    from unittest.mock import AsyncMock, MagicMock
+
+    from src.agents.diagram import DiagramAgent
+    from src.llm.router import ModelRouter
+
+    mock_router = AsyncMock(spec=ModelRouter)
+    mock_router.route = AsyncMock(return_value={
+        "content": '{"title":"Cell","diagram_svg":"<svg></svg>","labels":[]}',
+        "model": "ollama/test",
+    })
+
+    mock_adapter = MagicMock()
+    mock_adapter.search = AsyncMock(return_value=[])
+    mock_adapter.format_context = MagicMock(return_value="")
+
+    agent = DiagramAgent(llm_router=mock_router, adapter=mock_adapter)
+    result = await agent.generate(
+        prompt="Draw a cell",
+        topic="Cell Biology",
+        grade=10,
+    )
+
+    assert result.get("textbook_references", []) == []
+    msg = mock_router.route.call_args.kwargs["messages"][0]["content"]
+    assert "Curriculum reference" not in msg
+
+
+@pytest.mark.asyncio
+async def test_rag_unavailable_graceful():
+    from unittest.mock import AsyncMock, MagicMock
+
+    from src.agents.diagram import DiagramAgent
+    from src.llm.router import ModelRouter
+
+    mock_router = AsyncMock(spec=ModelRouter)
+    mock_router.route = AsyncMock(return_value={
+        "content": '{"title":"Cell","diagram_svg":"<svg></svg>","labels":[]}',
+        "model": "ollama/test",
+    })
+
+    mock_adapter = MagicMock()
+    mock_adapter.search = AsyncMock(side_effect=Exception("ChromaDB unavailable"))
+
+    agent = DiagramAgent(llm_router=mock_router, adapter=mock_adapter)
+    result = await agent.generate(
+        prompt="Draw a cell",
+        topic="Cell Biology",
+        grade=10,
+    )
+
+    assert result.get("textbook_references", []) == []
+
+
+@pytest.mark.asyncio
+async def test_rag_respects_grade_filter():
+    from unittest.mock import AsyncMock, MagicMock
+
+    from src.agents.diagram import DiagramAgent
+
+    mock_router = AsyncMock()
+    mock_router.route = AsyncMock(return_value={
+        "content": '{"title":"Cell","diagram_svg":"<svg></svg>","labels":[]}',
+        "model": "ollama/test",
+    })
+
+    mock_adapter = MagicMock()
+    mock_adapter.search = AsyncMock(return_value=[])
+    mock_adapter.format_context = MagicMock(return_value="")
+
+    agent = DiagramAgent(llm_router=mock_router, adapter=mock_adapter)
+    await agent.generate(prompt="test", topic="cells", grade=11)
+
+    call_kwargs = mock_adapter.search.call_args.kwargs
+    assert call_kwargs["filter_obj"].grade_level == 11
+    assert call_kwargs["filter_obj"].source_type == "textbook_diagram"
