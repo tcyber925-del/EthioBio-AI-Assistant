@@ -99,14 +99,29 @@ def back_keyboard():
     return InlineKeyboardMarkup([[InlineKeyboardButton("← Back to Menu", callback_data="menu")]])
 
 
-def model_selection_keyboard(models: list[dict], active_model: str) -> list[list[InlineKeyboardButton]]:
-    """Build inline keyboard for model selection."""
+def model_providers_keyboard(models: list[dict]) -> list[list[InlineKeyboardButton]]:
+    """Build inline keyboard for provider selection."""
+    providers = sorted({m["provider"] for m in models})
     buttons = []
-    for m in models:
-        label = f"{'✓ ' if m['id'] == active_model else ''}{m['name']} ({m['provider']})"
-        buttons.append([InlineKeyboardButton(label, callback_data=f"model:{m['id']}")])
+    for p in providers:
+        count = sum(1 for m in models if m["provider"] == p)
+        label = f"{p.capitalize()} ({count} models)"
+        buttons.append([InlineKeyboardButton(label, callback_data=f"model:provider:{p}")])
     buttons.append([InlineKeyboardButton("🔄 Refresh Models", callback_data="model:refresh")])
     buttons.append([InlineKeyboardButton("Back", callback_data="model:back")])
+    return buttons
+
+
+def provider_models_keyboard(models: list[dict], active_model: str) -> list[list[InlineKeyboardButton]]:
+    """Build inline keyboard for models.
+    Models are pre-filtered by provider. Uses index-based callback_data
+    to stay within Telegram's 64-byte limit."""
+    buttons = []
+    for i, m in enumerate(models):
+        check = "✓ " if m["id"] == active_model else ""
+        label = f"{check}{m['name']}"
+        buttons.append([InlineKeyboardButton(label, callback_data=f"m:{i}")])
+    buttons.append([InlineKeyboardButton("← Back to Providers", callback_data="model:back_providers")])
     return buttons
 
 

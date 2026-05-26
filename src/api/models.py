@@ -30,6 +30,7 @@ class ModelInfo(BaseModel):
     id: str
     name: str
     provider: str
+    available: bool
     is_default: bool
 
 

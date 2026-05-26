@@ -28,8 +28,8 @@ class ProviderManager:
         ollama = OllamaProvider()
         self._providers["ollama"] = ollama
 
+        self._providers["openrouter"] = OpenRouterProvider()
         if settings.openrouter_api_key:
-            self._providers["openrouter"] = OpenRouterProvider()
             self._fallback_chain.append("openrouter")
 
         if settings.fallback_provider and settings.fallback_provider.lower() == "openai":
@@ -62,18 +62,21 @@ class ProviderManager:
         logger.info("provider_manager_model_changed", model=model)
 
     async def list_available_models(self) -> list[dict]:
-        """List all available models across all providers."""
+        """List models across all providers, grouped by provider.
+        Each entry includes an `available` flag for the UI to indicate
+        whether the provider is configured and ready to use."""
         models = []
         for name, provider in self._providers.items():
-            if await provider.is_available():
-                provider_models = await provider.get_available_models()
-                for m in provider_models:
-                    models.append({
-                        "id": f"{name}/{m}",
-                        "name": m,
-                        "provider": name,
-                        "is_default": m == settings.ollama_chat_model,
-                    })
+            available = await provider.is_available()
+            provider_models = await provider.get_available_models()
+            for m in provider_models:
+                models.append({
+                    "id": f"{name}/{m}",
+                    "name": m,
+                    "provider": name,
+                    "available": available,
+                    "is_default": m == settings.ollama_chat_model,
+                })
         return models
 
     async def get_provider_info(self) -> list[dict]:

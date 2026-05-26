@@ -25,7 +25,7 @@ from src.telegram.keyboards import (
     hint_keyboard,
     language_keyboard,
     main_menu_keyboard,
-    model_selection_keyboard,
+    model_providers_keyboard, provider_models_keyboard,
     quiz_next_keyboard,
     quiz_result_keyboard,
     quiz_type_keyboard,
@@ -912,11 +912,9 @@ async def model_command(update: Update, context):
         async with httpx.AsyncClient() as client:
             resp = await client.get(f"{api_base}/models")
             models = resp.json()
-            resp2 = await client.get(f"{api_base}/models/active")
-            active = resp2.json()["model"]
         await update.message.reply_text(
-            "Select a model:",
-            reply_markup=InlineKeyboardMarkup(model_selection_keyboard(models, active)),
+            "Select a provider:",
+            reply_markup=InlineKeyboardMarkup(model_providers_keyboard(models)),
         )
     except Exception as e:
         logger.error("model_command_error", error=str(e))
@@ -926,10 +924,10 @@ async def model_command(update: Update, context):
 async def handle_model_selection(update: Update, context):
     query = update.callback_query
     await query.answer()
-    action = query.data.split(":", 1)[1]
+    data = query.data
     api_base = settings.api_base_url
 
-    if action == "back":
+    if data == "model:back":
         try:
             await query.edit_message_reply_markup(reply_markup=None)
         except Exception:
@@ -937,41 +935,91 @@ async def handle_model_selection(update: Update, context):
         await query.message.reply_text("Main menu:", reply_markup=main_menu_keyboard())
         return
 
-    if action == "refresh":
+    if data == "model:back_providers":
         try:
             async with httpx.AsyncClient() as client:
-                await client.post(f"{api_base}/models/refresh")
                 resp = await client.get(f"{api_base}/models")
                 models = resp.json()
-                resp2 = await client.get(f"{api_base}/models/active")
-                active = resp2.json()["model"]
             try:
                 await query.edit_message_reply_markup(reply_markup=None)
             except Exception:
                 pass
             await query.message.reply_text(
-                "Select a model:",
-                reply_markup=InlineKeyboardMarkup(model_selection_keyboard(models, active)),
+                "Select a provider:",
+                reply_markup=InlineKeyboardMarkup(model_providers_keyboard(models)),
+            )
+        except Exception as e:
+            logger.error("model_providers_error", error=str(e))
+            await query.message.reply_text("Failed to fetch providers.", reply_markup=main_menu_keyboard())
+        return
+
+    if data == "model:refresh":
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.post(f"{api_base}/models/refresh")
+                resp = await client.get(f"{api_base}/models")
+                models = resp.json()
+            try:
+                await query.edit_message_reply_markup(reply_markup=None)
+            except Exception:
+                pass
+            await query.message.reply_text(
+                "Select a provider:",
+                reply_markup=InlineKeyboardMarkup(model_providers_keyboard(models)),
             )
         except Exception as e:
             logger.error("model_refresh_error", error=str(e))
             await query.message.reply_text("Failed to refresh models.", reply_markup=main_menu_keyboard())
         return
 
-    try:
-        async with httpx.AsyncClient() as client:
-            await client.post(f"{api_base}/models/active", json={"model": action})
+    if data.startswith("model:provider:"):
+        provider = data[len("model:provider:"):]
         try:
-            await query.edit_message_reply_markup(reply_markup=None)
-        except Exception:
-            pass
-        await query.message.reply_text(
-            f"✅ Active model is now: {action}",
-            reply_markup=main_menu_keyboard(),
-        )
-    except Exception as e:
-        logger.error("model_set_error", error=str(e))
-        await query.message.reply_text(f"Failed to set model: {action}", reply_markup=main_menu_keyboard())
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(f"{api_base}/models")
+                all_models = resp.json()
+                resp2 = await client.get(f"{api_base}/models/active")
+                active = resp2.json()["model"]
+            filtered = [m for m in all_models if m["provider"] == provider]
+            context.user_data["provider_models"] = filtered
+            try:
+                await query.edit_message_reply_markup(reply_markup=None)
+            except Exception:
+                pass
+            await query.message.reply_text(
+                f"Models from {provider.capitalize()}:",
+                reply_markup=InlineKeyboardMarkup(provider_models_keyboard(filtered, active)),
+            )
+        except Exception as e:
+            logger.error("model_provider_models_error", error=str(e))
+            await query.message.reply_text("Failed to fetch models.", reply_markup=main_menu_keyboard())
+        return
+
+    if data.startswith("m:"):
+        idx_str = data[2:]
+        try:
+            idx = int(idx_str)
+        except ValueError:
+            return
+        provider_models = context.user_data.get("provider_models", [])
+        if idx < 0 or idx >= len(provider_models):
+            return
+        model_id = provider_models[idx]["id"]
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.post(f"{api_base}/models/active", json={"model": model_id})
+            try:
+                await query.edit_message_reply_markup(reply_markup=None)
+            except Exception:
+                pass
+            await query.message.reply_text(
+                f"✅ Active model is now: {model_id}",
+                reply_markup=main_menu_keyboard(),
+            )
+        except Exception as e:
+            logger.error("model_set_error", error=str(e))
+            await query.message.reply_text(f"Failed to set model: {model_id}", reply_markup=main_menu_keyboard())
+        return
 
 
 async def handle_hint(update: Update, context):
@@ -1218,7 +1266,7 @@ def build_app() -> Application:
     )
     app.add_handler(conv_handler)
 
-    app.add_handler(CallbackQueryHandler(handle_model_selection, pattern="^model:"))
+    app.add_handler(CallbackQueryHandler(handle_model_selection, pattern=r"^(model:|m:)"))
     app.add_handler(CallbackQueryHandler(handle_socratic_toggle, pattern="^socratic_toggle$"))
     app.add_handler(CallbackQueryHandler(handle_hint, pattern="^hint_"))
     app.add_handler(CallbackQueryHandler(handle_reveal_answer, pattern="^reveal_answer$"))

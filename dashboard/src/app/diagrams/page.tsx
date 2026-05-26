@@ -40,6 +40,7 @@ interface ModelOption {
   id: string
   name: string
   provider: string
+  available: boolean
   is_default: boolean
 }
 
@@ -51,7 +52,8 @@ export default function DiagramsPage() {
   const [prompt, setPrompt] = useState('')
   const [topic, setTopic] = useState('cells')
   const [difficulty, setDifficulty] = useState('beginner')
-  const [model, setModel] = useState('')
+  const [selectedProvider, setSelectedProvider] = useState('')
+  const [selectedModel, setSelectedModel] = useState('')
   const [models, setModels] = useState<ModelOption[]>([])
   const [modelsLoading, setModelsLoading] = useState(true)
   const [loading, setLoading] = useState(false)
@@ -69,7 +71,13 @@ export default function DiagramsPage() {
       .then((data: ModelOption[]) => {
         setModels(data)
         const defaultModel = data.find((m: ModelOption) => m.is_default)
-        if (defaultModel) setModel(defaultModel.id)
+        if (defaultModel) {
+          setSelectedProvider(defaultModel.provider)
+          setSelectedModel(defaultModel.id)
+        } else if (data.length > 0) {
+          setSelectedProvider(data[0].provider)
+          setSelectedModel(data[0].id)
+        }
         setModelsLoading(false)
       })
       .catch(() => setModelsLoading(false))
@@ -92,7 +100,7 @@ export default function DiagramsPage() {
           prompt: prompt.trim(),
           topic,
           difficulty,
-          model: model || undefined,
+          model: selectedModel || undefined,
         }),
       }, 120000)
       setResult(data)
@@ -194,12 +202,32 @@ export default function DiagramsPage() {
             </select>
           </div>
           <div>
-            <label className="text-xs text-foreground-muted block mb-1.5">Model</label>
-            <select value={model} onChange={e => setModel(e.target.value)}
+            <label className="text-xs text-foreground-muted block mb-1.5">Provider</label>
+            <select value={selectedProvider} onChange={e => {
+              const provider = e.target.value
+              setSelectedProvider(provider)
+              const first = models.find(m => m.provider === provider)
+              setSelectedModel(first ? first.id : '')
+            }}
               className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
               disabled={modelsLoading}>
-              {models.length === 0 && <option value="">Default</option>}
-              {models.map(m => <option key={m.id} value={m.id}>{m.name} ({m.provider}){m.is_default ? ' ★' : ''}</option>)}
+              {Array.from(new Set(models.map(m => m.provider))).map(p =>
+                <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+              )}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-foreground-muted block mb-1.5">Model</label>
+            <select value={selectedModel} onChange={e => setSelectedModel(e.target.value)}
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+              disabled={modelsLoading || !selectedProvider}>
+              {models
+                .filter(m => m.provider === selectedProvider)
+                .map(m => (
+                  <option key={m.id} value={m.id} disabled={!m.available}>
+                    {m.name}{m.is_default ? ' ★' : ''}{!m.available ? ' (not configured)' : ''}
+                  </option>
+                ))}
             </select>
           </div>
           <div className="col-span-3">
