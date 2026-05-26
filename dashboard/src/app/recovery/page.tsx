@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { ClipboardList, AlertTriangle, Loader2, Search, CheckCircle2, Clock, BookOpen, Lightbulb, ArrowRight, Target, Brain, TrendingUp, RotateCcw, Bell, PartyPopper, Sparkles } from 'lucide-react'
 import { fetchWithTimeout } from '@/lib/fetch'
 import { CardSkeleton } from '@/components/Skeleton'
+import { MasteryRadarChart } from '@/components/recovery/MasteryRadarChart'
 
 interface Misconception {
   pattern_type: string
@@ -367,6 +368,18 @@ export default function RecoveryPage() {
               )}
             </div>
           </div>
+
+          {data.weak_topics.length >= 3 && (
+            <div className="bg-card rounded-xl border border-border p-5">
+              <h2 className="text-lg font-semibold text-foreground mb-4">Mastery Overview</h2>
+              <MasteryRadarChart
+                data={data.weak_topics.map(wt => ({
+                  topic: wt.topic,
+                  mastery: wt.average_score,
+                }))}
+              />
+            </div>
+          )}
 
           {notificationsExpanded && data.notifications.length > 0 && (
             <div className="bg-card rounded-xl border border-border p-5">
