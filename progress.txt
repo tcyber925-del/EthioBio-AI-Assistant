@@ -290,5 +290,37 @@
   - DB storage of ground truth is deferred (logged but not persisted) — requires an async PostgreSQL session in script context
   - `structlog` with `PrintLogger` should NOT use `filter_by_level` processor (incompatible — use just `ConsoleRenderer`)
   - `PIL.Image.open() → convert()` return type mismatch: mypy infers `ImageFile` which conflicts with `Image.Image` — use explicit annotation or import as `PILImage.Image`
-  - The `_try_model_with_fallback` `except` handler must not use `exc_info=True` when calling `logger.warning` from within a StructLog `PrintLogger` — the exception is already captured by the `except` clause itself
+   - The `_try_model_with_fallback` `except` handler must not use `exc_info=True` when calling `logger.warning` from within a StructLog `PrintLogger` — the exception is already captured by the `except` clause itself
+---
+## [2026-05-25] - US-008: RAG diagram generation with textbook context
+- Extended `scripts/index_diagrams.py` to wire PostgreSQL → ChromaDB indexing:
+  - `index_diagram_captions(records, adapter, dry_run)` embeds captions via `Embedder.embed_batch()` and upserts via `VectorStore.add_documents()`
+  - Metadata: source_type="textbook_diagram", grade_level, unit, topic, figure_number, image_path
+  - IDs: `diagram_caption_{uuid}` for collision-free namespace
+  - Dry-run mode logs without writing
+  - CLI: `--grade`, `--dry-run` flags
+- Added `TextbookReference` schema: grade, unit, figure_number, caption
+- Updated `DiagramGenerateRequest` with `grade: int = Field(default=10, ge=7, le=12)`
+- Updated `DiagramGenerateResponse` with `textbook_references: list[TextbookReference] = []`
+- Modified `DiagramAgent`:
+  - **Lazy adapter**: `self._adapter = adapter` in __init__, `@property adapter` creates VectorStoreAdapter on first `.search()` call — backward compatible with existing tests
+  - `generate(..., grade=10)` retrieves captions via `self.adapter.search()` with `RetrievalFilter(grade_level, source_type="textbook_diagram")`
+  - Injects `CURRICULUM_CONTEXT_BLOCK` with formatted context into system prompt when results found
+  - Builds `textbook_references` list from search results (grade, unit, figure_number, caption)
+  - RAG errors caught in broad try/except with `logger.warning` — falls through gracefully
+  - `textbook_references` returned in both JSON-success and JSON-error paths
+- 8 new tests: chromadb upsert, dry-run, context injection, fallback empty, graceful error, grade filter, schema fields (reference, grade default, response)
+- Existing diagram tests still pass (11/11 in test_agents.py)
+- Quality: ruff clean, mypy clean --explicit-package-bases, all tests pass
+- Files: `scripts/index_diagrams.py`, `src/schemas/diagram.py`, `src/api/diagram.py`, `src/agents/diagram.py`, `tests/test_diagram_storage.py`, `scripts/ralph/prd.json`, `progress.txt`
+- **Learnings for future iterations:**
+  - QuizAgent pattern is the template but DiagramAgent improved on it: lazy adapter (vs eager init), broad try/except (vs no guard)
+  - Lazy property avoids ChromaDB connection cost at init — critical for backward compatibility with existing tests
+  - `source_type` metadata filter on ChromaDB retrieval scopes results to textbook diagram captions, excluding general PDF chunks
+  - `RetrievalFilter.to_chroma_where()` translates Python filter objects to ChromaDB `$eq` syntax
+  - `format_context()` returns a string for prompt injection; manual iteration over search results is needed for structured textbook_references
+  - Grade filter in retrieval respects the curriculum level, preventing irrelevant cross-grade results
+  - The `adapter.close()` guard pattern: check `hasattr(adapter, 'close')` before calling — VectorStoreAdapter may not have the method if it's an injected mock
+  - Dry-run `skipped` count = `len(records)` (all records are "skipped" in dry-run mode since none are indexed)
+  - ID namespace convention: `diagram_caption_{uuid}` prevents collisions with general document IDs in ChromaDB
 ---

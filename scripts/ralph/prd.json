@@ -135,7 +135,7 @@
         "Ruff, mypy, pytest pass"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "File: src/agents/diagram.py (modify generate()). Schema: src/schemas/diagram.py (add textbook_references to response). Requires US-006 first for the retrieval index."
     },
     {
