@@ -462,3 +462,26 @@
   - The `source` field on TopicMasteryHistory distinguishes quiz vs task_completion — useful for filtering in future
   - When fetching history for all weak topics, use Promise.all for parallel requests
 - Files: `src/database/models.py`, `src/schemas/recovery.py`, `src/agents/weak_topic_detection.py`, `src/api/recovery.py`, `dashboard/src/app/recovery/page.tsx`, `tests/test_recovery.py`, `tests/test_weak_topics.py`, `scripts/ralph/prd.json`, `progress.txt`
+
+---
+## [2026-05-26] - RP-006: Spaced Repetition Scheduling
+- Added `SpacedRepetitionSchedule` model to `src/database/models.py` with fields: id, user_id, topic, unit, grade_level, mastery_score, interval_days, ease_factor, next_review_at, last_reviewed_at, review_count
+- Created `src/agents/spaced_repetition.py` with SM-2 inspired algorithm:
+  - `calculate_next_interval()` — initial intervals based on severity (1-7 days), then SM-2 style adaptation: good retention → interval * ease, acceptable → same, poor → reset
+  - `generate_schedule()` — creates/updates schedules for all student mastery topics
+  - `get_due_reviews()` — queries schedules past next_review_at, returns with days_overdue
+  - `get_all_schedules()` — returns all schedules with is_due/days_overdue flags
+  - `update_review()` — updates schedule after re-assessment, adapts interval
+- Added 6 new schemas to `src/schemas/recovery.py`: SpacedRepetitionItem, SpacedRepetitionScheduleResponse, DueReviewsResponse, SpacedRepetitionGenerateResponse, SpacedRepetitionReviewRequest, SpacedRepetitionReviewResponse
+- Added `due_reviews`/`total_due_reviews` fields to RecoveryDashboardResponse
+- Added 4 API endpoints to `src/api/recovery.py`: GET /recovery/schedule/{user_id}, GET /recovery/schedule/due/{user_id}, POST /recovery/schedule/generate/{user_id}, POST /recovery/schedule/review
+- Wired due reviews into recovery dashboard endpoint (included in dashboard response)
+- Updated recovery dashboard frontend (`dashboard/src/app/recovery/page.tsx`): added "Due for Review" stat card + collapsible section showing overdue topics with mastery score, review count, interval, and overdue days
+- 22 tests in `tests/test_spaced_repetition.py`: interval calculation (6), generate schedule (3), due reviews (2), all schedules (1), update review (2), schema validation (8)
+- **Learnings for future iterations:**
+  - SM-2 ease factor follows: floor 1.3, ceiling 3.0; good retention (>=80%) increments by 0.1, poor (<60%) decrements by 0.2
+  - AsyncMock with side_effect for multiple execute calls: pass plain MagicMock objects as side_effect values; AsyncMock wraps them into coroutine return values automatically
+  - When setting `scalar_one_or_none.return_value = None` on a MagicMock, use direct assignment not `is not None` guard — None is a valid return that signals "no result"
+  - `session.add` and `session.commit` need explicit setup: `add = MagicMock()`, `commit = AsyncMock()` since default AsyncMock attributes return CoroutineMocks which don't track sync calls correctly
+  - Dashboard frontend pattern for due reviews: orange theme (RotateCcw icon, orange-400 text, orange-500/20 border), shows mastery %, review count, and days overdue
+- Files: `src/database/models.py`, `src/agents/spaced_repetition.py` (new), `src/schemas/recovery.py`, `src/api/recovery.py`, `dashboard/src/app/recovery/page.tsx`, `tests/test_spaced_repetition.py` (new), `scripts/ralph/prd.json`, `progress.txt`

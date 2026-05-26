@@ -96,8 +96,8 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": "New table: spaced_repetition_schedule. Schedule logic in Mastery Engine."
+      "passes": true,
+      "notes": "New table: spaced_repetition_schedule. Schedule logic in src/agents/spaced_repetition.py (SM-2 inspired algorithm). Review intervals update dynamically based on mastery score."
     },
     {
       "id": "RP-007",

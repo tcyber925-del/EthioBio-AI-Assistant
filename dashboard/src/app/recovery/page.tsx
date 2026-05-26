@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ClipboardList, AlertTriangle, Loader2, Search, CheckCircle2, Clock, BookOpen, Lightbulb, ArrowRight, Target, Brain, TrendingUp } from 'lucide-react'
+import { ClipboardList, AlertTriangle, Loader2, Search, CheckCircle2, Clock, BookOpen, Lightbulb, ArrowRight, Target, Brain, TrendingUp, RotateCcw } from 'lucide-react'
 import { fetchWithTimeout } from '@/lib/fetch'
 import { CardSkeleton } from '@/components/Skeleton'
 
@@ -64,6 +64,21 @@ interface Recommendation {
   priority: string
 }
 
+interface DueReview {
+  id: string
+  topic: string
+  unit: string
+  grade_level: number
+  mastery_score: number
+  interval_days: number
+  ease_factor: number
+  next_review_at: string
+  last_reviewed_at: string | null
+  review_count: number
+  is_due: boolean
+  days_overdue: number
+}
+
 interface DashboardData {
   user_id: string
   weak_topics: WeakTopic[]
@@ -71,6 +86,8 @@ interface DashboardData {
   active_plans: RecoveryPlan[]
   total_active_plans: number
   recommendations: Recommendation[]
+  due_reviews: DueReview[]
+  total_due_reviews: number
 }
 
 interface Student {
@@ -270,7 +287,7 @@ export default function RecoveryPage() {
 
       {data && !loading && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="bg-card rounded-xl border border-border p-5">
               <p className="text-sm text-foreground-muted">Weak Topics</p>
               <p className="text-2xl font-bold text-foreground mt-1">{data.total_weak_topics}</p>
@@ -287,6 +304,12 @@ export default function RecoveryPage() {
               <p className="text-sm text-foreground-muted">Critical Topics</p>
               <p className="text-2xl font-bold text-red-400 mt-1">
                 {data.weak_topics.filter(w => w.severity === 'critical').length}
+              </p>
+            </div>
+            <div className="bg-card rounded-xl border border-border p-5">
+              <p className="text-sm text-foreground-muted">Due for Review</p>
+              <p className={`text-2xl font-bold mt-1 ${data.total_due_reviews > 0 ? 'text-orange-400' : 'text-foreground'}`}>
+                {data.total_due_reviews}
               </p>
             </div>
           </div>
@@ -308,6 +331,34 @@ export default function RecoveryPage() {
                       <p className="text-sm text-foreground">{rec.message}</p>
                       <p className="text-xs text-foreground-muted mt-0.5 capitalize">{rec.type.replace(/_/g, ' ')}</p>
                     </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {data.total_due_reviews > 0 && (
+            <div className="bg-card rounded-xl border border-border p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <RotateCcw className="w-5 h-5 text-orange-400" />
+                <h2 className="text-lg font-semibold text-foreground">Due for Review</h2>
+                <span className="ml-auto text-sm text-foreground-muted">{data.total_due_reviews} topic{data.total_due_reviews !== 1 ? 's' : ''} due</span>
+              </div>
+              <div className="space-y-2">
+                {data.due_reviews.map((review, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-orange-500/5 border border-orange-500/20">
+                    <div className="flex items-center gap-3">
+                      <RotateCcw className="w-4 h-4 text-orange-400" />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{review.topic}</p>
+                        <p className="text-xs text-foreground-muted">
+                          Mastery: {review.mastery_score.toFixed(0)}% · Review #{review.review_count + 1} · {review.days_overdue > 0 ? `${review.days_overdue}d overdue` : 'Due today'}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs text-foreground-muted whitespace-nowrap">
+                      {review.interval_days}d interval
+                    </span>
                   </div>
                 ))}
               </div>

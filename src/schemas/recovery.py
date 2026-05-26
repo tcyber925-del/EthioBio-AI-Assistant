@@ -126,6 +126,53 @@ class MasteryHistoryResponse(SchemaModel):
     history: list[MasteryHistoryPoint] = []
 
 
+class SpacedRepetitionItem(SchemaModel):
+    id: UUID
+    topic: str
+    unit: str = ""
+    grade_level: int = 0
+    mastery_score: float
+    interval_days: int
+    ease_factor: float
+    next_review_at: datetime
+    last_reviewed_at: Optional[datetime] = None
+    review_count: int = 0
+    is_due: bool = False
+    days_overdue: int = 0
+
+
+class SpacedRepetitionScheduleResponse(SchemaModel):
+    user_id: UUID
+    total_items: int
+    items: list[SpacedRepetitionItem] = []
+
+
+class DueReviewsResponse(SchemaModel):
+    user_id: UUID
+    total_due: int
+    items: list[SpacedRepetitionItem] = []
+
+
+class SpacedRepetitionGenerateResponse(SchemaModel):
+    user_id: UUID
+    total_generated: int
+    items: list[dict]
+
+
+class SpacedRepetitionReviewRequest(SchemaModel):
+    user_id: UUID
+    topic: str
+    new_score: float
+
+
+class SpacedRepetitionReviewResponse(SchemaModel):
+    topic: str
+    interval_days: int
+    ease_factor: float
+    next_review_at: datetime
+    review_count: int
+
+
 class RecoveryDashboardResponse(SchemaModel):
     user_id: UUID
     weak_topics: list[WeakTopicDetail] = []
@@ -133,3 +180,5 @@ class RecoveryDashboardResponse(SchemaModel):
     active_plans: list[RecoveryPlanResponse] = []
     total_active_plans: int = 0
     recommendations: list[RecommendationInfo] = []
+    due_reviews: list[SpacedRepetitionItem] = []
+    total_due_reviews: int = 0

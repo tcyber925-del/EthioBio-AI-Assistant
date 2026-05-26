@@ -7,6 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.agents.recovery_agent import RecoveryAgent
+from src.agents.spaced_repetition import (
+    generate_schedule,
+    get_all_schedules,
+    get_due_reviews,
+    update_review,
+)
 from src.agents.weak_topic_detection import get_weak_topics, record_mastery_history
 from src.api.gamification import (
     RECOVERY_MILESTONE_THRESHOLDS,
@@ -15,13 +21,13 @@ from src.api.gamification import (
     check_achievements,
     update_streak,
 )
-from src.database.models import RecoveryPlan, RecoveryTask
+from src.database.models import RecoveryPlan, RecoveryTask, TopicMasteryHistory
 from src.database.session import get_session
 from src.llm.router import ModelRouter
-from src.database.models import TopicMasteryHistory
 from src.schemas.recovery import (
     CompleteTaskResponse,
     CreateRecoveryPlanRequest,
+    DueReviewsResponse,
     GenerateRecoveryPlanRequest,
     GenerateRecoveryPlanResponse,
     MasteryHistoryPoint,
@@ -30,6 +36,11 @@ from src.schemas.recovery import (
     RecoveryDashboardResponse,
     RecoveryPlanResponse,
     RecoveryTaskResponse,
+    SpacedRepetitionGenerateResponse,
+    SpacedRepetitionItem,
+    SpacedRepetitionReviewRequest,
+    SpacedRepetitionReviewResponse,
+    SpacedRepetitionScheduleResponse,
     WeakTopicsResponse,
 )
 
@@ -304,6 +315,8 @@ async def get_recovery_dashboard(user_id, session: AsyncSession = Depends(get_se
 
         recommendations.sort(key=lambda r: {"high": 0, "medium": 1, "low": 2}[r.priority])
 
+        due_items = await get_due_reviews(user_id, session)
+
         return RecoveryDashboardResponse(
             user_id=user_id,
             weak_topics=weak_topics,
@@ -311,9 +324,70 @@ async def get_recovery_dashboard(user_id, session: AsyncSession = Depends(get_se
             active_plans=plan_responses,
             total_active_plans=len(plan_responses),
             recommendations=recommendations,
+            due_reviews=[SpacedRepetitionItem(**i) for i in due_items],
+            total_due_reviews=len(due_items),
         )
     except Exception as e:
         logger.error("recovery_dashboard_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/schedule/{user_id}", response_model=SpacedRepetitionScheduleResponse)
+async def get_spaced_repetition_schedule(user_id, session: AsyncSession = Depends(get_session)):
+    try:
+        items = await get_all_schedules(user_id, session)
+        return SpacedRepetitionScheduleResponse(
+            user_id=user_id,
+            total_items=len(items),
+            items=[SpacedRepetitionItem(**i) for i in items],
+        )
+    except Exception as e:
+        logger.error("spaced_repetition_schedule_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/schedule/due/{user_id}", response_model=DueReviewsResponse)
+async def get_due_reviews_endpoint(user_id, session: AsyncSession = Depends(get_session)):
+    try:
+        items = await get_due_reviews(user_id, session)
+        return DueReviewsResponse(
+            user_id=user_id,
+            total_due=len(items),
+            items=[SpacedRepetitionItem(**i) for i in items],
+        )
+    except Exception as e:
+        logger.error("due_reviews_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/schedule/generate/{user_id}", response_model=SpacedRepetitionGenerateResponse)
+async def generate_spaced_repetition_schedule(
+    user_id, session: AsyncSession = Depends(get_session),
+):
+    try:
+        items = await generate_schedule(user_id, session)
+        return SpacedRepetitionGenerateResponse(
+            user_id=user_id,
+            total_generated=len(items),
+            items=items,
+        )
+    except Exception as e:
+        logger.error("spaced_repetition_generate_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/schedule/review", response_model=SpacedRepetitionReviewResponse)
+async def spaced_repetition_review(request: SpacedRepetitionReviewRequest,
+                                   session: AsyncSession = Depends(get_session)):
+    try:
+        result = await update_review(request.user_id, request.topic, request.new_score, session)
+        if not result:
+            raise HTTPException(status_code=404, detail="Schedule not found")
+        return SpacedRepetitionReviewResponse(**result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("spaced_repetition_review_error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 
