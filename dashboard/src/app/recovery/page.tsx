@@ -6,6 +6,7 @@ import { fetchWithTimeout } from '@/lib/fetch'
 import { CardSkeleton } from '@/components/Skeleton'
 import { MasteryRadarChart } from '@/components/recovery/MasteryRadarChart'
 import { ProgressTrendGraph } from '@/components/recovery/ProgressTrendGraph'
+import { TopicHeatmap } from '@/components/recovery/TopicHeatmap'
 
 interface Misconception {
   pattern_type: string
@@ -340,6 +341,15 @@ export default function RecoveryPage() {
                   mastery: wt.average_score,
                 }))}
               />
+            </div>
+          )}
+
+          {history && Object.keys(history).length >= 2 && (
+            <div className="bg-card rounded-xl border border-border p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <h2 className="text-lg font-semibold text-foreground">Progress Heatmap</h2>
+              </div>
+              <TopicHeatmap history={history} />
             </div>
           )}
 
