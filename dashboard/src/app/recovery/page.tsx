@@ -7,6 +7,7 @@ import { CardSkeleton } from '@/components/Skeleton'
 import { MasteryRadarChart } from '@/components/recovery/MasteryRadarChart'
 import { ProgressTrendGraph } from '@/components/recovery/ProgressTrendGraph'
 import { TopicHeatmap } from '@/components/recovery/TopicHeatmap'
+import { LearningTree } from '@/components/recovery/LearningTree'
 
 interface Misconception {
   pattern_type: string
@@ -444,55 +445,11 @@ export default function RecoveryPage() {
 
           {data.weak_topics.length > 0 ? (
             <div className="bg-card rounded-xl border border-border p-5">
-              <h2 className="text-lg font-semibold text-foreground mb-4">Weak Topics</h2>
-              <div className="space-y-3">
-                {data.weak_topics.map((wt, i) => (
-                  <div key={i} className={`p-4 rounded-lg border ${severityColor(wt.severity)}`}>
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <h3 className="font-medium text-foreground">{wt.topic}</h3>
-                        <p className="text-xs text-foreground-muted">
-                          {wt.unit && `${wt.unit} · `}Grade {wt.grade_level}
-                        </p>
-                      </div>
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium capitalize border ${severityColor(wt.severity)}`}>
-                        {wt.severity}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-3 mt-3">
-                      <div>
-                        <p className="text-xs text-foreground-muted">Avg Score</p>
-                        <p className="text-sm font-semibold text-foreground">{wt.average_score.toFixed(0)}%</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-foreground-muted">Attempts</p>
-                        <p className="text-sm font-semibold text-foreground">{wt.attempt_count}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-foreground-muted">Confidence</p>
-                        <p className="text-sm font-semibold text-foreground">{(wt.confidence * 100).toFixed(0)}%</p>
-                      </div>
-                    </div>
-                    {wt.misconceptions.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-border/50">
-                        <p className="text-xs font-medium text-foreground-muted mb-2">Misconceptions:</p>
-                        {wt.misconceptions.map((mc, j) => (
-                          <div key={j} className="flex items-center gap-2 text-xs text-foreground-muted mb-1">
-                            <AlertTriangle className="w-3 h-3 text-yellow-400" />
-                            <span>{mc.pattern_type}: {mc.description}</span>
-                            <span className="text-foreground-muted/60">({mc.frequency}x)</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {history[wt.topic] && (
-                      <div className="mt-3 pt-3 border-t border-border/50">
-                        <ProgressTrendGraph data={history[wt.topic]} topic={wt.topic} />
-                      </div>
-                    )}
-                  </div>
-                ))}
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-foreground">Weak Topics</h2>
+                <span className="text-sm text-foreground-muted">{data.total_weak_topics} topic{data.total_weak_topics !== 1 ? 's' : ''}</span>
               </div>
+              <LearningTree topics={data.weak_topics} />
             </div>
           ) : (
             <div className="bg-card rounded-xl border border-border p-8 text-center">
