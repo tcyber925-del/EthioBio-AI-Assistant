@@ -76,3 +76,30 @@ class CompleteTaskResponse(SchemaModel):
     new_level: int = 0
     plan_completed: bool = False
     progress_pct: float
+
+
+class GeneratedTaskInfo(SchemaModel):
+    id: UUID
+    title: str
+    task_type: str
+    description: Optional[str] = None
+
+
+class GeneratedPlanInfo(SchemaModel):
+    id: UUID
+    user_id: UUID
+    topic: str
+    total_tasks: int
+    status: str
+    weak_topics_addressed: int
+    tasks: list[GeneratedTaskInfo]
+    created_at: Optional[str] = None
+
+
+class GenerateRecoveryPlanResponse(SchemaModel):
+    plan: Optional[GeneratedPlanInfo] = None
+    error: Optional[str] = None
+
+
+class GenerateRecoveryPlanRequest(SchemaModel):
+    topic_filter: Optional[str] = None

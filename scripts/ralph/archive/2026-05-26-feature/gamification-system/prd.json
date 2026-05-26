@@ -16,7 +16,7 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": true,
+      "passes": false,
       "notes": "Backend analysis logic. Requires new database tables: student_mastery, misconception_patterns."
     },
     {
@@ -32,8 +32,8 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "RecoveryAgent in src/agents/recovery_agent.py extends BaseAgent, generates plans from weak topics via LLM. Endpoint: POST /recovery/auto-generate/{user_id}. Task types: review_notes, guided_quiz, diagram_exercise, retake_assessment, practice_questions."
+      "passes": false,
+      "notes": "Requires RP-001. New tables: recovery_plans, recovery_tasks. AI agent logic in Student Progress Agent."
     },
     {
       "id": "RP-003",

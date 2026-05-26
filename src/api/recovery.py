@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.agents.recovery_agent import RecoveryAgent
 from src.agents.weak_topic_detection import get_weak_topics
 from src.api.gamification import (
     RECOVERY_MILESTONE_THRESHOLDS,
@@ -16,9 +17,12 @@ from src.api.gamification import (
 )
 from src.database.models import RecoveryPlan, RecoveryTask
 from src.database.session import get_session
+from src.llm.router import ModelRouter
 from src.schemas.recovery import (
     CompleteTaskResponse,
     CreateRecoveryPlanRequest,
+    GenerateRecoveryPlanRequest,
+    GenerateRecoveryPlanResponse,
     RecoveryPlanResponse,
     RecoveryTaskResponse,
     WeakTopicsResponse,
@@ -153,6 +157,31 @@ async def complete_recovery_task(
     except Exception as e:
         await session.rollback()
         logger.error("recovery_task_complete_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/auto-generate/{user_id}", response_model=GenerateRecoveryPlanResponse)
+async def auto_generate_recovery_plan(
+    user_id,
+    request: GenerateRecoveryPlanRequest = None,
+    session: AsyncSession = Depends(get_session),
+):
+    if request is None:
+        request = GenerateRecoveryPlanRequest()
+    try:
+        router = ModelRouter()
+        agent = RecoveryAgent(router)
+        result = await agent.generate_plan(
+            user_id=user_id,
+            session=session,
+            topic_filter=request.topic_filter,
+        )
+        return GenerateRecoveryPlanResponse(
+            plan=result.get("plan"),
+            error=result.get("error"),
+        )
+    except Exception as e:
+        logger.error("auto_generate_recovery_plan_error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 
