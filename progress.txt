@@ -419,3 +419,25 @@
   - Pre-existing test failures: 7 stable failures (ChromaDB, Telegram, warnings), 166 tests pass
   - Sidebar link ordering matters — placed Recovery after Dashboard as it's a primary navigation item
 - Files: `src/schemas/recovery.py`, `src/api/recovery.py`, `dashboard/src/app/recovery/page.tsx` (new), `dashboard/src/components/Sidebar.tsx`, `dashboard/next.config.js`, `scripts/ralph/prd.json`, `progress.txt`
+
+---
+## [2026-05-26 20:50] - RP-004: Adaptive Quiz Recommendation
+- Added `user_id: Optional[UUID]` to `QuizGenerateRequest` for adaptive quiz generation
+- Added `QuizRecommendation` and `QuizRecommendResponse` schemas to `src/schemas/quiz.py`
+- Added `recommendations: Optional[list[QuizRecommendation]]` to `QuizSubmitResponse`
+- Extended `QuizAgent.generate()` with `weak_topics` and `target_difficulty` parameters that:
+  - Inject weak topic context into the LLM prompt (topic names + mastery % + severity)
+  - Adapt difficulty instruction based on severity (EASY for critical, MIXED for moderate, MEDIUM/HARD for mild)
+  - Support explicit `target_difficulty` override ("easy", "medium", "hard")
+- Added `GET /quiz/recommend/{user_id}` endpoint returning sorted recommendations with topic, mastery, severity, recommended difficulty, priority, and misconception info
+- Modified `POST /quiz/generate` to fetch weak topics when `user_id` is provided, selecting matching topics for difficulty adaptation
+- Modified `POST /quiz/submit` to include updated recommendations in the response after quiz analysis
+- Added 4 tests: weak topic injection, severity-based difficulty adaptation, target difficulty override, API recommend endpoint
+- All 4 tests pass; 143/151 broader tests pass (same 8 pre-existing Postgres/Telegram failures)
+- **Learnings for future iterations:**
+  - QuizAgent creates a VectorStoreAdapter by default in `__init__` — must pass `adapter=MagicMock()` or `AsyncMock()` in unit tests that don't need ChromaDB
+  - The VectorStoreAdapter.search() is async, so the mock adapter needs `search = AsyncMock(return_value=[])` 
+  - Adaptive difficulty logic follows: severity="critical"→easy, "moderate"→medium, "mild"→hard
+  - The quiz submit endpoint already calls `analyze_quiz_attempt()` — re-querying `get_weak_topics()` after that gives updated recommendations
+  - Quiz recommend endpoint follows same pattern as recovery dashboard (fetch weak topics → build recommendations → sort by priority)
+- Files: `src/schemas/quiz.py`, `src/agents/quiz.py`, `src/api/quiz.py`, `tests/test_agents.py`, `tests/test_api.py`, `scripts/ralph/prd.json`, `progress.txt`

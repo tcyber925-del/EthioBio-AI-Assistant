@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.quiz import QuizAgent
-from src.agents.weak_topic_detection import analyze_quiz_attempt
+from src.agents.weak_topic_detection import analyze_quiz_attempt, get_weak_topics
 from src.api.gamification import award_xp, check_achievements, update_streak
 from src.database.models import Question, Quiz, QuizAttempt
 from src.database.session import get_session
@@ -13,6 +13,8 @@ from src.schemas.quiz import (
     QuestionSchema,
     QuizGenerateRequest,
     QuizGenerateResponse,
+    QuizRecommendResponse,
+    QuizRecommendation,
     QuizSubmitRequest,
     QuizSubmitResponse,
 )
@@ -21,12 +23,73 @@ logger = structlog.get_logger()
 router = APIRouter(prefix="/quiz", tags=["Quiz"])
 
 
+@router.get("/recommend/{user_id}", response_model=QuizRecommendResponse)
+async def get_quiz_recommendations(user_id, session: AsyncSession = Depends(get_session)):
+    try:
+        weak_topics = await get_weak_topics(user_id, session)
+        recommendations: list[QuizRecommendation] = []
+        for i, wt in enumerate(weak_topics):
+            severity = wt["severity"]
+            avg = wt["average_score"]
+            if severity == "critical":
+                recommended_difficulty = "easy"
+                priority = 1
+            elif severity == "moderate":
+                recommended_difficulty = "medium"
+                priority = 2
+            else:
+                recommended_difficulty = "hard"
+                priority = 3
+
+            misconceptions = wt.get("misconceptions", [])
+            recommendations.append(QuizRecommendation(
+                topic=wt["topic"],
+                unit=wt.get("unit", ""),
+                grade_level=wt.get("grade_level", 0),
+                current_mastery=avg,
+                severity=severity,
+                recommended_difficulty=recommended_difficulty,
+                priority=priority,
+                has_misconceptions=len(misconceptions) > 0,
+                misconception_count=len(misconceptions),
+            ))
+
+        recommendations.sort(key=lambda r: r.priority)
+        return QuizRecommendResponse(
+            user_id=user_id,
+            recommendations=recommendations,
+            total_recommendations=len(recommendations),
+        )
+    except Exception as e:
+        logger.error("quiz_recommend_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/generate", response_model=QuizGenerateResponse)
 async def generate_quiz(request: QuizGenerateRequest, session: AsyncSession = Depends(get_session)):
     router_llm = ModelRouter(preferred_model=request.model)
     agent = QuizAgent(llm_router=router_llm)
 
     try:
+        weak_topics = None
+        target_difficulty = None
+        if request.user_id:
+            all_weak = await get_weak_topics(request.user_id, session)
+            if all_weak:
+                # Pick the weakest matching topic for difficulty adaptation
+                topic_lower = request.topic.lower()
+                matching = [wt for wt in all_weak if wt["topic"].lower() == topic_lower]
+                if matching:
+                    weak_topics = matching
+                    top_severity = matching[0]["severity"]
+                    if top_severity == "critical":
+                        target_difficulty = "easy"
+                    elif top_severity == "moderate":
+                        target_difficulty = "medium"
+                else:
+                    # No exact match - use all weak topics for focus
+                    weak_topics = all_weak
+
         result = await agent.generate(
             grade_level=request.grade_level,
             topic=request.topic,
@@ -34,6 +97,8 @@ async def generate_quiz(request: QuizGenerateRequest, session: AsyncSession = De
             types=request.types,
             language=request.language,
             session=session,
+            weak_topics=weak_topics,
+            target_difficulty=target_difficulty,
         )
 
         db_quiz = Quiz(
@@ -137,6 +202,36 @@ async def submit_quiz(request: QuizSubmitRequest, session: AsyncSession = Depend
 
         await analyze_quiz_attempt(attempt, session)
 
+        recommendations: list[dict] = []
+        try:
+            fresh_weak = await get_weak_topics(request.user_id, session)
+            for i, wt in enumerate(fresh_weak):
+                sev = wt["severity"]
+                if sev == "critical":
+                    rec_diff = "easy"
+                    pri = 1
+                elif sev == "moderate":
+                    rec_diff = "medium"
+                    pri = 2
+                else:
+                    rec_diff = "hard"
+                    pri = 3
+                mc_list = wt.get("misconceptions", [])
+                recommendations.append({
+                    "topic": wt["topic"],
+                    "unit": wt.get("unit", ""),
+                    "grade_level": wt.get("grade_level", 0),
+                    "current_mastery": wt["average_score"],
+                    "severity": sev,
+                    "recommended_difficulty": rec_diff,
+                    "priority": pri,
+                    "has_misconceptions": len(mc_list) > 0,
+                    "misconception_count": len(mc_list),
+                })
+            recommendations.sort(key=lambda r: r["priority"])
+        except Exception:
+            logger.warning("quiz_recommend_after_submit_error", exc_info=True)
+
         await session.commit()
 
         return QuizSubmitResponse(
@@ -145,6 +240,7 @@ async def submit_quiz(request: QuizSubmitRequest, session: AsyncSession = Depend
             correct=correct_count,
             feedback=feedback,
             xp_awarded=xp_awarded,
+            recommendations=recommendations or None,
         )
     except HTTPException:
         raise

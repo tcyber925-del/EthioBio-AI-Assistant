@@ -26,6 +26,7 @@ class QuizGenerateRequest(SchemaModel):
     language: str = "en"
     teacher_id: Optional[UUID] = None
     model: Optional[str] = None
+    user_id: Optional[UUID] = None
 
 
 class QuizGenerateResponse(SchemaModel):
@@ -49,3 +50,22 @@ class QuizSubmitResponse(SchemaModel):
     correct: int
     feedback: list[dict]
     xp_awarded: int = 0
+    recommendations: Optional[list["QuizRecommendation"]] = None
+
+
+class QuizRecommendation(SchemaModel):
+    topic: str
+    unit: str = ""
+    grade_level: int = 0
+    current_mastery: float
+    severity: str
+    recommended_difficulty: str = "medium"
+    priority: int = 0
+    has_misconceptions: bool = False
+    misconception_count: int = 0
+
+
+class QuizRecommendResponse(SchemaModel):
+    user_id: UUID
+    recommendations: list[QuizRecommendation] = []
+    total_recommendations: int = 0
