@@ -419,6 +419,162 @@ def test_state_misconception_fields():
     assert output.misconception_correction == ""
 
 
+def test_diagram_validate_labels_all_correct():
+    from src.agents.diagram import validate_labels
+    correct = [
+        {"id": "l1", "text": "Mitochondrion", "x": 100, "y": 100},
+        {"id": "l2", "text": "Nucleus", "x": 200, "y": 200},
+        {"id": "l3", "text": "Cell Membrane", "x": 300, "y": 300},
+    ]
+    submitted = [
+        {"id": "l1", "text": "Mitochondrion", "x": 100, "y": 100},
+        {"id": "l2", "text": "Nucleus", "x": 200, "y": 200},
+        {"id": "l3", "text": "Cell Membrane", "x": 300, "y": 300},
+    ]
+    results = validate_labels(correct, submitted)
+    assert len(results) == 3
+    assert all(r["is_correct"] for r in results)
+
+
+def test_diagram_validate_labels_some_incorrect():
+    from src.agents.diagram import validate_labels
+    correct = [
+        {"id": "l1", "text": "Mitochondrion", "x": 100, "y": 100},
+        {"id": "l2", "text": "Nucleus", "x": 200, "y": 200},
+    ]
+    submitted = [
+        {"id": "l1", "text": "Mitochondrion", "x": 100, "y": 100},
+        {"id": "l2", "text": "Ribosome", "x": 200, "y": 200},
+    ]
+    results = validate_labels(correct, submitted)
+    assert results[0]["is_correct"] is True
+    assert results[1]["is_correct"] is False
+    assert "Ribosome" in results[1]["submitted_text"]
+    assert "Nucleus" in results[1]["correct_text"]
+    assert "correct label is 'Nucleus'" in results[1]["explanation"]
+
+
+def test_diagram_validate_labels_case_insensitive():
+    from src.agents.diagram import validate_labels
+    correct = [
+        {"id": "l1", "text": "Mitochondrion", "x": 100, "y": 100},
+    ]
+    submitted = [
+        {"id": "l1", "text": "mitochondrion", "x": 100, "y": 100},
+    ]
+    results = validate_labels(correct, submitted)
+    assert results[0]["is_correct"] is True
+
+
+def test_diagram_validate_labels_unknown_id():
+    from src.agents.diagram import validate_labels
+    correct = [
+        {"id": "l1", "text": "Mitochondrion", "x": 100, "y": 100},
+    ]
+    submitted = [
+        {"id": "l1", "text": "Mitochondrion", "x": 100, "y": 100},
+        {"id": "unknown", "text": "Nucleus", "x": 200, "y": 200},
+    ]
+    results = validate_labels(correct, submitted)
+    assert results[0]["is_correct"] is True
+    assert results[1]["is_correct"] is False
+    assert "Unknown label" in results[1]["explanation"]
+
+
+def test_diagram_validate_labels_whitespace_handling():
+    from src.agents.diagram import validate_labels
+    correct = [
+        {"id": "l1", "text": "Cell Membrane", "x": 100, "y": 100},
+    ]
+    submitted = [
+        {"id": "l1", "text": "  cell membrane  ", "x": 100, "y": 100},
+    ]
+    results = validate_labels(correct, submitted)
+    assert results[0]["is_correct"] is True
+
+
+def test_diagram_validate_labels_empty_submitted():
+    from src.agents.diagram import validate_labels
+    correct = [
+        {"id": "l1", "text": "Mitochondrion", "x": 100, "y": 100},
+    ]
+    results = validate_labels(correct, [])
+    assert len(results) == 0
+
+
+@pytest.mark.asyncio
+async def test_diagram_generate_prompt_difficulty():
+    from src.agents.diagram import DiagramAgent
+
+    router = AsyncMock()
+    router.route = AsyncMock(return_value={
+        "content": '{"title": "Test", "diagram_svg": "<svg></svg>", "labels": []}',
+        "model": "test",
+    })
+
+    agent = DiagramAgent(llm_router=router)
+
+    for difficulty, expected_range in [
+        ("beginner", "3-5"),
+        ("intermediate", "6-10"),
+        ("advanced", "10-15"),
+    ]:
+        router.route.reset_mock()
+        result = await agent.generate(
+            prompt="Label a cell",
+            topic="cells",
+            difficulty=difficulty,
+        )
+        assert result["difficulty"] == difficulty
+        call_args = router.route.call_args
+        user_msg = call_args[1]["messages"][1]["content"]
+        assert expected_range in user_msg, f"{expected_range} not in user message for {difficulty}"
+
+
+def test_diagram_schema_validates_difficulty():
+    from pydantic import ValidationError
+
+    from src.schemas.diagram import DiagramGenerateRequest
+
+    valid = DiagramGenerateRequest(prompt="Test", topic="cells", difficulty="advanced")
+    assert valid.difficulty == "advanced"
+
+    try:
+        DiagramGenerateRequest(prompt="Test", topic="cells", difficulty="expert")
+        assert False, "Should have raised ValidationError"
+    except ValidationError:
+        pass
+
+
+def test_diagram_validate_request_schema():
+    from uuid import uuid4
+
+    from pydantic import ValidationError
+
+    from src.schemas.diagram import DiagramValidateRequest
+
+    valid = DiagramValidateRequest(
+        user_id=uuid4(),
+        correct_labels=[{"id": "l1", "text": "Nucleus", "x": 100, "y": 100}],
+        submitted_labels=[{"id": "l1", "text": "Nucleus", "x": 100, "y": 100}],
+        topic="cells",
+        difficulty="intermediate",
+    )
+    assert valid.difficulty == "intermediate"
+
+    try:
+        DiagramValidateRequest(
+            user_id=uuid4(),
+            correct_labels=[{"id": "l1", "text": "Nucleus", "x": 100, "y": 100}],
+            submitted_labels=[{"id": "l1", "text": "Nucleus", "x": 100, "y": 100}],
+            topic="cells",
+            difficulty="invalid",
+        )
+        assert False, "Should have raised ValidationError"
+    except ValidationError:
+        pass
+
+
 def test_student_progress_analysis():
     router = ModelRouter()
     agent = StudentProgressAgent(llm_router=router)
@@ -447,3 +603,45 @@ def test_student_progress_analysis():
     assert "weak_areas" in result
     assert "Genetics" in result["weak_areas"]
     assert result["overall_score"] > 0
+
+
+@pytest.mark.asyncio
+async def test_diagram_generate_with_preferred_model():
+    from src.agents.diagram import DiagramAgent
+
+    router = AsyncMock()
+    router.route = AsyncMock(return_value={
+        "content": '{"title": "Test", "diagram_svg": "<svg></svg>", "labels": []}',
+        "model": "openrouter/openai/gpt-4o",
+    })
+
+    agent = DiagramAgent(llm_router=router)
+    result = await agent.generate(
+        prompt="Test cell",
+        topic="cells",
+        difficulty="beginner",
+        preferred_model="openrouter/openai/gpt-4o",
+    )
+    call_args = router.route.call_args
+    assert call_args[1]["preferred_model"] == "openrouter/openai/gpt-4o"
+    assert result["model_used"] == "openrouter/openai/gpt-4o"
+
+
+@pytest.mark.asyncio
+async def test_diagram_generate_default_model_when_none():
+    from src.agents.diagram import DiagramAgent
+
+    router = AsyncMock()
+    router.route = AsyncMock(return_value={
+        "content": '{"title": "Test", "diagram_svg": "<svg></svg>", "labels": []}',
+        "model": "ollama/tinyllama",
+    })
+
+    agent = DiagramAgent(llm_router=router)
+    result = await agent.generate(
+        prompt="Test cell",
+        topic="cells",
+    )
+    call_args = router.route.call_args
+    assert call_args[1]["preferred_model"] is None
+    assert result["model_used"] == "ollama/tinyllama"

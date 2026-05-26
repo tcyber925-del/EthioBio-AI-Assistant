@@ -52,6 +52,7 @@ class User(Base):
     quiz_attempts: Mapped[list["QuizAttempt"]] = relationship(back_populates="user")
     message_threads: Mapped[list["MessageThread"]] = relationship(back_populates="user")
     feedback_events: Mapped[list["FeedbackEvent"]] = relationship(back_populates="user")
+    diagram_attempts: Mapped[list["DiagramAttempt"]] = relationship(back_populates="user")
 
 
 class StudentProfile(Base):
@@ -310,6 +311,39 @@ class RecoveryTask(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     plan: Mapped["RecoveryPlan"] = relationship(back_populates="tasks")
+
+
+class DiagramAttempt(Base):
+    __tablename__ = "diagram_attempts"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    topic: Mapped[str] = mapped_column(String(100))
+    difficulty: Mapped[str] = mapped_column(String(20))
+    score: Mapped[float] = mapped_column(Float, nullable=True)
+    labels: Mapped[dict] = mapped_column(JSON, default=dict)
+    completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    completed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    user: Mapped["User"] = relationship(back_populates="diagram_attempts")
+
+
+class TextbookDiagram(Base):
+    __tablename__ = "textbook_diagrams"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    grade_level: Mapped[int] = mapped_column(Integer)
+    unit: Mapped[str] = mapped_column(String(200), default="")
+    topic: Mapped[str] = mapped_column(String(200), default="")
+    caption: Mapped[str] = mapped_column(Text, default="")
+    image_path: Mapped[str] = mapped_column(String(500))
+    figure_number: Mapped[int] = mapped_column(Integer)
+    page_number: Mapped[int] = mapped_column(Integer)
+    source_file: Mapped[str] = mapped_column(String(300))
+    ground_truth_labels: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
 
 class FeedbackEvent(Base):

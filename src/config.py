@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     ollama_chat_model: str = "tinyllama"
     ollama_embed_model: str = "nomic-embed-text"
 
+    openrouter_api_key: Optional[str] = None
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_default_model: str = "openai/gpt-4o"
+
     fallback_provider: Optional[str] = None
     fallback_api_key: Optional[str] = None
     fallback_model: Optional[str] = None
