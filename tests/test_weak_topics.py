@@ -6,6 +6,7 @@ from src.agents.weak_topic_detection import (
     calculate_confidence,
     calculate_severity,
     get_weak_topics,
+    record_mastery_history,
 )
 from src.schemas.recovery import (
     MisconceptionInfo,
@@ -217,3 +218,58 @@ async def test_get_weak_topics_all_good():
 
     result = await get_weak_topics("test-user-id", mock_session)
     assert result == []
+
+
+@pytest.mark.asyncio
+async def test_record_mastery_history_creates_entry():
+    mock_session = AsyncMock()
+
+    mock_mastery = MagicMock()
+    mock_mastery.topic = "Cell Biology"
+    mock_mastery.unit = "Unit 3"
+    mock_mastery.grade_level = 10
+    mock_mastery.average_score = 65.0
+    mock_mastery.attempt_count = 2
+    mock_mastery.severity = "moderate"
+    mock_mastery.confidence = 0.67
+    mock_mastery.last_assessed_at = None
+
+    mastery_result = MagicMock()
+    mastery_result.scalar_one_or_none.return_value = mock_mastery
+    mock_session.execute = AsyncMock(return_value=mastery_result)
+
+    await record_mastery_history(
+        user_id="test-user-id",
+        topic="Cell Biology",
+        unit="Unit 3",
+        grade_level=10,
+        session=mock_session,
+        source="task_completion",
+        source_id="test-task-id",
+    )
+
+    assert mock_session.add.called
+    added = mock_session.add.call_args[0][0]
+    assert added.topic == "Cell Biology"
+    assert added.source == "task_completion"
+    assert added.source_id == "test-task-id"
+    assert added.average_score == 65.0
+
+
+@pytest.mark.asyncio
+async def test_record_mastery_history_no_mastery():
+    mock_session = AsyncMock()
+
+    mastery_result = MagicMock()
+    mastery_result.scalar_one_or_none.return_value = None
+    mock_session.execute = AsyncMock(return_value=mastery_result)
+
+    await record_mastery_history(
+        user_id="test-user-id",
+        topic="Unknown Topic",
+        unit=None,
+        grade_level=0,
+        session=mock_session,
+    )
+
+    assert not mock_session.add.called

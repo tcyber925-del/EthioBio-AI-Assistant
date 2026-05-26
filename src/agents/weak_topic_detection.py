@@ -12,6 +12,7 @@ from src.database.models import (
     QuizAttempt,
     StudentMastery,
     StudentProfile,
+    TopicMasteryHistory,
 )
 
 logger = structlog.get_logger()
@@ -129,6 +130,21 @@ async def _update_mastery(user_id: Any, topic: str, pct: float, total_questions:
         )
         session.add(mastery)
 
+    history_entry = TopicMasteryHistory(
+        user_id=user_id,
+        topic=topic,
+        unit=unit or None,
+        grade_level=grade_level or 0,
+        average_score=mastery.average_score,
+        attempt_count=mastery.attempt_count,
+        severity=mastery.severity,
+        confidence=mastery.confidence,
+        source="quiz",
+        source_id=attempt.id,
+        recorded_at=mastery.last_assessed_at,
+    )
+    session.add(history_entry)
+
     await session.flush()
 
 
@@ -207,6 +223,36 @@ async def _update_student_profile_weak_areas(user_id: Any, session: AsyncSession
         profile.weak_areas = weak_topics
         profile.topic_mastery = topic_mastery_dict
         await session.flush()
+
+
+async def record_mastery_history(
+    user_id: Any, topic: str, unit: str | None, grade_level: int,
+    session: AsyncSession, source: str = "quiz", source_id: Any = None,
+) -> None:
+    result = await session.execute(
+        select(StudentMastery).where(
+            StudentMastery.user_id == user_id,
+            StudentMastery.topic == topic,
+        )
+    )
+    mastery = result.scalar_one_or_none()
+    if not mastery:
+        return
+
+    entry = TopicMasteryHistory(
+        user_id=user_id,
+        topic=topic,
+        unit=unit,
+        grade_level=grade_level or 0,
+        average_score=mastery.average_score,
+        attempt_count=mastery.attempt_count,
+        severity=mastery.severity,
+        confidence=mastery.confidence,
+        source=source,
+        source_id=source_id,
+        recorded_at=mastery.last_assessed_at,
+    )
+    session.add(entry)
 
 
 async def get_weak_topics(user_id: Any, session: AsyncSession) -> list[dict[str, Any]]:

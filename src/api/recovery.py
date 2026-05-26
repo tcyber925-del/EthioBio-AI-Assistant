@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.agents.recovery_agent import RecoveryAgent
-from src.agents.weak_topic_detection import get_weak_topics
+from src.agents.weak_topic_detection import get_weak_topics, record_mastery_history
 from src.api.gamification import (
     RECOVERY_MILESTONE_THRESHOLDS,
     XP_SOURCES,
@@ -18,11 +18,14 @@ from src.api.gamification import (
 from src.database.models import RecoveryPlan, RecoveryTask
 from src.database.session import get_session
 from src.llm.router import ModelRouter
+from src.database.models import TopicMasteryHistory
 from src.schemas.recovery import (
     CompleteTaskResponse,
     CreateRecoveryPlanRequest,
     GenerateRecoveryPlanRequest,
     GenerateRecoveryPlanResponse,
+    MasteryHistoryPoint,
+    MasteryHistoryResponse,
     RecommendationInfo,
     RecoveryDashboardResponse,
     RecoveryPlanResponse,
@@ -138,6 +141,13 @@ async def complete_recovery_task(
 
         await update_streak(user_id, session)
         await check_achievements(user_id, gam, session)
+
+        await record_mastery_history(
+            user_id=user_id, topic=plan.topic, unit=None,
+            grade_level=0, session=session, source="task_completion",
+            source_id=task.id,
+        )
+
         await session.commit()
 
         total = xp_amount + milestone_bonus
@@ -198,6 +208,38 @@ async def get_weak_topics_endpoint(user_id, session: AsyncSession = Depends(get_
         )
     except Exception as e:
         logger.error("weak_topics_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/history/{user_id}/{topic}", response_model=MasteryHistoryResponse)
+async def get_mastery_history(user_id, topic: str, session: AsyncSession = Depends(get_session)):
+    try:
+        result = await session.execute(
+            select(TopicMasteryHistory)
+            .where(
+                TopicMasteryHistory.user_id == user_id,
+                TopicMasteryHistory.topic == topic,
+            )
+            .order_by(TopicMasteryHistory.recorded_at.asc())
+        )
+        records = result.scalars().all()
+        return MasteryHistoryResponse(
+            user_id=user_id,
+            topic=topic,
+            history=[
+                MasteryHistoryPoint(
+                    average_score=r.average_score,
+                    attempt_count=r.attempt_count,
+                    severity=r.severity,
+                    confidence=r.confidence,
+                    source=r.source,
+                    recorded_at=r.recorded_at,
+                )
+                for r in records
+            ],
+        )
+    except Exception as e:
+        logger.error("mastery_history_error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -387,6 +387,25 @@ class MisconceptionPattern(Base):
     user: Mapped["User"] = relationship(backref="misconception_patterns")
 
 
+class TopicMasteryHistory(Base):
+    __tablename__ = "topic_mastery_history"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    topic: Mapped[str] = mapped_column(String(300))
+    unit: Mapped[str] = mapped_column(String(200), nullable=True)
+    grade_level: Mapped[int] = mapped_column(Integer)
+    average_score: Mapped[float] = mapped_column(Float)
+    attempt_count: Mapped[int] = mapped_column(Integer)
+    severity: Mapped[str] = mapped_column(String(20))
+    confidence: Mapped[float] = mapped_column(Float)
+    source: Mapped[str] = mapped_column(String(50))
+    source_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    user: Mapped["User"] = relationship(backref="mastery_history")
+
+
 class FeedbackEvent(Base):
     __tablename__ = "feedback_events"
 

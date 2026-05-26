@@ -81,7 +81,7 @@
         "Verify in browser using Playwright browser tools"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "New table: topic_mastery_history. Integrates with gamification XP system via recovery_task_completion source."
     },
     {

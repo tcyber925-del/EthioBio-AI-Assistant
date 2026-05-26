@@ -111,6 +111,21 @@ class RecommendationInfo(SchemaModel):
     priority: str = "medium"
 
 
+class MasteryHistoryPoint(SchemaModel):
+    average_score: float
+    attempt_count: int
+    severity: str
+    confidence: float
+    source: str
+    recorded_at: datetime
+
+
+class MasteryHistoryResponse(SchemaModel):
+    user_id: UUID
+    topic: str
+    history: list[MasteryHistoryPoint] = []
+
+
 class RecoveryDashboardResponse(SchemaModel):
     user_id: UUID
     weak_topics: list[WeakTopicDetail] = []

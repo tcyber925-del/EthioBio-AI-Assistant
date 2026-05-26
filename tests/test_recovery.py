@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from src.api.gamification import RECOVERY_MILESTONE_THRESHOLDS, XP_SOURCES
 from src.schemas.gamification import RecoveryProgressResponse
 
@@ -124,3 +126,103 @@ def test_gamification_profile_response_has_recovery():
     assert resp_with_recovery.recovery_progress is not None
     assert resp_with_recovery.recovery_progress.active_plans == 1
     assert resp_with_recovery.recovery_progress.overall_progress_pct == 33.3
+
+
+def test_mastery_history_point_schema():
+    from src.schemas.recovery import MasteryHistoryPoint
+    now = datetime.now()
+    point = MasteryHistoryPoint(
+        average_score=65.0,
+        attempt_count=2,
+        severity="moderate",
+        confidence=0.67,
+        source="quiz",
+        recorded_at=now,
+    )
+    assert point.average_score == 65.0
+    assert point.attempt_count == 2
+    assert point.severity == "moderate"
+    assert point.source == "quiz"
+    assert point.recorded_at == now
+
+
+def test_mastery_history_point_empty_severity():
+    from src.schemas.recovery import MasteryHistoryPoint
+    now = datetime.now()
+    point = MasteryHistoryPoint(
+        average_score=35.0,
+        attempt_count=1,
+        severity="critical",
+        confidence=0.33,
+        source="task_completion",
+        recorded_at=now,
+    )
+    assert point.severity == "critical"
+    assert point.source == "task_completion"
+
+
+def test_mastery_history_response_schema():
+    from uuid import UUID
+
+    from src.schemas.recovery import MasteryHistoryPoint, MasteryHistoryResponse
+    now = datetime.now()
+    point = MasteryHistoryPoint(
+        average_score=45.0,
+        attempt_count=1,
+        severity="critical",
+        confidence=0.33,
+        source="quiz",
+        recorded_at=now,
+    )
+    resp = MasteryHistoryResponse(
+        user_id=UUID("00000000-0000-0000-0000-000000000001"),
+        topic="Cell Biology",
+        history=[point],
+    )
+    assert resp.user_id == UUID("00000000-0000-0000-0000-000000000001")
+    assert resp.topic == "Cell Biology"
+    assert len(resp.history) == 1
+    assert resp.history[0].average_score == 45.0
+
+
+def test_mastery_history_response_empty():
+    from uuid import UUID
+
+    from src.schemas.recovery import MasteryHistoryResponse
+    resp = MasteryHistoryResponse(
+        user_id=UUID("00000000-0000-0000-0000-000000000001"),
+        topic="Genetics",
+    )
+    assert resp.history == []
+    assert resp.topic == "Genetics"
+
+
+def test_recovery_dashboard_response_has_weak_topics_history():
+    from uuid import UUID
+
+    from src.schemas.recovery import (
+        MasteryHistoryPoint,
+        MasteryHistoryResponse,
+        WeakTopicDetail,
+    )
+    now = datetime.now()
+    detail = WeakTopicDetail(
+        topic="Cell Biology",
+        average_score=45.0,
+        severity="moderate",
+    )
+    history_point = MasteryHistoryPoint(
+        average_score=45.0,
+        attempt_count=1,
+        severity="moderate",
+        confidence=0.33,
+        source="quiz",
+        recorded_at=now,
+    )
+    history = MasteryHistoryResponse(
+        user_id=UUID("00000000-0000-0000-0000-000000000001"),
+        topic="Cell Biology",
+        history=[history_point],
+    )
+    assert history.topic == detail.topic
+    assert history.history[0].average_score == detail.average_score
