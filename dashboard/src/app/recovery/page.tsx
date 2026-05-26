@@ -5,6 +5,7 @@ import { ClipboardList, AlertTriangle, Loader2, Search, CheckCircle2, Clock, Boo
 import { fetchWithTimeout } from '@/lib/fetch'
 import { CardSkeleton } from '@/components/Skeleton'
 import { MasteryRadarChart } from '@/components/recovery/MasteryRadarChart'
+import { ProgressTrendGraph } from '@/components/recovery/ProgressTrendGraph'
 
 interface Misconception {
   pattern_type: string
@@ -209,45 +210,6 @@ export default function RecoveryPage() {
       case 'medium': return 'border-l-yellow-500 bg-yellow-500/5'
       default: return 'border-l-blue-500 bg-blue-500/5'
     }
-  }
-
-  const SimpleMiniChart = ({ points, topic }: { points: MasteryHistoryPoint[]; topic: string }) => {
-    if (!points || points.length < 2) return null
-    const width = 200
-    const height = 48
-    const values = points.map(p => p.average_score)
-    const mn = Math.min(...values)
-    const mx = Math.max(...values)
-    const range = Math.max(mx - mn, 10)
-    const pad = 4
-    const pts = values.map((v, i) => {
-      const x = pad + (i / Math.max(values.length - 1, 1)) * (width - 2 * pad)
-      const y = height - pad - ((v - mn) / range) * (height - 2 * pad)
-      return `${x},${y}`
-    }).join(' ')
-    const lastVal = values[values.length - 1]
-    const firstVal = values[0]
-
-    return (
-      <div className="mt-2">
-        <div className="flex items-center justify-between text-xs text-foreground-muted mb-1">
-          <span>Progress over time</span>
-          <span className={lastVal > firstVal ? 'text-green-400' : lastVal < firstVal ? 'text-red-400' : ''}>
-            {firstVal.toFixed(0)}% → {lastVal.toFixed(0)}%
-          </span>
-        </div>
-        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-12">
-          <polyline
-            points={pts}
-            fill="none"
-            stroke={lastVal > firstVal ? '#22c55e' : lastVal < firstVal ? '#ef4444' : '#6b7280'}
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </div>
-    )
   }
 
   const taskTypeIcon = (type: string) => {
@@ -513,9 +475,9 @@ export default function RecoveryPage() {
                         ))}
                       </div>
                     )}
-                    {history[wt.topic] && history[wt.topic].length >= 2 && (
+                    {history[wt.topic] && (
                       <div className="mt-3 pt-3 border-t border-border/50">
-                        <SimpleMiniChart points={history[wt.topic]} topic={wt.topic} />
+                        <ProgressTrendGraph data={history[wt.topic]} topic={wt.topic} />
                       </div>
                     )}
                   </div>
