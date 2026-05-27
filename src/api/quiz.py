@@ -91,6 +91,23 @@ async def generate_quiz(request: QuizGenerateRequest, session: AsyncSession = De
                     # No exact match - use all weak topics for focus
                     weak_topics = all_weak
 
+        if request.adaptive and request.user_id:
+            from src.agents.adaptive_quiz import select_adaptive_questions
+            selected = await select_adaptive_questions(
+                session=session,
+                user_id=request.user_id,
+                topic=request.topic,
+                count=request.question_count,
+            )
+            if selected:
+                avg_difficulty = sum(q.difficulty_score for q in selected) / len(selected)
+                if avg_difficulty < -0.3:
+                    target_difficulty = "easy"
+                elif avg_difficulty > 0.3:
+                    target_difficulty = "hard"
+                else:
+                    target_difficulty = "medium"
+
         result = await agent.generate(
             grade_level=request.grade_level,
             topic=request.topic,

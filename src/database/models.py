@@ -140,6 +140,7 @@ class Question(Base):
     grade_level: Mapped[int] = mapped_column(Integer)
     topic: Mapped[str] = mapped_column(String(300))
     difficulty: Mapped[str] = mapped_column(String(20), default="medium")
+    difficulty_score: Mapped[float] = mapped_column(Float, default=0.0)
     source_ref: Mapped[str] = mapped_column(String(200), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 

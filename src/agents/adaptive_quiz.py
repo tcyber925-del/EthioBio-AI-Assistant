@@ -4,7 +4,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database.models import QuestionAttempt, StudentAbility
+from src.database.models import Question, QuestionAttempt, StudentAbility
 
 logger = structlog.get_logger()
 
@@ -122,3 +122,42 @@ async def get_ability(
     if ability:
         return ability.ability_score, ability.uncertainty, ability.attempt_count
     return 0.0, 3.0, 0
+
+
+async def migrate_difficulty_scores(session: AsyncSession):
+    """One-time migration: convert string difficulties to numeric scores."""
+    result = await session.execute(
+        select(Question).where(Question.difficulty_score == 0.0, Question.difficulty != "medium")
+    )
+    questions = list(result.scalars().all())
+    mapping = {"easy": -1.0, "medium": 0.0, "hard": 1.0}
+    for q in questions:
+        q.difficulty_score = mapping.get(q.difficulty, 0.0)
+    if questions:
+        await session.commit()
+
+
+async def select_adaptive_questions(
+    session: AsyncSession,
+    user_id,
+    topic: str,
+    count: int = 5,
+    exclude_ids: list | None = None,
+) -> list[Question]:
+    ability, uncertainty, attempt_count = await get_ability(session, user_id, topic)
+
+    query = select(Question).where(Question.topic == topic)
+    if exclude_ids:
+        query = query.where(Question.id.notin_(exclude_ids))
+    result = await session.execute(query)
+    available = list(result.scalars().all())
+
+    if not available:
+        return []
+
+    if attempt_count < 5:
+        return available[:count]
+
+    target = ability + 0.5
+    available.sort(key=lambda q: abs(q.difficulty_score - target))
+    return available[:count]

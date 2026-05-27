@@ -27,6 +27,7 @@ class QuizGenerateRequest(SchemaModel):
     teacher_id: Optional[UUID] = None
     model: Optional[str] = None
     user_id: Optional[UUID] = None
+    adaptive: bool = False
 
 
 class QuizGenerateResponse(SchemaModel):
