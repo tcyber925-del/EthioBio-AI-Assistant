@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react'
 import { ClipboardList, AlertTriangle, Loader2, Search, CheckCircle2, Clock, BookOpen, Lightbulb, ArrowRight, Target, Brain, TrendingUp, RotateCcw, Bell, PartyPopper, Sparkles } from 'lucide-react'
 import { fetchWithTimeout } from '@/lib/fetch'
 import { CardSkeleton } from '@/components/Skeleton'
+import { MasteryRadarChart } from '@/components/recovery/MasteryRadarChart'
+import { TopicHeatmap } from '@/components/recovery/TopicHeatmap'
+import { LearningTree } from '@/components/recovery/LearningTree'
 
 interface Misconception {
   pattern_type: string
@@ -368,6 +371,27 @@ export default function RecoveryPage() {
             </div>
           </div>
 
+          {data.weak_topics.length >= 3 && (
+            <div className="bg-card rounded-xl border border-border p-5">
+              <h2 className="text-lg font-semibold text-foreground mb-4">Mastery Overview</h2>
+              <MasteryRadarChart
+                data={data.weak_topics.map(wt => ({
+                  topic: wt.topic,
+                  mastery: wt.average_score,
+                }))}
+              />
+            </div>
+          )}
+
+          {history && Object.keys(history).length >= 2 && (
+            <div className="bg-card rounded-xl border border-border p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <h2 className="text-lg font-semibold text-foreground">Progress Heatmap</h2>
+              </div>
+              <TopicHeatmap history={history} />
+            </div>
+          )}
+
           {notificationsExpanded && data.notifications.length > 0 && (
             <div className="bg-card rounded-xl border border-border p-5">
               <div className="flex items-center justify-between mb-4">
@@ -459,6 +483,11 @@ export default function RecoveryPage() {
 
           {data.weak_topics.length > 0 ? (
             <div className="bg-card rounded-xl border border-border p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-foreground">Weak Topics</h2>
+                <span className="text-sm text-foreground-muted">{data.total_weak_topics} topic{data.total_weak_topics !== 1 ? 's' : ''}</span>
+              </div>
+              <LearningTree topics={data.weak_topics} />
               <h2 className="text-lg font-semibold text-foreground mb-4">Weak Topics</h2>
               <div className="space-y-3">
                 {data.weak_topics.map((wt, i) => (

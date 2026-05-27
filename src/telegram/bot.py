@@ -706,7 +706,33 @@ async def _show_quiz_result(update: Update, context, msg=None):
     text = "\n".join(lines)
 
     dest = msg or update.effective_message
-    await dest.reply_text(text, reply_markup=quiz_result_keyboard(), parse_mode="HTML")
+    reply_markup = quiz_result_keyboard()
+    try:
+        from src.database.models import RecoveryPlan
+        from sqlalchemy import select
+        telegram_id = update.effective_user.id if update.effective_user else None
+        if telegram_id:
+            factory = async_session_factory()
+            async with factory() as session:
+                result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+                user = result.scalar_one_or_none()
+                if user:
+                    plans_result = await session.execute(
+                        select(RecoveryPlan).where(
+                            RecoveryPlan.user_id == user.id,
+                            RecoveryPlan.status == "active",
+                        ).limit(1)
+                    )
+                    plan = plans_result.scalar_one_or_none()
+                    if plan:
+                        from telegram import InlineKeyboardButton
+                        recovery_row = [InlineKeyboardButton("📋 View Recovery Plan", callback_data="recovery_view")]
+                        from telegram import InlineKeyboardMarkup
+                        new_buttons = list(reply_markup.inline_keyboard) + [tuple(recovery_row)]
+                        reply_markup = InlineKeyboardMarkup(new_buttons)
+    except Exception:
+        pass
+    await dest.reply_text(text, reply_markup=reply_markup, parse_mode="HTML")
 
 
 async def handle_quiz_answer(update: Update, context):
@@ -1202,6 +1228,170 @@ async def error_handler(update: Update, context):
         logger.error("error_handler_failed", error=str(e))
 
 
+async def recovery_command(update: Update, context):
+    from sqlalchemy import select
+
+    async def _handle():
+        factory = async_session_factory()
+        async with factory() as session:
+            result = await session.execute(select(User).where(User.telegram_id == update.effective_user.id))
+            user = result.scalar_one_or_none()
+            if not user:
+                await _reply_long(update, "❌ You need to /start first to use this command.")
+                return
+
+            from src.database.models import RecoveryPlan, RecoveryTask
+            plans_result = await session.execute(
+                select(RecoveryPlan)
+                .where(RecoveryPlan.user_id == user.id, RecoveryPlan.status == "active")
+                .order_by(RecoveryPlan.created_at.desc())
+            )
+            plans = list(plans_result.scalars().all())
+
+            if not plans:
+                await _reply_long(update, "📋 *No Active Recovery Plans*\n\nComplete quizzes to identify weak areas — a recovery plan will be generated automatically when needed.", parse_mode="Markdown")
+                return
+
+            from src.agents.weak_topic_detection import get_weak_topics
+            weak_topics = await get_weak_topics(user.id, session)
+
+            lines = ["📋 *Recovery Plans*"]
+            if weak_topics:
+                lines.append(f"\n🔍 *Weak Topics:* {len(weak_topics)} identified")
+                for wt in weak_topics[:3]:
+                    icon = "🔴" if wt["severity"] == "critical" else "🟡" if wt["severity"] == "moderate" else "🔵"
+                    lines.append(f"{icon} {wt['topic']} — {wt['average_score']:.0f}%")
+
+            from src.api.gamification import _get_recovery_progress
+            rp = await _get_recovery_progress(user.id, session)
+            if rp:
+                lines.append(f"\n📊 *Overall Progress:* {rp.completed_tasks}/{rp.total_tasks} tasks ({rp.overall_progress_pct:.0f}%)")
+
+            for plan in plans:
+                progress_pct = round(plan.completed_tasks / max(plan.total_tasks, 1) * 100, 1)
+                lines.append(f"\n*Plan: {plan.topic}*")
+                lines.append(f"Progress: {plan.completed_tasks}/{plan.total_tasks} ({progress_pct:.0f}%)")
+                tasks_result = await session.execute(
+                    select(RecoveryTask).where(RecoveryTask.plan_id == plan.id).order_by(RecoveryTask.created_at)
+                )
+                tasks = list(tasks_result.scalars().all())
+                for task in tasks:
+                    status = "✅" if task.is_completed else "⬜"
+                    lines.append(f"{status} {task.title}")
+
+            await _reply_long(update, "\n".join(lines), parse_mode="Markdown")
+
+    await _db_try(_handle)
+
+
+async def handle_recovery_complete_task(update: Update, context):
+    query = update.callback_query
+    await query.answer()
+    task_id = query.data.replace("recovery_complete_", "")
+
+    from datetime import datetime, timezone
+    from sqlalchemy import select
+    from src.database.models import RecoveryTask
+    from src.api.gamification import XP_SOURCES, RECOVERY_MILESTONE_THRESHOLDS
+
+    async def _handle():
+        factory = async_session_factory()
+        async with factory() as session:
+            result = await session.execute(select(User).where(User.telegram_id == update.effective_user.id))
+            user = result.scalar_one_or_none()
+            if not user:
+                await query.edit_message_text("❌ User not found. Please /start first.")
+                return
+
+            task_result = await session.execute(
+                select(RecoveryTask).where(RecoveryTask.id == task_id)
+            )
+            task = task_result.scalar_one_or_none()
+            if not task:
+                await query.edit_message_text("❌ Task not found.")
+                return
+            if task.is_completed:
+                await query.edit_message_text(f"✅ Task *{task.title}* was already completed!", parse_mode="Markdown")
+                return
+
+            task.is_completed = True
+            task.completed_at = datetime.now(timezone.utc)
+
+            xp_amount = XP_SOURCES.get("recovery_task_completion", 40)
+            task.xp_awarded = xp_amount
+
+            plan = task.plan
+            plan.completed_tasks += 1
+            if plan.completed_tasks >= plan.total_tasks:
+                plan.status = "completed"
+
+            gam, _, level_up = await award_xp(
+                user.id, "recovery_task_completion", xp_amount,
+                {"task_id": str(task_id), "plan_id": str(plan.id), "topic": plan.topic},
+                session,
+            )
+
+            completed = plan.completed_tasks
+            if completed in RECOVERY_MILESTONE_THRESHOLDS:
+                milestone_bonus = RECOVERY_MILESTONE_THRESHOLDS[completed]
+                await award_xp(
+                    user.id, "recovery_milestone", milestone_bonus,
+                    {"plan_id": str(plan.id), "completed_tasks": completed, "topic": plan.topic},
+                    session,
+                )
+
+            await update_streak(user.id, session)
+            await check_achievements(user.id, gam, session)
+
+            await session.commit()
+
+            await query.edit_message_text(
+                f"✅ *Task Completed!*\n\n{task.title}\n\n+{xp_amount} XP",
+                parse_mode="Markdown",
+            )
+
+    await _db_try(_handle)
+
+
+async def handle_recovery_view(update: Update, context):
+    query = update.callback_query
+    await query.answer()
+    await recovery_command(update, context)
+
+
+async def progress_command(update: Update, context):
+    from sqlalchemy import select
+
+    async def _handle():
+        factory = async_session_factory()
+        async with factory() as session:
+            result = await session.execute(select(User).where(User.telegram_id == update.effective_user.id))
+            user = result.scalar_one_or_none()
+            if not user:
+                await _reply_long(update, "❌ You need to /start first.")
+                return
+
+            from src.agents.weak_topic_detection import get_weak_topics
+            weak_topics = await get_weak_topics(user.id, session)
+
+            if not weak_topics:
+                await _reply_long(update, "📊 *Mastery Progress*\n\nNo weak topics detected! You're doing great across all subjects.", parse_mode="Markdown")
+                return
+
+            lines = ["📊 *Mastery Progress*"]
+            for wt in sorted(weak_topics, key=lambda x: x["average_score"]):
+                bar_len = max(1, int(wt["average_score"] / 10))
+                bar = "█" * bar_len + "░" * (10 - bar_len)
+                icon = "🔴" if wt["average_score"] < 40 else "🟡" if wt["average_score"] < 60 else "🟢" if wt["average_score"] < 80 else "💚"
+                lines.append(f"\n{icon} *{wt['topic']}*")
+                lines.append(f"`{bar}` {wt['average_score']:.0f}%")
+                lines.append(f"Confidence: {wt['confidence']*100:.0f}% | Attempts: {wt['attempt_count']}")
+
+            await _reply_long(update, "\n".join(lines), parse_mode="Markdown")
+
+    await _db_try(_handle)
+
+
 def build_app() -> Application:
     from telegram.request import HTTPXRequest
     _request = HTTPXRequest(
@@ -1221,6 +1411,8 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("socratic", socratic_command))
     app.add_handler(CommandHandler("hint", hint_command))
     app.add_handler(CommandHandler("reveal", reveal_command))
+    app.add_handler(CommandHandler("recovery", recovery_command))
+    app.add_handler(CommandHandler("progress", progress_command))
 
     quiz_handler = ConversationHandler(
         entry_points=[
@@ -1317,6 +1509,8 @@ def build_app() -> Application:
     app.add_handler(CallbackQueryHandler(handle_language_select, pattern="^lang_"))
     app.add_handler(CallbackQueryHandler(help_command, pattern="^help$"))
     app.add_handler(CallbackQueryHandler(menu, pattern="^menu$"))
+    app.add_handler(CallbackQueryHandler(handle_recovery_complete_task, pattern=r"^recovery_complete_"))
+    app.add_handler(CallbackQueryHandler(handle_recovery_view, pattern="^recovery_view$"))
     app.add_error_handler(error_handler)
 
     return app
