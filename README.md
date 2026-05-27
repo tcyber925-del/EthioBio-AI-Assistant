@@ -21,6 +21,14 @@ AI-powered biology learning and teaching assistant for Ethiopian middle and high
 - **Model Auto-Detection** — Discovers all locally installed Ollama models automatically
 - **Model Selection UI** — Choose models in dashboard (Ask, Quiz, Lesson) and Telegram bot (`/model`)
 - **Extensible Providers** — Clean `LLMProvider` interface for adding LM Studio, vLLM, llama.cpp
+- **Recovery Plans** — Auto-generated remediation plans from weak topic detection, with XP rewards and milestone emails
+- **Adaptive Quizzes** — Bayesian IRT ability estimation adjusts question difficulty per student per topic
+- **Gamification** — XP, streaks, levels, achievements, mastery tracking across all activities
+- **Notifications** — Email preference management with milestone alerts, review reminders, daily/weekly digests
+- **Diagram Analysis** — Interactive diagram validation and labeling from textbook figures
+- **DOCX/PDF Export** — Downloadable quizzes and lesson plans in Word and PDF formats
+- **Spaced Repetition** — SM-2 based review scheduling for optimal memory retention
+- **Activity Feed** — Recent user activity tracking across all learning interactions
 
 ## Architecture
 
@@ -29,14 +37,15 @@ src/
 ├── main.py                     # FastAPI server entry point
 ├── config.py                   # Pydantic Settings (env-based)
 ├── database/
-│   ├── models.py               # 14 SQLAlchemy entities (UUID PKs, asyncpg, JSON columns)
+│   ├── models.py               # 31 SQLAlchemy entities (UUID PKs, asyncpg, JSON columns)
 │   └── session.py              # Async session with lazy engine, auto-create tables
 ├── llm/
 │   ├── providers/              # Provider abstraction layer
 │   │   ├── base.py             # LLMProvider ABC, ProviderInfo, ChatResponse
 │   │   ├── ollama.py           # OllamaProvider (any local model)
 │   │   ├── openai_provider.py  # OpenAIProvider (OpenAI, LM Studio, vLLM)
-│   │   └── anthropic_provider.py # AnthropicProvider (Claude)
+│   │   ├── anthropic_provider.py # AnthropicProvider (Claude)
+│   │   └── openrouter.py       # OpenRouter-compatible provider
 │   ├── manager.py              # ProviderManager — fallback chain orchestration
 │   ├── registry.py             # ModelRegistry — auto-detect Ollama models
 │   ├── ollama_client.py        # Ollama API wrapper (chat, embeddings, health)
@@ -59,7 +68,12 @@ src/
 │   ├── translator.py           # English-Amharic translation
 │   ├── safety.py               # Content review + hallucination guard
 │   ├── student_progress.py     # Performance analytics + trend detection
-│   └── parent_summary.py       # Weekly bilingual report generation
+│   ├── parent_summary.py       # Weekly bilingual report generation
+│   ├── diagram.py              # Interactive diagram analysis + labeling
+│   ├── recovery_agent.py       # LLM-based recovery plan generation
+│   ├── spaced_repetition.py    # SM-2 spaced repetition scheduling
+│   ├── weak_topic_detection.py # Post-quiz weak topic analysis + mastery sync
+│   └── adaptive_quiz.py        # Bayesian IRT ability estimation + adaptive selection
 ├── graph/                      # LangGraph orchestration
 │   ├── state.py                # AgentState (20+ fields), GraphOutput
 │   ├── orchestrator.py         # Compiled graph: orchestrator → retrieve/skip → tutor → safety → revise/finalize
@@ -68,28 +82,47 @@ src/
 │       ├── retrieval.py        # RetrievalNode + SkipRetrievalNode
 │       ├── tutor.py            # Answer generation with citations
 │       └── safety.py           # Self-check + revision loop (reject/revise/finalize)
-├── schemas/                    # Pydantic models for all structured outputs
+├── schemas/                    # 11 Pydantic schema files
 ├── api/
 │   ├── chat.py                 # POST /chat
-│   ├── quiz.py                 # POST /quiz/generate, /quiz/submit
+│   ├── quiz.py                 # POST /quiz/generate, /quiz/submit, /quiz/recommend
 │   ├── lesson.py               # POST /lesson-plan/generate
 │   ├── progress.py             # Progress + parent summary endpoints
 │   ├── admin.py                # Dashboard, content review, monitoring, approve/reject
-│   └── graph.py                # POST /graph/chat, GET /graph/status
+│   ├── graph.py                # POST /graph/chat, GET /graph/status
+│   ├── diagram.py              # POST /diagram/generate, /diagram/validate, GET /diagram/textbook
+│   ├── export.py               # GET /export/quiz, /export/lesson-plan (DOCX/PDF)
+│   ├── gamification.py         # XP, streaks, levels, achievements, profile
+│   ├── recovery.py             # Recovery plans, tasks, dashboard, schedule, notifications
+│   ├── notifications.py        # Email preferences, verification, milestone alerts
+│   └── activity.py             # GET /activity/{user_id}
 ├── telegram/
-│   ├── bot.py                  # PTB Application with ConversationHandlers (interactive quiz, tutor, lesson)
-│   └── keyboards.py            # Inline keyboard layouts (9 factory functions)
+│   ├── bot.py                  # PTB Application (70 handlers, polling mode)
+│   ├── keyboards.py            # Inline keyboard layouts (9 factory functions)
+│   └── formatter.py            # Message formatting helpers
+├── export/
+│   ├── docx_exporter.py        # python-docx DOCX generation for quizzes/lessons
+│   └── pdf_exporter.py         # fpdf2 PDF generation for quizzes/lessons
+├── notifications/
+│   ├── email_service.py        # Async SMTP sender (asyncio.to_thread)
+│   └── templates/              # 3 Jinja2 HTML email templates
 ├── ingestion/
-│   └── docling_extractor.py    # PyPdfium2 + RapidOCR extraction, garbled detection, HybridChunker
+│   ├── docling_extractor.py    # PyPdfium2 + RapidOCR extraction, garbled detection, HybridChunker
+│   └── diagram_extractor.py    # Diagram extraction from textbooks
 ├── evaluation/
 │   └── ragas_test.py           # Ragas evaluation + heuristic fallback + gold dataset
 └── observability/
     └── tracing.py              # LangSmith tracing (optional)
-dashboard/                      # Next.js teacher dashboard (9 routes)
+dashboard/                      # Next.js teacher dashboard (7 routes)
 scripts/
 ├── ingest_curriculum.py        # PDF → ChromaDB + BM25 ingestion with Docling/OCR
-└── init-db.sql                 # pgvector extension init
-tests/                          # pytest suite (7 test files, 23+ tests)
+├── ingest_diagrams.py          # Ingest textbook diagrams into vector store
+├── index_diagrams.py           # Index diagrams for search
+├── label_textbook_diagrams.py  # Label textbook diagrams
+├── send_digests.py             # Cron-ready daily/weekly digest email sender
+├── init-db.sql                 # pgvector extension init
+└── ralph/                      # Autonomous agent PRD tasks
+tests/                          # pytest suite (20 test files, asyncio_mode=auto)
 data/
 ├── textbooks/                  # Ethiopian curriculum PDFs (Grades 9-12)
 ├── evaluation/
@@ -233,29 +266,60 @@ Key environment variables (see `.env.example` for full list):
 
 ## API Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Health check (Ollama + DB status) |
-| POST | `/chat` | Biology Q&A with RAG |
-| POST | `/graph/chat` | LangGraph pipeline (intent → RAG → tutor → safety) |
-| GET | `/graph/status` | Graph structure (nodes + edges) |
-| POST | `/quiz/generate` | Generate RAG-grounded quiz |
-| POST | `/quiz/submit` | Submit quiz answers |
-| POST | `/lesson-plan/generate` | Create lesson plan |
-| POST | `/progress/student/{id}` | Get student progress |
-| POST | `/progress/parent-summary` | Generate parent summary |
-| GET | `/admin/dashboard` | Dashboard overview |
-| GET | `/admin/content/review` | Review content (use `type=quiz\|lesson`) |
-| GET | `/admin/content/quiz/{id}` | Quiz detail with all questions |
-| GET | `/admin/content/lesson/{id}` | Lesson detail with full content |
-| PATCH | `/admin/content/{type}/{id}/status` | Approve/reject content |
-| GET | `/admin/monitoring` | System monitoring |
-| GET | `/models` | List available models across all providers |
-| GET | `/models/providers` | Provider health and info |
-| GET | `/models/active` | Get currently active model |
-| POST | `/models/active` | Set active model |
-| GET | `/models/health` | Health check for all providers |
-| POST | `/models/refresh` | Force refresh Ollama model cache |
+| Method | Path | Module | Description |
+|--------|------|--------|-------------|
+| GET | `/health` | — | Health check (Ollama + DB status) |
+| POST | `/chat` | Chat | Biology Q&A with RAG |
+| POST | `/graph/chat` | Graph | LangGraph pipeline (intent → RAG → tutor → safety) |
+| GET | `/graph/status` | Graph | Graph structure (nodes + edges) |
+| GET | `/quiz/recommend/{user_id}` | Quiz | Recommend quiz parameters |
+| POST | `/quiz/generate` | Quiz | Generate RAG-grounded quiz |
+| POST | `/quiz/submit` | Quiz | Submit quiz answers, record attempts, update ability |
+| POST | `/lesson-plan/generate` | Lesson | Create lesson plan |
+| GET | `/progress/student/{student_id}` | Progress | Get student progress |
+| POST | `/progress/student/{student_id}` | Progress | Record progress entry |
+| POST | `/progress/parent-summary` | Progress | Generate parent summary |
+| GET | `/admin/dashboard` | Admin | Dashboard overview |
+| GET | `/admin/content/review` | Admin | Review content (use `type=quiz\|lesson`) |
+| GET | `/admin/monitoring` | Admin | System monitoring |
+| GET | `/admin/content/quiz/{item_id}` | Admin | Quiz detail with all questions |
+| GET | `/admin/content/lesson/{item_id}` | Admin | Lesson detail with full content |
+| PATCH | `/admin/content/{type}/{id}/status` | Admin | Approve/reject content |
+| GET | `/models` | Models | List available models across all providers |
+| GET | `/models/providers` | Models | Provider health and info |
+| GET | `/models/active` | Models | Get currently active model |
+| POST | `/models/active` | Models | Set active model |
+| GET | `/models/health` | Models | Health check for all providers |
+| POST | `/models/refresh` | Models | Force refresh Ollama model cache |
+| POST | `/diagram/generate` | Diagram | Generate diagram analysis |
+| POST | `/diagram/validate` | Diagram | Validate diagram labels |
+| GET | `/diagram/textbook` | Diagram | List textbook diagrams |
+| GET | `/export/quiz/{quiz_id}` | Export | Download quiz as DOCX/PDF |
+| GET | `/export/lesson-plan/{lesson_id}` | Export | Download lesson plan as DOCX/PDF |
+| POST | `/gamification/xp` | Gamification | Award XP (internal) |
+| GET | `/gamification/profile/{user_id}` | Gamification | XP, level, streak, mastery, achievements |
+| POST | `/gamification/activity` | Gamification | Log activity + update streak |
+| GET | `/gamification/events/{user_id}` | Gamification | List XP events |
+| GET | `/gamification/achievements/{user_id}` | Gamification | Achievement definitions + progress |
+| POST | `/recovery/plan` | Recovery | Create recovery plan |
+| GET | `/recovery/plan/{user_id}` | Recovery | List recovery plans |
+| POST | `/recovery/task/complete` | Recovery | Complete task (XP + milestone check + email) |
+| POST | `/recovery/auto-generate/{user_id}` | Recovery | Auto-generate plan from weak topics |
+| GET | `/recovery/weak-topics/{user_id}` | Recovery | Get weak topics with severity |
+| GET | `/recovery/history/{user_id}/{topic}` | Recovery | Mastery history for a topic |
+| GET | `/recovery/dashboard/{user_id}` | Recovery | Combined weak topics + plans + recommendations |
+| GET | `/recovery/schedule/{user_id}` | Recovery | Get spaced repetition schedule |
+| GET | `/recovery/schedule/due/{user_id}` | Recovery | Get due reviews |
+| POST | `/recovery/schedule/generate/{user_id}` | Recovery | Generate review schedule |
+| POST | `/recovery/schedule/review` | Recovery | Record review result |
+| GET | `/recovery/notifications/{user_id}` | Recovery | List recovery notifications |
+| PATCH | `/recovery/notifications/{notification_id}/read` | Recovery | Mark notification read |
+| PUT | `/recovery/notifications/read-all/{user_id}` | Recovery | Mark all notifications read |
+| GET | `/notifications/preferences/{user_id}` | Notifications | Get email preferences |
+| PUT | `/notifications/preferences/{user_id}` | Notifications | Update email preferences |
+| POST | `/notifications/preferences/{user_id}/verify` | Notifications | Send verification code |
+| POST | `/notifications/preferences/{user_id}/verify/{code}` | Notifications | Confirm verification code |
+| GET | `/activity/{user_id}` | Activity | Get recent activity feed |
 
 ## Telegram Bot
 
@@ -276,12 +340,20 @@ User taps answer → instant feedback (✅ Correct / ❌ Wrong + explanation)
 |---------|-------------|
 | `/start` | Show main menu with icons |
 | `/help` | Show help text |
+| `/menu` | Return to main menu |
 | `/ask <question>` | Ask a biology question directly |
 | `/quiz [grade] [topic]` | Start interactive quiz |
 | `/grade <7-12>` | Set default grade level |
 | `/language <en\|am\|both>` | Set language |
 | `/cancel` | Cancel current operation |
 | `/model` | Select LLM model |
+| `/socratic` | Toggle Socratic tutoring mode |
+| `/hint` | Get a hint on current question |
+| `/reveal` | Reveal the answer |
+| `/settings` | Manage email notification preferences |
+| `/email <address>` | Set email address for notifications |
+| `/recovery` | View recovery plans and tasks |
+| `/progress` | Show mastery progress per topic (text bar charts) |
 
 ### Menu Layout
 
@@ -292,6 +364,8 @@ Main Menu
 ├── 📊 My Progress       → stats (requires PostgreSQL)
 ├── 🌐 Language          → en / am / both
 ├── 🤖 Model Selection   → choose LLM model
+├── 🔄 Recovery Plan     → view plans → complete tasks
+├── ⚙️ Settings          → email notifications → verify
 ├── 👨‍🏫 Teacher Tools     → Lesson Plan + Dashboard links
 └── ❓ Help
 ```
@@ -374,6 +448,15 @@ Set `LANGCHAIN_API_KEY` to enable LangSmith tracing.
 - Citation format: Explicit `(Grade X, Unit Y: Title, p. Z)` citations in all RAG responses
 - Per-page chunking: Preserves accurate page numbers instead of full-text splitting
 - Vector store path: `data/vectors_new/` (old `data/vectors/` had permission issues)
+- Gamification module: XP, streaks, levels, achievements across quiz/tutor/recovery activities
+- Recovery plans: Auto-generated remediation plans from weak topic detection, task completion flow, milestone bonus XP
+- Adaptive quiz engine: Bayesian IRT ability estimation with logit model, per-topic StudentAbility tracking, difficulty_score column
+- Weak topic detection: Post-quiz analysis updates StudentMastery, detects MisconceptionPattern, syncs StudentProfile
+- Notification preferences: User email management with 6-digit verification code, digi frequency options
+- Email service: Async SMTP via asyncio.to_thread(), Jinja2 HTML templates, milestone alerts at 10%+ progress
+- Digest script: Cron-ready `scripts/send_digests.py` for daily/weekly mastery change + review reminder emails
+- Bot notification commands: `/settings` and `/email` commands with inline keyboard flows for preference management
+- Bot command menu: Registered via `set_my_commands()` at startup for discoverable command list
 
 ## Evaluation
 
@@ -398,14 +481,14 @@ Set `LANGCHAIN_API_KEY` to enable LangSmith tracing.
 
 | Metric | Value |
 |--------|-------|
-| Python source files | 64 |
-| Total Python lines | ~5,400 |
-| Database models | 14 |
+| Python source files | 90 |
+| Total Python lines | ~68,600 |
+| Database models | 31 |
 | Providers | 3 (Ollama, OpenAI, Anthropic) + extensible |
-| Agents | 8 (Tutor, Quiz, LessonPlanner, Safety, Translator, StudentProgress, ParentSummary, Orchestrator) |
+| Agents | 14 (Tutor, Quiz, LessonPlanner, Safety, Translator, StudentProgress, ParentSummary, Orchestrator, Diagram, RecoveryAgent, SpacedRepetition, WeakTopicDetection, AdaptiveQuiz, Base) |
 | LangGraph nodes | 5 (orchestrator, retrieve, skip_retrieval, tutor, safety) |
-| API endpoints | 21 |
-| Test files | 7 |
+| API endpoints | 47 |
+| Test files | 20 |
 | Dashboard pages | 9 |
 | Textbooks ingested | 4 (Grades 9-12) |
 | Vector store chunks | 1,165 |

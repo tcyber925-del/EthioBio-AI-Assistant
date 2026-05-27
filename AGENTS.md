@@ -59,7 +59,7 @@ docker compose up -d postgres redis
 The dashboard gamification module displays XP, streaks, mastery levels, and achievements in the Next.js frontend.
 
 - **Component hierarchy**: `GamificationProfile` fetches from `/gamification/profile/{user_id}` and composes `XpCard`, `StreakWidget`, `MasteryProgressBar`, and `AchievementPanel`.
-- **Backend API** is at `src/api/gamification.py` — fully built with `/gamification/profile/{user_id}`, `/gamification/events/{user_id}`, `/gamification/achievements/{user_id}` endpoints.
+- **Backend API** is at `src/api/gamification.py` — fully built with `GET /gamification/profile/{user_id}`, `POST /gamification/xp`, `POST /gamification/activity`, `GET /gamification/events/{user_id}`, `GET /gamification/achievements/{user_id}` endpoints.
 - **API proxy**: Add `/gamification/:path*` rewrite in `dashboard/next.config.js` to connect frontend to backend.
 - **Adding a new widget**: Create component in `dashboard/src/components/gamification/`, import into `GamificationProfile`, add to render layout.
 - **Achievement definitions** must match backend's `ACHIEVEMENT_DEFINITIONS` in `src/api/gamification.py` — the frontend `GamificationProfile` component has a duplicate list for locked/unlocked display.
@@ -84,17 +84,55 @@ When adding XP rewards to a new activity type:
 3. **Wire into Telegram bot**: Create a `_save_<activity>_rewards()` helper following the `_save_quiz_rewards`/`_save_tutor_rewards` pattern (look up user by telegram_id, award XP in async session, store in `context.user_data`).
 4. **Display feedback**: For API responses, add XP fields to the response schema. For bot, check `context.user_data["last_xp_awarded"]` and `last_level_up` and append to response text.
 
+## Notifications Module (`src/api/notifications.py`, `src/notifications/`)
+
+The notifications module manages user email preferences and sends automated emails.
+
+- **Model**: `NotificationPreference` (user_id UUID PK, email, email_verified, digest_frequency, milestone_alerts, review_reminders, verification fields) in `src/database/models.py`
+- **API**: `GET/PUT /notifications/preferences/{user_id}`, `POST /notifications/preferences/{user_id}/verify` (send code), `POST /notifications/preferences/{user_id}/verify/{code}` (confirm)
+- **Email service**: `src/notifications/email_service.py` — async SMTP via `asyncio.to_thread()`, settings-driven from `src.config.Settings.email_host|port|user|password|from|use_tls`
+- **Templates**: 3 Jinja2 HTML templates in `src/notifications/templates/`: `milestone_alert.html`, `digest.html`, `review_reminder.html`
+- **Digest script**: `scripts/send_digests.py` — cron-ready script that sends daily/weekly digests to opted-in users with opted-in users' mastery changes and due reviews
+- **Milestone email**: Sent from `POST /recovery/task/complete` when plan progress reaches ≥10%, using `MILESTONE_EMAIL_THRESHOLD` constant
+- **Router registration**: Add `notifications` to imports and `app.include_router(notifications.router)` in `src/main.py`
+- **Config**: Email settings in `src/config.py` as `email_host`, `email_port`, `email_user`, `email_password`, `email_from`, `email_use_tls`
+
 ## Recovery Plan Module (`src/api/recovery.py`, `src/schemas/recovery.py`, `src/database/models.py`)
 
 The recovery plan module tracks student remediation tasks and awards XP for completion.
 
 - **Models**: `RecoveryPlan` (user_id, topic, total_tasks, completed_tasks, status) and `RecoveryTask` (plan_id, title, task_type, is_completed, xp_awarded) in `src/database/models.py`
 - **XP sources**: `recovery_task_completion` (40 XP per task) and `recovery_milestone` (bonus XP at 3/5/10/15 tasks) — both defined in `XP_SOURCES` and `RECOVERY_MILESTONE_THRESHOLDS` in `src/api/gamification.py`
-- **Endpoints**: `POST /recovery/plan` (create), `GET /recovery/plan/{user_id}` (list), `POST /recovery/task/complete?task_id=&user_id=` (complete task → awards XP + milestone checks), `GET /recovery/dashboard/{user_id}` (combined: weak topics + active plans + recommendations)
+- **Endpoints**: `POST /recovery/plan` (create), `GET /recovery/plan/{user_id}` (list), `POST /recovery/task/complete?task_id=&user_id=` (complete task → awards XP + milestone checks + milestone email), `GET /recovery/dashboard/{user_id}` (combined: weak topics + active plans + recommendations)
+- **Milestone email**: When a task completion pushes plan progress ≥10%, sends a milestone alert email to the user's verified email (if they have milestone_alerts enabled)
 - **Profile integration**: `GamificationProfileResponse` includes optional `recovery_progress` field showing active plans, task counts, and overall progress %
 - **Frontend**: `RecoveryProgressCard.tsx` shows recovery progress in the student dashboard via `GamificationProfile`
-- **Recovery dashboard page**: `dashboard/src/app/recovery/page.tsx` — standalone page with student UUID selector, shows weak topics with severity, active plans with task timeline, rule-based recommendations (prioritized: high/medium/low). Add both sidebar link and `/recovery/:path*` API rewrite.
+- **Dashboard visualizations** (in `dashboard/src/components/recovery/`):
+  - `MasteryRadarChart.tsx` — Recharts radar chart shown when ≥3 weak topics
+  - `ProgressTrendGraph.tsx` — Recharts line chart per topic
+  - `TopicHeatmap.tsx` — CSS-grid heatmap of last 28 days
+  - `LearningTree.tsx` — Expandable recursive topic tree
+- **Recovery dashboard page**: `dashboard/src/app/recovery/page.tsx` — standalone page with student UUID selector, shows all 4 visualizations + plan timeline
+- **Telegram bot commands**: `/recovery` (view plans/tasks), `/progress` (text bar charts), `recovery_complete_` callback (complete tasks)
 - **Router registration**: Add `recovery` to imports and `app.include_router(recovery.router)` in `src/main.py`
+
+## Adaptive Quiz Engine (`src/agents/adaptive_quiz.py`, `src/database/models.py`)
+
+The adaptive quiz engine tracks individual question attempts and estimates student ability per topic using a Bayesian IRT model.
+
+- **Models**:
+  - `QuestionAttempt` (id, user_id, question_id, quiz_id, correct, time_spent, hints_used, attempt_number) — records every answer
+  - `StudentAbility` (user_id + topic composite PK, ability_score, uncertainty, attempt_count) — per-topic IRT estimates
+  - `Question.difficulty_score` — Float column (-1.0 easy, 0.0 medium, 1.0 hard) for numeric difficulty
+- **Functions** (in `src/agents/adaptive_quiz.py`):
+  - `record_attempt()` — records a question attempt with auto-incrementing attempt_number
+  - `estimate_bayesian_ability()` — logit-based Bayesian ability estimation with prior weighting
+  - `update_ability()` — upserts per-topic ability after a quiz submit
+  - `get_ability()` — returns (ability_score, uncertainty, attempt_count) for a user+topic
+  - `select_adaptive_questions()` — selects questions closest to `ability + 0.5` (optimal challenge)
+  - `migrate_difficulty_scores()` — one-time migration from string to numeric difficulty
+- **Adaptive quiz**: Pass `"adaptive": true` in `POST /quiz/generate` body to enable adaptive difficulty selection
+- **Wiring**: `POST /quiz/submit` automatically records attempts and updates ability estimates
 
 ## Key Gotchas
 
@@ -114,6 +152,10 @@ The recovery plan module tracks student remediation tasks and awards XP for comp
 14. **Misconception detection is heuristic** — Uses `re.split()` sentence splitting + keyword matching on LLM response text. No NLP model needed. Both TutorAgent and TutorNode have parallel `MISCONCEPTION_INDICATORS` lists and `detect_misconception()` helpers that must stay in sync.
 15. **Weak topic detection** — After quiz submit, `analyze_quiz_attempt()` in `src/agents/weak_topic_detection.py` analyzes per-topic scores, updates/creates `StudentMastery` records, detects `MisconceptionPattern` from repeated wrong answers, and syncs `StudentProfile.weak_areas`/`topic_mastery`. Wire into endpoint AFTER gamification, BEFORE session.commit().
 16. **`QuizAttempt.answers` is `Mapped[dict]` but stores list data** — when accessing, safely cast with `cast(list[Any], raw) if isinstance(raw, list) else []` to satisfy mypy.
+17. **`send_email()` silently returns False when unconfigured** — No error is raised if `email_host` is unset. Always check the return value or log the result.
+18. **NotificationPreference has a 1:1 user_id PK** — There is no separate `id` column; `user_id` is the PK. Upsert on conflict or check existence before `PUT`.
+19. **Milestone email fires at 10% progress intervals** — `MILESTONE_EMAIL_THRESHOLD = 10.0` means the alert triggers when completion percentage crosses 10%, 20%, 30%, etc. — not at every individual task completion.
+20. **Adaptive quiz requires user_id for topic ability lookup** — `select_adaptive_questions()` falls back to random selection when `user_id` is not provided; adaptive mode only works when both `adaptive=true` and `user_id` are set.
 
 ## Ralph PRD Generation (`scripts/ralph/`)
 
