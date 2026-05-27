@@ -182,6 +182,17 @@ async def submit_quiz(request: QuizSubmitRequest, session: AsyncSession = Depend
         total = len(request.answers)
         score = (correct_count / total * 100) if total > 0 else 0
 
+        # Update student ability estimates per topic
+        if quiz.topic:
+            from src.agents.adaptive_quiz import update_ability
+            await update_ability(
+                session=session,
+                user_id=request.user_id,
+                topic=quiz.topic,
+                correct_count=correct_count,
+                total_count=total,
+            )
+
         attempt = QuizAttempt(
             user_id=request.user_id,
             quiz_id=request.quiz_id,

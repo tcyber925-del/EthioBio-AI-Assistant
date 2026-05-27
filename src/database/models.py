@@ -489,6 +489,17 @@ class QuestionAttempt(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class StudentAbility(Base):
+    __tablename__ = "student_abilities"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True)
+    topic: Mapped[str] = mapped_column(String(300), primary_key=True)
+    ability_score: Mapped[float] = mapped_column(Float, default=0.0)
+    uncertainty: Mapped[float] = mapped_column(Float, default=3.0)
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
 class NotificationPreference(Base):
     __tablename__ = "notification_preferences"
 
