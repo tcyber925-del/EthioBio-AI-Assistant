@@ -196,12 +196,60 @@ export default function RecoveryPage() {
     }
   }
 
+  const severityColor = (severity: string) => {
+    switch (severity) {
+      case 'critical': return 'text-red-400 bg-red-500/10 border-red-500/20'
+      case 'moderate': return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20'
+      case 'mild': return 'text-blue-400 bg-blue-500/10 border-blue-500/20'
+      default: return 'text-green-400 bg-green-500/10 border-green-500/20'
+    }
+  }
+
   const priorityBg = (priority: string) => {
     switch (priority) {
       case 'high': return 'border-l-red-500 bg-red-500/5'
       case 'medium': return 'border-l-yellow-500 bg-yellow-500/5'
       default: return 'border-l-blue-500 bg-blue-500/5'
     }
+  }
+
+  const SimpleMiniChart = ({ points, topic }: { points: MasteryHistoryPoint[]; topic: string }) => {
+    if (!points || points.length < 2) return null
+    const width = 200
+    const height = 48
+    const values = points.map(p => p.average_score)
+    const mn = Math.min(...values)
+    const mx = Math.max(...values)
+    const range = Math.max(mx - mn, 10)
+    const pad = 4
+    const pts = values.map((v, i) => {
+      const x = pad + (i / Math.max(values.length - 1, 1)) * (width - 2 * pad)
+      const y = height - pad - ((v - mn) / range) * (height - 2 * pad)
+      return `${x},${y}`
+    }).join(' ')
+    const lastVal = values[values.length - 1]
+    const firstVal = values[0]
+
+    return (
+      <div className="mt-2">
+        <div className="flex items-center justify-between text-xs text-foreground-muted mb-1">
+          <span>Progress over time</span>
+          <span className={lastVal > firstVal ? 'text-green-400' : lastVal < firstVal ? 'text-red-400' : ''}>
+            {firstVal.toFixed(0)}% → {lastVal.toFixed(0)}%
+          </span>
+        </div>
+        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-12">
+          <polyline
+            points={pts}
+            fill="none"
+            stroke={lastVal > firstVal ? '#22c55e' : lastVal < firstVal ? '#ef4444' : '#6b7280'}
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
+    )
   }
 
   const taskTypeIcon = (type: string) => {
@@ -440,6 +488,55 @@ export default function RecoveryPage() {
                 <span className="text-sm text-foreground-muted">{data.total_weak_topics} topic{data.total_weak_topics !== 1 ? 's' : ''}</span>
               </div>
               <LearningTree topics={data.weak_topics} />
+              <h2 className="text-lg font-semibold text-foreground mb-4">Weak Topics</h2>
+              <div className="space-y-3">
+                {data.weak_topics.map((wt, i) => (
+                  <div key={i} className={`p-4 rounded-lg border ${severityColor(wt.severity)}`}>
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <h3 className="font-medium text-foreground">{wt.topic}</h3>
+                        <p className="text-xs text-foreground-muted">
+                          {wt.unit && `${wt.unit} · `}Grade {wt.grade_level}
+                        </p>
+                      </div>
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium capitalize border ${severityColor(wt.severity)}`}>
+                        {wt.severity}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 mt-3">
+                      <div>
+                        <p className="text-xs text-foreground-muted">Avg Score</p>
+                        <p className="text-sm font-semibold text-foreground">{wt.average_score.toFixed(0)}%</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-foreground-muted">Attempts</p>
+                        <p className="text-sm font-semibold text-foreground">{wt.attempt_count}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-foreground-muted">Confidence</p>
+                        <p className="text-sm font-semibold text-foreground">{(wt.confidence * 100).toFixed(0)}%</p>
+                      </div>
+                    </div>
+                    {wt.misconceptions.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-border/50">
+                        <p className="text-xs font-medium text-foreground-muted mb-2">Misconceptions:</p>
+                        {wt.misconceptions.map((mc, j) => (
+                          <div key={j} className="flex items-center gap-2 text-xs text-foreground-muted mb-1">
+                            <AlertTriangle className="w-3 h-3 text-yellow-400" />
+                            <span>{mc.pattern_type}: {mc.description}</span>
+                            <span className="text-foreground-muted/60">({mc.frequency}x)</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {history[wt.topic] && history[wt.topic].length >= 2 && (
+                      <div className="mt-3 pt-3 border-t border-border/50">
+                        <SimpleMiniChart points={history[wt.topic]} topic={wt.topic} />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (
             <div className="bg-card rounded-xl border border-border p-8 text-center">
