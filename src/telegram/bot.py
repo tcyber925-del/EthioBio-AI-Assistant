@@ -1671,8 +1671,30 @@ def build_app() -> Application:
 
 async def main():
     app = build_app()
+    await app.initialize()
+
+    from telegram import BotCommand
+    commands = [
+        BotCommand("start", "Show menu"),
+        BotCommand("help", "Show help"),
+        BotCommand("ask", "Ask a biology question"),
+        BotCommand("quiz", "Generate a quiz"),
+        BotCommand("grade", "Set your grade (7-12)"),
+        BotCommand("language", "Set language (en/am/both)"),
+        BotCommand("socratic", "Toggle Socratic mode"),
+        BotCommand("hint", "Get a hint"),
+        BotCommand("reveal", "Reveal the answer"),
+        BotCommand("recovery", "View recovery plans"),
+        BotCommand("progress", "View your progress"),
+        BotCommand("settings", "Notification settings"),
+        BotCommand("email", "Set your email"),
+        BotCommand("model", "Manage AI models"),
+        BotCommand("cancel", "Cancel current operation"),
+        BotCommand("menu", "Show main menu"),
+    ]
+    await app.bot.set_my_commands(commands)
+
     if settings.telegram_webhook_url:
-        await app.initialize()
         await app.bot.set_webhook(
             url=settings.telegram_webhook_url,
             secret_token=settings.telegram_webhook_secret,
@@ -1681,7 +1703,6 @@ async def main():
         logger.info("webhook_set", url=settings.telegram_webhook_url)
     else:
         logger.info("starting_polling")
-        await app.initialize()
         await app.updater.start_polling(allowed_updates=["message", "callback_query"], drop_pending_updates=True)
         await app.start()
         logger.info("bot_polling_started")
