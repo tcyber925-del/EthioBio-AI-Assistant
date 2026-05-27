@@ -8,6 +8,8 @@ import os
 import sys
 from datetime import datetime, timezone
 
+import structlog
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from jinja2 import Environment, FileSystemLoader
@@ -17,6 +19,8 @@ from src.agents.weak_topic_detection import get_weak_topics
 from src.database.models import NotificationPreference, SpacedRepetitionSchedule
 from src.database.session import async_session_factory
 from src.notifications.email_service import send_email
+
+logger = structlog.get_logger()
 
 
 async def main():
@@ -74,8 +78,6 @@ async def main():
                 await send_email(prefs.email, subject, html)
 
             except Exception as e:
-                import structlog
-                logger = structlog.get_logger()
                 logger.error("digest_failed", user_id=prefs.user_id, error=str(e))
 
 
