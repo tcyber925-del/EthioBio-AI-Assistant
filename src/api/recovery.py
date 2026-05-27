@@ -60,6 +60,7 @@ logger = structlog.get_logger()
 router = APIRouter(prefix="/recovery", tags=["Recovery"])
 
 MILESTONE_EMAIL_THRESHOLD = 10.0
+_MILESTONE_EMAIL_TITLE = "Milestone Achieved!"
 _TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "..", "notifications", "templates")
 _TEMPLATE_ENV = Environment(loader=FileSystemLoader(_TEMPLATE_DIR))
 
@@ -198,7 +199,7 @@ async def complete_recovery_task(
                 if improvement >= MILESTONE_EMAIL_THRESHOLD:
                     template = _TEMPLATE_ENV.get_template("milestone_alert.html")
                     html = template.render(
-                        title="Milestone Achieved!",
+                        title=_MILESTONE_EMAIL_TITLE,
                         message=(
                             f"You've completed {plan.completed_tasks} of {plan.total_tasks}"
                             f" recovery tasks for {plan.topic}!"
