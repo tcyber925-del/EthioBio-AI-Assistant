@@ -130,7 +130,9 @@ async def generate_quiz(request: QuizGenerateRequest, session: AsyncSession = De
         session.add(db_quiz)
         await session.flush()
 
+        _difficulty_map = {"easy": -1.0, "medium": 0.0, "hard": 1.0}
         for q in result["questions"]:
+            diff_str = q.get("difficulty", "medium")
             db_q = Question(
                 quiz_id=db_quiz.id,
                 question_type=q["question_type"],
@@ -140,7 +142,8 @@ async def generate_quiz(request: QuizGenerateRequest, session: AsyncSession = De
                 explanation=q.get("explanation"),
                 grade_level=request.grade_level,
                 topic=request.topic,
-                difficulty=q.get("difficulty", "medium"),
+                difficulty=diff_str,
+                difficulty_score=_difficulty_map.get(diff_str, 0.0),
             )
             session.add(db_q)
 
