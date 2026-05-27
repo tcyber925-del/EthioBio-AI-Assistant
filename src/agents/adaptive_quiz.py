@@ -47,7 +47,7 @@ async def record_attempt(
     return attempt
 
 
-def estimate_ability(
+def estimate_bayesian_ability(
     correct_count: int,
     total_count: int,
     prior_ability: float = 0.0,
@@ -61,9 +61,9 @@ def estimate_ability(
 
     observed_ability = math.log(p / (1 - p))
 
-    weight = min(total_count / max(total_count + 5, 1), 0.95)
+    weight = min(total_count / (total_count + 5), 0.95)
     new_ability = (1 - weight) * prior_ability + weight * observed_ability
-    new_uncertainty = prior_uncertainty / math.sqrt(max(total_count, 1) + 1)
+    new_uncertainty = prior_uncertainty / math.sqrt(total_count + 1)
 
     return new_ability, new_uncertainty
 
@@ -86,7 +86,7 @@ async def update_ability(
     prior = ability.ability_score if ability else 0.0
     prior_uncertainty = ability.uncertainty if ability else 3.0
 
-    new_ability, new_uncertainty = estimate_ability(
+    new_ability, new_uncertainty = estimate_bayesian_ability(
         correct_count, total_count, prior, prior_uncertainty
     )
 
@@ -111,7 +111,7 @@ async def get_ability(
     session: AsyncSession,
     user_id,
     topic: str,
-) -> tuple[float, int]:
+) -> tuple[float, float, int]:
     result = await session.execute(
         select(StudentAbility).where(
             StudentAbility.user_id == user_id,
@@ -120,5 +120,5 @@ async def get_ability(
     )
     ability = result.scalar_one_or_none()
     if ability:
-        return ability.ability_score, ability.attempt_count
-    return 0.0, 0
+        return ability.ability_score, ability.uncertainty, ability.attempt_count
+    return 0.0, 3.0, 0
