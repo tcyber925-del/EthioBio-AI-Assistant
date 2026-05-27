@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #2563eb;">Your {{ frequency }} Progress Digest</h2>
+  <p>Here's your biology learning summary:</p>
+  {% if mastery_changes %}
+  <h3>Mastery Changes</h3>
+  <table style="width: 100%; border-collapse: collapse;">
+    <tr style="background: #f3f4f6;">
+      <th style="padding: 8px; text-align: left;">Topic</th>
+      <th style="padding: 8px; text-align: right;">Change</th>
+    </tr>
+    {% for change in mastery_changes %}
+    <tr>
+      <td style="padding: 8px;">{{ change.topic }}</td>
+      <td style="padding: 8px; text-align: right; color: {{ 'green' if change.improvement > 0 else 'red' }};">
+        {{ '+' if change.improvement > 0 }}{{ change.improvement }}%
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+  {% if due_reviews %}
+  <h3>Due for Review</h3>
+  <ul>
+    {% for review in due_reviews %}
+    <li>{{ review.topic }} — {{ review.days_overdue }}d overdue</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  <p style="color: #6b7280; font-size: 12px; margin-top: 24px;">EthioBio AI Assistant</p>
+</body>
+</html>

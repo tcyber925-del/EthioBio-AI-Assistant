@@ -13,8 +13,8 @@ from src.schemas.quiz import (
     QuestionSchema,
     QuizGenerateRequest,
     QuizGenerateResponse,
-    QuizRecommendResponse,
     QuizRecommendation,
+    QuizRecommendResponse,
     QuizSubmitRequest,
     QuizSubmitResponse,
 )
@@ -90,6 +90,23 @@ async def generate_quiz(request: QuizGenerateRequest, session: AsyncSession = De
                     # No exact match - use all weak topics for focus
                     weak_topics = all_weak
 
+        if request.adaptive and request.user_id:
+            from src.agents.adaptive_quiz import select_adaptive_questions
+            selected = await select_adaptive_questions(
+                session=session,
+                user_id=request.user_id,
+                topic=request.topic,
+                count=request.question_count,
+            )
+            if selected:
+                avg_difficulty = sum(q.difficulty_score for q in selected) / len(selected)
+                if avg_difficulty < -0.3:
+                    target_difficulty = "easy"
+                elif avg_difficulty > 0.3:
+                    target_difficulty = "hard"
+                else:
+                    target_difficulty = "medium"
+
         result = await agent.generate(
             grade_level=request.grade_level,
             topic=request.topic,
@@ -112,7 +129,9 @@ async def generate_quiz(request: QuizGenerateRequest, session: AsyncSession = De
         session.add(db_quiz)
         await session.flush()
 
+        _difficulty_map = {"easy": -1.0, "medium": 0.0, "hard": 1.0}
         for q in result["questions"]:
+            diff_str = q.get("difficulty", "medium")
             db_q = Question(
                 quiz_id=db_quiz.id,
                 question_type=q["question_type"],
@@ -122,7 +141,8 @@ async def generate_quiz(request: QuizGenerateRequest, session: AsyncSession = De
                 explanation=q.get("explanation"),
                 grade_level=request.grade_level,
                 topic=request.topic,
-                difficulty=q.get("difficulty", "medium"),
+                difficulty=diff_str,
+                difficulty_score=_difficulty_map.get(diff_str, 0.0),
             )
             session.add(db_q)
 
@@ -170,16 +190,35 @@ async def submit_quiz(request: QuizSubmitRequest, session: AsyncSession = Depend
                     "correct_answer": question.correct_answer,
                     "explanation": question.explanation,
                 })
+                from src.agents.adaptive_quiz import record_attempt
+                await record_attempt(
+                    session=session,
+                    user_id=request.user_id,
+                    question_id=question.id,
+                    quiz_id=request.quiz_id,
+                    correct=is_correct,
+                )
 
         total = len(request.answers)
         score = (correct_count / total * 100) if total > 0 else 0
+
+        # Update student ability estimates per topic
+        if quiz.topic:
+            from src.agents.adaptive_quiz import update_ability
+            await update_ability(
+                session=session,
+                user_id=request.user_id,
+                topic=quiz.topic,
+                correct_count=correct_count,
+                total_count=total,
+            )
 
         attempt = QuizAttempt(
             user_id=request.user_id,
             quiz_id=request.quiz_id,
             score=score,
             total=total,
-            answers=[a.model_dump() for a in request.answers],
+            answers=request.answers,
             completed=True,
         )
         session.add(attempt)
@@ -202,7 +241,7 @@ async def submit_quiz(request: QuizSubmitRequest, session: AsyncSession = Depend
 
         await analyze_quiz_attempt(attempt, session)
 
-        recommendations: list[dict] = []
+        recommendations: list[QuizRecommendation] = []
         try:
             fresh_weak = await get_weak_topics(request.user_id, session)
             for i, wt in enumerate(fresh_weak):
@@ -217,18 +256,18 @@ async def submit_quiz(request: QuizSubmitRequest, session: AsyncSession = Depend
                     rec_diff = "hard"
                     pri = 3
                 mc_list = wt.get("misconceptions", [])
-                recommendations.append({
-                    "topic": wt["topic"],
-                    "unit": wt.get("unit", ""),
-                    "grade_level": wt.get("grade_level", 0),
-                    "current_mastery": wt["average_score"],
-                    "severity": sev,
-                    "recommended_difficulty": rec_diff,
-                    "priority": pri,
-                    "has_misconceptions": len(mc_list) > 0,
-                    "misconception_count": len(mc_list),
-                })
-            recommendations.sort(key=lambda r: r["priority"])
+                recommendations.append(QuizRecommendation(
+                    topic=wt["topic"],
+                    unit=wt.get("unit", ""),
+                    grade_level=wt.get("grade_level", 0),
+                    current_mastery=wt["average_score"],
+                    severity=sev,
+                    recommended_difficulty=rec_diff,
+                    priority=pri,
+                    has_misconceptions=len(mc_list) > 0,
+                    misconception_count=len(mc_list),
+                ))
+            recommendations.sort(key=lambda r: r.priority)
         except Exception:
             logger.warning("quiz_recommend_after_submit_error", exc_info=True)
 

@@ -140,6 +140,7 @@ class Question(Base):
     grade_level: Mapped[int] = mapped_column(Integer)
     topic: Mapped[str] = mapped_column(String(300))
     difficulty: Mapped[str] = mapped_column(String(20), default="medium")
+    difficulty_score: Mapped[float] = mapped_column(Float, default=0.0)
     source_ref: Mapped[str] = mapped_column(String(200), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -471,3 +472,49 @@ class ModelRoutingLog(Base):
     success: Mapped[bool] = mapped_column(Boolean, default=True)
     error: Mapped[str] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class QuestionAttempt(Base):
+    __tablename__ = "question_attempts"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    question_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("questions.id"))
+    quiz_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("quizzes.id"), nullable=True
+    )
+    correct: Mapped[bool] = mapped_column(Boolean)
+    time_spent: Mapped[float | None] = mapped_column(Float, nullable=True)
+    hints_used: Mapped[int] = mapped_column(Integer, default=0)
+    attempt_number: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class StudentAbility(Base):
+    __tablename__ = "student_abilities"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True)
+    topic: Mapped[str] = mapped_column(String(300), primary_key=True)
+    ability_score: Mapped[float] = mapped_column(Float, default=0.0)
+    uncertainty: Mapped[float] = mapped_column(Float, default=3.0)
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class NotificationPreference(Base):
+    __tablename__ = "notification_preferences"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True
+    )
+    email: Mapped[str] = mapped_column(String(255))
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    digest_frequency: Mapped[str] = mapped_column(String(20), default="never")
+    milestone_alerts: Mapped[bool] = mapped_column(Boolean, default=True)
+    review_reminders: Mapped[bool] = mapped_column(Boolean, default=True)
+    verification_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    verification_expires: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)

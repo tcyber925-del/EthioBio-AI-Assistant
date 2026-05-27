@@ -1,7 +1,9 @@
+import os
 from datetime import datetime, timezone
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
+from jinja2 import Environment, FileSystemLoader
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -21,9 +23,17 @@ from src.api.gamification import (
     check_achievements,
     update_streak,
 )
-from src.database.models import RecoveryNotification, RecoveryPlan, RecoveryTask, StudentMastery, TopicMasteryHistory
+from src.database.models import (
+    NotificationPreference,
+    RecoveryNotification,
+    RecoveryPlan,
+    RecoveryTask,
+    StudentMastery,
+    TopicMasteryHistory,
+)
 from src.database.session import get_session
 from src.llm.router import ModelRouter
+from src.notifications.email_service import send_email
 from src.schemas.recovery import (
     CompleteTaskResponse,
     CreateRecoveryPlanRequest,
@@ -48,6 +58,11 @@ from src.schemas.recovery import (
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/recovery", tags=["Recovery"])
+
+MILESTONE_EMAIL_THRESHOLD = 10.0
+_MILESTONE_EMAIL_TITLE = "Milestone Achieved!"
+_TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "..", "notifications", "templates")
+_TEMPLATE_ENV = Environment(loader=FileSystemLoader(_TEMPLATE_DIR))
 
 
 @router.post("/plan", response_model=RecoveryPlanResponse)
@@ -169,6 +184,33 @@ async def complete_recovery_task(
             grade_level=0, session=session, source="task_completion",
             source_id=task.id, old_score=old_score,
         )
+
+        # Milestone email notification
+        try:
+            prefs_result = await session.execute(
+                select(NotificationPreference).where(NotificationPreference.user_id == user_id)
+            )
+            prefs = prefs_result.scalar_one_or_none()
+
+            if prefs and prefs.milestone_alerts and prefs.email_verified:
+                improvement = round(
+                    plan.completed_tasks / max(plan.total_tasks, 1) * 100, 1
+                )
+                if improvement >= MILESTONE_EMAIL_THRESHOLD:
+                    template = _TEMPLATE_ENV.get_template("milestone_alert.html")
+                    html = template.render(
+                        title=_MILESTONE_EMAIL_TITLE,
+                        message=(
+                            f"You've completed {plan.completed_tasks} of {plan.total_tasks}"
+                            f" recovery tasks for {plan.topic}!"
+                        ),
+                        improvement_pct=f"{improvement:.0f}",
+                        topic=plan.topic,
+                    )
+                    subject = f"Milestone: {improvement:.0f}% complete in {plan.topic}"
+                    await send_email(prefs.email, subject, html)
+        except Exception as e:
+            logger.error("recovery_milestone_email_error", error=str(e))
 
         await session.commit()
 
