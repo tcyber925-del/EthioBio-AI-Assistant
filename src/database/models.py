@@ -473,6 +473,22 @@ class ModelRoutingLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class QuestionAttempt(Base):
+    __tablename__ = "question_attempts"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    question_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("questions.id"))
+    quiz_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("quizzes.id"), nullable=True
+    )
+    correct: Mapped[bool] = mapped_column(Boolean)
+    time_spent: Mapped[float | None] = mapped_column(Float, nullable=True)
+    hints_used: Mapped[int] = mapped_column(Integer, default=0)
+    attempt_number: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class NotificationPreference(Base):
     __tablename__ = "notification_preferences"
 

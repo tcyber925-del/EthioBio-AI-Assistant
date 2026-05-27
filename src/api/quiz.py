@@ -3,6 +3,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.agents.adaptive_quiz import record_attempt
 from src.agents.quiz import QuizAgent
 from src.agents.weak_topic_detection import analyze_quiz_attempt, get_weak_topics
 from src.api.gamification import award_xp, check_achievements, update_streak
@@ -13,8 +14,8 @@ from src.schemas.quiz import (
     QuestionSchema,
     QuizGenerateRequest,
     QuizGenerateResponse,
-    QuizRecommendResponse,
     QuizRecommendation,
+    QuizRecommendResponse,
     QuizSubmitRequest,
     QuizSubmitResponse,
 )
@@ -170,6 +171,13 @@ async def submit_quiz(request: QuizSubmitRequest, session: AsyncSession = Depend
                     "correct_answer": question.correct_answer,
                     "explanation": question.explanation,
                 })
+                await record_attempt(
+                    session=session,
+                    user_id=request.user_id,
+                    question_id=question.id,
+                    quiz_id=request.quiz_id,
+                    correct=is_correct,
+                )
 
         total = len(request.answers)
         score = (correct_count / total * 100) if total > 0 else 0
