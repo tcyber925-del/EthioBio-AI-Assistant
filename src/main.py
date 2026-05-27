@@ -14,6 +14,7 @@ from src.api import (
     export,
     gamification,
     lesson,
+    notifications,
     progress,
     quiz,
     recovery,
@@ -62,6 +63,7 @@ app.include_router(diagram.router)
 app.include_router(export.router)
 app.include_router(gamification.router)
 app.include_router(recovery.router)
+app.include_router(notifications.router)
 app.include_router(activity.router)
 
 diagram_static_dir = Path("data/diagrams")
