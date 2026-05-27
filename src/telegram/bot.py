@@ -14,7 +14,7 @@ from src.agents.quiz import QuizAgent
 from src.agents.tutor import TutorAgent
 from src.api.gamification import award_xp, check_achievements, update_streak
 from src.config import settings
-from src.database.models import StudentProfile, User, UserRole
+from src.database.models import NotificationPreference, StudentProfile, User, UserRole
 from src.database.session import async_session_factory
 from src.llm.router import ModelRouter
 from src.telegram.formatter import format_for_telegram, sanitize_for_telegram, strip_markdown
@@ -1392,6 +1392,156 @@ async def progress_command(update: Update, context):
     await _db_try(_handle)
 
 
+async def settings_command(update: Update, context):
+    telegram_id = update.effective_user.id
+
+    async def _handle():
+        from sqlalchemy import select
+        from telegram import InlineKeyboardButton
+
+        async with async_session_factory() as session:
+            user_result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+            user = user_result.scalar_one_or_none()
+            if not user:
+                await update.message.reply_text("Please /start first to register.")
+                return
+
+            prefs_result = await session.execute(
+                select(NotificationPreference).where(NotificationPreference.user_id == user.id)
+            )
+            prefs = prefs_result.scalar_one_or_none()
+
+            email_status = prefs.email if prefs else "Not set"
+            verified = "✅" if prefs and prefs.email_verified else "❌"
+            milestone = "✅ On" if prefs and prefs.milestone_alerts else "⬜ Off"
+            reminders = "✅ On" if prefs and prefs.review_reminders else "⬜ Off"
+            digest = (prefs.digest_frequency.capitalize() if prefs else "Never")
+
+            lines = [
+                "⚙️ *Notification Settings*",
+                "",
+                f"📧 Email: `{email_status}` {verified}",
+                f"📊 Milestone Alerts: {milestone}",
+                f"🔔 Review Reminders: {reminders}",
+                f"📬 Digest: {digest}",
+                "",
+                "Use `/email you@example.com` to set your email.",
+            ]
+
+            buttons = []
+            row = []
+            if prefs and prefs.milestone_alerts:
+                row.append(InlineKeyboardButton("📊 Disable Milestones", callback_data="settings_toggle_milestone"))
+            else:
+                row.append(InlineKeyboardButton("📊 Enable Milestones", callback_data="settings_toggle_milestone"))
+            buttons.append(row)
+            row2 = []
+            if prefs and prefs.review_reminders:
+                row2.append(InlineKeyboardButton("🔔 Disable Reminders", callback_data="settings_toggle_reminders"))
+            else:
+                row2.append(InlineKeyboardButton("🔔 Enable Reminders", callback_data="settings_toggle_reminders"))
+            buttons.append(row2)
+            buttons.append([
+                InlineKeyboardButton("📬 Digest: Daily", callback_data="settings_digest_daily"),
+                InlineKeyboardButton("📬 Digest: Weekly", callback_data="settings_digest_weekly"),
+            ])
+            buttons.append([
+                InlineKeyboardButton("📬 Digest: Off", callback_data="settings_digest_never"),
+            ])
+
+            await update.message.reply_text(
+                "\n".join(lines),
+                reply_markup=InlineKeyboardMarkup(buttons),
+                parse_mode="Markdown",
+            )
+
+    await _db_try(_handle)
+
+
+async def email_command(update: Update, context):
+    args = context.args
+    if not args:
+        await update.message.reply_text("Usage: `/email you@example.com`", parse_mode="Markdown")
+        return
+    email = args[0].strip()
+    if "@" not in email or "." not in email:
+        await update.message.reply_text("Please provide a valid email address.")
+        return
+
+    telegram_id = update.effective_user.id
+
+    async def _handle():
+        from sqlalchemy import select
+
+        async with async_session_factory() as session:
+            user_result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+            user = user_result.scalar_one_or_none()
+            if not user:
+                await update.message.reply_text("Please /start first to register.")
+                return
+
+            prefs_result = await session.execute(
+                select(NotificationPreference).where(NotificationPreference.user_id == user.id)
+            )
+            prefs = prefs_result.scalar_one_or_none()
+
+            if prefs:
+                prefs.email = email
+                prefs.email_verified = False
+                prefs.verification_code = None
+                prefs.verification_expires = None
+            else:
+                prefs = NotificationPreference(user_id=user.id, email=email)
+                session.add(prefs)
+            await session.commit()
+
+        await update.message.reply_text(f"✅ Email set to `{email}`. Use /settings to customize notifications.", parse_mode="Markdown")
+
+    await _db_try(_handle)
+
+
+async def handle_settings_toggle(update: Update, context):
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+    telegram_id = update.effective_user.id
+
+    async def _handle():
+        from sqlalchemy import select
+
+        async with async_session_factory() as session:
+            user_result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+            user = user_result.scalar_one_or_none()
+            if not user:
+                await query.edit_message_text("User not found. Please /start first.")
+                return
+
+            prefs_result = await session.execute(
+                select(NotificationPreference).where(NotificationPreference.user_id == user.id)
+            )
+            prefs = prefs_result.scalar_one_or_none()
+            if not prefs:
+                await query.edit_message_text("No notification preferences found. Use /settings first.")
+                return
+
+            if data == "settings_toggle_milestone":
+                prefs.milestone_alerts = not prefs.milestone_alerts
+            elif data == "settings_toggle_reminders":
+                prefs.review_reminders = not prefs.review_reminders
+            elif data == "settings_digest_daily":
+                prefs.digest_frequency = "daily"
+            elif data == "settings_digest_weekly":
+                prefs.digest_frequency = "weekly"
+            elif data == "settings_digest_never":
+                prefs.digest_frequency = "never"
+
+            await session.commit()
+
+        await query.edit_message_text("✅ Settings updated! Use /settings to see changes.")
+
+    await _db_try(_handle)
+
+
 def build_app() -> Application:
     from telegram.request import HTTPXRequest
     _request = HTTPXRequest(
@@ -1413,6 +1563,8 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("reveal", reveal_command))
     app.add_handler(CommandHandler("recovery", recovery_command))
     app.add_handler(CommandHandler("progress", progress_command))
+    app.add_handler(CommandHandler("settings", settings_command))
+    app.add_handler(CommandHandler("email", email_command))
 
     quiz_handler = ConversationHandler(
         entry_points=[
@@ -1511,6 +1663,7 @@ def build_app() -> Application:
     app.add_handler(CallbackQueryHandler(menu, pattern="^menu$"))
     app.add_handler(CallbackQueryHandler(handle_recovery_complete_task, pattern=r"^recovery_complete_"))
     app.add_handler(CallbackQueryHandler(handle_recovery_view, pattern="^recovery_view$"))
+    app.add_handler(CallbackQueryHandler(handle_settings_toggle, pattern=r"^settings_"))
     app.add_error_handler(error_handler)
 
     return app
@@ -1518,8 +1671,30 @@ def build_app() -> Application:
 
 async def main():
     app = build_app()
+    await app.initialize()
+
+    from telegram import BotCommand
+    commands = [
+        BotCommand("start", "Show menu"),
+        BotCommand("help", "Show help"),
+        BotCommand("ask", "Ask a biology question"),
+        BotCommand("quiz", "Generate a quiz"),
+        BotCommand("grade", "Set your grade (7-12)"),
+        BotCommand("language", "Set language (en/am/both)"),
+        BotCommand("socratic", "Toggle Socratic mode"),
+        BotCommand("hint", "Get a hint"),
+        BotCommand("reveal", "Reveal the answer"),
+        BotCommand("recovery", "View recovery plans"),
+        BotCommand("progress", "View your progress"),
+        BotCommand("settings", "Notification settings"),
+        BotCommand("email", "Set your email"),
+        BotCommand("model", "Manage AI models"),
+        BotCommand("cancel", "Cancel current operation"),
+        BotCommand("menu", "Show main menu"),
+    ]
+    await app.bot.set_my_commands(commands)
+
     if settings.telegram_webhook_url:
-        await app.initialize()
         await app.bot.set_webhook(
             url=settings.telegram_webhook_url,
             secret_token=settings.telegram_webhook_secret,
@@ -1528,7 +1703,6 @@ async def main():
         logger.info("webhook_set", url=settings.telegram_webhook_url)
     else:
         logger.info("starting_polling")
-        await app.initialize()
         await app.updater.start_polling(allowed_updates=["message", "callback_query"], drop_pending_updates=True)
         await app.start()
         logger.info("bot_polling_started")
