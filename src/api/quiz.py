@@ -3,7 +3,6 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.agents.adaptive_quiz import record_attempt
 from src.agents.quiz import QuizAgent
 from src.agents.weak_topic_detection import analyze_quiz_attempt, get_weak_topics
 from src.api.gamification import award_xp, check_achievements, update_streak
@@ -191,6 +190,7 @@ async def submit_quiz(request: QuizSubmitRequest, session: AsyncSession = Depend
                     "correct_answer": question.correct_answer,
                     "explanation": question.explanation,
                 })
+                from src.agents.adaptive_quiz import record_attempt
                 await record_attempt(
                     session=session,
                     user_id=request.user_id,
@@ -218,7 +218,7 @@ async def submit_quiz(request: QuizSubmitRequest, session: AsyncSession = Depend
             quiz_id=request.quiz_id,
             score=score,
             total=total,
-            answers=[a.model_dump() for a in request.answers],
+            answers=request.answers,
             completed=True,
         )
         session.add(attempt)
@@ -241,7 +241,7 @@ async def submit_quiz(request: QuizSubmitRequest, session: AsyncSession = Depend
 
         await analyze_quiz_attempt(attempt, session)
 
-        recommendations: list[dict] = []
+        recommendations: list[QuizRecommendation] = []
         try:
             fresh_weak = await get_weak_topics(request.user_id, session)
             for i, wt in enumerate(fresh_weak):
@@ -256,18 +256,18 @@ async def submit_quiz(request: QuizSubmitRequest, session: AsyncSession = Depend
                     rec_diff = "hard"
                     pri = 3
                 mc_list = wt.get("misconceptions", [])
-                recommendations.append({
-                    "topic": wt["topic"],
-                    "unit": wt.get("unit", ""),
-                    "grade_level": wt.get("grade_level", 0),
-                    "current_mastery": wt["average_score"],
-                    "severity": sev,
-                    "recommended_difficulty": rec_diff,
-                    "priority": pri,
-                    "has_misconceptions": len(mc_list) > 0,
-                    "misconception_count": len(mc_list),
-                })
-            recommendations.sort(key=lambda r: r["priority"])
+                recommendations.append(QuizRecommendation(
+                    topic=wt["topic"],
+                    unit=wt.get("unit", ""),
+                    grade_level=wt.get("grade_level", 0),
+                    current_mastery=wt["average_score"],
+                    severity=sev,
+                    recommended_difficulty=rec_diff,
+                    priority=pri,
+                    has_misconceptions=len(mc_list) > 0,
+                    misconception_count=len(mc_list),
+                ))
+            recommendations.sort(key=lambda r: r.priority)
         except Exception:
             logger.warning("quiz_recommend_after_submit_error", exc_info=True)
 
