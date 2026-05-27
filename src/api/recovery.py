@@ -59,6 +59,10 @@ from src.schemas.recovery import (
 logger = structlog.get_logger()
 router = APIRouter(prefix="/recovery", tags=["Recovery"])
 
+MILESTONE_EMAIL_THRESHOLD = 10.0
+_TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "..", "notifications", "templates")
+_TEMPLATE_ENV = Environment(loader=FileSystemLoader(_TEMPLATE_DIR))
+
 
 @router.post("/plan", response_model=RecoveryPlanResponse)
 async def create_recovery_plan(
@@ -188,34 +192,22 @@ async def complete_recovery_task(
             prefs = prefs_result.scalar_one_or_none()
 
             if prefs and prefs.milestone_alerts and prefs.email_verified:
-                current_result = await session.execute(
-                    select(StudentMastery).where(
-                        StudentMastery.user_id == user_id,
-                        StudentMastery.topic == plan.topic,
-                    )
+                improvement = round(
+                    plan.completed_tasks / max(plan.total_tasks, 1) * 100, 1
                 )
-                current_mastery = current_result.scalar_one_or_none()
-                current_score = current_mastery.average_score if current_mastery else None
-
-                if old_score is not None and current_score is not None:
-                    improvement = current_score - old_score
-                    if improvement >= 10.0:
-                        template_dir = os.path.join(
-                            os.path.dirname(__file__), "..", "notifications", "templates",
-                        )
-                        env = Environment(loader=FileSystemLoader(template_dir))
-                        template = env.get_template("milestone_alert.html")
-                        html = template.render(
-                            title="Milestone Achieved!",
-                            message=(
-                                f"You improved your {plan.topic} mastery"
-                                f" by {improvement:.0f}%!"
-                            ),
-                            improvement_pct=f"{improvement:.0f}",
-                            topic=plan.topic,
-                        )
-                        subject = f"Milestone: +{improvement:.0f}% in {plan.topic}"
-                        await send_email(prefs.email, subject, html)
+                if improvement >= MILESTONE_EMAIL_THRESHOLD:
+                    template = _TEMPLATE_ENV.get_template("milestone_alert.html")
+                    html = template.render(
+                        title="Milestone Achieved!",
+                        message=(
+                            f"You've completed {plan.completed_tasks} of {plan.total_tasks}"
+                            f" recovery tasks for {plan.topic}!"
+                        ),
+                        improvement_pct=f"{improvement:.0f}",
+                        topic=plan.topic,
+                    )
+                    subject = f"Milestone: {improvement:.0f}% complete in {plan.topic}"
+                    await send_email(prefs.email, subject, html)
         except Exception as e:
             logger.error("recovery_milestone_email_error", error=str(e))
 
