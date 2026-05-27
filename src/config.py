@@ -42,6 +42,13 @@ class Settings(BaseSettings):
 
     dashboard_url: str = "http://localhost:3000"
     api_base_url: str = "http://localhost:8000"
+
+    email_host: str = ""
+    email_port: int = 587
+    email_user: str = ""
+    email_password: str = ""
+    email_from: str = "noreply@ethiobio.com"
+    email_use_tls: bool = True
     jwt_secret: str = "change-me-jwt-secret"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 480

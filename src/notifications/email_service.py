@@ -1,46 +1,43 @@
-import os
+import asyncio
 import smtplib
+import socket
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 import structlog
 
+from src.config import settings
+
 logger = structlog.get_logger()
 
 
-def get_email_config():
-    return {
-        "host": os.getenv("EMAIL_HOST", ""),
-        "port": int(os.getenv("EMAIL_PORT", "587")),
-        "user": os.getenv("EMAIL_USER", ""),
-        "password": os.getenv("EMAIL_PASS", ""),
-        "from": os.getenv("EMAIL_FROM", "noreply@ethiobio.com"),
-        "use_tls": os.getenv("EMAIL_USE_TLS", "true").lower() == "true",
-    }
+async def send_email(to: str, subject: str, html_body: str) -> bool:
+    if not to:
+        logger.warning("email_no_recipient", subject=subject)
+        return False
 
-
-def send_email(to: str, subject: str, html_body: str) -> bool:
-    config = get_email_config()
-    if not config["host"]:
+    if not settings.email_host:
         logger.warning("email_not_configured", to=to, subject=subject)
         return False
 
     try:
         msg = MIMEMultipart("alternative")
-        msg["From"] = config["from"]
+        msg["From"] = settings.email_from
         msg["To"] = to
         msg["Subject"] = subject
         msg.attach(MIMEText(html_body, "html"))
 
-        with smtplib.SMTP(config["host"], config["port"]) as server:
-            if config["use_tls"]:
-                server.starttls()
-            if config["user"]:
-                server.login(config["user"], config["password"])
-            server.send_message(msg)
+        def _send():
+            with smtplib.SMTP(settings.email_host, settings.email_port) as server:
+                if settings.email_use_tls:
+                    server.starttls()
+                if settings.email_user:
+                    server.login(settings.email_user, settings.email_password)
+                server.send_message(msg)
 
+        await asyncio.to_thread(_send)
         logger.info("email_sent", to=to, subject=subject)
         return True
-    except Exception as e:
+    except (smtplib.SMTPException, socket.gaierror, OSError) as e:
         logger.error("email_failed", to=to, subject=subject, error=str(e))
         return False
