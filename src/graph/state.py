@@ -50,8 +50,14 @@ class AgentState:
     lesson_params: dict = field(default_factory=dict)
     preferred_model: str = ""
 
+    session_id: Optional[str] = None
+    memory_context: str = ""
     socratic_mode: bool = False
     guiding_question: str = ""
+    socratic_stage: str = ""
+    socratic_focus: str = ""
+    socratic_understanding: str = ""
+    socratic_next_question: str = ""
 
     hint_level: int = 0
     reveal_answer: bool = False
@@ -68,8 +74,13 @@ class GraphOutput:
     status: str
     requires_teacher_review: bool = False
     preferred_model: str = ""
+    session_id: str = ""
     socratic_mode: bool = False
     guiding_question: str = ""
+    socratic_stage: str = ""
+    socratic_focus: str = ""
+    socratic_understanding: str = ""
+    socratic_next_question: str = ""
     hint_level: int = 0
     reveal_answer: bool = False
     misconception_detected: bool = False

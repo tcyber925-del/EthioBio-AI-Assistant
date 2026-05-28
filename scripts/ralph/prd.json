@@ -1,119 +1,98 @@
 {
   "project": "EthioBio AI Assistant",
-  "title": "Personalized Recovery Plans",
-  "branchName": "ralph/recovery-plans",
-  "description": "Implement an AI-powered adaptive recovery planning system that automatically detects weak biology topics from quiz/assessment performance and generates personalized remediation plans with adaptive quizzes, guided remediation flows, spaced review recommendations, and mastery tracking.",
+  "title": "Persistent Educational Memory Layer",
+  "branchName": "feature/persistent-educational-memory",
+  "description": "Implement a conversational memory layer enabling the tutor to remember context across tutoring sessions and turns. Includes session lifecycle tracking, Socratic dialogue state persistence, educational summarization, semantic retrieval over past sessions, and memory injection into the LangGraph TutorNode.",
   "userStories": [
     {
-      "id": "RP-001",
-      "title": "Weak Topic Detection",
-      "description": "As a student, I want weak biology topics identified from my assessment performance so that I know what to improve.",
+      "id": "MEM-001",
+      "title": "Session Lifecycle",
+      "description": "As a student, I want the tutor to remember the current tutoring conversation across turns so that I don't have to repeat myself.",
       "acceptanceCriteria": [
-        "Quiz and assessment scores analyzed automatically after completion",
-        "Subtopic-level weaknesses detected and scored (not just overall score)",
-        "Weak topics displayed with severity scores and confidence metrics",
-        "Misconception patterns detected from repeated mistakes and hint usage",
+        "Session state created on first user message",
+        "Session updated after each tutor turn",
+        "Session closed after 30min inactivity",
+        "Session context available in TutorNode",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Backend analysis logic. Requires new database tables: student_mastery, misconception_patterns."
+      "notes": "New memory_sessions table. SessionManager in src/core/memory/session_manager.py. Session lifecycle: start -> heartbeat -> close. Auto-close via last_active_at check."
     },
     {
-      "id": "RP-002",
-      "title": "AI Recovery Plan Generation",
-      "description": "As a student, I want personalized recovery plans generated automatically when I score below 60% on a unit, so that I can improve efficiently.",
+      "id": "MEM-002",
+      "title": "Socratic Continuity",
+      "description": "As a student, I want guided Socratic dialogue to resume where it left off so that reasoning flows continue naturally across interruptions.",
       "acceptanceCriteria": [
-        "Recovery plan auto-triggered when unit score < 60% or repeated failures detected",
-        "Plan includes topic-specific remediation tasks ordered by intelligence",
-        "Tasks can include: review notes, guided quizzes, diagram exercises, retake assessments",
-        "Plan adapts difficulty based on weakness severity",
-        "Plans stored and retrievable via API",
+        "SocraticStage persisted per user+topic",
+        "Stage determined by LLM (guided_discovery/evaluation/correction/consolidation)",
+        "Next question stored and retrievable",
+        "No code-enforced state machine transitions",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "New memory_socratic_states table. SocraticManager in src/core/memory/socratic_manager.py. LLM writes stage + next_question; code persists. 4 stages: guided_discovery, evaluation, correction, consolidation."
+    },
+    {
+      "id": "MEM-003",
+      "title": "Session Summarization",
+      "description": "As a student, I want tutoring sessions summarized automatically so that long-term educational continuity is preserved efficiently.",
+      "acceptanceCriteria": [
+        "Summaries generated on session close",
+        "Misconceptions and conceptual progress extracted",
+        "Embedding stored in ChromaDB (educational_memories collection)",
+        "Redundant content excluded from summary",
         "Typecheck passes"
       ],
       "priority": 2,
       "passes": true,
-      "notes": "RecoveryAgent in src/agents/recovery_agent.py extends BaseAgent, generates plans from weak topics via LLM. Endpoint: POST /recovery/auto-generate/{user_id}. Task types: review_notes, guided_quiz, diagram_exercise, retake_assessment, practice_questions."
+      "notes": "New memory_educational_summaries table. Summarizer in src/core/memory/summarizer.py. ChromaDB collection 'educational_memories'. Triggered by session close. LLM extracts understanding_level, key_misconceptions, confidence, next_learning_goal. Embedding stored via Embedder (reuses existing RAG embedder)."
     },
     {
-      "id": "RP-003",
-      "title": "Recovery Dashboard",
-      "description": "As a student, I want a dedicated recovery dashboard so that I can track my weaknesses and improvement clearly in one place.",
+      "id": "MEM-004",
+      "title": "Semantic Memory Retrieval",
+      "description": "As a student, I want the tutor to recall relevant past educational discussions so that responses remain personalized.",
       "acceptanceCriteria": [
-        "Dashboard accessible from main navigation",
-        "Displays weak topics list with mastery percentages",
-        "Shows active recovery plan with task timeline",
-        "Shows recommended quizzes and review schedule",
-        "Shows AI-generated recommendations",
-        "Typecheck passes",
-        "Verify in browser using Playwright browser tools"
+        "Semantic retrieval from educational_memories ChromaDB collection operational",
+        "Ranking considers recency, confidence, and topic relevance",
+        "Token budget enforced (1500 tokens max for memory context)",
+        "Topic filtering supported",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "RetrievalOrchestrator in src/core/memory/retrieval_orchestrator.py. Custom ranking layer combining cosine similarity (0.3) + recency weight (0.4) + confidence weight (0.3). Token budget enforcement (1500t) via truncation by rank with 14-day recency half-life. Topic filtering via ChromaDB $and where."
+    },
+    {
+      "id": "MEM-005",
+      "title": "Memory Injection into Tutoring",
+      "description": "As a student, I want the tutor to use my learning history when explaining concepts so that tutoring adapts to my needs.",
+      "acceptanceCriteria": [
+        "System prompt prefix injected with learner context (mastery, misconceptions, Socratic stage, recent summaries)",
+        "Active misconceptions visible in tutor behavior",
+        "Socratic continuity maintained across sessions",
+        "Backward compatible (no memory = current behavior preserved)",
+        "Typecheck passes"
       ],
       "priority": 3,
       "passes": true,
-      "notes": "New dashboard page/component. Requires RP-001 and RP-002 for data."
+      "notes": "ContextAssembler in src/core/memory/context_assembler.py. Reads SessionState + SocraticState + top-N summaries (via RetrievalOrchestrator) + StudentMastery + MisconceptionPattern data. Formats as 1500t system prompt prefix with per-section budgets. Injected via AgentState.memory_context. TutorNode falls back to bare Socratic if no assembled context. Backward compatible. Socratic state saved back to DB after each tutor turn. Session heartbeat + tutor_interaction event logged."
     },
     {
-      "id": "RP-004",
-      "title": "Adaptive Quiz Recommendation",
-      "description": "As a student, I want targeted quizzes focused on my weak areas so that I can practice effectively.",
+      "id": "MEM-006",
+      "title": "Educational Events Logging",
+      "description": "As a developer, I want memory lifecycle events logged so that I can debug and analyze memory behavior.",
       "acceptanceCriteria": [
-        "Quiz difficulty adapts based on current mastery level",
-        "Quiz content focuses on detected weak subtopics",
-        "Recommendations update dynamically after each completed quiz",
-        "Quiz completion triggers re-evaluation of topic mastery",
-        "Typecheck passes",
-        "Verify in browser using Playwright browser tools"
-      ],
-      "priority": 4,
-      "passes": true,
-      "notes": "Enhances existing quiz agent with adaptive difficulty and weakness targeting. Requires RP-001."
-    },
-    {
-      "id": "RP-005",
-      "title": "Recovery Progress Tracking",
-      "description": "As a student, I want my recovery progress tracked over time so that I can measure improvement.",
-      "acceptanceCriteria": [
-        "Progress percentages visible per topic on dashboard",
-        "Mastery scores update automatically after each completed task or quiz",
-        "Topic improvement tracked over time with history",
-        "Mastery data persisted in topic_mastery_history table",
-        "Typecheck passes",
-        "Verify in browser using Playwright browser tools"
-      ],
-      "priority": 5,
-      "passes": true,
-      "notes": "New table: topic_mastery_history. Integrates with gamification XP system via recovery_task_completion source."
-    },
-    {
-      "id": "RP-006",
-      "title": "Spaced Repetition Scheduling",
-      "description": "As a student, I want review reminders so that I retain biology concepts over time.",
-      "acceptanceCriteria": [
-        "Review intervals generated based on topic mastery and retention decay",
-        "Reminder schedule stored in spaced_repetition_schedule table",
-        "Repeat practice tasks appear on dashboard when due for review",
-        "Intervals adapt based on re-assessment performance",
+        "memory_events table created",
+        "Key events logged: session_started, session_closed, misconception_detected, socratic_breakthrough",
+        "Metadata captures relevant context per event",
+        "Performance overhead minimal (async writes)",
         "Typecheck passes"
       ],
-      "priority": 6,
+      "priority": 3,
       "passes": true,
-      "notes": "New table: spaced_repetition_schedule. Schedule logic in src/agents/spaced_repetition.py (SM-2 inspired algorithm). Review intervals update dynamically based on mastery score."
-    },
-    {
-      "id": "RP-007",
-      "title": "Recovery Notifications",
-      "description": "As a student, I want motivational progress notifications so that I stay engaged with my recovery.",
-      "acceptanceCriteria": [
-        "Notifications triggered when topic mastery improves significantly",
-        "Messages highlight milestone improvements (e.g., 'You improved 18% in Cell Biology')",
-        "Messaging is supportive and encouraging, avoids negative wording",
-        "Notifications appear in chat and dashboard",
-        "Typecheck passes",
-        "Verify in browser using Playwright browser tools"
-      ],
-      "priority": 7,
-      "passes": true,
-      "notes": "Notification logic in weak_topic_detection.py (_generate_improvement_notification). Display in dashboard (notifications panel in recovery page) and chat (Telegram bot _fetch_recovery_notifications + _format_notification_messages). Three event types: mastery_improvement, severity_upgrade, plan_completed."
+      "notes": "New memory_events table. EventLogger in src/core/memory/event_logger.py. Lightweight async logging. Not a full event bus - deferred."
     }
   ]
 }

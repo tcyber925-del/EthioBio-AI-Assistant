@@ -501,6 +501,68 @@ class StudentAbility(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
 
+class MemorySession(Base):
+    __tablename__ = "memory_sessions"
+
+    session_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    active_topic: Mapped[str] = mapped_column(String(300), nullable=True)
+    tutoring_mode: Mapped[str] = mapped_column(String(20), default="direct")
+    educational_context: Mapped[str] = mapped_column(Text, nullable=True)
+    unresolved_questions: Mapped[dict] = mapped_column(JSON, default=list)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_active_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    summary: Mapped[str] = mapped_column(Text, nullable=True)
+
+    user: Mapped["User"] = relationship(backref="memory_sessions")
+
+
+class MemorySocraticState(Base):
+    __tablename__ = "memory_socratic_states"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    topic: Mapped[str] = mapped_column(String(300))
+    socratic_stage: Mapped[str] = mapped_column(String(30), default="guided_discovery")
+    current_focus: Mapped[str] = mapped_column(String(500), nullable=True)
+    student_understanding: Mapped[str] = mapped_column(String(20), default="none")
+    next_question: Mapped[str] = mapped_column(Text, nullable=True)
+    conceptual_gaps: Mapped[dict] = mapped_column(JSON, default=list)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    user: Mapped["User"] = relationship(backref="memory_socratic_states")
+
+
+class MemoryEducationalSummary(Base):
+    __tablename__ = "memory_educational_summaries"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    topic: Mapped[str] = mapped_column(String(300))
+    understanding_level: Mapped[str] = mapped_column(String(20), nullable=True)
+    key_misconceptions: Mapped[dict] = mapped_column(JSON, default=list)
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    next_learning_goal: Mapped[str] = mapped_column(Text, nullable=True)
+    tutoring_quality_notes: Mapped[str] = mapped_column(Text, nullable=True)
+    embedding_id: Mapped[str] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    user: Mapped["User"] = relationship(backref="memory_educational_summaries")
+
+
+class MemoryEvent(Base):
+    __tablename__ = "memory_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    event_type: Mapped[str] = mapped_column(String(50))
+    topic: Mapped[str] = mapped_column(String(300), nullable=True)
+    event_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    user: Mapped["User"] = relationship(backref="memory_events")
+
+
 class NotificationPreference(Base):
     __tablename__ = "notification_preferences"
 
