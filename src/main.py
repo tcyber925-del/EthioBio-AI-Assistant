@@ -21,6 +21,7 @@ from src.api import (
 )
 from src.api.graph import router as graph_router
 from src.api.models import router as models_router
+from src.core.memory.router import router as memory_router
 from src.config import settings
 from src.database.session import close_db, init_db
 from src.llm.router import ModelRouter
@@ -64,6 +65,7 @@ app.include_router(export.router)
 app.include_router(gamification.router)
 app.include_router(recovery.router)
 app.include_router(notifications.router)
+app.include_router(memory_router)
 app.include_router(activity.router)
 
 diagram_static_dir = Path("data/diagrams")

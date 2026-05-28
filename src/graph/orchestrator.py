@@ -55,6 +55,12 @@ async def run_graph(
     socratic_mode: bool = False,
     hint_level: int = 0,
     reveal_answer: bool = False,
+    session_id: str | None = None,
+    memory_context: str = "",
+    socratic_stage: str = "",
+    socratic_focus: str = "",
+    socratic_understanding: str = "",
+    socratic_next_question: str = "",
 ) -> GraphOutput:
     router = ModelRouter(preferred_model=preferred_model)
     adapter = VectorStoreAdapter()
@@ -66,9 +72,15 @@ async def run_graph(
         topic=topic,
         language=language,
         preferred_model=preferred_model or "",
+        session_id=session_id,
+        memory_context=memory_context,
         socratic_mode=socratic_mode,
         hint_level=hint_level,
         reveal_answer=reveal_answer,
+        socratic_stage=socratic_stage,
+        socratic_focus=socratic_focus,
+        socratic_understanding=socratic_understanding,
+        socratic_next_question=socratic_next_question,
     )
 
     graph = build_graph(router, adapter)
@@ -105,8 +117,13 @@ async def run_graph(
         sources=sources[:3],
         status=result.get("status", "pending"),
         requires_teacher_review=result.get("requires_teacher_review", False),
+        session_id=result.get("session_id", ""),
         socratic_mode=result.get("socratic_mode", False),
         guiding_question=result.get("guiding_question", ""),
+        socratic_stage=result.get("socratic_stage", ""),
+        socratic_focus=result.get("socratic_focus", ""),
+        socratic_understanding=result.get("socratic_understanding", ""),
+        socratic_next_question=result.get("socratic_next_question", ""),
         hint_level=result.get("hint_level", 0),
         reveal_answer=result.get("reveal_answer", False),
         misconception_detected=result.get("misconception_detected", False),

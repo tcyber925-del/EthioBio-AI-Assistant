@@ -95,6 +95,23 @@ class TutorNode:
         lang_context = "Answer in English." if state.language == "en" else "Answer in English with Amharic explanation."
 
         system = SOCRATIC_SYSTEM_PROMPT if state.socratic_mode else SYSTEM_PROMPT
+
+        memory_block = ""
+        if state.memory_context:
+            memory_block = "\n\n" + state.memory_context
+        elif state.socratic_mode and state.socratic_stage:
+            memory_block = "\n\n## Learner Context\n"
+            memory_block += f"- Socratic Stage: {state.socratic_stage}\n"
+            if state.socratic_focus:
+                memory_block += f"- Current Focus: {state.socratic_focus}\n"
+            if state.socratic_understanding:
+                memory_block += f"- Student Understanding: {state.socratic_understanding}\n"
+            if state.socratic_next_question:
+                memory_block += f"- Previous Guiding Question: {state.socratic_next_question}\n"
+
+        if memory_block:
+            system += memory_block
+
         if state.reveal_answer:
             system += REVEAL_PROMPT
         elif state.hint_level > 0 and state.hint_level in HINT_PROMPTS:
