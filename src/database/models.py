@@ -508,7 +508,7 @@ class MemorySession(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     active_topic: Mapped[str] = mapped_column(String(300), nullable=True)
     tutoring_mode: Mapped[str] = mapped_column(String(20), default="direct")
-    educational_context: Mapped[str] = mapped_column(Text, nullable=True)
+    educational_context: Mapped[dict] = mapped_column(JSON, nullable=True)
     unresolved_questions: Mapped[dict] = mapped_column(JSON, default=list)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     last_active_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

@@ -14,8 +14,11 @@ from src.agents.quiz import QuizAgent
 from src.agents.tutor import TutorAgent
 from src.api.gamification import award_xp, check_achievements, update_streak
 from src.config import settings
-from src.database.models import NotificationPreference, StudentProfile, User, UserRole
+from src.core.memory.context_assembler import ContextAssembler
+from src.core.memory.session_manager import SessionManager
+from src.database.models import MemorySession, NotificationPreference, StudentProfile, User, UserRole
 from src.database.session import async_session_factory
+from sqlalchemy import select
 from src.llm.router import ModelRouter
 from src.telegram.formatter import format_for_telegram, sanitize_for_telegram, strip_markdown
 from src.telegram.keyboards import (
@@ -380,6 +383,31 @@ async def end_conversation(update: Update, context):
     return ConversationHandler.END
 
 
+async def _build_memory_context(telegram_id: int, topic: str | None, db):
+    """Look up user, create/get active session, build memory context."""
+    topic = str(topic) if topic is not None else None
+    session_mgr = SessionManager()
+    assembler = ContextAssembler()
+    result = await db.execute(select(User).where(User.telegram_id == telegram_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        return None, None, ""
+    mem_session = await session_mgr.get_or_create_active_session(
+        user.id, topic=topic, db=db,
+    )
+    ctx = await assembler.assemble(
+        user_id=user.id, topic=topic, db=db,
+        session_state={
+            "active_topic": mem_session.active_topic,
+            "tutoring_mode": mem_session.tutoring_mode,
+            "educational_context": mem_session.educational_context,
+            "unresolved_questions": mem_session.unresolved_questions,
+        } if mem_session else None,
+        socratic_state=None,
+    )
+    return user.id, mem_session.session_id if mem_session else None, ctx
+
+
 async def handle_question(update: Update, context):
     question = update.message.text
     context.user_data["ask_question"] = question
@@ -388,21 +416,51 @@ async def handle_question(update: Update, context):
     thinking_msg = await update.message.reply_text("Thinking...")
 
     result = None
+    memory_user_id = None
+    memory_session_id = None
+    memory_context = ""
     try:
-        router_llm = ModelRouter()
-        agent = TutorAgent(llm_router=router_llm, retriever=None)
-        socratic = context.user_data.get("socratic_mode", False)
-        hint_level = context.user_data.get("hint_level", 0)
-        reveal = context.user_data.get("reveal_answer", False)
-        result = await agent.answer(
-            question=question, user_id=None, use_rag=True,
-            grade_level=context.user_data.pop("tutor_grade", None) or context.user_data.get("grade_level"),
-            language=context.user_data.get("language", "en"),
-            socratic_mode=socratic,
-            hint_level=hint_level,
-            reveal_answer=reveal,
-        )
-        response = result["answer"]
+        telegram_id = update.effective_user.id if update.effective_user else None
+        async with async_session_factory()() as _mem_db:
+            if telegram_id:
+                memory_user_id, memory_session_id, memory_context = await _build_memory_context(
+                    telegram_id, context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
+                    _mem_db,
+                )
+
+            router_llm = ModelRouter()
+            agent = TutorAgent(llm_router=router_llm, retriever=None)
+            socratic = context.user_data.get("socratic_mode", False)
+            hint_level = context.user_data.get("hint_level", 0)
+            reveal = context.user_data.get("reveal_answer", False)
+            result = await agent.answer(
+                question=question, user_id=memory_user_id, use_rag=True,
+                grade_level=context.user_data.pop("tutor_grade", None) or context.user_data.get("grade_level"),
+                topic=str(context.user_data.get("tutor_grade") or context.user_data.get("grade_level") or ""),
+                language=context.user_data.get("language", "en"),
+                socratic_mode=socratic,
+                hint_level=hint_level,
+                reveal_answer=reveal,
+                memory_context=memory_context,
+            )
+            response = result["answer"]
+
+            if memory_user_id and memory_session_id:
+                try:
+                    mem_session = (await _mem_db.execute(
+                        select(MemorySession).where(MemorySession.session_id == memory_session_id)
+                    )).scalar_one_or_none()
+                    if mem_session:
+                        if not isinstance(mem_session.educational_context, dict):
+                            mem_session.educational_context = {}
+                        turns = mem_session.educational_context.setdefault("recent_turns", [])
+                        turns.append({"role": "user", "content": question})
+                        turns.append({"role": "assistant", "content": result["answer"]})
+                        mem_session.educational_context["recent_turns"] = turns[-10:]
+                        await _mem_db.commit()
+                except Exception as e:
+                    logger.warning("memory_turns_save_error", error=str(e))
+
         if result.get("misconception_detected"):
             response += "\n\n💡 I noticed a misunderstanding — gently corrected above."
         if result.get("sources"):
