@@ -70,9 +70,23 @@ class ContextAssembler:
             f"- Topic: {state.get('active_topic', 'unknown')}",
             f"- Mode: {state.get('tutoring_mode', 'direct')}",
         ]
+
         ctx = state.get("educational_context")
-        if ctx:
-            lines.append(f"- Educational Context: {ctx}")
+        recent_turns = []
+        if isinstance(ctx, dict):
+            recent_turns = ctx.get("recent_turns", [])
+            ctx_text = {k: v for k, v in ctx.items() if k != "recent_turns"}
+            if ctx_text:
+                lines.append(f"- Educational Context: {ctx_text}")
+
+        if recent_turns:
+            turn_lines = []
+            for turn in recent_turns[-4:]:
+                role = turn.get("role", "?")
+                content = turn.get("content", "")[:200]
+                turn_lines.append(f"  {role}: {content}")
+            lines.append("- Recent Conversation:\n" + "\n".join(turn_lines))
+
         questions = state.get("unresolved_questions")
         if questions and isinstance(questions, list) and len(questions) > 0:
             lines.append(f"- Unresolved Questions: {'; '.join(str(q) for q in questions[:3])}")

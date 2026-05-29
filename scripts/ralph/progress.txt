@@ -104,7 +104,42 @@ Started: Tue May 26 07:23:16 PM EAT 2026
 
 ---## Persistent Educational Memory — Implementation Passes
 
-### Pass 1 — Session + Socratic Memory [COMPLETE]
+#### Pass 4 — Memory Injection into Tutoring + Bot Fix [COMPLETE]
+
+#### Completed Stories
+- **MEM-005** (Memory Injection): ContextAssembler reads all memory data, formats as 1500t system prompt prefix. Injected via AgentState.memory_context into TutorNode. Socratic state saved back to DB after each tutor turn. Session heartbeat + event logging wired into graph chat endpoint.
+- **Conversation history fix**: Both LangGraph and Telegram bot paths now accumulate and inject conversation turns. Bot path fixed — `TutorAgent.answer()` accepts `memory_context`, `handle_question()` opens DB session, builds context, saves turns.
+
+#### Files Created
+- `src/core/memory/context_assembler.py`: ContextAssembler with per-section token budgets
+
+#### Files Modified
+- `src/graph/state.py`: Added `memory_context` field
+- `src/graph/orchestrator.py`: Added `memory_context` parameter to `run_graph()`
+- `src/graph/nodes/tutor.py`: Uses `state.memory_context` if non-empty
+- `src/api/graph.py`: Full memory flow: ContextAssembler → run_graph → Socratic save-back → heartbeat → event log → conversation turn save
+- `src/agents/tutor.py`: `TutorAgent.answer()` accepts `memory_context` parameter
+- `src/telegram/bot.py`: `handle_question()` opens DB session, builds memory context, saves turns; `_build_memory_context()` helper added
+
+#### Verification
+- ruff: clean on all modified files (only pre-existing I001 in bot.py)
+- mypy: no new errors
+- 239 tests pass (no regressions)
+- Docker containers rebuilt twice
+
+### Pass 5 — Safety, Health, Hardening, and Tests [COMPLETE]
+
+#### Completed Items
+- Memory safety sanitizer: PII stripping, content validation, confidence clamping
+- Health endpoint: `GET /memory/health`
+- Hardening: try/except wrappers around all ContextAssembler DB queries
+- 38 memory tests covering all components
+
+#### Verification
+- MEM-001 through MEM-006 all marked `passes: true` in prd.json
+- 239 tests pass (38 new + 201 existing), 0 regressions
+
+## Pass 1 — Session + Socratic Memory [COMPLETE]
 
 #### Completed Stories
 - **MEM-001** (Session Lifecycle): SessionManager with create/heartbeat/close, memory_sessions table, API endpoints, session context in TutorNode

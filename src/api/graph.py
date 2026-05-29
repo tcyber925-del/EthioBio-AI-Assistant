@@ -129,6 +129,20 @@ async def graph_chat(request: GraphChatRequest, db: AsyncSession = Depends(get_s
             )
 
         if mem_session:
+            if not isinstance(mem_session.educational_context, dict):
+                mem_session.educational_context = {}
+            turns = mem_session.educational_context.setdefault("recent_turns", [])
+            turns.append({
+                "role": "user",
+                "content": request.question,
+            })
+            if result.answer:
+                turns.append({
+                    "role": "assistant",
+                    "content": result.answer,
+                })
+            mem_session.educational_context["recent_turns"] = turns[-10:]
+
             mem_session.unresolved_questions = [
                 getattr(result, attr, "")
                 for attr in ("guiding_question",) if getattr(result, "guiding_question", "")
