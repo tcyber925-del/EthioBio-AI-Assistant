@@ -136,16 +136,26 @@ async def reveal_command(update: Update, context):
     context.user_data["reveal_answer"] = True
     await update.message.reply_text("🔍 Revealing the full answer...")
     try:
-        router_llm = ModelRouter()
-        agent = TutorAgent(llm_router=router_llm, retriever=None)
-        result = await agent.answer(
-            question=question, user_id=None, use_rag=True,
-            grade_level=context.user_data.get("grade_level"),
-            language=context.user_data.get("language", "en"),
-            socratic_mode=False,
-            hint_level=hint_level,
-            reveal_answer=True,
-        )
+        telegram_id = update.effective_user.id if update.effective_user else None
+        async with async_session_factory()() as _mem_db:
+            memory_user_id, memory_session_id, memory_context = await _build_memory_context(
+                telegram_id,
+                context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
+                _mem_db,
+            ) if telegram_id else (None, None, "")
+
+            router_llm = ModelRouter()
+            agent = TutorAgent(llm_router=router_llm, retriever=None)
+            result = await agent.answer(
+                question=question, user_id=memory_user_id, use_rag=True,
+                grade_level=context.user_data.get("grade_level"),
+                language=context.user_data.get("language", "en"),
+                socratic_mode=False,
+                hint_level=hint_level,
+                reveal_answer=True,
+                memory_context=memory_context,
+            )
+            await router_llm.close()
         attempt_msg = f"\n\n📊 You used {hint_level} hint(s) before revealing the answer." if hint_level > 0 else "\n\n📊 You revealed the answer without using hints."
         response = result["answer"] + attempt_msg
         await _reply_long(
@@ -153,7 +163,6 @@ async def reveal_command(update: Update, context):
             reply_markup=hint_keyboard(hint_level, True),
             parse_mode="HTML",
         )
-        await router_llm.close()
     except Exception as e:
         logger.error("reveal_command_error", error=str(e))
         await update.message.reply_text(
@@ -199,16 +208,26 @@ async def hint_command(update: Update, context):
         return
     await update.message.reply_text(f"💡 Hint level {next_level}/3...")
     try:
-        router_llm = ModelRouter()
-        agent = TutorAgent(llm_router=router_llm, retriever=None)
-        result = await agent.answer(
-            question=question, user_id=None, use_rag=True,
-            grade_level=context.user_data.get("grade_level"),
-            language=context.user_data.get("language", "en"),
-            socratic_mode=context.user_data.get("socratic_mode", True),
-            hint_level=next_level,
-            reveal_answer=False,
-        )
+        telegram_id = update.effective_user.id if update.effective_user else None
+        async with async_session_factory()() as _mem_db:
+            memory_user_id, memory_session_id, memory_context = await _build_memory_context(
+                telegram_id,
+                context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
+                _mem_db,
+            ) if telegram_id else (None, None, "")
+
+            router_llm = ModelRouter()
+            agent = TutorAgent(llm_router=router_llm, retriever=None)
+            result = await agent.answer(
+                question=question, user_id=memory_user_id, use_rag=True,
+                grade_level=context.user_data.get("grade_level"),
+                language=context.user_data.get("language", "en"),
+                socratic_mode=context.user_data.get("socratic_mode", True),
+                hint_level=next_level,
+                reveal_answer=False,
+                memory_context=memory_context,
+            )
+            await router_llm.close()
         response = result["answer"]
         if result.get("misconception_detected"):
             response += "\n\n💡 I noticed a misunderstanding — gently corrected above."
@@ -217,7 +236,6 @@ async def hint_command(update: Update, context):
             reply_markup=hint_keyboard(next_level, False),
             parse_mode="HTML",
         )
-        await router_llm.close()
     except Exception as e:
         logger.error("hint_command_error", error=str(e))
         await update.message.reply_text(
@@ -234,21 +252,47 @@ async def ask_command(update: Update, context):
         context.user_data["reveal_answer"] = False
         await update.message.reply_text("Thinking...")
         try:
-            router_llm = ModelRouter()
-            agent = TutorAgent(llm_router=router_llm, retriever=None)
-            socratic = context.user_data.get("socratic_mode", False)
-            result = await agent.answer(
-                question=question, user_id=None, use_rag=True,
-                grade_level=context.user_data.get("grade_level"),
-                language=context.user_data.get("language", "en"),
-                socratic_mode=socratic,
-            )
-            response = result["answer"]
+            telegram_id = update.effective_user.id if update.effective_user else None
+            async with async_session_factory()() as _mem_db:
+                memory_user_id, memory_session_id, memory_context = await _build_memory_context(
+                    telegram_id,
+                    context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
+                    _mem_db,
+                ) if telegram_id else (None, None, "")
+
+                router_llm = ModelRouter()
+                agent = TutorAgent(llm_router=router_llm, retriever=None)
+                socratic = context.user_data.get("socratic_mode", False)
+                result = await agent.answer(
+                    question=question, user_id=memory_user_id, use_rag=True,
+                    grade_level=context.user_data.get("grade_level"),
+                    language=context.user_data.get("language", "en"),
+                    socratic_mode=socratic,
+                    memory_context=memory_context,
+                )
+                response = result["answer"]
+
+                if memory_user_id and memory_session_id:
+                    try:
+                        mem_session = (await _mem_db.execute(
+                            select(MemorySession).where(MemorySession.session_id == memory_session_id)
+                        )).scalar_one_or_none()
+                        if mem_session:
+                            if not isinstance(mem_session.educational_context, dict):
+                                mem_session.educational_context = {}
+                            turns = mem_session.educational_context.setdefault("recent_turns", [])
+                            turns.append({"role": "user", "content": question})
+                            turns.append({"role": "assistant", "content": result["answer"]})
+                            mem_session.educational_context["recent_turns"] = turns[-10:]
+                            await _mem_db.commit()
+                    except Exception as e:
+                        logger.warning("memory_turns_save_error", error=str(e))
+
+                await router_llm.close()
             if result.get("misconception_detected"):
                 response += "\n\n💡 I noticed a misunderstanding — gently corrected above."
             if result.get("sources"):
                 response += "\n\n---\nSources: " + ", ".join(result["sources"][:3])
-            telegram_id = update.effective_user.id if update.effective_user else None
             if telegram_id:
                 await _save_tutor_rewards(telegram_id, context)
                 xp_awarded = context.user_data.get("last_xp_awarded", 0)
@@ -263,7 +307,6 @@ async def ask_command(update: Update, context):
                     response += "\n\n" + "\n".join(notifications)
             reply_markup = hint_keyboard(0, False) if socratic else main_menu_keyboard(socratic)
             await _reply_long(update.message, response, reply_markup=reply_markup, parse_mode="HTML")
-            await router_llm.close()
         except Exception as e:
             logger.error("ask_command_error", error=str(e))
             await update.message.reply_text("Sorry, I encountered an error.", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
@@ -1174,16 +1217,26 @@ async def handle_hint(update: Update, context):
     context.user_data["hint_level"] = hint_level
     hint_msg = await query.message.reply_text(f"💡 Hint level {hint_level}/3...")
     try:
-        router_llm = ModelRouter()
-        agent = TutorAgent(llm_router=router_llm, retriever=None)
-        result = await agent.answer(
-            question=question, user_id=None, use_rag=True,
-            grade_level=context.user_data.get("grade_level"),
-            language=context.user_data.get("language", "en"),
-            socratic_mode=context.user_data.get("socratic_mode", True),
-            hint_level=hint_level,
-            reveal_answer=False,
-        )
+        telegram_id = update.effective_user.id if update.effective_user else None
+        async with async_session_factory()() as _mem_db:
+            memory_user_id, memory_session_id, memory_context = await _build_memory_context(
+                telegram_id,
+                context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
+                _mem_db,
+            ) if telegram_id else (None, None, "")
+
+            router_llm = ModelRouter()
+            agent = TutorAgent(llm_router=router_llm, retriever=None)
+            result = await agent.answer(
+                question=question, user_id=memory_user_id, use_rag=True,
+                grade_level=context.user_data.get("grade_level"),
+                language=context.user_data.get("language", "en"),
+                socratic_mode=context.user_data.get("socratic_mode", True),
+                hint_level=hint_level,
+                reveal_answer=False,
+                memory_context=memory_context,
+            )
+            await router_llm.close()
         response = result["answer"]
         if result.get("misconception_detected"):
             response += "\n\n💡 I noticed a misunderstanding — gently corrected above."
@@ -1192,7 +1245,6 @@ async def handle_hint(update: Update, context):
             reply_markup=hint_keyboard(hint_level, False),
             parse_mode="HTML",
         )
-        await router_llm.close()
     except Exception as e:
         logger.error("hint_callback_error", error=str(e))
         await hint_msg.edit_text(
@@ -1219,16 +1271,26 @@ async def handle_reveal_answer(update: Update, context):
     context.user_data["reveal_answer"] = True
     reveal_msg = await query.message.reply_text("🔍 Revealing the full answer...")
     try:
-        router_llm = ModelRouter()
-        agent = TutorAgent(llm_router=router_llm, retriever=None)
-        result = await agent.answer(
-            question=question, user_id=None, use_rag=True,
-            grade_level=context.user_data.get("grade_level"),
-            language=context.user_data.get("language", "en"),
-            socratic_mode=False,
-            hint_level=hint_level,
-            reveal_answer=True,
-        )
+        telegram_id = update.effective_user.id if update.effective_user else None
+        async with async_session_factory()() as _mem_db:
+            memory_user_id, memory_session_id, memory_context = await _build_memory_context(
+                telegram_id,
+                context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
+                _mem_db,
+            ) if telegram_id else (None, None, "")
+
+            router_llm = ModelRouter()
+            agent = TutorAgent(llm_router=router_llm, retriever=None)
+            result = await agent.answer(
+                question=question, user_id=memory_user_id, use_rag=True,
+                grade_level=context.user_data.get("grade_level"),
+                language=context.user_data.get("language", "en"),
+                socratic_mode=False,
+                hint_level=hint_level,
+                reveal_answer=True,
+                memory_context=memory_context,
+            )
+            await router_llm.close()
         attempt_msg = f"\n\n📊 You used {hint_level} hint(s) before revealing the answer." if hint_level > 0 else "\n\n📊 You revealed the answer without using hints."
         response = result["answer"] + attempt_msg
         await _reply_long(
@@ -1236,7 +1298,6 @@ async def handle_reveal_answer(update: Update, context):
             reply_markup=hint_keyboard(hint_level, True),
             parse_mode="HTML",
         )
-        await router_llm.close()
     except Exception as e:
         logger.error("reveal_answer_error", error=str(e))
         await reveal_msg.edit_text(
