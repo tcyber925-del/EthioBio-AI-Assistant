@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.tutor import TutorAgent
 from src.api.gamification import XP_SOURCES, award_xp, check_achievements, update_streak
+from src.core.memory.context_assembler import ContextAssembler
+from src.core.memory.session_manager import SessionManager
 from src.database.session import get_session
 from src.llm.router import ModelRouter
 from src.rag.retriever import Retriever
@@ -11,6 +13,9 @@ from src.schemas.chat import TutorRequest, TutorResponse
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/chat", tags=["Chat"])
+
+session_manager = SessionManager()
+context_assembler = ContextAssembler()
 
 
 @router.post("", response_model=TutorResponse)
@@ -20,6 +25,26 @@ async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_
     agent = TutorAgent(llm_router=router_llm, retriever=retriever)
 
     try:
+        mem_session = None
+        memory_context = ""
+        if request.user_id:
+            mem_session = await session_manager.get_or_create_active_session(
+                request.user_id, topic=request.topic, db=session,
+            )
+            if mem_session:
+                memory_context = await context_assembler.assemble(
+                    user_id=request.user_id,
+                    topic=request.topic,
+                    db=session,
+                    session_state={
+                        "active_topic": mem_session.active_topic,
+                        "tutoring_mode": mem_session.tutoring_mode,
+                        "educational_context": mem_session.educational_context,
+                        "unresolved_questions": mem_session.unresolved_questions,
+                    } if mem_session else None,
+                    socratic_state=None,
+                )
+
         result = await agent.answer(
             question=request.question,
             user_id=request.user_id,
@@ -31,7 +56,18 @@ async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_
             socratic_mode=request.socratic_mode,
             hint_level=request.hint_level,
             reveal_answer=request.reveal_answer,
+            memory_context=memory_context,
         )
+
+        if mem_session:
+            if not isinstance(mem_session.educational_context, dict):
+                mem_session.educational_context = {}
+            turns = mem_session.educational_context.setdefault("recent_turns", [])
+            turns.append({"role": "user", "content": request.question})
+            if result["answer"]:
+                turns.append({"role": "assistant", "content": result["answer"]})
+            mem_session.educational_context["recent_turns"] = turns[-10:]
+
         xp_awarded = 0
         level_up = False
         new_level = 0
