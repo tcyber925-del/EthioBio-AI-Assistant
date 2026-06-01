@@ -1,98 +1,105 @@
 {
   "project": "EthioBio AI Assistant",
-  "title": "Persistent Educational Memory Layer",
-  "branchName": "feature/persistent-educational-memory",
-  "description": "Implement a conversational memory layer enabling the tutor to remember context across tutoring sessions and turns. Includes session lifecycle tracking, Socratic dialogue state persistence, educational summarization, semantic retrieval over past sessions, and memory injection into the LangGraph TutorNode.",
+  "title": "Learning Recommendation Engine",
+  "branchName": "ralph/learning-recommendation-engine",
+  "description": "Transform LearnerSnapshot into prioritized educational actions. The engine consumes a LearnerSnapshot, applies 5 rule modules (mastery, recovery, review, misconception, engagement), scores each candidate action, deduplicates, and returns the top 5 recommendations.",
   "userStories": [
     {
-      "id": "MEM-001",
-      "title": "Session Lifecycle",
-      "description": "As a student, I want the tutor to remember the current tutoring conversation across turns so that I don't have to repeat myself.",
+      "id": "REC-001",
+      "title": "Domain models: LearningActionType enum + LearningRecommendation model",
+      "description": "As a developer, I want the domain types for recommendations defined so that rules and scoring can use them.",
       "acceptanceCriteria": [
-        "Session state created on first user message",
-        "Session updated after each tutor turn",
-        "Session closed after 30min inactivity",
-        "Session context available in TutorNode",
+        "LearningActionType enum has 9 values: REVIEW_TOPIC, TAKE_QUIZ, COMPLETE_RECOVERY_TASK, REVISE_MISCONCEPTION, STUDY_DIAGRAM, READ_CONTENT, ASK_TUTOR, EXAM_PRACTICE, MAINTAIN_STREAK",
+        "LearningRecommendation Pydantic model has fields: id (str), action_type (LearningActionType), topic (str|None), priority_score (float, default 0.0), reason (str, default empty), explanation (str, default empty), generated_at (datetime), metadata (dict, default empty)",
+        "Package created at recommendation/models/ with __init__.py re-exporting both",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "New memory_sessions table. SessionManager in src/core/memory/session_manager.py. Session lifecycle: start -> heartbeat -> close. Auto-close via last_active_at check."
+      "notes": "Already implemented by ralph iteration 1. Enum in types.py, model in recommendation.py."
     },
     {
-      "id": "MEM-002",
-      "title": "Socratic Continuity",
-      "description": "As a student, I want guided Socratic dialogue to resume where it left off so that reasoning flows continue naturally across interruptions.",
+      "id": "REC-002",
+      "title": "Priority scoring calculator with weight config and dedup",
+      "description": "As a developer, I want a scoring function that converts raw weights into normalized 0-1 priority scores and deduplicates recommendations by (action_type, topic).",
       "acceptanceCriteria": [
-        "SocraticStage persisted per user+topic",
-        "Stage determined by LLM (guided_discovery/evaluation/correction/consolidation)",
-        "Next question stored and retrievable",
-        "No code-enforced state machine transitions",
-        "Typecheck passes"
-      ],
-      "priority": 1,
-      "passes": true,
-      "notes": "New memory_socratic_states table. SocraticManager in src/core/memory/socratic_manager.py. LLM writes stage + next_question; code persists. 4 stages: guided_discovery, evaluation, correction, consolidation."
-    },
-    {
-      "id": "MEM-003",
-      "title": "Session Summarization",
-      "description": "As a student, I want tutoring sessions summarized automatically so that long-term educational continuity is preserved efficiently.",
-      "acceptanceCriteria": [
-        "Summaries generated on session close",
-        "Misconceptions and conceptual progress extracted",
-        "Embedding stored in ChromaDB (educational_memories collection)",
-        "Redundant content excluded from summary",
+        "PriorityCalculator class with RAW_WEIGHTS dict: critical=40, moderate=25, mild=10, good=0, overdue_1_3=10, overdue_4_7=20, overdue_8plus=30, misconception=20, active_plan=15, near_completion=10, streak_risk=10, inactive=15",
+        "MAX_POSSIBLE_SCORE constant = 120",
+        "normalize(raw: float) -> float divides by 120, clamps to [0.0, 1.0]",
+        "deduplicate(recommendations) -> list merges same (action_type, topic), keeps higher priority_score",
+        "score_and_sort(recommendations) -> list applies normalize + dedup + sort desc + returns top 5",
+        "Package at recommendation/scoring/ with __init__.py",
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "New memory_educational_summaries table. Summarizer in src/core/memory/summarizer.py. ChromaDB collection 'educational_memories'. Triggered by session close. LLM extracts understanding_level, key_misconceptions, confidence, next_learning_goal. Embedding stored via Embedder (reuses existing RAG embedder)."
+      "passes": false,
+      "notes": "Fixed denominator normalization ensures consistent scale across all recommendations."
     },
     {
-      "id": "MEM-004",
-      "title": "Semantic Memory Retrieval",
-      "description": "As a student, I want the tutor to recall relevant past educational discussions so that responses remain personalized.",
+      "id": "REC-003",
+      "title": "All 5 rule modules: mastery, recovery, review, misconception, engagement",
+      "description": "As a developer, I want rule modules that inspect a LearnerSnapshot and produce candidate recommendations with raw priority scores.",
       "acceptanceCriteria": [
-        "Semantic retrieval from educational_memories ChromaDB collection operational",
-        "Ranking considers recency, confidence, and topic relevance",
-        "Token budget enforced (1500 tokens max for memory context)",
-        "Topic filtering supported",
-        "Typecheck passes"
-      ],
-      "priority": 2,
-      "passes": true,
-      "notes": "RetrievalOrchestrator in src/core/memory/retrieval_orchestrator.py. Custom ranking layer combining cosine similarity (0.3) + recency weight (0.4) + confidence weight (0.3). Token budget enforcement (1500t) via truncation by rank with 14-day recency half-life. Topic filtering via ChromaDB $and where."
-    },
-    {
-      "id": "MEM-005",
-      "title": "Memory Injection into Tutoring",
-      "description": "As a student, I want the tutor to use my learning history when explaining concepts so that tutoring adapts to my needs.",
-      "acceptanceCriteria": [
-        "System prompt prefix injected with learner context (mastery, misconceptions, Socratic stage, recent summaries)",
-        "Active misconceptions visible in tutor behavior",
-        "Socratic continuity maintained across sessions",
-        "Backward compatible (no memory = current behavior preserved)",
+        "mastery_rules.py: generates REVIEW_TOPIC for topics with severity 'critical' (raw=40) or 'moderate' (raw=25). Uses snapshot.mastery_by_topic and weak_topics.",
+        "recovery_rules.py: generates COMPLETE_RECOVERY_TASK for each active recovery plan (raw=15). Adds +10 bonus if progress_pct >= 80 (near completion). Uses snapshot.active_recovery_plans.",
+        "review_rules.py: generates REVIEW_TOPIC for each due review (raw=10 for 1-3 days overdue, 20 for 4-7, 30 for 8+). Uses snapshot.due_reviews.days_overdue.",
+        "misconception_rules.py: generates REVISE_MISCONCEPTION for each misconception with frequency >= 2 (raw=20). Uses snapshot.misconceptions.",
+        "engagement_rules.py: generates MAINTAIN_STREAK if streak <= 1 (raw=10) or recent_activity_score < 0.3 (raw=15). Uses snapshot.gamification.",
+        "Each rule module is an async function: generate(snapshot: LearnerSnapshot) -> list[LearningRecommendation] with priority_score set to the raw score (not yet normalized) and a human-readable reason string",
+        "Package at recommendation/rules/ with __init__.py re-exporting all 5 generate functions",
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "ContextAssembler in src/core/memory/context_assembler.py. Reads SessionState + SocraticState + top-N summaries (via RetrievalOrchestrator) + StudentMastery + MisconceptionPattern data. Formats as 1500t system prompt prefix with per-section budgets. Injected via AgentState.memory_context. TutorNode falls back to bare Socratic if no assembled context. Backward compatible. Socratic state saved back to DB after each tutor turn. Session heartbeat + tutor_interaction event logged."
+      "passes": false,
+      "notes": "Raw scores are set by rules; normalization happens in PriorityCalculator. Each rule is independent."
     },
     {
-      "id": "MEM-006",
-      "title": "Educational Events Logging",
-      "description": "As a developer, I want memory lifecycle events logged so that I can debug and analyze memory behavior.",
+      "id": "REC-004",
+      "title": "Recommendation engine orchestrating rules + scoring",
+      "description": "As a developer, I want the engine that calls all rules, scores, deduplicates, and returns top 5 recommendations.",
       "acceptanceCriteria": [
-        "memory_events table created",
-        "Key events logged: session_started, session_closed, misconception_detected, socratic_breakthrough",
-        "Metadata captures relevant context per event",
-        "Performance overhead minimal (async writes)",
+        "RecommendationEngine class with async generate(snapshot: LearnerSnapshot, user_id: UUID) -> list[LearningRecommendation]",
+        "Calls all 5 rule generators in parallel via asyncio.gather with return_exceptions=True",
+        "Passes raw recommendations through PriorityCalculator.score_and_sort() for normalization, dedup, and top-5 selection",
+        "Each recommendation gets a unique id like 'rec_{user_id_short}_{index}'",
+        "generated_at set to now for each recommendation",
+        "Package at recommendation/services/ with __init__.py",
         "Typecheck passes"
       ],
-      "priority": 3,
-      "passes": true,
-      "notes": "New memory_events table. EventLogger in src/core/memory/event_logger.py. Lightweight async logging. Not a full event bus - deferred."
+      "priority": 4,
+      "passes": false,
+      "notes": "parallel gather mirrors the SnapshotBuilder pattern. Degraded snapshot = empty fields = fewer/no recommendations."
+    },
+    {
+      "id": "REC-005",
+      "title": "Recommendation service with caching",
+      "description": "As a developer, I want a cached entry point for recommendations that fetches the snapshot, runs the engine, and caches results.",
+      "acceptanceCriteria": [
+        "RecommendationService class with async get_recommendations(user_id: UUID) -> list[LearningRecommendation]",
+        "Fetches snapshot via SnapshotService.get_snapshot()",
+        "Runs engine.generate(snapshot, user_id)",
+        "Caches result in CacheManager with key prefix 'recommendations:{user_id}', 5-min TTL",
+        "Cache hit returns deserialized recommendations directly",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Reuses existing CacheManager from snapshot module. TTL-only, matching the snapshot pattern."
+    },
+    {
+      "id": "REC-006",
+      "title": "API endpoints: GET /intelligence/recommendations/{user_id} and GET /intelligence/next-action/{user_id}",
+      "description": "As a learner, I want to retrieve my top recommendations and single best next action via the API.",
+      "acceptanceCriteria": [
+        "GET /intelligence/recommendations/{user_id} returns JSON array of top 5 recommendations",
+        "GET /intelligence/next-action/{user_id} returns single highest-priority recommendation or empty object if none",
+        "Both endpoints perform user existence check (404 if not found)",
+        "Endpoints use Depends(get_session) and are Dependency Override compatible for tests",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "Added to existing src/api/intelligence/router.py. Follows same pattern as GET /intelligence/snapshot/{user_id}."
     }
   ]
 }
