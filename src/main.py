@@ -13,6 +13,7 @@ from src.api import (
     diagram,
     export,
     gamification,
+    intelligence,
     lesson,
     notifications,
     progress,
@@ -63,6 +64,7 @@ app.include_router(models_router)
 app.include_router(diagram.router)
 app.include_router(export.router)
 app.include_router(gamification.router)
+app.include_router(intelligence.router)
 app.include_router(recovery.router)
 app.include_router(notifications.router)
 app.include_router(memory_router)

@@ -51,3 +51,57 @@ Reuses the existing ChromaDB via `VectorStoreAdapter` with a separate collection
 
 ## Memory Lifecycle Engine (MVP)
 Not implemented as a dedicated subsystem for MVP. Replaced by simpler strategies: recency-weighted retrieval ranking, periodic summary compression, spaced-repetition-based confidence decay, and a retention policy (keep N most recent session summaries per user). Full lifecycle engine deferred until data volume warrants it.
+
+## Learning Intelligence Layer (LIL)
+Centralized orchestration layer at `src/core/learning_intelligence/` that transforms educational data into educational decisions. Consumes existing systems (StudentMastery, StudentAbility, etc.) without replacing them. Follows the existing `src/core/memory/` module convention.
+
+## LearnerSnapshot
+Computed, read-only, non-persistent educational profile of a learner. Built by SnapshotBuilder on demand (or served from cache). NOT a database table — it is a projection over existing sources of truth.
+
+## SnapshotBuilder
+The single component responsible for assembling a LearnerSnapshot. Loads all educational data sources in parallel via `asyncio.gather()` then assembles the result. Located at `src/core/learning_intelligence/snapshot/snapshot_builder.py`.
+
+## GamificationSummary
+Single collapsed view of a learner's gamification state. Contains current_streak, longest_streak, total_xp, level, and computed recent_activity_score. Replaces the separate engagement_metrics and gamification_state fields from the original PRD draft — they were redundant views over the same UserGamification record.
+
+## Weak Topics (threshold)
+Topics with StudentMastery.severity equal to "critical" or "moderate". Defined by existing convention in `weak_topic_detection.py`, not a new classification.
+
+## Strong Topics (threshold)
+Topics with StudentMastery.severity equal to "good". Topics with severity "mild" are neither weak nor strong.
+
+## Recent Activity Score
+Computed field on GamificationSummary using a weighted heuristic: `0.6 * recency + 0.4 * streak_factor`, where recency decays over 30 days of inactivity and streak_factor caps at a 14-day streak. Requires no extra DB queries beyond the UserGamification record.
+
+## Snapshot Domain Models
+All sub-models in the LearnerSnapshot tree (MisconceptionSummary, RecoverySummary, ReviewSummary, EducationalMemorySummary, GamificationSummary) are Pydantic BaseModel classes, not dataclasses or NamedTuples. Kept in `src/core/learning_intelligence/models/` rather than `src/schemas/` to distinguish domain projections from API request/response shapes.
+
+## SnapshotBuilder Degradation
+Any source loader that fails (exception or missing data) produces a None/default for that field rather than failing the entire snapshot. The resulting LearnerSnapshot carries a `degraded: bool` flag and `degraded_sources: list[str]` to signal incompleteness. Consumers (Recommendation Engine, Tutor Adapter) can decide whether to proceed with partial data.
+
+## Source Loaders
+SnapshotBuilder delegates each data source to a dedicated async loader function in `src/core/learning_intelligence/snapshot/loaders/`. Each loader takes an AsyncSession and user_id, catches its own exceptions, and returns data or None. This keeps per-source error isolation and makes partial degradation natural.
+
+## Snapshot Cache Backend
+Redis, consistent with existing infra (docker-compose + config.py redis_url). Thin wrapper via CacheManager — get/set/delete with TTL. Worker-safe for multi-process uvicorn.
+
+## LearnerSnapshot API
+GET /intelligence/snapshot returns the full LearnerSnapshot model verbatim (not a trimmed view). The SnapshotService exposes a single public method: `get_snapshot(user_id: UUID) -> LearnerSnapshot`. No invalidate/refresh methods until a consumer needs them.
+
+## User Existence Check
+The API layer (endpoint handler) performs an explicit lightweight user existence check before calling SnapshotService. The SnapshotBuilder itself does not validate user existence — it builds from whatever data exists for the given user_id.
+
+## LearningRecommendation
+The domain model for the Recommendation Engine. Contains action_type, topic, priority_score (0.0-1.0), reason, explanation, generated_at, and metadata. Defined in `src/core/learning_intelligence/recommendation/models/recommendation.py`.
+
+## Recommendation Engine Degradation
+The engine does not explicitly check the snapshot's `degraded` flag. It reads whatever fields are populated — if a source field is empty (e.g., `mastery_by_topic == {}`), no recommendations are generated from that source. If all sources are empty, the engine returns an empty list. The snapshot's partial degradation design (ADR 0001) naturally propagates through.
+
+## Recommendation Rule Files
+Each recommendation source has its own rule file under `src/core/learning_intelligence/recommendation/rules/`: `mastery_rules.py`, `recovery_rules.py`, `review_rules.py`, `misconception_rules.py`, `engagement_rules.py`. Misconception rules are separate from mastery rules — they treat each `MisconceptionSummary` as its own recommendation, not a derived property of a mastery record.
+
+## LearningActionType Enum
+Phase 1 implements only the 4 action types with explicit rules: `REVIEW_TOPIC`, `COMPLETE_RECOVERY_TASK`, `REVISE_MISCONCEPTION`, and `MAINTAIN_STREAK`. The other action types (`TAKE_QUIZ`, `STUDY_DIAGRAM`, `READ_CONTENT`, `ASK_TUTOR`, `EXAM_PRACTICE`) exist in the enum as stubs for future phases — no rule produces them yet.
+
+## Recommendation Priority Scoring
+Additive weight system with fixed normalization denominator. Each rule assigns a raw score (e.g., critical mastery = +40, overdue 8+ days = +30, active misconception = +20). Multiple signals for the same topic stack additively. After all rules run, recommendations sharing the same (action_type, topic) pair are deduplicated (higher score wins). Raw scores are normalized to 0.0–1.0 by dividing by `MAX_POSSIBLE_SCORE = 120`, clamped to `[0.0, 1.0]`. The constant is adjusted when new weights are added.
