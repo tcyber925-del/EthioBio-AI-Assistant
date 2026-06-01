@@ -134,6 +134,18 @@ The adaptive quiz engine tracks individual question attempts and estimates stude
 - **Adaptive quiz**: Pass `"adaptive": true` in `POST /quiz/generate` body to enable adaptive difficulty selection
 - **Wiring**: `POST /quiz/submit` automatically records attempts and updates ability estimates
 
+## Learning Recommendation Engine (`src/core/learning_intelligence/recommendation/`)
+
+The recommendation engine produces prioritized educational actions from `LearnerSnapshot` data.
+
+- **Models** at `recommendation/models/`: `LearningActionType` enum (9 values) and `LearningRecommendation` pydantic model (id, action_type, topic, priority_score, reason, explanation, generated_at, metadata)
+- **Scoring** at `recommendation/scoring/`: `PriorityCalculator` class with `RAW_WEIGHTS` dict, `MAX_POSSIBLE_SCORE = 120`, `normalize()` (divides by 120, clamps 0-1), `deduplicate()` (merges by action_type+topic, keeps higher score), `score_and_sort()` (normalize → dedup → sort desc → top 5)
+- **Rules** at `recommendation/rules/`: 5 async generators (`mastery_rules`, `recovery_rules`, `review_rules`, `misconception_rules`, `engagement_rules`) each taking `(snapshot: LearnerSnapshot) -> list[LearningRecommendation]`
+- **Services** at `recommendation/services/`: `RecommendationEngine` (parallel gather → score_and_sort → ID assignment), `RecommendationService` (cache-first facade using CacheManager with `recommendations:` key prefix)
+- **API** at `src/api/intelligence/router.py`: `GET /intelligence/recommendations/{user_id}` (top 5) and `GET /intelligence/next-action/{user_id}` (single best or `{}`)
+- **Package convention**: Each sub-package (`models/`, `scoring/`, `rules/`, `services/`) has its own `__init__.py` re-exporting the public API
+- **Test location**: Tests go in `tests/test_priority_calculator.py`, `tests/test_recommendation_rules.py`, `tests/test_recommendation_engine.py`, `tests/test_recommendation_service.py`
+
 ## Key Gotchas
 
 1. **`topic` filter in RetrievalFilter returns empty** — PDF chunks lack `topic` metadata. Use `grade_level` only; semantic search compensates.

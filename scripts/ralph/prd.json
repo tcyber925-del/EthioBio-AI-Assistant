@@ -32,7 +32,7 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Fixed denominator normalization ensures consistent scale across all recommendations."
     },
     {
@@ -50,8 +50,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "Raw scores are set by rules; normalization happens in PriorityCalculator. Each rule is independent."
+      "passes": true,
+      "notes": "5 rule modules in rules/: mastery_rules, recovery_rules, review_rules, misconception_rules, engagement_rules. 17 tests."
     },
     {
       "id": "REC-004",
@@ -67,8 +67,8 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "parallel gather mirrors the SnapshotBuilder pattern. Degraded snapshot = empty fields = fewer/no recommendations."
+      "passes": true,
+      "notes": "RecommendationEngine in services/engine.py. Uses asyncio.gather with return_exceptions=True. 5 tests."
     },
     {
       "id": "REC-005",
@@ -83,8 +83,8 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "Reuses existing CacheManager from snapshot module. TTL-only, matching the snapshot pattern."
+      "passes": true,
+      "notes": "RecommendationService in services/service.py. Uses CacheManager with recommendations: prefix. 3 tests."
     },
     {
       "id": "REC-006",
@@ -98,8 +98,8 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": "Added to existing src/api/intelligence/router.py. Follows same pattern as GET /intelligence/snapshot/{user_id}."
+      "passes": true,
+      "notes": "Endpoints added to existing src/api/intelligence/router.py. User existence check via _check_user_exists helper."
     }
   ]
 }
