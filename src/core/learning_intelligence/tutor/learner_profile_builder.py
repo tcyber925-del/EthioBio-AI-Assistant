@@ -20,10 +20,15 @@ class LearnerProfileBuilder:
         self,
         snapshot: LearnerSnapshot,
         current_topic: str | None = None,
+        readiness_context: dict | None = None,
     ) -> BuildProfileResult:
         difficulty_level = self._determine_difficulty(snapshot)
         known_misconceptions = self._find_misconceptions(snapshot, current_topic)
-        profile_block = self._format_profile_block(snapshot, difficulty_level, known_misconceptions)
+        profile_block = self._format_profile_block(
+            snapshot, difficulty_level, known_misconceptions,
+            readiness_context=readiness_context,
+            current_topic=current_topic,
+        )
         return BuildProfileResult(
             difficulty_level=difficulty_level,
             profile_block=profile_block,
@@ -89,6 +94,8 @@ class LearnerProfileBuilder:
         snapshot: LearnerSnapshot,
         difficulty_level: str,
         known_misconceptions: list[MisconceptionSummary],
+        readiness_context: dict | None = None,
+        current_topic: str | None = None,
     ) -> str:
         lines = ["## Learner Profile"]
 
@@ -117,6 +124,20 @@ class LearnerProfileBuilder:
             lines.append("## Known Misconception")
             for m in known_misconceptions:
                 lines.append(f"- Pattern: {m.pattern_type}")
-                lines.append(f"  Frequency: {m.frequency} occurrence{'s' if m.frequency > 1 else ''}")
+                suffix = "s" if m.frequency > 1 else ""
+                lines.append(f"  Frequency: {m.frequency} occurrence{suffix}")
+
+        if readiness_context and current_topic:
+            risk_topics = readiness_context.get("risk_topics", [])
+            if current_topic in risk_topics:
+                band = readiness_context.get("readiness_band", "Unknown")
+                overall = readiness_context.get("overall_readiness", 0)
+                lines.append("")
+                lines.append("## Exam Readiness")
+                lines.append(
+                    f"- '{current_topic}' is a high-risk exam area"
+                    f" (overall readiness: {overall:.0f}%, band: {band})."
+                )
+                lines.append("- Prioritise this topic during the session.")
 
         return "\n".join(lines)

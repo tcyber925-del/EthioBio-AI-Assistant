@@ -36,6 +36,8 @@ class AdaptiveStrategySelector:
         profile: BuildProfileResult,
         snapshot: LearnerSnapshot,
         recommendations: list,
+        readiness_context: dict | None = None,
+        current_topic: str | None = None,
     ) -> str:
         if profile.known_misconceptions:
             return "MISCONCEPTION_REMEDIATION"
@@ -46,6 +48,11 @@ class AdaptiveStrategySelector:
 
         if snapshot.active_recovery_plans:
             return "RECOVERY_SUPPORT"
+
+        if readiness_context and current_topic:
+            risk_topics = readiness_context.get("risk_topics", [])
+            if current_topic in risk_topics:
+                return "EXAM_PREPARATION"
 
         for rec in recommendations:
             if rec.action_type == LearningActionType.EXAM_PRACTICE:
