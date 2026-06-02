@@ -48,3 +48,12 @@ Started: Tue Jun  2 11:17:00 AM EAT 2026
 - CL integration deferred until PR #24 merges
 - Branch: ralph/exam-readiness-v2
 ---
+## Tue Jun  2 19:50:00 EAT 2026 — ER-005 through ER-009 all implemented
+- ER-005: ForgettingRiskPredictor + MasteryStabilityPredictor with 15 tests
+- ER-006: ProjectedScoreCalculator + InterventionPlanner + enhanced ExamReadinessProfile with 14 tests
+- ER-007: Dashboard v2 — projected score, forgetting risk bars, intervention list
+- ER-008: Tutor integration — readiness context in profile block, EXAM_PREPARATION strategy
+- ER-009: Readiness recommendation rule + engine integration with 7 tests
+- All quality checks pass (ruff, mypy, pytest)
+- 369 + 55 = 424 total tests pass (same 9 pre-existing failures)
+---

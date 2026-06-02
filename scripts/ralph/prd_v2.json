@@ -25,7 +25,7 @@
         "Tests pass"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Uses existing snapshot fields (due_reviews, mastery_by_topic, ability_by_topic, active_recovery_plans) — no new loaders"
     },
     {
@@ -51,7 +51,7 @@
         "Tests pass"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on ER-005 for forgetting risk and stability inputs"
     },
     {
@@ -70,7 +70,7 @@
         "Verify in browser using Playwright browser tools"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on ER-006 for data; API already returns all fields"
     },
     {
@@ -88,7 +88,7 @@
         "Tests pass"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on ER-005 data being available through ReadinessService"
     },
     {
@@ -108,7 +108,7 @@
         "Tests pass"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Recommendation rule is independent; CL integration deferred until PR #24 merges"
     }
   ]
