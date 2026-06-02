@@ -1,6 +1,9 @@
 from src.core.learning_intelligence.readiness.models.forgetting_risk import (
     ForgettingRisk,
 )
+from src.core.learning_intelligence.readiness.models.intervention import (
+    Intervention,
+)
 from src.core.learning_intelligence.readiness.models.mastery_stability import (
     StabilityScore,
 )
@@ -14,4 +17,5 @@ __all__ = [
     "TopicReadiness",
     "ForgettingRisk",
     "StabilityScore",
+    "Intervention",
 ]
