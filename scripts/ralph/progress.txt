@@ -42,3 +42,9 @@ Started: Tue Jun  2 11:17:00 AM EAT 2026
 - npx tsc --noEmit: clean
 - **Manual browser verification needed** (Playwright not available)
 ---
+## Tue Jun  2 19:20:00 EAT 2026 — Exam Readiness v2 PRD created
+- New PRD: scripts/ralph/prd_v2.json — 5 stories (ER-005 through ER-009)
+- Scope: forgetting risk, mastery stability, projected score, intervention planner, tutor integration, rec engine integration
+- CL integration deferred until PR #24 merges
+- Branch: ralph/exam-readiness-v2
+---

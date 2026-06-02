@@ -1,0 +1,115 @@
+{
+  "project": "EthioBio AI Assistant",
+  "title": "Exam Readiness v2 — Extended Prediction & Intervention",
+  "branchName": "ralph/exam-readiness-v2",
+  "description": "Extends the Exam Readiness MVP with three prediction engines (forgetting risk, mastery stability, projected exam score), an intervention planner, tutor context injection, and recommendation engine integration — converting readiness data into actionable academic forecasts.",
+  "userStories": [
+    {
+      "id": "ER-005",
+      "title": "Risk Prediction Models: Forgetting Risk + Mastery Stability",
+      "description": "As a developer, I want ForgettingRiskPredictor and MasteryStabilityPredictor that consume LearnerSnapshot data and compute per-topic forgetting probability and stability scores, so the system can predict which topics are at risk of regression.",
+      "acceptanceCriteria": [
+        "ForgettingRisk model at readiness/models/forgetting_risk.py: topic (str), forgetting_risk (float 0-1), days_overdue (int), ease_factor (float), review_count (int), contributing_factors (list[str])",
+        "StabilityScore model at readiness/models/mastery_stability.py: topic (str), stability_score (float 0-1), stability_band (str: Stable/Moderate/Volatile)",
+        "Both models are Pydantic BaseModel classes",
+        "ForgettingRiskPredictor.predict_forgetting(snapshot) returns dict[str, ForgettingRisk]",
+        "For topics with review data: forgetting_risk = min(days_overdue/30, 1.0) * (2.5-ease_factor)/1.2 * max(0, 1-review_count*0.1) * (1-mastery_score/100*0.5), clamped [0.01, 0.99]",
+        "For topics without review data: forgetting_risk = max(0.15, 1.0 - mastery_score/100 * 0.7), clamped [0.01, 0.99]",
+        "MasteryStabilityPredictor.predict_stability(snapshot) returns dict[str, StabilityScore]",
+        "Stability = mastery_score/100*0.4 + (1-ability_uncertainty/3.0)*0.3 + min(review_count/10, 1.0)*0.2 + recovery_progress*0.1, clamped [0.0, 1.0]",
+        "Stability band: >=0.7='Stable', >=0.4='Moderate', else='Volatile'",
+        "Empty state: empty dict when no mastery data",
+        "Review count defaults to 0 when no matching review schedule found",
+        "Recovery progress defaults to 0.0 when no matching recovery plan",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Uses existing snapshot fields (due_reviews, mastery_by_topic, ability_by_topic, active_recovery_plans) — no new loaders"
+    },
+    {
+      "id": "ER-006",
+      "title": "Projected Exam Score & Intervention Planner",
+      "description": "As a developer, I want ProjectedScoreCalculator and InterventionPlanner that compute a blended projected exam score, prediction confidence, and prioritized intervention list — extending ExamReadinessProfile with actionable guidance.",
+      "acceptanceCriteria": [
+        "Intervention model at readiness/models/intervention.py: topic (str), priority (float 0-1), action_type (str), estimated_impact (float 0-100), reason (str)",
+        "ExamReadinessProfile gains: confidence_score (float 0.0-1.0), projected_exam_score (float 0-100), recommended_interventions (list[Intervention])",
+        "Default values when no mastery data: confidence_score=0.5, projected_exam_score=0.0, recommended_interventions=[]",
+        "ProjectedScoreCalculator.calculate(readiness_profile, forgetting_risks, stabilities, snapshot) returns (projected_exam_score, confidence_score)",
+        "Projected score = readiness * 0.40 + avg(ability_scores)*100*0.25 + avg(stability_scores)*100*0.20 + (1-avg(forgetting_risks))*100*0.15, clamped 0-100",
+        "Confidence score = 1.0 - 0.1*(topics_with_attempts_lt_3) - 0.1*(topics_with_high_uncertainty) - 0.1*(stale_snapshot), clamped [0.10, 1.00]",
+        "Stale snapshot = generated_at older than 7 days from now",
+        "InterventionPlanner.plan(snapshot, readiness_profile, forgetting_risks, stabilities) returns list[Intervention] sorted by priority descending",
+        "Generates interventions for: risk topics (action=REVISE_MISCONCEPTION if misconception present, else REVIEW_TOPIC), high forgetting >0.6 (REVIEW_TOPIC), low stability <0.4 (REVIEW_TOPIC)",
+        "Priority = (1-readiness_score/100)*0.5 + forgetting_risk*0.3 + (1-stability_score)*0.2",
+        "Estimated impact = max(0, 100 - readiness_score) * (confidence_score * 0.5 + 0.5)",
+        "ReadinessService.get_readiness() integrates all new predictors, returns enhanced ExamReadinessProfile",
+        "GET /intelligence/readiness/{user_id} response includes all new fields",
+        "Empty state: returns defaults with empty interventions list",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Depends on ER-005 for forgetting risk and stability inputs"
+    },
+    {
+      "id": "ER-007",
+      "title": "Dashboard v2 — ExamReadinessCard Extended",
+      "description": "As a student, I want the ExamReadinessCard to show my projected exam score, forgetting risk levels per topic, and recommended interventions, so I have actionable next steps alongside my readiness overview.",
+      "acceptanceCriteria": [
+        "ExamReadinessCard displays projected_exam_score as a secondary percentage next to overall_readiness",
+        "Shows forgetting_risk per topic in the risk topics section as a colored progress bar (red >0.6, yellow 0.3-0.6, green <0.3)",
+        "Shows intervention list below risk topics with action_type badge, estimated_impact, and reason text",
+        "TypeScript interfaces updated: ForgettingRisk, StabilityScore, Intervention",
+        "Loading skeleton accounts for new data fields",
+        "Error state with retry button preserves all existing behavior",
+        "Empty state displays for missing enhancement data without breaking existing readiness display",
+        "Typecheck passes",
+        "Verify in browser using Playwright browser tools"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Depends on ER-006 for data; API already returns all fields"
+    },
+    {
+      "id": "ER-008",
+      "title": "Tutor Integration — Readiness Context Injection",
+      "description": "As a student, I want the tutor to be aware of my exam readiness and risk topics, so it can prioritise high-risk subject areas during tutoring.",
+      "acceptanceCriteria": [
+        "LearnerProfileBuilder._format_profile_block() accepts optional readiness_context param (dict with risk_topics list)",
+        "When readiness_context is provided and topic is in risk_topics: appends '## Exam Readiness' section with warning text",
+        "AdaptiveStrategySelector.select() returns EXAM_PREPARATION strategy when current_topic matches a readiness risk topic",
+        "TutorContextAdapter.build() computes readiness via ReadinessService and passes to profile builder and strategy selector",
+        "Existing profile_block unchanged when readiness_context is None or empty risk_topics",
+        "Existing strategy selection unchanged when no readiness risk match",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Depends on ER-005 data being available through ReadinessService"
+    },
+    {
+      "id": "ER-009",
+      "title": "Recommendation Engine Integration — Readiness Boost Rule",
+      "description": "As a developer, I want the recommendation engine to factor exam readiness into priority scoring, so at-risk topics are surfaced in the recommendation feed.",
+      "acceptanceCriteria": [
+        "New rule file at recommendation/rules/readiness_rules.py with async generator readiness_rules(snapshot: LearnerSnapshot) taking readiness_profile context",
+        "Generates REVIEW_TOPIC recommendations for each risk topic from readiness_profile",
+        "Priority raw score = (100 - readiness_score) / 100 * 40 (maps 0-40 range)",
+        "Reason explains the exam risk context",
+        "Rule registered in recommendation/rules/__init__.py",
+        "Rule added to RULE_GENERATORS list in recommendation/services/engine.py",
+        "RecommendationEngine.fetch_readiness_on_miss() calls ReadinessService when readiness_rules generator is active",
+        "Continue Learning feed prioritization by readiness deferred — blocked on PR #24 (ralph/continue-learning-proactive-guidance) merge",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Recommendation rule is independent; CL integration deferred until PR #24 merges"
+    }
+  ]
+}
