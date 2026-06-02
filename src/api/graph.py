@@ -9,6 +9,8 @@ from pydantic import Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.gamification import XP_SOURCES, award_xp, check_achievements, update_streak
+from src.core.learning_intelligence.snapshot.snapshot_service import SnapshotService
+from src.core.learning_intelligence.tutor.learner_profile_builder import LearnerProfileBuilder
 from src.core.memory.context_assembler import ContextAssembler
 from src.core.memory.event_logger import EventLogger
 from src.core.memory.session_manager import SessionManager
@@ -24,6 +26,8 @@ session_manager = SessionManager()
 socratic_manager = SocraticManager()
 context_assembler = ContextAssembler()
 event_logger = EventLogger()
+snapshot_service = SnapshotService()
+profile_builder = LearnerProfileBuilder()
 
 
 class GraphChatRequest(SchemaModel):
@@ -95,6 +99,17 @@ async def graph_chat(request: GraphChatRequest, db: AsyncSession = Depends(get_s
                 } if socratic_state_rec else None,
             )
 
+        learner_profile_block = ""
+        if request.user_id:
+            try:
+                snapshot = await snapshot_service.get_snapshot(db, request.user_id)
+                profile_result = profile_builder.build_profile(
+                    snapshot, current_topic=request.topic,
+                )
+                learner_profile_block = profile_result.profile_block
+            except Exception:
+                logger.warning("learner_profile_build_failed", user_id=str(request.user_id))
+
         result = await run_graph(
             user_message=request.question,
             user_id=request.user_id,
@@ -107,6 +122,7 @@ async def graph_chat(request: GraphChatRequest, db: AsyncSession = Depends(get_s
             reveal_answer=request.reveal_answer,
             session_id=str(mem_session.session_id) if mem_session else None,
             memory_context=memory_context,
+            learner_profile_block=learner_profile_block,
             socratic_stage=socratic_state_rec.socratic_stage if socratic_state_rec else "",
             socratic_focus=socratic_state_rec.current_focus if socratic_state_rec else "",
             socratic_understanding=(

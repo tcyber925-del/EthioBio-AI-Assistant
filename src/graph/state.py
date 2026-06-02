@@ -64,6 +64,9 @@ class AgentState:
     misconception_detected: bool = False
     misconception_correction: str = ""
 
+    learner_profile_block: str = ""
+    use_learner_awareness: bool = False
+
 
 @dataclass
 class GraphOutput:

@@ -96,6 +96,9 @@ class TutorNode:
 
         system = SOCRATIC_SYSTEM_PROMPT if state.socratic_mode else SYSTEM_PROMPT
 
+        if state.learner_profile_block and state.use_learner_awareness:
+            system += "\n\n" + state.learner_profile_block
+
         memory_block = ""
         if state.memory_context:
             memory_block = "\n\n" + state.memory_context

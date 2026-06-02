@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.tutor import TutorAgent
 from src.api.gamification import XP_SOURCES, award_xp, check_achievements, update_streak
+from src.core.learning_intelligence.snapshot.snapshot_service import SnapshotService
+from src.core.learning_intelligence.tutor.learner_profile_builder import LearnerProfileBuilder
 from src.core.memory.context_assembler import ContextAssembler
 from src.core.memory.session_manager import SessionManager
 from src.database.session import get_session
@@ -16,6 +18,8 @@ router = APIRouter(prefix="/chat", tags=["Chat"])
 
 session_manager = SessionManager()
 context_assembler = ContextAssembler()
+snapshot_service = SnapshotService()
+profile_builder = LearnerProfileBuilder()
 
 
 @router.post("", response_model=TutorResponse)
@@ -45,6 +49,17 @@ async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_
                     socratic_state=None,
                 )
 
+        learner_profile_block = ""
+        if request.user_id:
+            try:
+                snapshot = await snapshot_service.get_snapshot(session, request.user_id)
+                profile_result = profile_builder.build_profile(
+                    snapshot, current_topic=request.topic,
+                )
+                learner_profile_block = profile_result.profile_block
+            except Exception:
+                logger.warning("learner_profile_build_failed", user_id=str(request.user_id))
+
         result = await agent.answer(
             question=request.question,
             user_id=request.user_id,
@@ -57,6 +72,7 @@ async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_
             hint_level=request.hint_level,
             reveal_answer=request.reveal_answer,
             memory_context=memory_context,
+            learner_profile_block=learner_profile_block,
         )
 
         if mem_session:
