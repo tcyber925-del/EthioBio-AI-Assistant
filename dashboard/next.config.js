@@ -14,6 +14,7 @@ const nextConfig = {
       { source: '/gamification/:path*', destination: `${api}/gamification/:path*` },
       { source: '/activity/:path*', destination: `${api}/activity/:path*` },
       { source: '/diagram/:path*', destination: `${api}/diagram/:path*` },
+      { source: '/intelligence/:path*', destination: `${api}/intelligence/:path*` },
       { source: '/recovery/:path*', destination: `${api}/recovery/:path*` },
     ]
   },
