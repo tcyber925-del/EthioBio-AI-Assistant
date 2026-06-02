@@ -1,84 +1,99 @@
 {
   "project": "EthioBio AI Assistant",
-  "title": "Tutor Learner Awareness",
-  "branchName": "ralph/tutor-learner-awareness",
-  "description": "Equip the EthioBio tutor pipeline with per-learner awareness: a LearnerProfileBuilder converts a LearnerSnapshot into a structured profile block, AdaptiveStrategySelector picks a teaching strategy, and TutorContextAdapter bundles everything into a formatted system prompt extension.",
+  "title": "Continue Learning Experience & Proactive Guidance System",
+  "branchName": "ralph/continue-learning-proactive-guidance",
+  "description": "The Continue Learning System becomes the primary entry point into EthioBio. Instead of asking 'What do you want to learn today?', EthioBio proactively guides students toward their highest-value learning actions by converting educational intelligence into a structured daily learning feed.",
   "userStories": [
     {
-      "id": "TUT-001",
-      "title": "LearnerProfileBuilder: snapshot-to-text function",
-      "passes": true
-    },
-    {
-      "id": "TUT-002",
-      "title": "TutorNode integrates learner profile block into system prompt",
-      "passes": true
-    },
-    {
-      "id": "TUT-003",
-      "title": "TutorContextPackage dataclass",
-      "description": "As a developer, I want a TutorContextPackage dataclass that bundles LearnerSnapshot, profile_block, difficulty_level, known_misconceptions, top_recommendations, selected_strategy, and formatted_block into one object.",
+      "id": "CL-001",
+      "title": "Domain models: ContinueLearningFeed, LearningCard, FeedSummary",
+      "description": "As a developer, I want Pydantic models for ContinueLearningFeed (with sections: primary_action, recovery_actions, review_actions, quiz_opportunities, tutor_actions, summary), LearningCard (wrapping a recommendation with estimated_minutes and xp_reward), and FeedSummary (estimated_minutes, xp_available), so that the feed has a typed contract.",
       "acceptanceCriteria": [
-        "TutorContextPackage is a frozen dataclass with all 7 fields",
-        "known_misconceptions defaults to empty list",
-        "top_recommendations defaults to empty list",
-        "selected_strategy defaults to empty string",
-        "formatted_block defaults to empty string",
+        "ContinueLearningFeed has fields: user_id, generated_at, primary_action (optional), sections dict (str -> list[LearningCard]), summary (FeedSummary)",
+        "LearningCard has fields: id, title, description, action_type, priority_score, estimated_minutes (int), xp_reward (int | None), metadata (dict)",
+        "FeedSummary has fields: estimated_minutes (int), xp_available (int)",
+        "All models are Pydantic BaseModel classes",
+        "All models live in src/core/learning_intelligence/models/continue_learning.py",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "CL-002",
+      "title": "ContinueLearningService: feed assembly logic",
+      "description": "As a developer, I want ContinueLearningService that calls RecommendationEngine.get_recommendations(), groups recommendations by action_type into sections, picks the highest-priority one as primary_action, decorates each with estimated_minutes and xp_reward, handles empty state (quiz-start prompt + ask-tutor fallback), and returns a ContinueLearningFeed.",
+      "acceptanceCriteria": [
+        "ContinueLearningService.get_feed(user_id) returns ContinueLearningFeed",
+        "Calls RecommendationEngine.get_recommendations(snapshot) internally",
+        "Groups by action_type into sections: recovery_actions, review_actions, quiz_opportunities, tutor_actions",
+        "Primary action is the single highest-priority recommendation across all groups",
+        "Empty state fallback: when no recommendations, primary_action is 'Start with a quiz' LearningCard + quiz section has 'Ask Tutor' card",
+        "estimated_minutes from ACTIVITY_DURATION_LOOKUP dict keyed by action_type",
+        "xp_reward sourced from XP_SOURCES in src/api/gamification.py by activity type",
+        "FeedSummary computed as sum of estimated_minutes and xp_reward across all cards",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "CL-003",
+      "title": "Continue Learning API endpoint and router",
+      "description": "As a developer, I want GET /intelligence/continue-learning/{user_id} that returns a ContinueLearningFeed, registered in the app, with a next.config.js rewrite so the dashboard can reach it.",
+      "acceptanceCriteria": [
+        "GET /intelligence/continue-learning/{user_id} returns ContinueLearningFeed JSON",
+        "Response has primary_action, sections (recovery_actions, review_actions, quiz_opportunities, tutor_actions), and summary",
+        "Router lives at src/api/intelligence/continue_learning_router.py, uses existing dependency injection pattern",
+        "Router is imported and app.include_router'd in src/main.py",
+        "/intelligence/:path* rewrite added to dashboard/next.config.js",
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true
+      "passes": true,
+      "notes": ""
     },
     {
-      "id": "TUT-004",
-      "title": "AdaptiveStrategySelector: strategy selection from learner state",
-      "description": "As a developer, I want AdaptiveStrategySelector that picks a teaching strategy (MISCONCEPTION_REMEDIATION, CONFIDENCE_BUILDING, RECOVERY_SUPPORT, EXAM_PREPARATION, DIRECT_EXPLANATION) based on the learner's profile, snapshot, and recommendations.",
+      "id": "CL-004",
+      "title": "ContinueLearningFeed React component on student detail page",
+      "description": "As a student, I want to see a Continue Learning section at the top of my student dashboard that shows my primary action and categorized recommendations, so I know what to do next.",
       "acceptanceCriteria": [
-        "MISCONCEPTION_REMEDIATION when profile.known_misconceptions is non-empty",
-        "CONFIDENCE_BUILDING when educational_memory.confidence < 0.3",
-        "RECOVERY_SUPPORT when snapshot.active_recovery_plans is non-empty",
-        "EXAM_PREPARATION when any recommendation has action_type EXAM_PRACTICE",
-        "DIRECT_EXPLANATION as default fallback",
-        "Priority order: misconception > confidence > recovery > exam > default",
-        "All 5 STRATEGY_INSTRUCTIONS are non-empty strings",
-        "10 tests passing",
-        "Typecheck passes"
+        "ContinueLearningFeed component fetches from /intelligence/continue-learning/{userId}",
+        "Renders primary action card prominently with title, description, estimated time, XP reward",
+        "Renders section cards grouped by type (recovery, review, quiz, tutor)",
+        "Each card links to the appropriate activity (quiz page, tutor, recovery page)",
+        "Empty state shows 'Start with a quiz' prompt with link to quiz generator",
+        "Component placed in dashboard/src/components/learning/ContinueLearningFeed.tsx",
+        "Imported and rendered in dashboard/src/app/students/[id]/page.tsx sidebar above GamificationProfile",
+        "Loading skeleton shown during fetch",
+        "Error state gracefully handled",
+        "Typecheck passes",
+        "Verify in browser using Playwright browser tools"
       ],
       "priority": 4,
-      "passes": true
+      "passes": true,
+      "notes": "Browser verification not performed: Playwright Chrome not available in environment. Manual verification needed."
     },
     {
-      "id": "TUT-005",
-      "title": "TutorContextAdapter: orchestrator that builds the full context",
-      "description": "As a developer, I want TutorContextAdapter that calls SnapshotService, LearnerProfileBuilder, RecommendationService, and AdaptiveStrategySelector, and formats the result into a single system prompt block.",
+      "id": "CL-005",
+      "title": "Telegram proactive reminder script",
+      "description": "As a student, I want daily Telegram reminders about my due reviews and recovery tasks, so I stay on track without opening the app.",
       "acceptanceCriteria": [
-        "build(session, user_id, current_topic=None) returns TutorContextPackage",
-        "build() calls get_snapshot, build_profile, get_recommendations, and select",
-        "format_context_block() includes profile_block as the base",
-        "format_context_block() appends ## Learning Recommendations section when recommendations exist",
-        "format_context_block() appends ## Teaching Strategy section when strategy is non-empty and known",
-        "format_context_block() includes all 3 sections when all data present",
-        "top_recommendations capped at 3",
-        "8 tests passing",
-        "Typecheck passes"
+        "scripts/send_proactive_reminders.py exists following send_digests.py pattern",
+        "Script queries SpacedRepetitionSchedule for due reviews per user",
+        "Script queries RecoveryPlan for active plans with pending tasks",
+        "Script uses existing bot.send_message to push reminder to each user",
+        "Users without telegram_id are skipped gracefully",
+        "Message format: 'You have X reviews due today.' + recovery progress if applicable",
+        "Script is idempotent and safe to run multiple times",
+        "Typecheck passes",
+        "Tests pass"
       ],
       "priority": 5,
-      "passes": true
-    },
-    {
-      "id": "TUT-006",
-      "title": "Wire TutorContextAdapter into all entry points",
-      "description": "As a developer, I want all 3 entry points (graph endpoint, chat endpoint, Telegram bot) to use TutorContextAdapter instead of the inline SnapshotService + LearnerProfileBuilder pattern.",
-      "acceptanceCriteria": [
-        "POST /graph/chat uses context_adapter.build() instead of snapshot_service + profile_builder",
-        "POST /chat uses context_adapter.build() instead of snapshot_service + profile_builder",
-        "Telegram bot _build_learner_profile uses context_adapter.build() instead of snapshot_service + profile_builder",
-        "All exceptions are caught with logger.warning fallback to empty string",
-        "All existing tests still pass",
-        "Typecheck passes"
-      ],
-      "priority": 6,
-      "passes": true
+      "passes": true,
+      "notes": ""
     }
   ]
 }

@@ -105,3 +105,33 @@ Phase 1 implements only the 4 action types with explicit rules: `REVIEW_TOPIC`, 
 
 ## Recommendation Priority Scoring
 Additive weight system with fixed normalization denominator. Each rule assigns a raw score (e.g., critical mastery = +40, overdue 8+ days = +30, active misconception = +20). Multiple signals for the same topic stack additively. After all rules run, recommendations sharing the same (action_type, topic) pair are deduplicated (higher score wins). Raw scores are normalized to 0.0–1.0 by dividing by `MAX_POSSIBLE_SCORE = 120`, clamped to `[0.0, 1.0]`. The constant is adjusted when new weights are added.
+
+## ContinueLearningFeed
+Read-only computed projection over Recommendation Engine output. Groups recommendations by action_type into sections (recovery_actions, review_actions, quiz_opportunities, tutor_actions). Not persisted — generated on read. Contains `primary_action`, `sections` dict, and `summary` (estimated_minutes + xp_available).
+
+## ContinueLearningService
+Single service at `src/core/learning_intelligence/continue_learning/service.py`. No separate journey builder or action grouping modules. Calls `RecommendationService.get_recommendations()`, groups results by action_type, picks highest-scoring as primary action, decorates cards with estimated_minutes and xp_reward, attaches summary.
+
+## LearningCard
+Navigational display unit wrapping a `LearningRecommendation`. The `id` is the recommendation's UUID. XP is awarded by the underlying activity (quiz, recovery task, etc.), not by clicking the card. Cards are navigational only — they route to the relevant page.
+
+## Feed Sections (Dynamic)
+Sections render only when the Recommendation Engine has matching recommendations for that action_type. No independent generation logic per section. Empty state: when no recommendations exist, primary_action becomes a "Start with a Quiz" prompt with "Ask the Tutor" as secondary action.
+
+## Activity Duration Lookup
+`ACTIVITY_DURATION_LOOKUP` dict keyed by `LearningActionType` in the feed generator. Values are minutes (e.g., REVIEW_TOPIC=10, TAKE_QUIZ=15). Overridable via recommendation metadata.
+
+## Card XP Reward
+Sourced from `XP_SOURCES` in `src/api/gamification.py` mapped by activity type via `ACTION_TYPE_TO_XP_SOURCE_KEY`. Null when the action type has no corresponding XP source. The card shows "available XP" without awarding it.
+
+## DailyLearningPath
+Not a separate endpoint. The frontend derives duration and total XP from the `summary` field on `ContinueLearningFeed`. Feed response includes `summary: FeedSummary(estimated_minutes, xp_available)`.
+
+## Tutor Integration (Next Action)
+Frontend-appended. Dashboard and Telegram bot call `GET /intelligence/next-action/{user_id}` after rendering the tutor response and append a "Next: [action]" line. No LangGraph pipeline changes — recommendation is navigational, not pedagogical.
+
+## Telegram Proactive Reminders
+`scripts/send_proactive_reminders.py` run via cron. Follows the `send_digests.py` pattern. Single daily check for due reviews + active recovery plans. Sends via `telegram.Bot.send_message()` using the bot token from config. Only to users with a non-null `telegram_id`. Idempotent and safe to run multiple times.
+
+## Completion Tracking
+No dedicated completion-log table. Success is measured via existing downstream activity tables (QuizAttempt, RecoveryTask, SpacedRepetitionSchedule). Single structured log line for `continue_learning_generated` events. Detailed metrics deferred to a future analytics pass.
