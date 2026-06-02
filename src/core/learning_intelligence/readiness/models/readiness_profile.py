@@ -14,6 +14,7 @@ class TopicReadiness(BaseModel):
     risk_level: str  # LOW / MODERATE / HIGH / CRITICAL
     risk_factors: list[str]
     review_status: str  # current / overdue
+    forgetting_risk: float | None = None  # 0.0-1.0
 
 
 class ExamReadinessProfile(BaseModel):

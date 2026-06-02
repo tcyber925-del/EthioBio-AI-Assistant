@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-from typing import Optional
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -140,6 +139,11 @@ class ReadinessService:
 
         forgetting_risks = self._forgetting_predictor.predict_forgetting(snapshot)
         stabilities = self._stability_predictor.predict_stability(snapshot)
+
+        for tr in topic_readiness_list:
+            if tr.topic in forgetting_risks:
+                tr.forgetting_risk = forgetting_risks[tr.topic].forgetting_risk
+
         projected_score, confidence = self._score_calculator.calculate(
             profile, forgetting_risks, stabilities, snapshot,
         )
