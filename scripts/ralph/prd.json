@@ -2,45 +2,83 @@
   "project": "EthioBio AI Assistant",
   "title": "Tutor Learner Awareness",
   "branchName": "ralph/tutor-learner-awareness",
-  "description": "Equip the EthioBio tutor pipeline with per-learner awareness: a LearnerProfileBuilder converts a LearnerSnapshot into a structured profile block, and the TutorNode injects it into the system prompt so the LLM adapts its explanations to the student's ability, misconceptions, and weak areas.",
+  "description": "Equip the EthioBio tutor pipeline with per-learner awareness: a LearnerProfileBuilder converts a LearnerSnapshot into a structured profile block, AdaptiveStrategySelector picks a teaching strategy, and TutorContextAdapter bundles everything into a formatted system prompt extension.",
   "userStories": [
     {
       "id": "TUT-001",
       "title": "LearnerProfileBuilder: snapshot-to-text function",
-      "description": "As a developer, I want a pure function that takes a LearnerSnapshot (and optional current_topic) and returns a BuildProfileResult with difficulty_level, a formatted profile_block string, and known_misconceptions list.",
-      "acceptanceCriteria": [
-        "LearnerProfileBuilder class with build_profile(snapshot: LearnerSnapshot, current_topic: str | None = None) -> BuildProfileResult",
-        "_determine_difficulty returns 'BEGINNER', 'DEVELOPING', 'PROFICIENT', or 'ADVANCED' based on confidence, ability_by_topic, mastery_by_topic severity, and weak_topics",
-        "BEGINNER when any critical severity OR confidence < 0.3 OR any ability < -1.0",
-        "DEVELOPING when any moderate severity OR 0.3 <= confidence < 0.6 OR any ability < 0.0",
-        "PROFICIENT when no weak topics AND confidence >= 0.6 AND all abilities >= 0.0",
-        "ADVANCED when no weak topics AND confidence > 0.9 AND all abilities > 1.0",
-        "_find_misconceptions returns misconceptions matching current_topic with frequency >= 2, empty if no current_topic",
-        "_format_profile_block includes weak/strong topics, difficulty level, confidence, ability estimates, and known misconceptions section when present",
-        "Profile block omits '## Known Misconception' section when no misconceptions found",
-        "Typecheck passes"
-      ],
-      "priority": 1,
-      "passes": true,
-      "notes": "23 tests passing. src/core/learning_intelligence/tutor/learner_profile_builder.py"
+      "passes": true
     },
     {
       "id": "TUT-002",
       "title": "TutorNode integrates learner profile block into system prompt",
-      "description": "As a developer, I want the TutorNode to conditionally inject a pre-built learner profile block into the system prompt when the pipeline has enabled learner awareness.",
+      "passes": true
+    },
+    {
+      "id": "TUT-003",
+      "title": "TutorContextPackage dataclass",
+      "description": "As a developer, I want a TutorContextPackage dataclass that bundles LearnerSnapshot, profile_block, difficulty_level, known_misconceptions, top_recommendations, selected_strategy, and formatted_block into one object.",
       "acceptanceCriteria": [
-        "AgentState gains learner_profile_block: str = '' and use_learner_awareness: bool = False fields",
-        "TutorNode.__call__ injects state.learner_profile_block into the system prompt when both the block is non-empty and use_learner_awareness is True",
-        "Profile block is appended after the base system prompt (SOCRATIC or normal) but before memory_context block",
-        "Profile block is NOT injected when use_learner_awareness is False, even if learner_profile_block is set",
-        "Profile block is NOT injected when learner_profile_block is empty, even if use_learner_awareness is True",
-        "Profile block works identically in both normal and Socratic modes",
-        "run_graph() accepts learner_profile_block parameter and forwards it to AgentState with use_learner_awareness auto-set to bool(learner_profile_block)",
+        "TutorContextPackage is a frozen dataclass with all 7 fields",
+        "known_misconceptions defaults to empty list",
+        "top_recommendations defaults to empty list",
+        "selected_strategy defaults to empty string",
+        "formatted_block defaults to empty string",
         "Typecheck passes"
       ],
-      "priority": 2,
-      "passes": true,
-      "notes": "6 tests passing. TutorNode + AgentState + orchestrator integration. Files: src/graph/state.py, src/graph/nodes/tutor.py, src/graph/orchestrator.py"
+      "priority": 3,
+      "passes": true
+    },
+    {
+      "id": "TUT-004",
+      "title": "AdaptiveStrategySelector: strategy selection from learner state",
+      "description": "As a developer, I want AdaptiveStrategySelector that picks a teaching strategy (MISCONCEPTION_REMEDIATION, CONFIDENCE_BUILDING, RECOVERY_SUPPORT, EXAM_PREPARATION, DIRECT_EXPLANATION) based on the learner's profile, snapshot, and recommendations.",
+      "acceptanceCriteria": [
+        "MISCONCEPTION_REMEDIATION when profile.known_misconceptions is non-empty",
+        "CONFIDENCE_BUILDING when educational_memory.confidence < 0.3",
+        "RECOVERY_SUPPORT when snapshot.active_recovery_plans is non-empty",
+        "EXAM_PREPARATION when any recommendation has action_type EXAM_PRACTICE",
+        "DIRECT_EXPLANATION as default fallback",
+        "Priority order: misconception > confidence > recovery > exam > default",
+        "All 5 STRATEGY_INSTRUCTIONS are non-empty strings",
+        "10 tests passing",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": true
+    },
+    {
+      "id": "TUT-005",
+      "title": "TutorContextAdapter: orchestrator that builds the full context",
+      "description": "As a developer, I want TutorContextAdapter that calls SnapshotService, LearnerProfileBuilder, RecommendationService, and AdaptiveStrategySelector, and formats the result into a single system prompt block.",
+      "acceptanceCriteria": [
+        "build(session, user_id, current_topic=None) returns TutorContextPackage",
+        "build() calls get_snapshot, build_profile, get_recommendations, and select",
+        "format_context_block() includes profile_block as the base",
+        "format_context_block() appends ## Learning Recommendations section when recommendations exist",
+        "format_context_block() appends ## Teaching Strategy section when strategy is non-empty and known",
+        "format_context_block() includes all 3 sections when all data present",
+        "top_recommendations capped at 3",
+        "8 tests passing",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": true
+    },
+    {
+      "id": "TUT-006",
+      "title": "Wire TutorContextAdapter into all entry points",
+      "description": "As a developer, I want all 3 entry points (graph endpoint, chat endpoint, Telegram bot) to use TutorContextAdapter instead of the inline SnapshotService + LearnerProfileBuilder pattern.",
+      "acceptanceCriteria": [
+        "POST /graph/chat uses context_adapter.build() instead of snapshot_service + profile_builder",
+        "POST /chat uses context_adapter.build() instead of snapshot_service + profile_builder",
+        "Telegram bot _build_learner_profile uses context_adapter.build() instead of snapshot_service + profile_builder",
+        "All exceptions are caught with logger.warning fallback to empty string",
+        "All existing tests still pass",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": true
     }
   ]
 }

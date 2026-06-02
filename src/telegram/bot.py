@@ -14,8 +14,7 @@ from src.agents.quiz import QuizAgent
 from src.agents.tutor import TutorAgent
 from src.api.gamification import award_xp, check_achievements, update_streak
 from src.config import settings
-from src.core.learning_intelligence.snapshot.snapshot_service import SnapshotService
-from src.core.learning_intelligence.tutor.learner_profile_builder import LearnerProfileBuilder
+from src.core.learning_intelligence.tutor.tutor_context_adapter import TutorContextAdapter
 from src.core.memory.context_assembler import ContextAssembler
 from src.core.memory.session_manager import SessionManager
 from src.database.models import MemorySession, NotificationPreference, StudentProfile, User, UserRole
@@ -463,15 +462,13 @@ async def _build_memory_context(telegram_id: int, topic: str | None, db):
     return user.id, mem_session.session_id if mem_session else None, ctx
 
 
-_snapshot_service = SnapshotService()
-_profile_builder = LearnerProfileBuilder()
+_context_adapter = TutorContextAdapter()
 
 
 async def _build_learner_profile(user_id, db):
     try:
-        snapshot = await _snapshot_service.get_snapshot(db, user_id)
-        result = _profile_builder.build_profile(snapshot)
-        return result.profile_block
+        package = await _context_adapter.build(db, user_id)
+        return package.formatted_block
     except Exception:
         return ""
 
