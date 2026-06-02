@@ -14,4 +14,11 @@ Started: Tue Jun  2 11:17:00 AM EAT 2026
   - LearningCard wraps LearningRecommendation with estimated_minutes and xp_reward — future CL-002 will need to map from LearningActionType to these values
   - No AGENTS.md exists under src/core/learning_intelligence/ — patterns are documented in the root AGENTS.md's "Learning Recommendation Engine" section
 ---
+## Tue Jun  2 11:45:00 AM EAT 2026 - CL-002
+- Created ContinueLearningService in src/core/learning_intelligence/continue_learning/service.py
+- Includes ACTIVITY_DURATION_LOOKUP, ACTION_TYPE_TO_SECTION, ACTION_TYPE_TO_XP_SOURCE_KEY maps
+- Service calls RecommendationService, groups by section, picks primary action, handles empty state
+- Empty state: "Start with a Quiz" as primary + "Ask the Tutor" as secondary action
+- **IMPORTANT**: Must use `.venv/bin/ruff`, `.venv/bin/mypy`, `.venv/bin/pytest` for quality checks — bare commands fail
+---
 
