@@ -8,6 +8,7 @@ import { CardSkeleton } from '@/components/Skeleton'
 import { fetchWithTimeout } from '@/lib/fetch'
 import GamificationProfile from '@/components/gamification/GamificationProfile'
 import ActivityFeed from '@/components/ActivityFeed'
+import ExamReadinessCard from '@/components/learning/ExamReadinessCard'
 
 export default function StudentDetailPage() {
   const params = useParams()
@@ -80,6 +81,7 @@ export default function StudentDetailPage() {
         </div>
 
         <div className="space-y-4">
+          <ExamReadinessCard userId={params.id as string} />
           <GamificationProfile userId={params.id as string} />
           <ActivityFeed userId={params.id as string} />
         </div>

@@ -31,3 +31,14 @@ Started: Tue Jun  2 11:17:00 AM EAT 2026
   - mastery_by_topic values are dicts with average_score, confidence, severity, attempt_count keys
   - ability_by_topic values are dicts with ability_score, uncertainty, attempt_count keys
   - Use AsyncMock/MagicMock with _mock_snapshot_service helper pattern for testing services
+---
+## Tue Jun  2 06:30:00 PM EAT 2026 - ER-003 & ER-004
+- ER-003: Added GET /intelligence/readiness/{user_id} to existing intelligence router
+- ER-004: Created dashboard/src/components/learning/ExamReadinessCard.tsx
+- Added ExamReadinessCard to student detail page sidebar (above GamificationProfile)
+- Component handles loading, error (with retry), empty state, and data display
+- Displays overall_readiness as large percentage with colored readiness band badge
+- Shows risk topics with colored badges per risk level
+- npx tsc --noEmit: clean
+- **Manual browser verification needed** (Playwright not available)
+---
