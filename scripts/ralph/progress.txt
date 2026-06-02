@@ -3,3 +3,15 @@ Started: Tue Jun  2 11:17:00 AM EAT 2026
 ---
 ## TUT-001 and TUT-002 implemented and committed manually
 ## Next: ralph iteration for TUT-003 onwards (if any)
+## Tue Jun  2 11:35:00 AM EAT 2026 - CL-001
+- Created ContinueLearningFeed, LearningCard, FeedSummary Pydantic models in src/core/learning_intelligence/models/continue_learning.py
+- Exported all three models via src/core/learning_intelligence/models/__init__.py
+- Follows existing pattern: separate file per model group, re-exports in __init__.py with __all__
+- ruff and mypy pass clean on the new code
+- 335 tests pass, 9 pre-existing failures (none related)
+**Learnings for future iterations:**
+  - The models directory pattern uses one file per conceptual group (learner_snapshot.py, continue_learning.py), with all exports gathered in __init__.py
+  - LearningCard wraps LearningRecommendation with estimated_minutes and xp_reward — future CL-002 will need to map from LearningActionType to these values
+  - No AGENTS.md exists under src/core/learning_intelligence/ — patterns are documented in the root AGENTS.md's "Learning Recommendation Engine" section
+---
+
