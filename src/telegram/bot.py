@@ -14,6 +14,8 @@ from src.agents.quiz import QuizAgent
 from src.agents.tutor import TutorAgent
 from src.api.gamification import award_xp, check_achievements, update_streak
 from src.config import settings
+from src.core.learning_intelligence.snapshot.snapshot_service import SnapshotService
+from src.core.learning_intelligence.tutor.learner_profile_builder import LearnerProfileBuilder
 from src.core.memory.context_assembler import ContextAssembler
 from src.core.memory.session_manager import SessionManager
 from src.database.models import MemorySession, NotificationPreference, StudentProfile, User, UserRole
@@ -218,14 +220,19 @@ async def hint_command(update: Update, context):
 
             router_llm = ModelRouter()
             agent = TutorAgent(llm_router=router_llm, retriever=None)
+            learner_profile_block = (
+                await _build_learner_profile(memory_user_id, _mem_db)
+                if memory_user_id else ""
+            )
             result = await agent.answer(
                 question=question, user_id=memory_user_id, use_rag=True,
                 grade_level=context.user_data.get("grade_level"),
                 language=context.user_data.get("language", "en"),
-                socratic_mode=context.user_data.get("socratic_mode", True),
-                hint_level=next_level,
-                reveal_answer=False,
+                socratic_mode=False,
+                hint_level=hint_level,
+                reveal_answer=True,
                 memory_context=memory_context,
+                learner_profile_block=learner_profile_block,
             )
             await router_llm.close()
         response = result["answer"]
@@ -263,12 +270,17 @@ async def ask_command(update: Update, context):
                 router_llm = ModelRouter()
                 agent = TutorAgent(llm_router=router_llm, retriever=None)
                 socratic = context.user_data.get("socratic_mode", False)
+                learner_profile_block = (
+                    await _build_learner_profile(memory_user_id, _mem_db)
+                    if memory_user_id else ""
+                )
                 result = await agent.answer(
                     question=question, user_id=memory_user_id, use_rag=True,
                     grade_level=context.user_data.get("grade_level"),
                     language=context.user_data.get("language", "en"),
                     socratic_mode=socratic,
                     memory_context=memory_context,
+                    learner_profile_block=learner_profile_block,
                 )
                 response = result["answer"]
 
@@ -451,6 +463,19 @@ async def _build_memory_context(telegram_id: int, topic: str | None, db):
     return user.id, mem_session.session_id if mem_session else None, ctx
 
 
+_snapshot_service = SnapshotService()
+_profile_builder = LearnerProfileBuilder()
+
+
+async def _build_learner_profile(user_id, db):
+    try:
+        snapshot = await _snapshot_service.get_snapshot(db, user_id)
+        result = _profile_builder.build_profile(snapshot)
+        return result.profile_block
+    except Exception:
+        return ""
+
+
 async def handle_question(update: Update, context):
     question = update.message.text
     context.user_data["ask_question"] = question
@@ -476,6 +501,10 @@ async def handle_question(update: Update, context):
             socratic = context.user_data.get("socratic_mode", False)
             hint_level = context.user_data.get("hint_level", 0)
             reveal = context.user_data.get("reveal_answer", False)
+            learner_profile_block = (
+                await _build_learner_profile(memory_user_id, _mem_db)
+                if memory_user_id else ""
+            )
             result = await agent.answer(
                 question=question, user_id=memory_user_id, use_rag=True,
                 grade_level=context.user_data.pop("tutor_grade", None) or context.user_data.get("grade_level"),
@@ -485,6 +514,7 @@ async def handle_question(update: Update, context):
                 hint_level=hint_level,
                 reveal_answer=reveal,
                 memory_context=memory_context,
+                learner_profile_block=learner_profile_block,
             )
             response = result["answer"]
 

@@ -120,6 +120,7 @@ class TutorAgent(BaseAgent):
         hint_level: int = 0,
         reveal_answer: bool = False,
         memory_context: str = "",
+        learner_profile_block: str = "",
     ) -> dict:
         context = ""
         sources = []
@@ -159,6 +160,8 @@ class TutorAgent(BaseAgent):
 
         prompt = SOCRATIC_SYSTEM_PROMPT if socratic_mode else TUTOR_SYSTEM_PROMPT
         system_prompt = prompt
+        if learner_profile_block:
+            system_prompt += "\n\n" + learner_profile_block
         if context:
             system_prompt += f"\n\n## Curriculum Context\n{context}\n\nUse the above context to ground your answer."
         if memory_context:
