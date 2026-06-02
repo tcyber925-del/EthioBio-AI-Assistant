@@ -21,9 +21,12 @@ from src.api import (
     recovery,
 )
 from src.api.graph import router as graph_router
+from src.api.intelligence.continue_learning_router import (
+    router as continue_learning_router,
+)
 from src.api.models import router as models_router
-from src.core.memory.router import router as memory_router
 from src.config import settings
+from src.core.memory.router import router as memory_router
 from src.database.session import close_db, init_db
 from src.llm.router import ModelRouter
 from src.schemas.common import HealthResponse
@@ -65,6 +68,7 @@ app.include_router(diagram.router)
 app.include_router(export.router)
 app.include_router(gamification.router)
 app.include_router(intelligence.router)
+app.include_router(continue_learning_router)
 app.include_router(recovery.router)
 app.include_router(notifications.router)
 app.include_router(memory_router)

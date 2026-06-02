@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { ArrowLeft, AlertTriangle, BarChart3 } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
 import { fetchWithTimeout } from '@/lib/fetch'
+import ContinueLearningFeed from '@/components/learning/ContinueLearningFeed'
 import GamificationProfile from '@/components/gamification/GamificationProfile'
 import ActivityFeed from '@/components/ActivityFeed'
 import ExamReadinessCard from '@/components/learning/ExamReadinessCard'
@@ -82,6 +83,7 @@ export default function StudentDetailPage() {
 
         <div className="space-y-4">
           <ExamReadinessCard userId={params.id as string} />
+          <ContinueLearningFeed userId={params.id as string} />
           <GamificationProfile userId={params.id as string} />
           <ActivityFeed userId={params.id as string} />
         </div>

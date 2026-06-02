@@ -79,6 +79,25 @@
       ],
       "priority": 4,
       "passes": true,
+      "notes": "Browser verification not performed: Playwright Chrome not available in environment. Manual verification needed."
+    },
+    {
+      "id": "CL-005",
+      "title": "Telegram proactive reminder script",
+      "description": "As a student, I want daily Telegram reminders about my due reviews and recovery tasks, so I stay on track without opening the app.",
+      "acceptanceCriteria": [
+        "scripts/send_proactive_reminders.py exists following send_digests.py pattern",
+        "Script queries SpacedRepetitionSchedule for due reviews per user",
+        "Script queries RecoveryPlan for active plans with pending tasks",
+        "Script uses existing bot.send_message to push reminder to each user",
+        "Users without telegram_id are skipped gracefully",
+        "Message format: 'You have X reviews due today.' + recovery progress if applicable",
+        "Script is idempotent and safe to run multiple times",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 5,
+      "passes": true,
       "notes": ""
     }
   ]
