@@ -7,6 +7,9 @@ from src.core.learning_intelligence.recommendation.rules.mastery_rules import (
 from src.core.learning_intelligence.recommendation.rules.misconception_rules import (
     generate_misconception_recommendations,
 )
+from src.core.learning_intelligence.recommendation.rules.readiness_rules import (
+    generate_readiness_recommendations,
+)
 from src.core.learning_intelligence.recommendation.rules.recovery_rules import (
     generate_recovery_recommendations,
 )
@@ -20,4 +23,5 @@ __all__ = [
     "generate_review_recommendations",
     "generate_misconception_recommendations",
     "generate_engagement_recommendations",
+    "generate_readiness_recommendations",
 ]

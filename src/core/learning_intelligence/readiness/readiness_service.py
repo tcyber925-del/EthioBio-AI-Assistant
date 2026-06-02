@@ -4,9 +4,21 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.learning_intelligence.models import LearnerSnapshot
+from src.core.learning_intelligence.readiness.forgetting_risk import (
+    ForgettingRiskPredictor,
+)
+from src.core.learning_intelligence.readiness.intervention_planner import (
+    InterventionPlanner,
+)
+from src.core.learning_intelligence.readiness.mastery_stability import (
+    MasteryStabilityPredictor,
+)
 from src.core.learning_intelligence.readiness.models import (
     ExamReadinessProfile,
     TopicReadiness,
+)
+from src.core.learning_intelligence.readiness.projected_score import (
+    ProjectedScoreCalculator,
 )
 from src.core.learning_intelligence.snapshot.snapshot_service import (
     SnapshotService,
@@ -17,8 +29,16 @@ class ReadinessService:
     def __init__(
         self,
         snapshot_service: SnapshotService | None = None,
+        forgetting_predictor: ForgettingRiskPredictor | None = None,
+        stability_predictor: MasteryStabilityPredictor | None = None,
+        score_calculator: ProjectedScoreCalculator | None = None,
+        intervention_planner: InterventionPlanner | None = None,
     ):
         self._snapshot_service = snapshot_service or SnapshotService()
+        self._forgetting_predictor = forgetting_predictor or ForgettingRiskPredictor()
+        self._stability_predictor = stability_predictor or MasteryStabilityPredictor()
+        self._score_calculator = score_calculator or ProjectedScoreCalculator()
+        self._intervention_planner = intervention_planner or InterventionPlanner()
 
     async def get_readiness(
         self,
@@ -108,7 +128,7 @@ class ReadinessService:
         else:
             readiness_band = "Critical"
 
-        return ExamReadinessProfile(
+        profile = ExamReadinessProfile(
             user_id=user_id,
             generated_at=snapshot.generated_at,
             overall_readiness=overall_readiness,
@@ -116,3 +136,22 @@ class ReadinessService:
             topic_readiness=topic_readiness_list,
             risk_topics=all_risk_topics,
         )
+
+        forgetting_risks = self._forgetting_predictor.predict_forgetting(snapshot)
+        stabilities = self._stability_predictor.predict_stability(snapshot)
+
+        for tr in topic_readiness_list:
+            if tr.topic in forgetting_risks:
+                tr.forgetting_risk = forgetting_risks[tr.topic].forgetting_risk
+
+        projected_score, confidence = self._score_calculator.calculate(
+            profile, forgetting_risks, stabilities, snapshot,
+        )
+        interventions = self._intervention_planner.plan(
+            snapshot, profile, forgetting_risks, stabilities,
+        )
+
+        profile.projected_exam_score = projected_score
+        profile.confidence_score = confidence
+        profile.recommended_interventions = interventions
+        return profile
