@@ -1,0 +1,42 @@
+{
+  "project": "EthioBio AI Assistant",
+  "title": "Tutor Learner Awareness and Adaptive Tutoring Engine",
+  "branchName": "ralph/tutor-learner-awareness",
+  "description": "Transform the tutor from context-aware to learner-aware by injecting LearnerSnapshot data and learning recommendations into the TutorNode system prompt. Adds a LearnerProfileBuilder module that computes difficulty level, detects active misconceptions, and formats the ## Learner Profile block.",
+  "userStories": [
+    {
+      "id": "TUT-001",
+      "title": "Learner Profile Builder module",
+      "description": "As a developer, I want a standalone module that takes a LearnerSnapshot and current topic, computes the tutoring difficulty level, detects relevant misconceptions, and produces a formatted ## Learner Profile system prompt block.",
+      "acceptanceCriteria": [
+        "LearnerProfileBuilder class at src/core/learning_intelligence/tutor/learner_profile_builder.py with build_profile(snapshot, current_topic) -> BuildProfileResult",
+        "BuildProfileResult has difficulty_level (str), profile_block (str), known_misconceptions (list[MisconceptionSummary])",
+        "4 difficulty levels: BEGINNER (critical mastery OR confidence<0.3 OR ability<-1.0), DEVELOPING (moderate mastery OR confidence 0.3-0.6 OR ability -1.0-0.0), PROFICIENT (no weak topics AND confidence>=0.6 AND all abilities>=0.0), ADVANCED (no weak topics AND confidence>0.9 AND all abilities>1.0)",
+        "profile_block contains ## Learner Profile section with weak_topics, strong_topics, difficulty_level, confidence, ability estimates",
+        "If current_topic matches a snapshot misconception with frequency >= 2, adds ## Known Misconception subsection to profile_block",
+        "Package created at src/core/learning_intelligence/tutor/ with __init__.py",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Conservative teach-to-weakest thresholds. Snapshot data via EducationalMemorySummary.confidence and per-topic mastery/ability."
+    },
+    {
+      "id": "TUT-002",
+      "title": "TutorNode integration with Learner Profile",
+      "description": "As a learner, I want the tutor to be aware of my educational state — weak topics, misconceptions, difficulty level — and adapt its explanations accordingly.",
+      "acceptanceCriteria": [
+        "TutorNode.__init__ accepts optional snapshot_service and recommendation_service parameters",
+        "In __call__, if state.user_id is set: fetch LearnerSnapshot via SnapshotService and recommendations via RecommendationService",
+        "Call LearnerProfileBuilder.build_profile(snapshot, state.topic) to get the profile block",
+        "Inject ## Learner Profile block into system prompt between memory context and hint/reveal prompts",
+        "If user_id is not set (e.g., anonymous chat), skip snapshot/recommendation fetch and maintain existing behavior",
+        "TutorNode creates its own AsyncSession internally via async_session_factory() when user_id is set — no session parameter needed in __init__ or __call__",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "SnapshotService and RecommendationService already have 5-min Redis cache, so per-call overhead is ~50ms on cache hit."
+    }
+  ]
+}

@@ -5,6 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.learning_intelligence.readiness.readiness_service import (
+    ReadinessService,
+)
 from src.core.learning_intelligence.recommendation.services import (
     RecommendationService,
 )
@@ -19,6 +22,7 @@ router = APIRouter(prefix="/intelligence", tags=["Intelligence"])
 snapshot_service = SnapshotService()
 recommendation_service = RecommendationService()
 profile_builder = LearnerProfileBuilder()
+readiness_service = ReadinessService()
 
 
 async def _check_user_exists(session: AsyncSession, user_id: UUID) -> None:
@@ -61,6 +65,16 @@ async def get_recommendations(
     await _check_user_exists(session, user_id)
     recommendations = await recommendation_service.get_recommendations(session, user_id)
     return recommendations
+
+
+@router.get("/readiness/{user_id}")
+async def get_readiness(
+    user_id: UUID,
+    session: AsyncSession = Depends(get_session),
+):
+    await _check_user_exists(session, user_id)
+    profile = await readiness_service.get_readiness(session, user_id)
+    return profile
 
 
 @router.get("/next-action/{user_id}")
