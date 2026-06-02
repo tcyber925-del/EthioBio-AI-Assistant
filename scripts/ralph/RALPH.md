@@ -18,6 +18,7 @@ You are an autonomous coding agent working on the EthioBio AI Assistant project.
 ALL changes must pass these before committing:
 - `ruff check .`
 - `mypy src/`
+- `cd dashboard && npx tsc --noEmit && cd ..`
 - `pytest tests/ -v -k "not test_chat_endpoint and not test_quiz_generate_endpoint"`
 
 ## Progress Report Format
