@@ -1,0 +1,17 @@
+# Ralph Progress Log
+Started: Mon Jun  1 10:05:00 PM EAT 2026
+---
+## Base already committed (outside ralph):
+- Learner Snapshot Builder (full implementation)
+- REC-001: Domain models (LearningActionType enum + LearningRecommendation model)
+- CONTEXT.md glossary updates
+- ADR 0001: partial degradation
+- Intelligence router with GET /intelligence/snapshot/{user_id}
+- Snapshot tests (9 passing)
+
+## Remaining stories for ralph:
+- REC-002: Priority scoring calculator
+- REC-003: 5 rule files (mastery, recovery, review, misconception, engagement)
+- REC-004: Recommendation engine (orchestrator)
+- REC-005: Recommendation service with cache
+- REC-006: API endpoints

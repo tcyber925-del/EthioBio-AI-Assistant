@@ -1,0 +1,105 @@
+{
+  "project": "EthioBio AI Assistant",
+  "title": "Learning Recommendation Engine",
+  "branchName": "ralph/learning-recommendation-engine",
+  "description": "Transform LearnerSnapshot into prioritized educational actions. The engine consumes a LearnerSnapshot, applies 5 rule modules (mastery, recovery, review, misconception, engagement), scores each candidate action, deduplicates, and returns the top 5 recommendations.",
+  "userStories": [
+    {
+      "id": "REC-001",
+      "title": "Domain models: LearningActionType enum + LearningRecommendation model",
+      "description": "As a developer, I want the domain types for recommendations defined so that rules and scoring can use them.",
+      "acceptanceCriteria": [
+        "LearningActionType enum has 9 values: REVIEW_TOPIC, TAKE_QUIZ, COMPLETE_RECOVERY_TASK, REVISE_MISCONCEPTION, STUDY_DIAGRAM, READ_CONTENT, ASK_TUTOR, EXAM_PRACTICE, MAINTAIN_STREAK",
+        "LearningRecommendation Pydantic model has fields: id (str), action_type (LearningActionType), topic (str|None), priority_score (float, default 0.0), reason (str, default empty), explanation (str, default empty), generated_at (datetime), metadata (dict, default empty)",
+        "Package created at recommendation/models/ with __init__.py re-exporting both",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "All action types defined up front even though only 4 are active in Phase 1. Keep enum in separate file from model."
+    },
+    {
+      "id": "REC-002",
+      "title": "Priority scoring calculator with weight config and dedup",
+      "description": "As a developer, I want a scoring function that converts raw weights into normalized 0-1 priority scores and deduplicates recommendations by (action_type, topic).",
+      "acceptanceCriteria": [
+        "PriorityCalculator class with RAW_WEIGHTS dict: critical=40, moderate=25, mild=10, good=0, overdue_1_3=10, overdue_4_7=20, overdue_8plus=30, misconception=20, active_plan=15, near_completion=10, streak_risk=10, inactive=15",
+        "MAX_POSSIBLE_SCORE constant = 120",
+        "normalize(raw: float) -> float divides by 120, clamps to [0.0, 1.0]",
+        "deduplicate(recommendations) -> list merges same (action_type, topic), keeps higher priority_score",
+        "score_and_sort(recommendations) -> list applies normalize + dedup + sort desc + returns top 5",
+        "Package at recommendation/scoring/ with __init__.py",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Fixed denominator normalization ensures consistent scale across all recommendations."
+    },
+    {
+      "id": "REC-003",
+      "title": "All 5 rule modules: mastery, recovery, review, misconception, engagement",
+      "description": "As a developer, I want rule modules that inspect a LearnerSnapshot and produce candidate recommendations with raw priority scores.",
+      "acceptanceCriteria": [
+        "mastery_rules.py: generates REVIEW_TOPIC for topics with severity 'critical' (raw=40) or 'moderate' (raw=25). Uses snapshot.mastery_by_topic and weak_topics.",
+        "recovery_rules.py: generates COMPLETE_RECOVERY_TASK for each active recovery plan (raw=15). Adds +10 bonus if progress_pct >= 80 (near completion). Uses snapshot.active_recovery_plans.",
+        "review_rules.py: generates REVIEW_TOPIC for each due review (raw=10 for 1-3 days overdue, 20 for 4-7, 30 for 8+). Uses snapshot.due_reviews.days_overdue.",
+        "misconception_rules.py: generates REVISE_MISCONCEPTION for each misconception with frequency >= 2 (raw=20). Uses snapshot.misconceptions.",
+        "engagement_rules.py: generates MAINTAIN_STREAK if streak <= 1 (raw=10) or recent_activity_score < 0.3 (raw=15). Uses snapshot.gamification.",
+        "Each rule module is an async function: generate(snapshot: LearnerSnapshot) -> list[LearningRecommendation] with priority_score set to the raw score (not yet normalized) and a human-readable reason string",
+        "Package at recommendation/rules/ with __init__.py re-exporting all 5 generate functions",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Raw scores are set by rules; normalization happens in PriorityCalculator. Each rule is independent - no cross-rule dependencies."
+    },
+    {
+      "id": "REC-004",
+      "title": "Recommendation engine orchestrating rules + scoring",
+      "description": "As a developer, I want the engine that calls all rules, scores, deduplicates, and returns top 5 recommendations.",
+      "acceptanceCriteria": [
+        "RecommendationEngine class with async generate(snapshot: LearnerSnapshot, user_id: UUID) -> list[LearningRecommendation]",
+        "Calls all 5 rule generators (mastery, recovery, review, misconception, engagement) in parallel via asyncio.gather with return_exceptions=True",
+        "Passes raw recommendations through PriorityCalculator.score_and_sort() for normalization, dedup, and top-5 selection",
+        "Each recommendation gets a unique id like 'rec_{user_id_short}_{index}' after scoring",
+        "generated_at set to now for each recommendation",
+        "Package at recommendation/services/ with __init__.py",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "parallel gather mirrors the SnapshotBuilder pattern. Degraded snapshot = empty fields = fewer/no recommendations."
+    },
+    {
+      "id": "REC-005",
+      "title": "Recommendation service with caching",
+      "description": "As a developer, I want a cached entry point for recommendations that fetches the snapshot, runs the engine, and caches results.",
+      "acceptanceCriteria": [
+        "RecommendationService class with async get_recommendations(user_id: UUID) -> list[LearningRecommendation]",
+        "Fetches snapshot via SnapshotService.get_snapshot()",
+        "Runs engine.generate(snapshot, user_id)",
+        "Caches result in CacheManager with key prefix 'recommendations:{user_id}', 5-min TTL",
+        "Cache hit returns deserialized recommendations directly",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Reuses existing CacheManager from snapshot module. No explicit invalidation - TTL-only, matching the snapshot pattern."
+    },
+    {
+      "id": "REC-006",
+      "title": "API endpoints: GET /intelligence/recommendations/{user_id} and GET /intelligence/next-action/{user_id}",
+      "description": "As a learner, I want to retrieve my top recommendations and single best next action via the API.",
+      "acceptanceCriteria": [
+        "GET /intelligence/recommendations/{user_id} returns JSON array of top 5 recommendations, each with action_type, topic, priority_score, reason, explanation",
+        "GET /intelligence/next-action/{user_id} returns single highest-priority recommendation or empty object if none",
+        "Both endpoints perform user existence check (404 if not found) matching existing pattern in intelligence router",
+        "Endpoints use Depends(get_session) and Dependency Override compatible for tests",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "Added to existing src/api/intelligence/router.py. Follows the same pattern as GET /intelligence/snapshot/{user_id}."
+    }
+  ]
+}
