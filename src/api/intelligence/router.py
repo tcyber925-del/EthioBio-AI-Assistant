@@ -9,6 +9,7 @@ from src.core.learning_intelligence.recommendation.services import (
     RecommendationService,
 )
 from src.core.learning_intelligence.snapshot.snapshot_service import SnapshotService
+from src.core.learning_intelligence.tutor.learner_profile_builder import LearnerProfileBuilder
 from src.database.models import User
 from src.database.session import get_session
 
@@ -17,6 +18,7 @@ router = APIRouter(prefix="/intelligence", tags=["Intelligence"])
 
 snapshot_service = SnapshotService()
 recommendation_service = RecommendationService()
+profile_builder = LearnerProfileBuilder()
 
 
 async def _check_user_exists(session: AsyncSession, user_id: UUID) -> None:
@@ -34,6 +36,21 @@ async def get_learner_snapshot(
     await _check_user_exists(session, user_id)
     snapshot = await snapshot_service.get_snapshot(session, user_id)
     return snapshot
+
+
+@router.get("/learner-profile/{user_id}")
+async def get_learner_profile(
+    user_id: UUID,
+    session: AsyncSession = Depends(get_session),
+):
+    await _check_user_exists(session, user_id)
+    snapshot = await snapshot_service.get_snapshot(session, user_id)
+    profile = profile_builder.build_profile(snapshot)
+    return {
+        "difficulty_level": profile.difficulty_level,
+        "profile_block": profile.profile_block,
+        "known_misconceptions": [m.model_dump() for m in profile.known_misconceptions],
+    }
 
 
 @router.get("/recommendations/{user_id}")
