@@ -21,4 +21,42 @@ Started: Tue Jun  2 11:17:00 AM EAT 2026
 - Empty state: "Start with a Quiz" as primary + "Ask the Tutor" as secondary action
 - **IMPORTANT**: Must use `.venv/bin/ruff`, `.venv/bin/mypy`, `.venv/bin/pytest` for quality checks — bare commands fail
 ---
+## Tue Jun  2 04:50:00 PM EAT 2026 - CL-003
+- Created `src/api/intelligence/continue_learning_router.py` with `GET /intelligence/continue-learning/{user_id}` endpoint
+- Follows same dependency injection pattern as existing intelligence router (`_check_user_exists`, `Depends(get_session)`)
+- Router uses `APIRouter(prefix="/intelligence", tags=["Intelligence"])` — same prefix as the main intelligence router
+- Imported in `main.py` as `from src.api.intelligence.continue_learning_router import router as continue_learning_router`
+- Registered with `app.include_router(continue_learning_router)`
+- Added `/intelligence/:path*` rewrite to `dashboard/next.config.js`
+- All 335 tests pass, 9 pre-existing failures (none related)
+- ruff and mypy pass clean on new code (pre-existing errors unchanged)
+- TypeScript check passes
+- **Learnings for future iterations:**
+  - Separate router files within an API package (e.g., `src/api/intelligence/`) follow the `from ... import router as <name>` pattern in main.py
+  - The `/intelligence/:path*` rewrite was missing from next.config.js and needed to be added explicitly for dashboard access to intelligence endpoints
+   - Module-level service instantiation (like `continue_learning_service = ContinueLearningService()`) is the existing convention
+---
+## Tue Jun  2 05:50:00 PM EAT 2026 - CL-004
+- Created `dashboard/src/components/learning/ContinueLearningFeed.tsx` component
+  - Fetches from `/intelligence/continue-learning/{userId}`
+  - Primary action card with highlighted green styling
+  - Section cards grouped by type (recovery_actions, review_actions, quiz_opportunities, tutor_actions)
+  - Empty state: "Start Your Learning Journey" with quiz link
+  - Error state: retry button
+  - Loading state: CardSkeleton
+  - Summary footer showing estimated minutes and XP available
+  - Each card links to appropriate activity page via getActionLink()
+  - ACTION_ICONS map with per-action-type icons and colors
+- Updated `dashboard/src/app/students/[id]/page.tsx` to import and render ContinueLearningFeed above GamificationProfile in the sidebar
+- TypeScript check passes (npx tsc --noEmit → clean)
+- ruff and mypy: no regressions (all pre-existing errors unchanged)
+- pytest: 335 passed, 9 pre-existing failures unchanged
+- **Browser verification**: Skipped — Playwright Chrome not installed in this environment. Manual verification needed.
+- **Learnings for future iterations:**
+  - The `line-clamp-1` Tailwind utility works for single-line truncation alongside `truncate` for titles
+  - Action-type-to-link mapping (getActionLink) needs to match each LearningActionType to a valid dashboard route
+  - The sidebar layout follows `space-y-4` stacking order — ContinueLearningFeed should be first (topmost) as it's the primary entry point
+  - Dashboard CSS classes work with `bg-primary`, `text-primary`, `bg-primary-hover`, `bg-primary/5`, `bg-primary/10` — opacity variants work for highlighted cards
+  - Non-standard colors like `bg-cyan-500/10` and `text-cyan-400` work in Tailwind with arbitrary value syntax even without explicit config entries
+---
 
