@@ -57,6 +57,15 @@ Started: Tue Jun  2 11:17:00 AM EAT 2026
   - Action-type-to-link mapping (getActionLink) needs to match each LearningActionType to a valid dashboard route
   - The sidebar layout follows `space-y-4` stacking order — ContinueLearningFeed should be first (topmost) as it's the primary entry point
   - Dashboard CSS classes work with `bg-primary`, `text-primary`, `bg-primary-hover`, `bg-primary/5`, `bg-primary/10` — opacity variants work for highlighted cards
-  - Non-standard colors like `bg-cyan-500/10` and `text-cyan-400` work in Tailwind with arbitrary value syntax even without explicit config entries
+   - Non-standard colors like `bg-cyan-500/10` and `text-cyan-400` work in Tailwind with arbitrary value syntax even without explicit config entries
+---
+## Tue Jun  2 06:10:00 PM EAT 2026 - CL-005
+- Created `scripts/send_proactive_reminders.py` following `send_digests.py` pattern
+- Queries users with telegram_id who are active
+- For each user: counts due SpacedRepetitionSchedule items, checks active RecoveryPlan progress
+- Sends a single Markdown-formatted Telegram message with review count + recovery progress
+- Falls back gracefully if telegram_bot_token is unconfigured
+- Designed to be run via cron (idempotent, safe to run multiple times)
+- ruff and mypy pass (only pre-existing errors)
 ---
 
