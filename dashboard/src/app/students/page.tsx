@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Users, AlertTriangle } from 'lucide-react'
+import { Users, AlertTriangle, RefreshCw } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
 import { fetchWithTimeout } from '@/lib/fetch'
+import { isAuthenticated } from '@/lib/auth'
 
 interface Student {
   id: string; telegram_id: number | null
@@ -19,18 +20,32 @@ export default function StudentsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const fetchStudents = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const d = await fetchWithTimeout('/api/admin/dashboard')
+      setStudents(d.recent_users || [])
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
-    fetchWithTimeout('/api/admin/dashboard')
-      .then(d => setStudents(d.recent_users || []))
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false))
-  }, [])
+    if (!isAuthenticated()) { router.push('/login'); return }
+    fetchStudents()
+  }, [router])
 
   if (loading) return <div className="space-y-4">{Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)}</div>
   if (error) return (
     <div className="text-center py-16">
       <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
       <p className="text-red-400">{error}</p>
+      <button onClick={fetchStudents} className="mt-4 px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover transition-colors">
+        <RefreshCw className="w-4 h-4 inline mr-1" /> Retry
+      </button>
     </div>
   )
 

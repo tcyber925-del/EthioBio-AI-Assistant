@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, AlertTriangle, Check, X, Loader2 } from 'lucide-react'
+import { ArrowLeft, AlertTriangle, Check, X, Loader2, RefreshCw } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import { fetchWithTimeout } from '@/lib/fetch'
+import { isAuthenticated } from '@/lib/auth'
 
 interface LessonDetail {
   id: string; topic: string; grade_level: number
@@ -18,6 +19,7 @@ interface LessonDetail {
 
 export default function LessonDetailPage() {
   const params = useParams()
+  const router = useRouter()
   const [lesson, setLesson] = useState<LessonDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -48,14 +50,24 @@ export default function LessonDetailPage() {
     }
   }
 
-  useEffect(() => { fetchLesson() }, [params.id])
+  useEffect(() => {
+    if (!isAuthenticated()) { router.push('/login'); return }
+    fetchLesson()
+  }, [params.id, router])
 
   if (loading) return <div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)}</div>
   if (error) return (
     <div className="text-center py-16">
       <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
       <p className="text-red-400">{error}</p>
-      <Link href="/lessons" className="text-primary hover:underline mt-4 inline-block">Back to lesson plans</Link>
+      <div className="mt-4 flex gap-3 justify-center">
+        <button onClick={fetchLesson} className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover transition-colors">
+          <RefreshCw className="w-4 h-4 inline mr-1" /> Retry
+        </button>
+        <Link href="/lessons" className="px-4 py-2 bg-card border border-border text-foreground rounded-lg text-sm hover:bg-border transition-colors">
+          Back to lessons
+        </Link>
+      </div>
     </div>
   )
   if (!lesson) return null

@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { BookOpen, ClipboardCheck, FileText, Users, BarChart3, AlertTriangle, RefreshCw } from 'lucide-react'
+import { isAuthenticated } from '@/lib/auth'
 import StatCard from '@/components/StatCard'
 import { CardSkeleton, TableSkeleton } from '@/components/Skeleton'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
@@ -17,6 +19,7 @@ interface DashboardData {
 }
 
 export default function Dashboard() {
+  const router = useRouter()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -33,6 +36,10 @@ export default function Dashboard() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (!isAuthenticated()) { router.push('/login'); return }
+  }, [router])
 
   useEffect(() => { fetchData() }, [])
 

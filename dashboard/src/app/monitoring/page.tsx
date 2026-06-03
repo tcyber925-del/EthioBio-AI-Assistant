@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { BarChart3, AlertTriangle, RefreshCw } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts'
 import { fetchWithTimeout } from '@/lib/fetch'
+import { isAuthenticated } from '@/lib/auth'
 
 interface MonitoringData {
   total_requests: number; failed_requests: number
@@ -12,6 +14,7 @@ interface MonitoringData {
 }
 
 export default function MonitoringPage() {
+  const router = useRouter()
   const [data, setData] = useState<MonitoringData | null>(null)
   const [logs, setLogs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -40,13 +43,19 @@ export default function MonitoringPage() {
     }
   }
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => {
+    if (!isAuthenticated()) { router.push('/login'); return }
+    fetchData()
+  }, [router])
 
   if (loading) return <div className="grid grid-cols-1 md:grid-cols-3 gap-5">{Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)}</div>
   if (error) return (
     <div className="text-center py-16">
       <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
       <p className="text-red-400">{error}</p>
+      <button onClick={fetchData} className="mt-4 px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover transition-colors">
+        <RefreshCw className="w-4 h-4 inline mr-1" /> Retry
+      </button>
     </div>
   )
 

@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { FileText, AlertTriangle, Plus, X, Loader2 } from 'lucide-react'
 import { TableSkeleton } from '@/components/Skeleton'
 import ModelSelector from '@/components/ModelSelector'
 import { fetchWithTimeout } from '@/lib/fetch'
+import { isAuthenticated } from '@/lib/auth'
 
 interface Lesson {
   id: string; topic: string; grade_level: number
@@ -13,6 +15,7 @@ interface Lesson {
 }
 
 export default function LessonsPage() {
+  const router = useRouter()
   const [items, setItems] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -38,7 +41,10 @@ export default function LessonsPage() {
     }
   }
 
-  useEffect(() => { fetchLessons() }, [filter])
+  useEffect(() => {
+    if (!isAuthenticated()) { router.push('/login'); return }
+    fetchLessons()
+  }, [filter, router])
 
   const createLesson = async () => {
     if (!genTopic.trim()) return

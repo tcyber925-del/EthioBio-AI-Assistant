@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, AlertTriangle, BarChart3 } from 'lucide-react'
+import { ArrowLeft, AlertTriangle, BarChart3, RefreshCw } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
 import { fetchWithTimeout } from '@/lib/fetch'
+import { isAuthenticated } from '@/lib/auth'
 import ContinueLearningFeed from '@/components/learning/ContinueLearningFeed'
 import GamificationProfile from '@/components/gamification/GamificationProfile'
 import ActivityFeed from '@/components/ActivityFeed'
@@ -13,23 +14,42 @@ import ExamReadinessCard from '@/components/learning/ExamReadinessCard'
 
 export default function StudentDetailPage() {
   const params = useParams()
+  const router = useRouter()
   const [student, setStudent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const fetchStudent = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const d = await fetchWithTimeout(`/progress/student/${params.id}`)
+      setStudent(d)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
-    fetchWithTimeout(`/progress/student/${params.id}`)
-      .then(d => setStudent(d))
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false))
-  }, [params.id])
+    if (!isAuthenticated()) { router.push('/login'); return }
+    fetchStudent()
+  }, [params.id, router])
 
   if (loading) return <div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)}</div>
   if (error) return (
     <div className="text-center py-16">
       <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
       <p className="text-red-400">{error}</p>
-      <Link href="/students" className="text-primary hover:underline mt-4 inline-block">Back to students</Link>
+      <div className="mt-4 flex gap-3 justify-center">
+        <button onClick={fetchStudent} className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover transition-colors">
+          <RefreshCw className="w-4 h-4 inline mr-1" /> Retry
+        </button>
+        <Link href="/students" className="px-4 py-2 bg-card border border-border text-foreground rounded-lg text-sm hover:bg-border transition-colors">
+          Back to students
+        </Link>
+      </div>
     </div>
   )
   if (!student) return null
