@@ -1,4 +1,6 @@
 
+from uuid import UUID
+
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -287,7 +289,11 @@ class UserListResponse(BaseModel):
     per_page: int
 
 
-@router.get("/users")
+class UpdateUserStatusRequest(BaseModel):
+    is_active: bool
+
+
+@router.get("/users", response_model=UserListResponse)
 async def list_users(
     search: str | None = Query(None),
     role: str | None = Query(None, pattern="^(student|teacher|parent|admin)$"),
@@ -334,25 +340,20 @@ async def list_users(
 @router.patch("/users/{user_id}/status")
 async def update_user_status(
     user_id: str,
-    body: dict,
+    body: UpdateUserStatusRequest,
     session: AsyncSession = Depends(get_session),
     _: User = Depends(require_admin),
 ):
-    from uuid import UUID as UUIDType
     try:
-        uid = UUIDType(user_id)
+        uid = UUID(user_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid user ID")
-
-    is_active = body.get("is_active")
-    if is_active is None:
-        raise HTTPException(status_code=400, detail="is_active is required")
 
     user = await session.get(User, uid)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    user.is_active = bool(is_active)
+    user.is_active = body.is_active
     await session.commit()
     return {"ok": True, "user_id": user_id, "is_active": user.is_active}
 
