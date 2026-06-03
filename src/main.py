@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from src.api import (
     activity,
     admin,
+    auth,
     chat,
     diagram,
     export,
@@ -74,6 +75,7 @@ app.include_router(recovery.router)
 app.include_router(notifications.router)
 app.include_router(memory_router)
 app.include_router(activity.router)
+app.include_router(auth.router)
 app.include_router(teacher.router)
 
 diagram_static_dir = Path("data/diagrams")

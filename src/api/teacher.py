@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.api.auth import get_current_user
 from src.core.learning_intelligence.teacher import TeacherService
 from src.database.models import ClassEnrollment, ClassGroup, User
 from src.database.session import get_session
@@ -47,19 +48,6 @@ class ClassroomRoster(BaseModel):
     students: list[RosterStudent]
 
 
-async def _verify_teacher_exists(
-    session: AsyncSession,
-    teacher_id: UUID,
-) -> User:
-    result = await session.execute(
-        select(User).where(User.id == teacher_id, User.role == "teacher")
-    )
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=404, detail="Teacher not found")
-    return user
-
-
 async def _verify_teacher_owns_classroom(
     session: AsyncSession,
     classroom_id: UUID,
@@ -79,15 +67,13 @@ async def _verify_teacher_owns_classroom(
 @router.post("/classrooms")
 async def create_classroom(
     body: CreateClassroomRequest,
-    teacher_id: UUID,
     session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ):
-    await _verify_teacher_exists(session, teacher_id)
-
     class_group = ClassGroup(
         name=body.name,
         grade_level=body.grade_level,
-        teacher_id=teacher_id,
+        teacher_id=current_user.id,
     )
     session.add(class_group)
     await session.flush()
@@ -108,14 +94,12 @@ async def create_classroom(
 
 @router.get("/classrooms")
 async def list_classrooms(
-    teacher_id: UUID,
     session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ):
-    await _verify_teacher_exists(session, teacher_id)
-
     result = await session.execute(
         select(ClassGroup)
-        .where(ClassGroup.teacher_id == teacher_id)
+        .where(ClassGroup.teacher_id == current_user.id)
         .options(selectinload(ClassGroup.students))
     )
     classes = result.scalars().all()
@@ -133,11 +117,11 @@ async def list_classrooms(
 @router.get("/classrooms/{classroom_id}")
 async def get_classroom_roster(
     classroom_id: UUID,
-    teacher_id: UUID,
     session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ):
     class_group = await _verify_teacher_owns_classroom(
-        session, classroom_id, teacher_id
+        session, classroom_id, current_user.id
     )
     if not class_group.students:
         return ClassroomRoster(
@@ -182,11 +166,11 @@ async def get_classroom_roster(
 async def enroll_students(
     classroom_id: UUID,
     body: EnrollStudentsRequest,
-    teacher_id: UUID,
     session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ):
     await _verify_teacher_owns_classroom(
-        session, classroom_id, teacher_id
+        session, classroom_id, current_user.id
     )
 
     if not body.student_ids:
@@ -217,11 +201,11 @@ async def enroll_students(
 @router.get("/classrooms/{classroom_id}/overview")
 async def get_classroom_overview(
     classroom_id: UUID,
-    teacher_id: UUID,
     session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ):
     await _verify_teacher_owns_classroom(
-        session, classroom_id, teacher_id
+        session, classroom_id, current_user.id
     )
     profile = await teacher_service.get_classroom_overview(
         session, classroom_id
@@ -232,11 +216,11 @@ async def get_classroom_overview(
 @router.get("/classrooms/{classroom_id}/risk-students")
 async def get_risk_students(
     classroom_id: UUID,
-    teacher_id: UUID,
     session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ):
     await _verify_teacher_owns_classroom(
-        session, classroom_id, teacher_id
+        session, classroom_id, current_user.id
     )
     profile = await teacher_service.get_classroom_overview(
         session, classroom_id
@@ -247,11 +231,11 @@ async def get_risk_students(
 @router.get("/classrooms/{classroom_id}/interventions")
 async def get_interventions(
     classroom_id: UUID,
-    teacher_id: UUID,
     session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ):
     await _verify_teacher_owns_classroom(
-        session, classroom_id, teacher_id
+        session, classroom_id, current_user.id
     )
     profile = await teacher_service.get_classroom_overview(
         session, classroom_id
@@ -262,11 +246,11 @@ async def get_interventions(
 @router.get("/classrooms/{classroom_id}/mastery-heatmap")
 async def get_mastery_heatmap(
     classroom_id: UUID,
-    teacher_id: UUID,
     session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ):
     await _verify_teacher_owns_classroom(
-        session, classroom_id, teacher_id
+        session, classroom_id, current_user.id
     )
     profile = await teacher_service.get_classroom_overview(
         session, classroom_id

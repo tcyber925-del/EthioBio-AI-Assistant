@@ -15,6 +15,7 @@ const nextConfig = {
       { source: '/activity/:path*', destination: `${api}/activity/:path*` },
       { source: '/diagram/:path*', destination: `${api}/diagram/:path*` },
       { source: '/intelligence/:path*', destination: `${api}/intelligence/:path*` },
+      { source: '/auth/:path*', destination: `${api}/auth/:path*` },
       { source: '/teacher/:path*', destination: `${api}/teacher/:path*` },
       { source: '/recovery/:path*', destination: `${api}/recovery/:path*` },
     ]

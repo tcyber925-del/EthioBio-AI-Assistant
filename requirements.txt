@@ -37,3 +37,5 @@ alembic>=1.13
 psycopg2-binary>=2.9
 fpdf2==2.8.1
 Pillow>=10.0.0
+bcrypt>=4.0.0
+python-jose[cryptography]>=3.3.0
