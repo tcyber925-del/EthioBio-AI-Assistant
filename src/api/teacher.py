@@ -8,14 +8,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.api.auth import get_current_user
+from src.core.learning_intelligence.school import SchoolService
 from src.core.learning_intelligence.teacher import TeacherService
-from src.database.models import ClassEnrollment, ClassGroup, User
+from src.database.models import ClassEnrollment, ClassGroup, School, User, UserRole
 from src.database.session import get_session
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/teacher", tags=["Teacher"])
 
 teacher_service = TeacherService()
+school_service = SchoolService()
 
 
 class CreateClassroomRequest(BaseModel):
@@ -277,3 +279,86 @@ async def _enroll_students(
             student_id=sid,
         )
         session.add(enrollment)
+
+
+def _require_admin(current_user: User) -> None:
+    if current_user.role != UserRole.admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+
+@router.get("/district/overview")
+async def get_district_overview(
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    _require_admin(current_user)
+    return await school_service.get_district_overview(session)
+
+
+@router.get("/schools")
+async def list_schools(
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    _require_admin(current_user)
+    result = await session.execute(select(School))
+    schools = result.scalars().all()
+    return [
+        {
+            "id": str(s.id),
+            "name": s.name,
+            "created_at": s.created_at.isoformat(),
+        }
+        for s in schools
+    ]
+
+
+@router.get("/schools/{school_id}/overview")
+async def get_school_overview(
+    school_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    _require_admin(current_user)
+    profile = await school_service.get_school_overview(session, school_id)
+    if profile.total_students == 0:
+        raise HTTPException(status_code=404, detail="School not found or has no data")
+    return profile
+
+
+@router.post("/schools/{school_id}/snapshot")
+async def create_school_snapshot(
+    school_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    _require_admin(current_user)
+    snapshot = await school_service.create_snapshot(session, school_id)
+    return {
+        "snapshot_id": snapshot.id,
+        "school_id": snapshot.school_id,
+        "snapshot_date": snapshot.snapshot_date.isoformat(),
+        "avg_health": snapshot.avg_health,
+        "total_students": snapshot.total_students,
+        "at_risk_count": snapshot.at_risk_count,
+    }
+
+
+@router.get("/schools/{school_id}/trends")
+async def get_school_trends(
+    school_id: UUID,
+    days: int = 30,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    _require_admin(current_user)
+    snapshots = await school_service.get_trends(session, school_id, days=days)
+    return [
+        {
+            "snapshot_date": s.snapshot_date.isoformat(),
+            "avg_health": s.avg_health,
+            "total_students": s.total_students,
+            "at_risk_count": s.at_risk_count,
+        }
+        for s in snapshots
+    ]

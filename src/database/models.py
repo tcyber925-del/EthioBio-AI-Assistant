@@ -74,6 +74,17 @@ class StudentProfile(Base):
     progress_records: Mapped[list["ProgressRecord"]] = relationship(back_populates="student")
 
 
+class School(Base):
+    __tablename__ = "schools"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    name: Mapped[str] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    class_groups: Mapped[list["ClassGroup"]] = relationship(back_populates="school")
+    health_snapshots: Mapped[list["SchoolHealthSnapshot"]] = relationship(back_populates="school")
+
+
 class ClassGroup(Base):
     __tablename__ = "class_groups"
 
@@ -81,9 +92,13 @@ class ClassGroup(Base):
     name: Mapped[str] = mapped_column(String(200))
     grade_level: Mapped[int] = mapped_column(Integer)
     teacher_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    school_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("schools.id"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     students: Mapped[list["User"]] = relationship(secondary="class_enrollments")
+    school: Mapped["School | None"] = relationship(back_populates="class_groups")
 
 
 class ClassEnrollment(Base):
@@ -93,6 +108,20 @@ class ClassEnrollment(Base):
     class_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("class_groups.id"))
     student_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     enrolled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class SchoolHealthSnapshot(Base):
+    __tablename__ = "school_health_snapshots"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    school_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("schools.id"))
+    snapshot_date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    avg_health: Mapped[float] = mapped_column(Float)
+    total_students: Mapped[int] = mapped_column(Integer)
+    at_risk_count: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    school: Mapped["School"] = relationship(back_populates="health_snapshots")
 
 
 class CurriculumTopic(Base):
