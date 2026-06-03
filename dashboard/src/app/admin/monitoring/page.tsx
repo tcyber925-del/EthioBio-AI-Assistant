@@ -3,8 +3,15 @@
 import { useEffect, useState } from 'react'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 
+interface MonitoringData {
+  total_requests: number
+  failed_requests: number
+  fallback_rate: number
+  fallbacks: number
+}
+
 export default function AdminMonitoringPage() {
-  const [data, setData] = useState<any>(null)
+  const [data, setData] = useState<MonitoringData | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {

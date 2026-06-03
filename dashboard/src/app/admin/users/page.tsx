@@ -5,8 +5,18 @@ import { fetchWithAuth } from '@/lib/fetchWithAuth'
 
 const ROLES = ['all', 'student', 'teacher', 'parent', 'admin'] as const
 
+interface UserData {
+  id: string
+  email?: string
+  role: string
+  grade_level?: number | null
+  telegram_id?: number | null
+  is_active: boolean
+  created_at?: string
+}
+
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<any[]>([])
+  const [users, setUsers] = useState<UserData[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -31,12 +41,16 @@ export default function AdminUsersPage() {
   useEffect(() => { load() }, [search, role])
 
   const toggleStatus = async (userId: string, current: boolean) => {
-    await fetchWithAuth(`/admin/users/${userId}/status`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_active: !current }),
-    })
-    load()
+    try {
+      await fetchWithAuth(`/admin/users/${userId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: !current }),
+      })
+      load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
   }
 
   if (error) return <p className="text-red-600">Error: {error}</p>
@@ -68,7 +82,7 @@ export default function AdminUsersPage() {
           </tr>
         </thead>
         <tbody>
-          {users.map((u: any) => (
+          {users.map((u: UserData) => (
             <tr key={u.id} className="border-t">
               <td className="p-2">{u.email ?? '-'}</td>
               <td className="p-2 capitalize">{u.role}</td>

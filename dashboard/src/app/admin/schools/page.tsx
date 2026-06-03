@@ -3,8 +3,17 @@
 import { useEffect, useState } from 'react'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 
+interface SchoolData {
+  id: string
+  name: string
+  teacher_count?: number
+  student_count?: number
+  grade_range?: string
+  created_at?: string
+}
+
 export default function AdminSchoolsPage() {
-  const [schools, setSchools] = useState<any[]>([])
+  const [schools, setSchools] = useState<SchoolData[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
@@ -25,14 +34,19 @@ export default function AdminSchoolsPage() {
 
   const create = async () => {
     if (!name.trim()) return
-    await fetchWithAuth('/teacher/schools', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name.trim() }),
-    })
-    setName('')
-    setShowForm(false)
-    load()
+    setError(null)
+    try {
+      await fetchWithAuth('/teacher/schools', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim() }),
+      })
+      setName('')
+      setShowForm(false)
+      load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
   }
 
   if (error) return <p className="text-red-600">Error: {error}</p>
@@ -54,7 +68,7 @@ export default function AdminSchoolsPage() {
         </div>
       )}
       <div className="grid gap-4">
-        {schools.map((s: any) => (
+        {schools.map((s: SchoolData) => (
           <div key={s.id} className="border rounded p-4 bg-white">
             <h3 className="font-semibold">{s.name}</h3>
             <p className="text-sm text-gray-500 mt-1">
