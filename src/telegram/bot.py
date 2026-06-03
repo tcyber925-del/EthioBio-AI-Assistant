@@ -95,6 +95,48 @@ async def dashboard_login_command(update: Update, context):
     )
 
 
+async def register_parent(update: Update, context):
+    email = (context.args[0] if context.args else "").strip().lower()
+    if not email:
+        await update.message.reply_text(
+            "Usage: <code>/parent_register your@email.com</code>\n\n"
+            "You need a parent account on the dashboard first. "
+            "Register at the dashboard, then link your Telegram here.",
+            parse_mode="HTML",
+        )
+        return
+
+    async def _link():
+        factory = async_session_factory()
+        async with factory() as session:
+            result = await session.execute(
+                select(User).where(
+                    User.email == email,
+                    User.role == UserRole.parent,
+                    User.is_active == True,
+                )
+            )
+            user = result.scalar_one_or_none()
+            if not user:
+                await update.message.reply_text(
+                    "No parent account found with that email. "
+                    "Make sure you registered as a parent on the dashboard first."
+                )
+                return
+            if user.telegram_id and user.telegram_id != update.effective_user.id:
+                await update.message.reply_text(
+                    "This account is already linked to another Telegram user. "
+                    "Contact support if you need to relink."
+                )
+                return
+            user.telegram_id = update.effective_user.id
+            await session.commit()
+            await update.message.reply_text(
+                "Telegram linked! Use /children to view your children's progress."
+            )
+    await _db_try(_link)
+
+
 async def help_command(update: Update, context):
     await update.message.reply_text(
         "EthioBio AI Assistant — Help\n\n"
@@ -1727,6 +1769,7 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("settings", settings_command))
     app.add_handler(CommandHandler("email", email_command))
     app.add_handler(CommandHandler("dashboard-login", dashboard_login_command))
+    app.add_handler(CommandHandler("parent_register", register_parent))
 
     quiz_handler = ConversationHandler(
         entry_points=[
