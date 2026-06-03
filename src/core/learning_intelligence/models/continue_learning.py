@@ -17,6 +17,8 @@ class LearningCard(BaseModel):
     priority_score: float = 0.0
     estimated_minutes: int = 0
     xp_reward: Optional[int] = None
+    topic: Optional[str] = None
+    exam_impact: Optional[str] = None
     metadata: dict = {}
 
 
