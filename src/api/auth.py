@@ -126,7 +126,7 @@ async def register(
         )
 
     role_value = body.role
-    if role_value not in ("teacher", "admin", "parent"):
+    if role_value not in ("teacher", "admin", "parent", "student"):
         role_value = "teacher"
 
     user = User(
