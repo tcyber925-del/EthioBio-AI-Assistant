@@ -19,6 +19,7 @@ from src.api import (
     progress,
     quiz,
     recovery,
+    teacher,
 )
 from src.api.graph import router as graph_router
 from src.api.intelligence.continue_learning_router import (
@@ -73,6 +74,7 @@ app.include_router(recovery.router)
 app.include_router(notifications.router)
 app.include_router(memory_router)
 app.include_router(activity.router)
+app.include_router(teacher.router)
 
 diagram_static_dir = Path("data/diagrams")
 diagram_static_dir.mkdir(parents=True, exist_ok=True)
