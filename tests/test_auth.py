@@ -59,3 +59,11 @@ def test_different_tokens_for_different_users():
     token_a = _create_access_token(str(uuid4()), "teacher")
     token_b = _create_access_token(str(uuid4()), "teacher")
     assert token_a != token_b
+
+
+def test_otp_verify_rejects_missing_otp():
+    pass
+
+
+def test_otp_request_rejects_unknown_telegram_id():
+    pass
