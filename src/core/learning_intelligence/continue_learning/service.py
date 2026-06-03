@@ -9,6 +9,9 @@ from src.core.learning_intelligence.models import (
     FeedSummary,
     LearningCard,
 )
+from src.core.learning_intelligence.readiness.models import (
+    ExamReadinessProfile,
+)
 from src.core.learning_intelligence.recommendation.models import (
     LearningActionType,
     LearningRecommendation,
@@ -68,6 +71,7 @@ def _recommendation_to_card(
         priority_score=rec.priority_score,
         estimated_minutes=estimated,
         xp_reward=xp,
+        topic=rec.topic,
         metadata=rec.metadata,
     )
 
@@ -93,6 +97,7 @@ class ContinueLearningService:
         self,
         session: AsyncSession,
         user_id: UUID,
+        readiness_profile: ExamReadinessProfile | None = None,
     ) -> ContinueLearningFeed:
         recommendations = await self._recommendation_service.get_recommendations(
             session, user_id
@@ -106,6 +111,9 @@ class ContinueLearningService:
         }
 
         cards = [_recommendation_to_card(r) for r in recommendations]
+
+        if readiness_profile:
+            self._apply_readiness_boost(cards, readiness_profile)
 
         for card in cards:
             section = ACTION_TYPE_TO_SECTION.get(card.action_type)
@@ -128,6 +136,18 @@ class ContinueLearningService:
                 xp_available=total_xp,
             ),
         )
+
+    @staticmethod
+    def _apply_readiness_boost(
+        cards: list[LearningCard],
+        readiness_profile: ExamReadinessProfile,
+    ) -> None:
+        risk_set = set(readiness_profile.risk_topics)
+        for card in cards:
+            if card.topic and card.topic in risk_set:
+                card.priority_score = min(card.priority_score * 1.3, 100.0)
+                card.exam_impact = "high"
+        cards.sort(key=lambda c: c.priority_score, reverse=True)
 
     def _empty_feed(self, user_id: UUID) -> ContinueLearningFeed:
         now = datetime.now(timezone.utc)
