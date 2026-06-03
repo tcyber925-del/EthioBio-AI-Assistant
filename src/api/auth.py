@@ -1,6 +1,8 @@
+import random
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
+import httpx
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from jose import JWTError, jwt
@@ -11,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.config import settings
 from src.database.models import User, UserRole
 from src.database.session import get_session
+from src.redis_client import get_redis
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -32,6 +35,15 @@ class TokenResponse(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+
+class OtpRequest(BaseModel):
+    telegram_id: int
+
+
+class OtpVerifyRequest(BaseModel):
+    telegram_id: int
+    otp: str
 
 
 class UserInfo(BaseModel):
@@ -60,6 +72,23 @@ def _create_access_token(user_id: str, role: str) -> str:
     return jwt.encode(
         payload, settings.jwt_secret, algorithm=settings.jwt_algorithm
     )
+
+
+async def _send_telegram_otp(telegram_id: int, code: str) -> None:
+    if not settings.telegram_bot_token:
+        return
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            await client.post(
+                f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendMessage",
+                json={
+                    "chat_id": telegram_id,
+                    "text": f"Your dashboard login code: {code}\n\nThis code expires in 5 minutes.",
+                    "parse_mode": "HTML",
+                },
+            )
+    except Exception:
+        pass
 
 
 def decode_access_token(token: str) -> dict:
@@ -126,7 +155,7 @@ async def register(
         )
 
     role_value = body.role
-    if role_value not in ("teacher", "admin"):
+    if role_value not in ("teacher", "admin", "parent", "student"):
         role_value = "teacher"
 
     user = User(
@@ -187,4 +216,67 @@ async def get_me(
         user_id=str(current_user.id),
         email=current_user.email or "",
         role=current_user.role.value,
+    )
+
+
+@router.post("/request-otp", status_code=status.HTTP_200_OK)
+async def request_otp(
+    body: OtpRequest,
+    session: AsyncSession = Depends(get_session),
+):
+    result = await session.execute(
+        select(User).where(User.telegram_id == body.telegram_id)
+    )
+    user = result.scalar_one_or_none()
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found for this Telegram ID",
+        )
+
+    code = f"{random.randint(100000, 999999)}"
+    redis_conn = await get_redis()
+    await redis_conn.setex(f"otp:{body.telegram_id}", 300, code)
+
+    await _send_telegram_otp(body.telegram_id, code)
+
+    return {"success": True, "message": "OTP sent to your Telegram"}
+
+
+@router.post("/verify-otp", response_model=TokenResponse)
+async def verify_otp(
+    body: OtpVerifyRequest,
+    session: AsyncSession = Depends(get_session),
+):
+    redis_conn = await get_redis()
+    stored = await redis_conn.get(f"otp:{body.telegram_id}")
+    if not stored:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="OTP not requested or expired",
+        )
+
+    if stored != body.otp:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid OTP",
+        )
+
+    await redis_conn.delete(f"otp:{body.telegram_id}")
+
+    result = await session.execute(
+        select(User).where(User.telegram_id == body.telegram_id)
+    )
+    user = result.scalar_one_or_none()
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    token = _create_access_token(str(user.id), user.role.value)
+    return TokenResponse(
+        access_token=token,
+        user_id=str(user.id),
+        role=user.role.value,
     )

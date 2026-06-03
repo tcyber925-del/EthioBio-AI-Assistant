@@ -1,9 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ClipboardList, AlertTriangle, Loader2, Search, CheckCircle2, Clock, BookOpen, Lightbulb, ArrowRight, Target, Brain, TrendingUp, RotateCcw, Bell, PartyPopper, Sparkles } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ClipboardList, AlertTriangle, Loader2, Search, CheckCircle2, Clock, BookOpen, Lightbulb, ArrowRight, Target, Brain, TrendingUp, RotateCcw, Bell, PartyPopper, Sparkles, RefreshCw } from 'lucide-react'
 import { fetchWithTimeout } from '@/lib/fetch'
 import { CardSkeleton } from '@/components/Skeleton'
+import { isAuthenticated } from '@/lib/auth'
 import { MasteryRadarChart } from '@/components/recovery/MasteryRadarChart'
 import { TopicHeatmap } from '@/components/recovery/TopicHeatmap'
 import { LearningTree } from '@/components/recovery/LearningTree'
@@ -115,6 +117,7 @@ interface Student {
 }
 
 export default function RecoveryPage() {
+  const router = useRouter()
   const [userId, setUserId] = useState('')
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [data, setData] = useState<DashboardData | null>(null)
@@ -127,11 +130,21 @@ export default function RecoveryPage() {
   const [notificationsExpanded, setNotificationsExpanded] = useState(false)
 
   useEffect(() => {
-    fetchWithTimeout('/api/admin/dashboard')
-      .then(d => setStudents(d.recent_users || []))
-      .catch(() => {})
-      .finally(() => setStudentsLoading(false))
-  }, [])
+    if (!isAuthenticated()) { router.push('/login'); return }
+    fetchDashboardData()
+  }, [router])
+
+  const fetchDashboardData = async () => {
+    setStudentsLoading(true)
+    try {
+      const d = await fetchWithTimeout('/api/admin/dashboard')
+      setStudents(d.recent_users || [])
+    } catch (err: unknown) {
+      console.error('Failed to load students for recovery:', err)
+    } finally {
+      setStudentsLoading(false)
+    }
+  }
 
   const fetchDashboard = async (id: string) => {
     setLoading(true)

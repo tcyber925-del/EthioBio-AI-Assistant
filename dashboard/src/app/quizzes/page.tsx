@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ClipboardCheck, AlertTriangle, Plus, X, Loader2 } from 'lucide-react'
 import { TableSkeleton } from '@/components/Skeleton'
 import ModelSelector from '@/components/ModelSelector'
 import { fetchWithTimeout } from '@/lib/fetch'
+import { isAuthenticated } from '@/lib/auth'
 
 interface Quiz {
   id: string; title: string; grade_level: number
@@ -13,6 +15,7 @@ interface Quiz {
 }
 
 export default function QuizzesPage() {
+  const router = useRouter()
   const [items, setItems] = useState<Quiz[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -39,7 +42,10 @@ export default function QuizzesPage() {
     }
   }
 
-  useEffect(() => { fetchQuizzes() }, [filter])
+  useEffect(() => {
+    if (!isAuthenticated()) { router.push('/login'); return }
+    fetchQuizzes()
+  }, [filter, router])
 
   const generateQuiz = async () => {
     if (!genTopic.trim()) return

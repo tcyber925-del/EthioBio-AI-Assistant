@@ -91,6 +91,21 @@ services:
       retries: 10
       start_period: 10s
 
+  cron:
+    build: .
+    container_name: ethiobio-cron
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://ethiobio:ethiobio_pass@postgres:5432/ethiobio
+      REDIS_URL: redis://redis:6379/0
+    command: sh -c "while true; do echo 'Running proactive reminders...'; python -m scripts.send_proactive_reminders; echo 'Sleeping 24h...'; sleep 86400; done"
+
   dashboard:
     build:
       context: ./dashboard

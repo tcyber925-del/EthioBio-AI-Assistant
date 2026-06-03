@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, AlertTriangle, Check, X, Loader2 } from 'lucide-react'
+import { ArrowLeft, AlertTriangle, Check, X, Loader2, RefreshCw } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import { fetchWithTimeout } from '@/lib/fetch'
+import { isAuthenticated } from '@/lib/auth'
 
 interface Question {
   id: string; question_type: string; question_text: string
@@ -22,6 +23,7 @@ interface QuizDetail {
 
 export default function QuizDetailPage() {
   const params = useParams()
+  const router = useRouter()
   const [quiz, setQuiz] = useState<QuizDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -52,14 +54,24 @@ export default function QuizDetailPage() {
     }
   }
 
-  useEffect(() => { fetchQuiz() }, [params.id])
+  useEffect(() => {
+    if (!isAuthenticated()) { router.push('/login'); return }
+    fetchQuiz()
+  }, [params.id, router])
 
   if (loading) return <div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)}</div>
   if (error) return (
     <div className="text-center py-16">
       <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
       <p className="text-red-400">{error}</p>
-      <Link href="/quizzes" className="text-primary hover:underline mt-4 inline-block">Back to quizzes</Link>
+      <div className="mt-4 flex gap-3 justify-center">
+        <button onClick={fetchQuiz} className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover transition-colors">
+          <RefreshCw className="w-4 h-4 inline mr-1" /> Retry
+        </button>
+        <Link href="/quizzes" className="px-4 py-2 bg-card border border-border text-foreground rounded-lg text-sm hover:bg-border transition-colors">
+          Back to quizzes
+        </Link>
+      </div>
     </div>
   )
   if (!quiz) return null

@@ -1,4 +1,5 @@
 import httpx
+import random
 import structlog
 from telegram.ext import (
     Application,
@@ -17,10 +18,11 @@ from src.config import settings
 from src.core.learning_intelligence.tutor.tutor_context_adapter import TutorContextAdapter
 from src.core.memory.context_assembler import ContextAssembler
 from src.core.memory.session_manager import SessionManager
-from src.database.models import MemorySession, NotificationPreference, StudentProfile, User, UserRole
+from src.database.models import MemorySession, NotificationPreference, ParentChild, ProgressRecord, QuizAttempt, StudentMastery, StudentProfile, User, UserGamification, UserRole
 from src.database.session import async_session_factory
 from sqlalchemy import select
 from src.llm.router import ModelRouter
+from src.redis_client import get_redis
 from src.telegram.formatter import format_for_telegram, sanitize_for_telegram, strip_markdown
 from src.telegram.keyboards import (
     answer_options_keyboard,
@@ -36,9 +38,11 @@ from src.telegram.keyboards import (
     teacher_tools_keyboard,
     tf_keyboard,
 )
-from telegram import InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 
 logger = structlog.get_logger()
+
+from datetime import datetime, timedelta, timezone
 
 TUTOR, QUIZ_TYPE, QUIZ_GRADE, QUIZ_TOPIC, QUIZ_ANSWERING, LESSON_GRADE, LESSON_TOPIC, TUTOR_GRADE = range(8)
 
@@ -78,6 +82,350 @@ async def start(update: Update, context):
         "Send me any biology question, or use the menu below:",
         reply_markup=main_menu_keyboard(socratic),
     )
+
+
+async def dashboard_login_command(update: Update, context):
+    await _try_register_user(update.effective_user.id)
+    user_id = str(update.effective_user.id)
+    code = f"{random.randint(100000, 999999)}"
+    redis_conn = await get_redis()
+    await redis_conn.setex(f"otp:{user_id}", 300, code)
+    await update.message.reply_text(
+        f"Your dashboard login code: <b>{code}</b>\n\n"
+        "This code expires in 5 minutes. Enter it on the login page.",
+        parse_mode="HTML",
+    )
+
+
+async def register_parent(update: Update, context):
+    email = (context.args[0] if context.args else "").strip().lower()
+    if not email:
+        await update.message.reply_text(
+            "Usage: <code>/parent_register your@email.com</code>\n\n"
+            "You need a parent account on the dashboard first. "
+            "Register at the dashboard, then link your Telegram here.",
+            parse_mode="HTML",
+        )
+        return
+
+    async def _link():
+        factory = async_session_factory()
+        async with factory() as session:
+            result = await session.execute(
+                select(User).where(
+                    User.email == email,
+                    User.role == UserRole.parent,
+                    User.is_active == True,
+                )
+            )
+            user = result.scalar_one_or_none()
+            if not user:
+                await update.message.reply_text(
+                    "No parent account found with that email. "
+                    "Make sure you registered as a parent on the dashboard first."
+                )
+                return
+            if user.telegram_id and user.telegram_id != update.effective_user.id:
+                await update.message.reply_text(
+                    "This account is already linked to another Telegram user. "
+                    "Contact support if you need to relink."
+                )
+                return
+            user.telegram_id = update.effective_user.id
+            await session.commit()
+            await update.message.reply_text(
+                "Telegram linked! Use /children to view your children's progress."
+            )
+    await _db_try(_link)
+
+
+async def list_children(update: Update, context):
+    telegram_id = update.effective_user.id
+
+    async def _fetch():
+        factory = async_session_factory()
+        async with factory() as session:
+            user_result = await session.execute(
+                select(User).where(
+                    User.telegram_id == telegram_id,
+                    User.is_active == True,
+                )
+            )
+            user = user_result.scalar_one_or_none()
+            if not user or user.role != UserRole.parent:
+                await update.message.reply_text(
+                    "Please register first with /parent_register"
+                )
+                return
+
+            children_result = await session.execute(
+                select(User)
+                .join(ParentChild, User.id == ParentChild.student_id)
+                .where(ParentChild.parent_id == user.id)
+            )
+            children = list(children_result.scalars().all())
+
+            if not children:
+                await update.message.reply_text(
+                    "No children linked to your account yet. "
+                    "Ask an admin to link your children, or check the dashboard."
+                )
+                return
+
+            keyboard = []
+            lines = ["<b>Your Children:</b>\n"]
+            for child in children:
+                profile_result = await session.execute(
+                    select(StudentProfile).where(StudentProfile.user_id == child.id)
+                )
+                profile = profile_result.scalar_one_or_none()
+                grade = child.grade_level or (profile.grade_level if profile else None)
+                name = child.email or f"Student {str(child.id)[:8]}"
+                lines.append(
+                    f"👤 {name} "
+                    f"{f'(Grade {grade})' if grade else ''}"
+                )
+                keyboard.append([
+                    InlineKeyboardButton(
+                        f"🔍 {name}",
+                        callback_data=f"parent_child_{child.id}",
+                    )
+                ])
+            keyboard.append([InlineKeyboardButton("← Back to Menu", callback_data="menu")])
+
+            await update.message.reply_text(
+                "\n".join(lines),
+                parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+            )
+    await _db_try(_fetch)
+
+
+async def _send_child_progress(session, child_id, telegram_id, update, query=None):
+    child_result = await session.execute(select(User).where(User.id == child_id))
+    child = child_result.scalar_one_or_none()
+    if not child:
+        text = "Student not found."
+        (query.edit_message_text if query else update.message.reply_text)(text)
+        return
+
+    mastery_result = await session.execute(
+        select(StudentMastery).where(StudentMastery.user_id == child.id)
+    )
+    mastery_records = list(mastery_result.scalars().all())
+
+    quiz_result = await session.execute(
+        select(QuizAttempt)
+        .where(QuizAttempt.user_id == child.id)
+        .order_by(QuizAttempt.created_at.desc())
+        .limit(5)
+    )
+    recent_quizzes = list(quiz_result.scalars().all())
+
+    gam_result = await session.execute(
+        select(UserGamification).where(UserGamification.user_id == child.id)
+    )
+    gam = gam_result.scalar_one_or_none()
+
+    score = sum(
+        r.correct / max(r.total, 1) * 100 for r in recent_quizzes
+    ) / max(len(recent_quizzes), 1) if recent_quizzes else 0
+
+    name = child.email or f"Student {str(child.id)[:8]}"
+    lines = [f"<b>📚 {name}'s Progress</b>\n"]
+    lines.append(f"🎯 Readiness: {score:.0f}%")
+    lines.append(f"🔥 Streak: {gam.streak if gam else 0} days")
+    lines.append(f"💎 XP: {gam.total_xp if gam else 0}\n")
+
+    if mastery_records:
+        lines.append("<b>Topic Mastery:</b>")
+        for m in mastery_records[:5]:
+            lines.append(f"• {m.topic}: {m.mastery_score:.0f}%")
+        lines.append("")
+
+    if recent_quizzes:
+        lines.append("<b>Recent Quizzes:</b>")
+        for q in recent_quizzes:
+            pct = q.correct / max(q.total, 1) * 100
+            date_str = q.created_at.strftime("%b %d") if q.created_at else "recent"
+            lines.append(f"• Quiz — {pct:.0f}% ({date_str})")
+
+    keyboard = [
+        [InlineKeyboardButton("📋 Weekly Summary", callback_data=f"parent_summary_{child.id}")],
+        [InlineKeyboardButton("← Back to Children", callback_data="children")],
+    ]
+    reply = "\n".join(lines)
+    if query:
+        await query.edit_message_text(reply, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(keyboard))
+    else:
+        await update.message.reply_text(reply, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(keyboard))
+
+
+async def handle_parent_child_progress(update: Update, context):
+    query = update.callback_query
+    await query.answer()
+    child_id = query.data.replace("parent_child_", "")
+
+    async def _fetch():
+        factory = async_session_factory()
+        async with factory() as session:
+            user_result = await session.execute(
+                select(User).where(User.telegram_id == update.effective_user.id)
+            )
+            parent = user_result.scalar_one_or_none()
+            if not parent:
+                await query.edit_message_text("Parent account not found.")
+                return
+
+            ownership = await session.execute(
+                select(ParentChild).where(
+                    ParentChild.parent_id == parent.id,
+                    ParentChild.student_id == child_id,
+                )
+            )
+            if not ownership.scalar_one_or_none():
+                await query.edit_message_text("Child not found.")
+                return
+
+            await _send_child_progress(session, child_id, update.effective_user.id, update, query)
+    await _db_try(_fetch)
+
+
+async def child_progress(update: Update, context):
+    telegram_id = update.effective_user.id
+
+    async def _fetch():
+        factory = async_session_factory()
+        async with factory() as session:
+            user_result = await session.execute(
+                select(User).where(
+                    User.telegram_id == telegram_id,
+                    User.is_active,
+                )
+            )
+            user = user_result.scalar_one_or_none()
+            if not user or user.role != UserRole.parent:
+                await update.message.reply_text("Please register first with /parent_register")
+                return
+
+            children_result = await session.execute(
+                select(User)
+                .join(ParentChild, User.id == ParentChild.student_id)
+                .where(ParentChild.parent_id == user.id)
+            )
+            children = list(children_result.scalars().all())
+
+            if not children:
+                await update.message.reply_text(
+                    "No children linked to your account yet."
+                )
+                return
+
+            if len(children) == 1:
+                await _send_child_progress(session, str(children[0].id), telegram_id, update)
+                return
+
+            keyboard = []
+            lines = ["<b>Your Children:</b>\n"]
+            for child in children:
+                name = child.email or f"Student {str(child.id)[:8]}"
+                grade = child.grade_level or ""
+                lines.append(f"👤 {name} {f'(Grade {grade})' if grade else ''}")
+                keyboard.append([
+                    InlineKeyboardButton(f"🔍 {name}", callback_data=f"parent_child_{child.id}")
+                ])
+            keyboard.append([InlineKeyboardButton("← Back to Menu", callback_data="menu")])
+
+            await update.message.reply_text(
+                "\n".join(lines),
+                parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+            )
+    await _db_try(_fetch)
+
+
+async def handle_parent_summary(update: Update, context):
+    query = update.callback_query
+    await query.answer()
+    child_id = query.data.replace("parent_summary_", "")
+
+    async def _fetch():
+        factory = async_session_factory()
+        async with factory() as session:
+            user_result = await session.execute(
+                select(User).where(User.telegram_id == update.effective_user.id)
+            )
+            parent = user_result.scalar_one_or_none()
+            if not parent:
+                await query.edit_message_text("Parent account not found.")
+                return
+
+            ownership = await session.execute(
+                select(ParentChild).where(
+                    ParentChild.parent_id == parent.id,
+                    ParentChild.student_id == child_id,
+                )
+            )
+            if not ownership.scalar_one_or_none():
+                await query.edit_message_text("Child not found.")
+                return
+
+            child_result = await session.execute(select(User).where(User.id == child_id))
+            child = child_result.scalar_one_or_none()
+            if not child:
+                await query.edit_message_text("Student not found.")
+                return
+
+            profile_result = await session.execute(
+                select(StudentProfile).where(StudentProfile.user_id == child.id)
+            )
+            profile = profile_result.scalar_one_or_none()
+
+            week_end = datetime.now(timezone.utc)
+            week_start = week_end - timedelta(days=7)
+
+            records_result = await session.execute(
+                select(ProgressRecord)
+                .where(
+                    ProgressRecord.student_id == child.id,
+                    ProgressRecord.created_at >= week_start,
+                    ProgressRecord.created_at <= week_end,
+                )
+            )
+            records = list(records_result.scalars().all())
+
+            from src.agents.parent_summary import ParentSummaryAgent
+            from src.llm.router import ModelRouter
+            agent = ParentSummaryAgent(ModelRouter())
+            summary = await agent.generate_summary(
+                student_name=child.email or "Student",
+                grade_level=child.grade_level,
+                records=records,
+                profile=profile,
+                week_start=week_start,
+                week_end=week_end,
+                language="en",
+                session=session,
+            )
+
+            text = f"<b>Weekly Summary</b>\n\n{summary['summary_text']}"
+            if summary.get("summary_amharic"):
+                text += f"\n\n———\n{summary['summary_amharic']}"
+
+            await query.edit_message_text(
+                text,
+                parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("← Back to Progress", callback_data=f"parent_child_{child_id}")],
+                ]),
+            )
+    await _db_try(_fetch)
+
+
+async def handle_children_back(update: Update, context):
+    query = update.callback_query
+    await query.answer()
+    await list_children(update, context)
 
 
 async def help_command(update: Update, context):
@@ -1711,6 +2059,10 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("progress", progress_command))
     app.add_handler(CommandHandler("settings", settings_command))
     app.add_handler(CommandHandler("email", email_command))
+    app.add_handler(CommandHandler("dashboard-login", dashboard_login_command))
+    app.add_handler(CommandHandler("parent_register", register_parent))
+    app.add_handler(CommandHandler("children", list_children))
+    app.add_handler(CommandHandler("child_progress", child_progress))
 
     quiz_handler = ConversationHandler(
         entry_points=[
@@ -1810,6 +2162,9 @@ def build_app() -> Application:
     app.add_handler(CallbackQueryHandler(handle_recovery_complete_task, pattern=r"^recovery_complete_"))
     app.add_handler(CallbackQueryHandler(handle_recovery_view, pattern="^recovery_view$"))
     app.add_handler(CallbackQueryHandler(handle_settings_toggle, pattern=r"^settings_"))
+    app.add_handler(CallbackQueryHandler(handle_parent_child_progress, pattern=r"^parent_child_"))
+    app.add_handler(CallbackQueryHandler(handle_parent_summary, pattern=r"^parent_summary_"))
+    app.add_handler(CallbackQueryHandler(handle_children_back, pattern="^children$"))
     app.add_error_handler(error_handler)
 
     return app

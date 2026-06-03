@@ -18,6 +18,8 @@ const nextConfig = {
       { source: '/auth/:path*', destination: `${api}/auth/:path*` },
       { source: '/teacher/:path*', destination: `${api}/teacher/:path*` },
       { source: '/recovery/:path*', destination: `${api}/recovery/:path*` },
+      { source: '/parent/:path*', destination: `${api}/parent/:path*` },
+      { source: '/admin/:path*', destination: `${api}/admin/:path*` },
     ]
   },
 }

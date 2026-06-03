@@ -1,12 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Send, MessageSquare, AlertTriangle, BookOpen, Loader2 } from 'lucide-react'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import ModelSelector from '@/components/ModelSelector'
 import { fetchWithTimeout } from '@/lib/fetch'
+import { isAuthenticated } from '@/lib/auth'
 
 export default function AskPage() {
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!isAuthenticated()) { router.push('/login'); return }
+  }, [router])
+
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState<string | null>(null)
   const [selectedModel, setSelectedModel] = useState('')

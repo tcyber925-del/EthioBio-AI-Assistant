@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Image, Send, Loader2, AlertTriangle, CheckCircle2, XCircle, RefreshCw } from 'lucide-react'
 import { fetchWithTimeout } from '@/lib/fetch'
+import { isAuthenticated } from '@/lib/auth'
 
 interface DiagramLabel {
   id: string
@@ -49,22 +51,18 @@ const DIFFICULTIES = ['beginner', 'intermediate', 'advanced']
 const PLACEHOLDER_USER_ID = '00000000-0000-0000-0000-000000000001'
 
 export default function DiagramsPage() {
+  const router = useRouter()
+  const [models, setModels] = useState<ModelOption[]>([])
+  const [modelsLoading, setModelsLoading] = useState(true)
   const [prompt, setPrompt] = useState('')
   const [topic, setTopic] = useState('cells')
   const [difficulty, setDifficulty] = useState('beginner')
   const [selectedProvider, setSelectedProvider] = useState('')
   const [selectedModel, setSelectedModel] = useState('')
-  const [models, setModels] = useState<ModelOption[]>([])
-  const [modelsLoading, setModelsLoading] = useState(true)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [result, setResult] = useState<DiagramResponse | null>(null)
-  const [hoveredLabel, setHoveredLabel] = useState<string | null>(null)
 
-  const [labelInputs, setLabelInputs] = useState<Record<string, string>>({})
-  const [submitting, setSubmitting] = useState(false)
-  const [validationResult, setValidationResult] = useState<ValidateResponse | null>(null)
-  const [confirmedCorrectIds, setConfirmedCorrectIds] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    if (!isAuthenticated()) { router.push('/login'); return }
+  }, [router])
 
   useEffect(() => {
     fetchWithTimeout('/models', { method: 'GET' })

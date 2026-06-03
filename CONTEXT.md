@@ -177,3 +177,21 @@ Single service at `src/core/learning_intelligence/teacher/teacher_service.py`. C
 
 ## Classroom API
 `APIRouter(prefix="/teacher")` at `src/api/teacher.py`. Endpoints: classroom CRUD (create/list/roster/enroll) and intelligence (overview/risk-students/interventions/mastery-heatmap). Teacher ownership enforced via `_verify_teacher_owns_classroom()` helper returning 404 on mismatch.
+
+## School
+Database model at `src/database/models.py`. Simple table: id, name, created_at. Related to ClassGroup via school_id FK.
+
+## SchoolProfile
+Computed, read-only projection of school-wide educational intelligence. Generated on read by SchoolService. Contains school_id, generated_at, total_teachers, total_classrooms, total_students, avg_health, health_distribution (count per readiness band), teacher_metrics list, at_risk_classrooms list.
+
+## SchoolHealthSnapshot
+Database model storing daily health snapshots for trend lines. Columns: school_id, snapshot_date, avg_health, total_students, at_risk_count. Unique constraint on (school_id, snapshot_date).
+
+## SchoolService
+Single service at `src/core/learning_intelligence/school/school_service.py`. Composes `TeacherService` internally. Generates SchoolProfile by loading all class groups for a school and aggregating readiness profiles per student in parallel via asyncio.gather. Also handles snapshot creation and trend queries.
+
+## ParentChild
+Association table (`parent_children`) linking parent Users to student Users. Self-referential M2M via `User.children` and `User.parents` relationships on the User model. Constraints: composite PK on (parent_id, student_id).
+
+## Parent API
+`APIRouter(prefix="/parent")` at `src/api/parent.py`. Endpoints: `GET /parent/children` (list linked students with readiness), `GET /parent/children/{id}/progress` (mastery, quiz history, streak), `GET /parent/children/{id}/weekly-summary` (generate or fetch cached weekly report via `ParentSummaryAgent`). Auth guards: `_require_parent_role` + `_verify_child_ownership`.
