@@ -84,6 +84,8 @@ export default function StudentDetailPage() {
         <div className="space-y-4">
           <ContinueLearningFeed userId={params.id as string} />
           <ExamReadinessCard userId={params.id as string} />
+          <ContinueLearningFeed userId={params.id as string} />
+          <GamificationProfile userId={params.id as string} />
           <ActivityFeed userId={params.id as string} />
         </div>
       </div>

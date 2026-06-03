@@ -34,4 +34,5 @@ async def get_continue_learning_feed(
     feed = await continue_learning_service.get_feed(
         session, user_id, readiness_profile=readiness_profile
     )
+    feed = await continue_learning_service.get_feed(session, user_id)
     return feed
