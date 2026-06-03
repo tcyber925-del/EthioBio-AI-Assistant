@@ -20,6 +20,10 @@ teacher_service = TeacherService()
 school_service = SchoolService()
 
 
+class CreateSchoolRequest(BaseModel):
+    name: str
+
+
 class CreateClassroomRequest(BaseModel):
     name: str
     grade_level: int
@@ -362,3 +366,21 @@ async def get_school_trends(
         }
         for s in snapshots
     ]
+
+
+@router.post("/schools")
+async def create_school(
+    body: CreateSchoolRequest,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    _require_admin(current_user)
+    school = School(name=body.name)
+    session.add(school)
+    await session.commit()
+    await session.refresh(school)
+    return {
+        "id": str(school.id),
+        "name": school.name,
+        "created_at": school.created_at.isoformat() if school.created_at else None,
+    }
