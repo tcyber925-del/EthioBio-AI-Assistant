@@ -56,6 +56,30 @@ class User(Base):
     feedback_events: Mapped[list["FeedbackEvent"]] = relationship(back_populates="user")
     diagram_attempts: Mapped[list["DiagramAttempt"]] = relationship(back_populates="user")
 
+    children: Mapped[list["User"]] = relationship(
+        secondary="parent_children",
+        primaryjoin="User.id == ParentChild.parent_id",
+        secondaryjoin="User.id == ParentChild.student_id",
+        back_populates="parents",
+    )
+    parents: Mapped[list["User"]] = relationship(
+        secondary="parent_children",
+        primaryjoin="User.id == ParentChild.student_id",
+        secondaryjoin="User.id == ParentChild.parent_id",
+        back_populates="children",
+    )
+
+
+class ParentChild(Base):
+    __tablename__ = "parent_children"
+
+    parent_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True
+    )
+    student_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True
+    )
+
 
 class StudentProfile(Base):
     __tablename__ = "student_profiles"

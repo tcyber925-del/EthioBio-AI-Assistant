@@ -189,3 +189,9 @@ Database model storing daily health snapshots for trend lines. Columns: school_i
 
 ## SchoolService
 Single service at `src/core/learning_intelligence/school/school_service.py`. Composes `TeacherService` internally. Generates SchoolProfile by loading all class groups for a school and aggregating readiness profiles per student in parallel via asyncio.gather. Also handles snapshot creation and trend queries.
+
+## ParentChild
+Association table (`parent_children`) linking parent Users to student Users. Self-referential M2M via `User.children` and `User.parents` relationships on the User model. Constraints: composite PK on (parent_id, student_id).
+
+## Parent API
+`APIRouter(prefix="/parent")` at `src/api/parent.py`. Endpoints: `GET /parent/children` (list linked students with readiness), `GET /parent/children/{id}/progress` (mastery, quiz history, streak), `GET /parent/children/{id}/weekly-summary` (generate or fetch cached weekly report via `ParentSummaryAgent`). Auth guards: `_require_parent_role` + `_verify_child_ownership`.

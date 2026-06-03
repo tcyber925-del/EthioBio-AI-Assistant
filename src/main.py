@@ -17,6 +17,7 @@ from src.api import (
     intelligence,
     lesson,
     notifications,
+    parent,
     progress,
     quiz,
     recovery,
@@ -76,8 +77,10 @@ app.include_router(notifications.router)
 app.include_router(memory_router)
 app.include_router(activity.router)
 app.include_router(auth.router)
-app.include_router(teacher.router)
 
+app.include_router(parent.router)
+
+app.include_router(teacher.router)
 diagram_static_dir = Path("data/diagrams")
 diagram_static_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/diagrams/static", StaticFiles(directory=str(diagram_static_dir)), name="diagrams")
