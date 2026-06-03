@@ -4,8 +4,19 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 
+interface ContentItem {
+  id: string
+  title?: string
+  topic?: string
+  grade_level?: number
+  status: string
+  created_at?: string
+  question_count?: number
+}
+
 export default function AdminContentPage() {
-  const [items, setItems] = useState<any[]>([])
+  const [items, setItems] = useState<ContentItem[]>([])
+  const [loading, setLoading] = useState(true)
   const [type, setType] = useState('all')
   const [status, setStatus] = useState('all')
   const [error, setError] = useState<string | null>(null)
@@ -21,12 +32,24 @@ export default function AdminContentPage() {
     }
     if (type === 'all') {
       Promise.all([fetchType('quiz'), fetchType('lesson')])
-        .then(([quizzes, lessons]) => setItems([...quizzes, ...lessons]))
-        .catch(err => setError(err instanceof Error ? err.message : String(err)))
+        .then(([quizzes, lessons]) => {
+          setItems([...quizzes, ...lessons])
+          setLoading(false)
+        })
+        .catch(err => {
+          setError(err instanceof Error ? err.message : String(err))
+          setLoading(false)
+        })
     } else {
       fetchType(type)
-        .then(setItems)
-        .catch(err => setError(err instanceof Error ? err.message : String(err)))
+        .then(items => {
+          setItems(items)
+          setLoading(false)
+        })
+        .catch(err => {
+          setError(err instanceof Error ? err.message : String(err))
+          setLoading(false)
+        })
     }
   }, [type, status])
 
@@ -36,6 +59,7 @@ export default function AdminContentPage() {
   }
 
   if (error) return <p className="text-red-600">Error: {error}</p>
+  if (loading) return <p className="text-gray-500">Loading...</p>
 
   return (
     <div>
@@ -65,7 +89,7 @@ export default function AdminContentPage() {
           </tr>
         </thead>
         <tbody>
-          {items.map((item: any) => (
+          {items.map((item: ContentItem) => (
             <tr key={item.id} className="border-t">
               <td className="p-2">{item.title || item.topic}</td>
               <td className="p-2">

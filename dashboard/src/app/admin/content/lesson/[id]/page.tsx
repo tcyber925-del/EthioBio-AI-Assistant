@@ -4,9 +4,25 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 
+interface LessonData {
+  id: string
+  topic: string
+  grade_level: number
+  status: string
+  model_used?: string
+  created_at?: string
+  objective?: string
+  prior_knowledge?: string
+  explanation?: string
+  activities?: string | string[]
+  assessment?: string
+  homework?: string
+  teacher_notes?: string
+}
+
 export default function AdminLessonDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const [lesson, setLesson] = useState<any>(null)
+  const [lesson, setLesson] = useState<LessonData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
@@ -17,6 +33,7 @@ export default function AdminLessonDetailPage() {
   }, [id])
 
   const toggleStatus = async () => {
+    if (!lesson) return
     const newStatus = lesson.status === 'published' ? 'archived' : 'published'
     await fetchWithAuth(`/admin/content/lesson/${id}/status?status=${newStatus}`, { method: 'PATCH' })
     setLesson({ ...lesson, status: newStatus })
