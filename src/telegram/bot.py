@@ -201,6 +201,66 @@ async def list_children(update: Update, context):
     await _db_try(_fetch)
 
 
+async def _send_child_progress(session, child_id, telegram_id, update, query=None):
+    child_result = await session.execute(select(User).where(User.id == child_id))
+    child = child_result.scalar_one_or_none()
+    if not child:
+        text = "Student not found."
+        (query.edit_message_text if query else update.message.reply_text)(text)
+        return
+
+    mastery_result = await session.execute(
+        select(StudentMastery).where(StudentMastery.user_id == child.id)
+    )
+    mastery_records = list(mastery_result.scalars().all())
+
+    quiz_result = await session.execute(
+        select(QuizAttempt)
+        .where(QuizAttempt.user_id == child.id)
+        .order_by(QuizAttempt.created_at.desc())
+        .limit(5)
+    )
+    recent_quizzes = list(quiz_result.scalars().all())
+
+    gam_result = await session.execute(
+        select(UserGamification).where(UserGamification.user_id == child.id)
+    )
+    gam = gam_result.scalar_one_or_none()
+
+    score = sum(
+        r.correct / max(r.total, 1) * 100 for r in recent_quizzes
+    ) / max(len(recent_quizzes), 1) if recent_quizzes else 0
+
+    name = child.email or f"Student {str(child.id)[:8]}"
+    lines = [f"<b>📚 {name}'s Progress</b>\n"]
+    lines.append(f"🎯 Readiness: {score:.0f}%")
+    lines.append(f"🔥 Streak: {gam.streak if gam else 0} days")
+    lines.append(f"💎 XP: {gam.total_xp if gam else 0}\n")
+
+    if mastery_records:
+        lines.append("<b>Topic Mastery:</b>")
+        for m in mastery_records[:5]:
+            lines.append(f"• {m.topic}: {m.mastery_score:.0f}%")
+        lines.append("")
+
+    if recent_quizzes:
+        lines.append("<b>Recent Quizzes:</b>")
+        for q in recent_quizzes:
+            pct = q.correct / max(q.total, 1) * 100
+            date_str = q.created_at.strftime("%b %d") if q.created_at else "recent"
+            lines.append(f"• Quiz — {pct:.0f}% ({date_str})")
+
+    keyboard = [
+        [InlineKeyboardButton("📋 Weekly Summary", callback_data=f"parent_summary_{child.id}")],
+        [InlineKeyboardButton("← Back to Children", callback_data="children")],
+    ]
+    reply = "\n".join(lines)
+    if query:
+        await query.edit_message_text(reply, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(keyboard))
+    else:
+        await update.message.reply_text(reply, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(keyboard))
+
+
 async def handle_parent_child_progress(update: Update, context):
     query = update.callback_query
     await query.answer()
@@ -227,58 +287,56 @@ async def handle_parent_child_progress(update: Update, context):
                 await query.edit_message_text("Child not found.")
                 return
 
-            child_result = await session.execute(select(User).where(User.id == child_id))
-            child = child_result.scalar_one_or_none()
-            if not child:
-                await query.edit_message_text("Student not found.")
+            await _send_child_progress(session, child_id, update.effective_user.id, update, query)
+    await _db_try(_fetch)
+
+
+async def child_progress(update: Update, context):
+    telegram_id = update.effective_user.id
+
+    async def _fetch():
+        factory = async_session_factory()
+        async with factory() as session:
+            user_result = await session.execute(
+                select(User).where(
+                    User.telegram_id == telegram_id,
+                    User.is_active,
+                )
+            )
+            user = user_result.scalar_one_or_none()
+            if not user or user.role != UserRole.parent:
+                await update.message.reply_text("Please register first with /parent_register")
                 return
 
-            mastery_result = await session.execute(
-                select(StudentMastery).where(StudentMastery.user_id == child.id)
+            children_result = await session.execute(
+                select(User)
+                .join(ParentChild, User.id == ParentChild.student_id)
+                .where(ParentChild.parent_id == user.id)
             )
-            mastery_records = list(mastery_result.scalars().all())
+            children = list(children_result.scalars().all())
 
-            quiz_result = await session.execute(
-                select(QuizAttempt)
-                .where(QuizAttempt.user_id == child.id)
-                .order_by(QuizAttempt.created_at.desc())
-                .limit(5)
-            )
-            recent_quizzes = list(quiz_result.scalars().all())
+            if not children:
+                await update.message.reply_text(
+                    "No children linked to your account yet."
+                )
+                return
 
-            gam_result = await session.execute(
-                select(UserGamification).where(UserGamification.user_id == child.id)
-            )
-            gam = gam_result.scalar_one_or_none()
+            if len(children) == 1:
+                await _send_child_progress(session, str(children[0].id), telegram_id, update)
+                return
 
-            score = sum(
-                r.correct / max(r.total, 1) * 100 for r in recent_quizzes
-            ) / max(len(recent_quizzes), 1) if recent_quizzes else 0
+            keyboard = []
+            lines = ["<b>Your Children:</b>\n"]
+            for child in children:
+                name = child.email or f"Student {str(child.id)[:8]}"
+                grade = child.grade_level or ""
+                lines.append(f"👤 {name} {f'(Grade {grade})' if grade else ''}")
+                keyboard.append([
+                    InlineKeyboardButton(f"🔍 {name}", callback_data=f"parent_child_{child.id}")
+                ])
+            keyboard.append([InlineKeyboardButton("← Back to Menu", callback_data="menu")])
 
-            name = child.email or f"Student {str(child.id)[:8]}"
-            lines = [f"<b>📚 {name}'s Progress</b>\n"]
-            lines.append(f"🎯 Readiness: {score:.0f}%")
-            lines.append(f"🔥 Streak: {gam.streak if gam else 0} days")
-            lines.append(f"💎 XP: {gam.total_xp if gam else 0}\n")
-
-            if mastery_records:
-                lines.append("<b>Topic Mastery:</b>")
-                for m in mastery_records[:5]:
-                    lines.append(f"• {m.topic}: {m.mastery_score:.0f}%")
-                lines.append("")
-
-            if recent_quizzes:
-                lines.append("<b>Recent Quizzes:</b>")
-                for q in recent_quizzes:
-                    pct = q.correct / max(q.total, 1) * 100
-                    date_str = q.created_at.strftime("%b %d") if q.created_at else "recent"
-                    lines.append(f"• Quiz — {pct:.0f}% ({date_str})")
-
-            keyboard = [
-                [InlineKeyboardButton("📋 Weekly Summary", callback_data=f"parent_summary_{child.id}")],
-                [InlineKeyboardButton("← Back to Children", callback_data="children")],
-            ]
-            await query.edit_message_text(
+            await update.message.reply_text(
                 "\n".join(lines),
                 parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup(keyboard),
@@ -2004,6 +2062,7 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("dashboard-login", dashboard_login_command))
     app.add_handler(CommandHandler("parent_register", register_parent))
     app.add_handler(CommandHandler("children", list_children))
+    app.add_handler(CommandHandler("child_progress", child_progress))
 
     quiz_handler = ConversationHandler(
         entry_points=[
