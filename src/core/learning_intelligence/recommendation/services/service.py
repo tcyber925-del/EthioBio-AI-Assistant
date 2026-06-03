@@ -3,6 +3,7 @@ from uuid import UUID
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.learning_intelligence.readiness import ReadinessService
 from src.core.learning_intelligence.recommendation.models import (
     LearningRecommendation,
 )
@@ -28,11 +29,13 @@ class RecommendationService:
         snapshot_service: SnapshotService | None = None,
         engine: RecommendationEngine | None = None,
         cache: CacheManager | None = None,
+        readiness_service: ReadinessService | None = None,
     ):
         self._snapshot_service = snapshot_service or SnapshotService()
         self._engine = engine or RecommendationEngine()
         self._cache = cache or CacheManager()
         self._cache.KEY_PREFIX = "recommendations:"
+        self._readiness_service = readiness_service or ReadinessService()
 
     async def get_recommendations(
         self,
@@ -48,7 +51,19 @@ class RecommendationService:
 
         logger.info(CACHE_MISS, user_id=user_id)
         snapshot = await self._snapshot_service.get_snapshot(session, user_id)
-        recommendations = await self._engine.generate(snapshot, user_id)
+
+        readiness_profile = None
+        try:
+            readiness_profile = await self._readiness_service.get_readiness(
+                session, user_id,
+            )
+        except Exception:
+            logger.warning("readiness_fetch_failed", user_id=user_id)
+
+        recommendations = await self._engine.generate(
+            snapshot, user_id,
+            readiness_profile=readiness_profile,
+        )
 
         await self._cache.set(
             user_id_str,

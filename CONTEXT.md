@@ -135,3 +135,24 @@ Frontend-appended. Dashboard and Telegram bot call `GET /intelligence/next-actio
 
 ## Completion Tracking
 No dedicated completion-log table. Success is measured via existing downstream activity tables (QuizAttempt, RecoveryTask, SpacedRepetitionSchedule). Single structured log line for `continue_learning_generated` events. Detailed metrics deferred to a future analytics pass.
+
+## ExamReadinessProfile
+Computed, read-only profile answering "if the student took an exam today, how prepared are they?" Contains overall_readiness (0-100, average of topic readiness scores), readiness_band (Critical/Developing/Ready/Strong), topic_readiness list, and risk_topics list. Not persisted — generated on read from LearnerSnapshot.
+
+## ReadinessService
+Single service at `src/core/learning_intelligence/readiness/readiness_service.py`. Consumes LearnerSnapshot, computes per-topic readiness (from mastery average_score), determines risk factors (overdue_review, active_misconception, low_ability) via boolean checks on snapshot fields, derives risk_level from factor count (0=LOW through 3+=CRITICAL), assigns readiness_band from score range, and returns ExamReadinessProfile. No blended formula — readiness = actual performance.
+
+## Topic Readiness Score
+Per-topic readiness = `StudentMastery.average_score` (0-100). No weighted formula. Risk factors are overlays on top of the score, not math inside it. Empty state: when no mastery data exists, overall_readiness=0, band=Critical, empty topic list.
+
+## Readiness Risk Factors
+Three boolean checks against LearnerSnapshot: `overdue_review` (any due_review with next_review_at < now), `active_misconception` (any misconception with frequency >= 3), `low_ability` (ability_score < 0.3 or uncertainty > 2.0). Risk level derived from count: 0=LOW, 1=MODERATE, 2=HIGH, 3+=CRITICAL. Risk topics are those with HIGH or CRITICAL level.
+
+## Readiness Bands
+Score-to-band mapping: 0-39=Critical (high risk of failure), 40-59=Developing (significant preparation required), 60-79=Ready (reasonably prepared), 80-100=Strong (exam-ready). Same range structure as StudentMastery severity but with different semantics (prediction vs assessment).
+
+## Continue Learning Readiness Integration
+`ContinueLearningService.get_feed()` accepts optional `readiness_profile`. When provided, risk topics (`HIGH` or `CRITICAL` risk level) receive a +0.3 priority boost in their `LearningCard.priority_score` and `exam_impact` is set to `"high"`. The feed is re-sorted so risk-topics cards surface before same-score non-risk cards. Graceful degradation when readiness data is absent.
+
+## Readiness Boost Formula
+Risk topics get `priority_score * 1.3` (30% boost) capped at 100. The boost is multiplicative so high-priority items get more absolute lift. Cards from non-risk topics are untouched. Sorting is stable — original Recommendation Engine priority order is preserved within each band.

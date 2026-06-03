@@ -264,3 +264,73 @@ class TestLearnerProfileBuilder:
         snapshot = _snapshot()
         result = builder.build_profile(snapshot, current_topic="Genetics")
         assert "## Known Misconception" not in result.profile_block
+
+    def test_readiness_context_adds_exam_warning_for_risk_topic(self):
+        builder = LearnerProfileBuilder()
+        snapshot = _snapshot(
+            weak_topics=["Genetics"],
+            mastery_by_topic={"Genetics": {"severity": "moderate", "average_score": 0.55}},
+        )
+        result = builder.build_profile(
+            snapshot,
+            current_topic="Genetics",
+            readiness_context={
+                "risk_topics": ["Genetics"],
+                "overall_readiness": 45.0,
+                "readiness_band": "Developing",
+            },
+        )
+        assert "## Exam Readiness" in result.profile_block
+        assert "high-risk exam area" in result.profile_block
+        assert "Genetics" in result.profile_block
+        assert "45%" in result.profile_block
+
+    def test_readiness_context_omitted_when_topic_not_at_risk(self):
+        builder = LearnerProfileBuilder()
+        snapshot = _snapshot()
+        result = builder.build_profile(
+            snapshot,
+            current_topic="Ecology",
+            readiness_context={
+                "risk_topics": ["Genetics"],
+                "overall_readiness": 45.0,
+                "readiness_band": "Developing",
+            },
+        )
+        assert "## Exam Readiness" not in result.profile_block
+
+    def test_readiness_context_omitted_when_no_context(self):
+        builder = LearnerProfileBuilder()
+        snapshot = _snapshot()
+        result = builder.build_profile(snapshot, current_topic="Genetics")
+        assert "## Exam Readiness" not in result.profile_block
+
+    def test_readiness_context_omitted_when_no_current_topic(self):
+        builder = LearnerProfileBuilder()
+        snapshot = _snapshot()
+        result = builder.build_profile(
+            snapshot,
+            readiness_context={
+                "risk_topics": ["Genetics"],
+                "overall_readiness": 45.0,
+                "readiness_band": "Developing",
+            },
+        )
+        assert "## Exam Readiness" not in result.profile_block
+
+    def test_existing_profile_block_unchanged_with_empty_risk_topics(self):
+        builder = LearnerProfileBuilder()
+        snapshot = _snapshot(
+            weak_topics=["Genetics"],
+            mastery_by_topic={"Genetics": {"severity": "moderate", "average_score": 0.55}},
+        )
+        result_with = builder.build_profile(
+            snapshot, current_topic="Genetics",
+            readiness_context={
+                "risk_topics": [],
+                "overall_readiness": 80.0,
+                "readiness_band": "Ready",
+            },
+        )
+        result_without = builder.build_profile(snapshot, current_topic="Genetics")
+        assert result_with.profile_block == result_without.profile_block

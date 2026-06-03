@@ -10,6 +10,10 @@ from src.core.learning_intelligence.models import (
     GamificationSummary,
     LearnerSnapshot,
 )
+from src.core.learning_intelligence.readiness.models import (
+    ExamReadinessProfile,
+    TopicReadiness,
+)
 from src.core.learning_intelligence.tutor.learner_profile_builder import (
     BuildProfileResult,
 )
@@ -22,7 +26,7 @@ from src.core.learning_intelligence.tutor.tutor_context_package import (
 )
 
 
-def _make_mock_adapter_deps():
+def _make_mock_adapter_deps(with_risk_topics: bool = False):
     snapshot = LearnerSnapshot(
         user_id=uuid4(), generated_at=__import__("datetime").datetime.now(),
         educational_memory=EducationalMemorySummary(),
@@ -44,7 +48,27 @@ def _make_mock_adapter_deps():
     strategy_selector = MagicMock()
     strategy_selector.select = MagicMock(return_value="DIRECT_EXPLANATION")
 
-    return snapshot_svc, profile_builder, recommendation_svc, strategy_selector
+    risk_topics = ["Genetics"] if with_risk_topics else []
+    readiness_profile = ExamReadinessProfile(
+        user_id=uuid4(),
+        generated_at=__import__("datetime").datetime.now(),
+        overall_readiness=45.0,
+        readiness_band="Developing",
+        topic_readiness=[
+            TopicReadiness(
+                topic="Genetics", readiness_score=45.0, risk_level="HIGH",
+                risk_factors=["low_ability"], review_status="current",
+            ),
+        ],
+        risk_topics=risk_topics,
+    )
+    readiness_svc = AsyncMock()
+    readiness_svc.get_readiness = AsyncMock(return_value=readiness_profile)
+
+    return (
+        snapshot_svc, profile_builder, recommendation_svc,
+        strategy_selector, readiness_svc,
+    )
 
 
 @pytest.mark.asyncio
@@ -60,6 +84,7 @@ async def test_build_returns_package():
     assert deps[1].build_profile.called
     assert deps[2].get_recommendations.called
     assert deps[3].select.called
+    assert deps[4].get_readiness.called
 
 
 @pytest.mark.asyncio
@@ -79,25 +104,57 @@ async def test_build_passes_current_topic_to_profile_builder():
     adapter = TutorContextAdapter(*deps)
 
     await adapter.build(MagicMock(), uuid4(), current_topic="Cell Biology")
-    args, _ = deps[1].build_profile.call_args
-    assert args[1] == "Cell Biology"
+    args, kwargs = deps[1].build_profile.call_args
+    assert args[1] == "Cell Biology" or kwargs.get("current_topic") == "Cell Biology"
+
+
+@pytest.mark.asyncio
+async def test_build_passes_readiness_context_to_profile_builder():
+    deps = _make_mock_adapter_deps(with_risk_topics=True)
+    adapter = TutorContextAdapter(*deps)
+
+    await adapter.build(MagicMock(), uuid4(), current_topic="Genetics")
+    _, kwargs = deps[1].build_profile.call_args
+    assert kwargs.get("readiness_context") is not None
+    assert "risk_topics" in kwargs["readiness_context"]
+    assert kwargs["readiness_context"]["risk_topics"] == ["Genetics"]
+
+
+@pytest.mark.asyncio
+async def test_build_passes_readiness_to_strategy_selector():
+    deps = _make_mock_adapter_deps(with_risk_topics=True)
+    adapter = TutorContextAdapter(*deps)
+
+    await adapter.build(MagicMock(), uuid4(), current_topic="Genetics")
+    _, kwargs = deps[3].select.call_args
+    assert kwargs.get("readiness_context") is not None
+    assert kwargs.get("current_topic") == "Genetics"
+
+
+@pytest.mark.asyncio
+async def test_build_tolerates_readiness_failure():
+    deps = _make_mock_adapter_deps()
+    deps[4].get_readiness = AsyncMock(side_effect=Exception("Readiness unavailable"))
+
+    adapter = TutorContextAdapter(*deps)
+    package = await adapter.build(MagicMock(), uuid4(), current_topic="Genetics")
+    assert isinstance(package, TutorContextPackage)
 
 
 @pytest.mark.asyncio
 async def test_build_limits_recommendations_to_three():
-    snapshot_svc, profile_builder, recommendation_svc, strategy_selector = _make_mock_adapter_deps()
-
-    from src.core.learning_intelligence.recommendation.models import LearningRecommendation
     from datetime import datetime, timezone
+    from src.core.learning_intelligence.recommendation.models import LearningRecommendation
 
     recs = [
         MagicMock(spec=LearningRecommendation, reason=f"Rec {i}",
                   action_type="review_topic", topic="Bio")
         for i in range(7)
     ]
-    recommendation_svc.get_recommendations = AsyncMock(return_value=recs)
+    deps = _make_mock_adapter_deps()
+    deps[2].get_recommendations = AsyncMock(return_value=recs)
 
-    adapter = TutorContextAdapter(snapshot_svc, profile_builder, recommendation_svc, strategy_selector)
+    adapter = TutorContextAdapter(*deps)
     package = await adapter.build(MagicMock(), uuid4())
     assert len(package.top_recommendations) <= 3
 

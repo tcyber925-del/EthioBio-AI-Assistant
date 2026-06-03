@@ -68,4 +68,56 @@ Started: Tue Jun  2 11:17:00 AM EAT 2026
 - Designed to be run via cron (idempotent, safe to run multiple times)
 - ruff and mypy pass (only pre-existing errors)
 ---
-
+## Tue Jun  2 17:33:00 EAT 2026 - ER-001
+- Created ExamReadinessProfile and TopicReadiness Pydantic models
+- Located at src/core/learning_intelligence/readiness/models/readiness_profile.py
+- Followed convention from recommendation/models/ (matching __init__.py re-export pattern)
+- Files: readiness/__init__.py, readiness/models/__init__.py, readiness/models/readiness_profile.py
+- **Learnings for future iterations:**
+  - Follow the recommendation module's package structure pattern: models/ sub-package with __init__.py re-exports
+  - Use Pydantic BaseModel consistently (matching existing codebase convention)
+  - ruff and mypy pass on the new module with no issues
+---
+## Tue Jun  2 17:39:00 EAT 2026 - ER-002
+- Implemented ReadinessService at src/core/learning_intelligence/readiness/readiness_service.py
+- Service computes per-topic readiness from LearnerSnapshot mastery_by_topic average_score
+- Risk factors: overdue_review (due_reviews with next_review_at < now), active_misconception (frequency >= 3), low_ability (ability_score < 0.3 or uncertainty > 2.0)
+- risk_level: LOW(0) / MODERATE(1) / HIGH(2) / CRITICAL(3+)
+- readiness_band: Critical(0-39) / Developing(40-59) / Ready(60-79) / Strong(80-100)
+- review_status: overdue/current based on overdue_review factor
+- overall_readiness = average of all topic scores
+- Empty state returns overall_readiness=0, Critical band, empty lists
+- 19 tests covering all criteria (empty state, factors, levels, bands, risk_topics, review_status)
+- Files: src/core/learning_intelligence/readiness/readiness_service.py, src/core/learning_intelligence/readiness/__init__.py, tests/test_readiness_service.py
+- **Learnings for future iterations:**
+  - ReadinessService follows the same pattern as RecommendationService (optional snapshot_service dependency)
+  - Service is simpler than recommendation - single class without separate engine/cache layers per PRD spec
+  - mastery_by_topic values are dicts with average_score, confidence, severity, attempt_count keys
+  - ability_by_topic values are dicts with ability_score, uncertainty, attempt_count keys
+  - Use AsyncMock/MagicMock with _mock_snapshot_service helper pattern for testing services
+---
+## Tue Jun  2 06:30:00 PM EAT 2026 - ER-003 & ER-004
+- ER-003: Added GET /intelligence/readiness/{user_id} to existing intelligence router
+- ER-004: Created dashboard/src/components/learning/ExamReadinessCard.tsx
+- Added ExamReadinessCard to student detail page sidebar (above GamificationProfile)
+- Component handles loading, error (with retry), empty state, and data display
+- Displays overall_readiness as large percentage with colored readiness band badge
+- Shows risk topics with colored badges per risk level
+- npx tsc --noEmit: clean
+- **Manual browser verification needed** (Playwright not available)
+---
+## Tue Jun  2 19:20:00 EAT 2026 — Exam Readiness v2 PRD created
+- New PRD: scripts/ralph/prd_v2.json — 5 stories (ER-005 through ER-009)
+- Scope: forgetting risk, mastery stability, projected score, intervention planner, tutor integration, rec engine integration
+- CL integration deferred until PR #24 merges
+- Branch: ralph/exam-readiness-v2
+---
+## Tue Jun  2 19:50:00 EAT 2026 — ER-005 through ER-009 all implemented
+- ER-005: ForgettingRiskPredictor + MasteryStabilityPredictor with 15 tests
+- ER-006: ProjectedScoreCalculator + InterventionPlanner + enhanced ExamReadinessProfile with 14 tests
+- ER-007: Dashboard v2 — projected score, forgetting risk bars, intervention list
+- ER-008: Tutor integration — readiness context in profile block, EXAM_PREPARATION strategy
+- ER-009: Readiness recommendation rule + engine integration with 7 tests
+- All quality checks pass (ruff, mypy, pytest)
+- 369 + 55 = 424 total tests pass (same 9 pre-existing failures)
+---
