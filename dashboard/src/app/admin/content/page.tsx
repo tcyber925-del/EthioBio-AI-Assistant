@@ -16,17 +16,17 @@ export default function AdminContentPage() {
       const params = new URLSearchParams()
       params.set('content_type', ct)
       if (status !== 'all') params.set('status', status)
-      const res = await fetchWithAuth(`/admin/content/review?${params}`)
-      return (await res.json()).items || []
+      const data = await fetchWithAuth(`/admin/content/review?${params}`)
+      return data.items || []
     }
     if (type === 'all') {
       Promise.all([fetchType('quiz'), fetchType('lesson')])
         .then(([quizzes, lessons]) => setItems([...quizzes, ...lessons]))
-        .catch(err => setError(err.message))
+        .catch(err => setError(err instanceof Error ? err.message : String(err)))
     } else {
       fetchType(type)
         .then(setItems)
-        .catch(err => setError(err.message))
+        .catch(err => setError(err instanceof Error ? err.message : String(err)))
     }
   }, [type, status])
 

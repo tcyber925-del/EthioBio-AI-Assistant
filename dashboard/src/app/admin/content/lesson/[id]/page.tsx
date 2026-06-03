@@ -12,9 +12,8 @@ export default function AdminLessonDetailPage() {
 
   useEffect(() => {
     fetchWithAuth(`/admin/content/lesson/${id}`)
-      .then(res => res.json())
       .then(setLesson)
-      .catch(err => setError(err.message))
+      .catch(err => setError(err instanceof Error ? err.message : String(err)))
   }, [id])
 
   const toggleStatus = async () => {

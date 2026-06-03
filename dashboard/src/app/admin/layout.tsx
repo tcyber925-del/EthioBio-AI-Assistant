@@ -26,19 +26,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       return
     }
     fetchWithAuth('/admin/dashboard')
-      .then(res => {
-        if (res.status === 403) {
-          setError('Access denied — admin privileges required')
-          return
-        }
-        if (!res.ok) throw new Error('Failed to verify admin access')
-        setAuthorized(true)
-      })
+      .then(() => setAuthorized(true))
       .catch(err => {
-        if (err.message?.includes('401')) {
+        const msg = err instanceof Error ? err.message : String(err)
+        if (msg.includes('401') || msg.includes('Session expired')) {
           router.push('/login')
+        } else if (msg.includes('403')) {
+          setError('Access denied — admin privileges required')
         } else {
-          setError(err.message)
+          setError(msg)
         }
       })
   }, [router])

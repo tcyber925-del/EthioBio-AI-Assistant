@@ -20,9 +20,8 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     fetchWithAuth('/admin/dashboard')
-      .then(res => res.json())
       .then(setData)
-      .catch(err => setError(err.message))
+      .catch(err => setError(err instanceof Error ? err.message : String(err)))
   }, [])
 
   if (error) return <p className="text-red-600">Error: {error}</p>

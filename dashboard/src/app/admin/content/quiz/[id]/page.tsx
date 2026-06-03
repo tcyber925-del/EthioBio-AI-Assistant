@@ -12,9 +12,8 @@ export default function AdminQuizDetailPage() {
 
   useEffect(() => {
     fetchWithAuth(`/admin/content/quiz/${id}`)
-      .then(res => res.json())
       .then(setQuiz)
-      .catch(err => setError(err.message))
+      .catch(err => setError(err instanceof Error ? err.message : String(err)))
   }, [id])
 
   const toggleStatus = async () => {
