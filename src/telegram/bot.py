@@ -82,7 +82,7 @@ async def start(update: Update, context):
     )
 
 
-async def dashboard_login_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def dashboard_login_command(update: Update, context):
     await _try_register_user(update.effective_user.id)
     user_id = str(update.effective_user.id)
     code = f"{random.randint(100000, 999999)}"
