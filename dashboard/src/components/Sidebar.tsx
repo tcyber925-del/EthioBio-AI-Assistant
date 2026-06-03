@@ -1,11 +1,12 @@
 'use client'
 
-import { Activity, BarChart3, BookOpen, ClipboardCheck, FileText, GraduationCap, Home, MessageSquare, Users } from 'lucide-react'
+import { Activity, BarChart3, BookOpen, ClipboardCheck, FileText, GraduationCap, Home, MessageSquare, School, Users } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 const links = [
   { href: '/', label: 'Dashboard', icon: Home },
+  { href: '/classroom', label: 'Classroom', icon: School },
   { href: '/recovery', label: 'Recovery', icon: Activity },
   { href: '/quizzes', label: 'Quizzes', icon: ClipboardCheck },
   { href: '/lessons', label: 'Lesson Plans', icon: FileText },

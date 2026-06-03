@@ -156,3 +156,24 @@ Score-to-band mapping: 0-39=Critical (high risk of failure), 40-59=Developing (s
 
 ## Readiness Boost Formula
 Risk topics get `priority_score * 1.3` (30% boost) capped at 100. The boost is multiplicative so high-priority items get more absolute lift. Cards from non-risk topics are untouched. Sorting is stable — original Recommendation Engine priority order is preserved within each band.
+
+## ClassroomProfile
+Computed, read-only projection of classroom-wide educational intelligence. Generated on read — not persisted. Contains classroom_id, generated_at, total_students, average_readiness (0-100), readiness_distribution (count per band), risk_students list, intervention_candidates list, mastery_heatmap (topic → avg score).
+
+## Classroom Health Score
+The `average_readiness` field on `ClassroomProfile`. Computed as the mean of all enrolled students' `ExamReadinessProfile.overall_readiness` values. Students with no readiness data are skipped. 0-100 scale, inherits readiness band semantics (0-39=Critical, etc.).
+
+## Readiness Distribution
+Count of enrolled students per readiness band (Critical/Developing/Ready/Strong). Derived from each student's `ExamReadinessProfile.readiness_band`. The bands inherit their semantics from Readiness Bands.
+
+## Mastery Heatmap
+Per-topic average readiness score across all students in a classroom. Computed by grouping each student's `TopicReadiness.readiness_score` by topic and taking the mean. Not a separate model — a `dict[str, float]` field on `ClassroomProfile`.
+
+## Intervention Queue
+Sorted list of `Intervention` models (from readiness module) across all risk students in a classroom. Sorted by priority descending. Consumed by the teacher dashboard intervention widget. Empty when no students are at risk.
+
+## TeacherService
+Single service at `src/core/learning_intelligence/teacher/teacher_service.py`. Composes `ReadinessService` internally. Generates `ClassroomProfile` by calling readiness per student in parallel via `asyncio.gather()`. No separate engine files — aggregation logic lives in private methods on the service.
+
+## Classroom API
+`APIRouter(prefix="/teacher")` at `src/api/teacher.py`. Endpoints: classroom CRUD (create/list/roster/enroll) and intelligence (overview/risk-students/interventions/mastery-heatmap). Teacher ownership enforced via `_verify_teacher_owns_classroom()` helper returning 404 on mismatch.
