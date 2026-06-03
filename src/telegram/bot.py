@@ -1,4 +1,5 @@
 import httpx
+import random
 import structlog
 from telegram.ext import (
     Application,
@@ -21,6 +22,7 @@ from src.database.models import MemorySession, NotificationPreference, StudentPr
 from src.database.session import async_session_factory
 from sqlalchemy import select
 from src.llm.router import ModelRouter
+from src.redis_client import get_redis
 from src.telegram.formatter import format_for_telegram, sanitize_for_telegram, strip_markdown
 from src.telegram.keyboards import (
     answer_options_keyboard,
@@ -77,6 +79,19 @@ async def start(update: Update, context):
         "I'm your biology learning assistant for Ethiopian Grades 7-12.\n\n"
         "Send me any biology question, or use the menu below:",
         reply_markup=main_menu_keyboard(socratic),
+    )
+
+
+async def dashboard_login_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _try_register_user(update.effective_user.id)
+    user_id = str(update.effective_user.id)
+    code = f"{random.randint(100000, 999999)}"
+    redis_conn = await get_redis()
+    await redis_conn.setex(f"otp:{user_id}", 300, code)
+    await update.message.reply_text(
+        f"Your dashboard login code: <b>{code}</b>\n\n"
+        "This code expires in 5 minutes. Enter it on the login page.",
+        parse_mode="HTML",
     )
 
 
@@ -1711,6 +1726,7 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("progress", progress_command))
     app.add_handler(CommandHandler("settings", settings_command))
     app.add_handler(CommandHandler("email", email_command))
+    app.add_handler(CommandHandler("dashboard-login", dashboard_login_command))
 
     quiz_handler = ConversationHandler(
         entry_points=[
