@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { AlertTriangle, ArrowLeft, RefreshCw, School, TrendingUp } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
-import { fetchWithTimeout } from '@/lib/fetch'
+import { fetchWithAuth } from '@/lib/fetchWithAuth'
+import { isAuthenticated } from '@/lib/auth'
 
 interface StudentRisk {
   student_id: string
@@ -65,24 +66,29 @@ function heatmapColor(score: number): string {
 
 export default function ClassroomOverviewPage() {
   const params = useParams()
-  const searchParams = useSearchParams()
+  const router = useRouter()
   const classroomId = params.id as string
-  const teacherId = searchParams.get('teacher_id') || ''
 
   const [data, setData] = useState<ClassroomProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      router.push('/login')
+      return
+    }
+    load()
+  }, [classroomId])
+
   const load = () => {
     setLoading(true)
     setError(null)
-    fetchWithTimeout(`/teacher/classrooms/${classroomId}/overview?teacher_id=${teacherId}`)
+    fetchWithAuth(`/teacher/classrooms/${classroomId}/overview`)
       .then(d => setData(d))
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
   }
-
-  useEffect(load, [classroomId, teacherId])
 
   if (loading) return <div className="space-y-4">{Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)}</div>
 
@@ -101,7 +107,7 @@ export default function ClassroomOverviewPage() {
       <School className="w-12 h-12 text-border mx-auto mb-3" />
       <p className="text-foreground-muted font-medium">No classroom data yet</p>
       <p className="text-sm text-foreground-muted/60 mt-1">Enroll students to see classroom intelligence.</p>
-      <Link href={`/classroom?teacher_id=${teacherId}`} className="text-sm text-primary hover:underline mt-4 inline-block">
+      <Link href="/classroom" className="text-sm text-primary hover:underline mt-4 inline-block">
         Back to classrooms
       </Link>
     </div>
@@ -112,7 +118,7 @@ export default function ClassroomOverviewPage() {
 
   return (
     <div>
-      <Link href={`/classroom?teacher_id=${teacherId}`} className="flex items-center gap-2 text-sm text-foreground-muted hover:text-foreground mb-4 transition-colors">
+      <Link href="/classroom" className="flex items-center gap-2 text-sm text-foreground-muted hover:text-foreground mb-4 transition-colors">
         <ArrowLeft className="w-4 h-4" /> Back to classrooms
       </Link>
 
