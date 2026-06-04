@@ -29,6 +29,7 @@ async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_
     try:
         mem_session = None
         memory_context = ""
+        conversation_messages: list[dict] = []
         if request.user_id:
             mem_session = await session_manager.get_or_create_active_session(
                 request.user_id, topic=request.topic, db=session,
@@ -46,6 +47,7 @@ async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_
                     } if mem_session else None,
                     socratic_state=None,
                 )
+                conversation_messages = session_manager.get_messages(mem_session)
 
         learner_profile_block = ""
         if request.user_id:
@@ -70,16 +72,14 @@ async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_
             reveal_answer=request.reveal_answer,
             memory_context=memory_context,
             learner_profile_block=learner_profile_block,
+            messages=conversation_messages,
         )
 
         if mem_session:
-            if not isinstance(mem_session.educational_context, dict):
-                mem_session.educational_context = {}
-            turns = mem_session.educational_context.setdefault("recent_turns", [])
-            turns.append({"role": "user", "content": request.question})
+            conversation_messages.append({"role": "user", "content": request.question})
             if result["answer"]:
-                turns.append({"role": "assistant", "content": result["answer"]})
-            mem_session.educational_context["recent_turns"] = turns[-10:]
+                conversation_messages.append({"role": "assistant", "content": result["answer"]})
+            session_manager.set_messages(mem_session, conversation_messages[-20:])
 
         xp_awarded = 0
         level_up = False
