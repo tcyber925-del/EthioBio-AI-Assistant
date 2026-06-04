@@ -1,5 +1,6 @@
 'use client'
 
+import { NextIntlClientProvider, useMessages } from 'next-intl'
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
@@ -19,6 +20,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const pathname = usePathname()
+  const messages = useMessages()
 
   useEffect(() => {
     const token = getToken()
@@ -42,27 +44,32 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-bold text-red-600 mb-2">Access Denied</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <Link href="/" className="text-blue-600 hover:underline">
-            Back to Dashboard
-          </Link>
+      <NextIntlClientProvider messages={messages}>
+        <div className="flex min-h-screen items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-xl font-bold text-red-600 mb-2">Access Denied</h2>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Link href="/" className="text-blue-600 hover:underline">
+              Back to Dashboard
+            </Link>
+          </div>
         </div>
-      </div>
+      </NextIntlClientProvider>
     )
   }
 
   if (authorized === null) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-500">Verifying access...</p>
-      </div>
+      <NextIntlClientProvider messages={messages}>
+        <div className="flex min-h-screen items-center justify-center">
+          <p className="text-gray-500">Verifying access...</p>
+        </div>
+      </NextIntlClientProvider>
     )
   }
 
   return (
+    <NextIntlClientProvider messages={messages}>
     <div className="flex min-h-screen bg-gray-50">
       <aside className="w-56 bg-gray-900 text-white flex flex-col">
         <div className="p-4 border-b border-gray-700">
@@ -95,5 +102,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {children}
       </main>
     </div>
+    </NextIntlClientProvider>
   )
 }
