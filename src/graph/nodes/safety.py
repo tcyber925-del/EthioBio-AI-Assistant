@@ -11,6 +11,7 @@ SAFETY_PROMPT = """You are EthioBio Safety Agent. Review the following biology c
 3. Safety (no harmful content)
 4. Curriculum alignment
 5. Clarity
+6. Language quality (proper {language})
 
 Respond with ONLY a JSON object:
 {"safe": true/false, "issues": ["issue1"], "score": 0.0-1.0, "suggestions": ["suggestion"]}"""
@@ -22,13 +23,22 @@ class SafetyNode:
 
     async def __call__(self, state: AgentState) -> AgentState:
         grade_context = f" (Grade {state.grade_level})" if state.grade_level else ""
+        lang_names = {"en": "English", "am": "Amharic",
+                       "both": "English/Amharic"}
+        lang_name = lang_names.get(state.language, "English")
+        safety_prompt = SAFETY_PROMPT.format(language=lang_name)
 
         messages = [
-            {"role": "system", "content": SAFETY_PROMPT},
-            {"role": "user", "content": f"Review this biology content{grade_context}:\n\n{state.draft}"},
+            {"role": "system", "content": safety_prompt},
+            {
+                "role": "user",
+                "content": f"Review this biology content{grade_context}:\n\n{state.draft}",
+            },
         ]
 
-        result = await self.router.route(messages, request_type="safety_check", temperature=0.1, max_tokens=500)
+        result = await self.router.route(
+            messages, request_type="safety_check", temperature=0.1, max_tokens=500
+        )
 
         try:
             content = result["content"]
