@@ -19,7 +19,7 @@ export default function AdminDashboardPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchWithAuth('/admin/dashboard')
+    fetchWithAuth('/api/admin/dashboard')
       .then(setData)
       .catch(err => setError(err instanceof Error ? err.message : String(err)))
   }, [])

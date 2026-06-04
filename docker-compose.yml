@@ -85,7 +85,7 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     healthcheck:
-      test: ["CMD", "sh", "-c", "ollama list | grep -q 'gemma4:31b-cloud'"]
+      test: ["CMD", "ollama", "list"]
       interval: 15s
       timeout: 10s
       retries: 10

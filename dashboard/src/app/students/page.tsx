@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Users, AlertTriangle, RefreshCw } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
-import { fetchWithTimeout } from '@/lib/fetch'
+import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
 
 interface Student {
@@ -24,7 +24,7 @@ export default function StudentsPage() {
     setLoading(true)
     setError(null)
     try {
-      const d = await fetchWithTimeout('/api/admin/dashboard')
+      const d = await fetchWithAuth('/api/admin/dashboard')
       setStudents(d.recent_users || [])
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err))

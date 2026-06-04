@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { BarChart3, AlertTriangle, RefreshCw } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts'
-import { fetchWithTimeout } from '@/lib/fetch'
+import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
 
 interface MonitoringData {
@@ -27,10 +27,10 @@ export default function MonitoringPage() {
     setError(null)
     try {
       const [mon, dash, prov, active] = await Promise.all([
-        fetchWithTimeout('/api/admin/monitoring'),
-        fetchWithTimeout('/api/admin/dashboard'),
-        fetchWithTimeout('/models/providers'),
-        fetchWithTimeout('/models/active'),
+        fetchWithAuth('/api/admin/monitoring'),
+        fetchWithAuth('/api/admin/dashboard'),
+        fetchWithAuth('/models/providers'),
+        fetchWithAuth('/models/active'),
       ])
       setData(mon)
       setLogs(dash.recent_logs || [])

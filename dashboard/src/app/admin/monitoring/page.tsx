@@ -15,7 +15,7 @@ export default function AdminMonitoringPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchWithAuth('/admin/monitoring')
+    fetchWithAuth('/api/admin/monitoring')
       .then(setData)
       .catch(err => setError(err instanceof Error ? err.message : String(err)))
   }, [])

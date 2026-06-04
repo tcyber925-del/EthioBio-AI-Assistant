@@ -60,6 +60,15 @@ export default function DiagramsPage() {
   const [selectedProvider, setSelectedProvider] = useState('')
   const [selectedModel, setSelectedModel] = useState('')
 
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [result, setResult] = useState<DiagramResponse | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [validationResult, setValidationResult] = useState<ValidateResponse | null>(null)
+  const [confirmedCorrectIds, setConfirmedCorrectIds] = useState<Set<string>>(new Set())
+  const [labelInputs, setLabelInputs] = useState<Record<string, string>>({})
+  const [hoveredLabel, setHoveredLabel] = useState<string | null>(null)
+
   useEffect(() => {
     if (!isAuthenticated()) { router.push('/login'); return }
   }, [router])

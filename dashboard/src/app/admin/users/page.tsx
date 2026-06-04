@@ -28,7 +28,7 @@ export default function AdminUsersPage() {
       const params = new URLSearchParams()
       if (search) params.set('search', search)
       if (role !== 'all') params.set('role', role)
-      const data = await fetchWithAuth(`/admin/users?${params}`)
+      const data = await fetchWithAuth(`/api/admin/users?${params}`)
       setUsers(data.users)
       setTotal(data.total)
     } catch (err: any) {
@@ -42,7 +42,7 @@ export default function AdminUsersPage() {
 
   const toggleStatus = async (userId: string, current: boolean) => {
     try {
-      await fetchWithAuth(`/admin/users/${userId}/status`, {
+      await fetchWithAuth(`/api/admin/users/${userId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: !current }),

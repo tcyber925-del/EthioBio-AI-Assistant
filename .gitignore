@@ -46,3 +46,5 @@ logs/
 
 # Superpowers brainstorming artifacts
 .superpowers/
+session-ses_*.md
+dashboard/test-results/

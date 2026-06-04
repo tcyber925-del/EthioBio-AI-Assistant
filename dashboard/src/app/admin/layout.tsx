@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
+import { getToken } from '@/lib/auth'
 
 const NAV_ITEMS = [
   { href: '/admin', label: 'Dashboard', icon: '📊' },
@@ -20,7 +21,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname()
 
   useEffect(() => {
-    const token = localStorage.getItem('auth_token')
+    const token = getToken()
     if (!token) {
       router.push('/login')
       return

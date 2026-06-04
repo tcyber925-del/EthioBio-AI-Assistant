@@ -77,7 +77,7 @@ export default function ParentDashboardPage() {
       router.push('/login')
       return
     }
-    fetchWithAuth('/parent/children')
+    fetchWithAuth('/api/parent/children')
       .then(data => {
         setChildren(data)
         if (data.length > 0) setSelectedId(data[0].student_id)
@@ -89,14 +89,14 @@ export default function ParentDashboardPage() {
   const loadProgress = useCallback((childId: string) => {
     setLoadingProgress(true)
     setError(null)
-    fetchWithAuth(`/parent/children/${childId}/progress`)
+    fetchWithAuth(`/api/parent/children/${childId}/progress`)
       .then(setProgress)
       .catch(err => setError(err.message))
       .finally(() => setLoadingProgress(false))
   }, [])
 
   const loadSummary = useCallback((childId: string) => {
-    fetchWithAuth(`/parent/children/${childId}/weekly-summary`)
+    fetchWithAuth(`/api/parent/children/${childId}/weekly-summary`)
       .then(setSummary)
       .catch(() => {})
   }, [])
@@ -111,7 +111,7 @@ export default function ParentDashboardPage() {
   const generateNewSummary = () => {
     if (!selectedId) return
     setGeneratingSummary(true)
-    fetchWithAuth(`/parent/children/${selectedId}/weekly-summary?language=en`)
+    fetchWithAuth(`/api/parent/children/${selectedId}/weekly-summary?language=en`)
       .then(s => {
         setSummary(s)
         setGeneratingSummary(false)
@@ -157,12 +157,27 @@ export default function ParentDashboardPage() {
       )}
 
       {error && (
-        <div className="text-center py-8">
-          <AlertTriangle className="w-8 h-8 text-red-400 mx-auto mb-2" />
-          <p className="text-red-400 text-sm">{error}</p>
-          <button onClick={() => selectedId && loadProgress(selectedId)} className="text-sm text-primary hover:underline mt-2 flex items-center gap-1 mx-auto">
-            <RefreshCw className="w-3 h-3" /> Retry
-          </button>
+        <div className="text-center py-16">
+          {error.includes('Parent access required') || error.includes('Parent access') ? (
+            <>
+              <User className="w-12 h-12 text-border mx-auto mb-3" />
+              <p className="text-foreground-muted font-medium text-base">Parent Access Required</p>
+              <p className="text-sm text-foreground-muted mt-2 max-w-md mx-auto leading-relaxed">
+                This page is for parents only. If you'd like to track a child's progress, register a new account with the <strong>Parent</strong> role.
+              </p>
+              <a href="/login" className="inline-flex items-center gap-2 mt-5 px-5 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover transition-colors">
+                Switch Account
+              </a>
+            </>
+          ) : (
+            <>
+              <AlertTriangle className="w-8 h-8 text-red-400 mx-auto mb-2" />
+              <p className="text-red-400 text-sm">{error}</p>
+              <button onClick={() => selectedId && loadProgress(selectedId)} className="text-sm text-primary hover:underline mt-2 flex items-center gap-1 mx-auto">
+                <RefreshCw className="w-3 h-3" /> Retry
+              </button>
+            </>
+          )}
         </div>
       )}
 

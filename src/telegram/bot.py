@@ -2059,7 +2059,7 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("progress", progress_command))
     app.add_handler(CommandHandler("settings", settings_command))
     app.add_handler(CommandHandler("email", email_command))
-    app.add_handler(CommandHandler("dashboard-login", dashboard_login_command))
+    app.add_handler(CommandHandler("dashboard_login", dashboard_login_command))
     app.add_handler(CommandHandler("parent_register", register_parent))
     app.add_handler(CommandHandler("children", list_children))
     app.add_handler(CommandHandler("child_progress", child_progress))
