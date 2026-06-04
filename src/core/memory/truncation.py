@@ -8,8 +8,6 @@ def estimate_tokens(text: str) -> int:
 
 def truncate_messages(
     messages: list[dict],
-    system_prompt: str,
-    new_user_message: str,
     budget: int = CONVERSATION_TOKEN_BUDGET,
 ) -> list[dict]:
     """Drop oldest user/assistant pairs until remaining messages fit within budget."""
