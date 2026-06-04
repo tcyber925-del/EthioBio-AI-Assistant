@@ -67,6 +67,8 @@ class AgentState:
     learner_profile_block: str = ""
     use_learner_awareness: bool = False
 
+    messages: list[dict] = field(default_factory=list)
+
 
 @dataclass
 class GraphOutput:
