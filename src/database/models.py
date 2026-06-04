@@ -618,6 +618,20 @@ class MemoryEvent(Base):
     user: Mapped["User"] = relationship(backref="memory_events")
 
 
+class ConversationTurn(Base):
+    __tablename__ = "conversation_turns"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), index=True)
+    session_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("memory_sessions.session_id"), nullable=True)
+    role: Mapped[str] = mapped_column(String(20))
+    content: Mapped[str] = mapped_column(Text)
+    topic: Mapped[str] = mapped_column(String(300), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+    user: Mapped["User"] = relationship(backref="conversation_turns")
+
+
 class NotificationPreference(Base):
     __tablename__ = "notification_preferences"
 

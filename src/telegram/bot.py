@@ -17,6 +17,7 @@ from src.api.gamification import award_xp, check_achievements, update_streak
 from src.config import settings
 from src.core.learning_intelligence.tutor.tutor_context_adapter import TutorContextAdapter
 from src.core.memory.context_assembler import ContextAssembler
+from src.core.memory.cross_session_recall import CrossSessionRecall
 from src.core.memory.session_manager import SessionManager
 from src.database.models import MemorySession, NotificationPreference, ParentChild, ProgressRecord, QuizAttempt, StudentMastery, StudentProfile, User, UserGamification, UserRole
 from src.database.session import async_session_factory
@@ -516,6 +517,13 @@ async def reveal_command(update: Update, context):
                     conversation_messages.append({"role": "user", "content": question})
                     conversation_messages.append({"role": "assistant", "content": result["answer"]})
                     SessionManager().set_messages(mem_session, conversation_messages[-20:])
+                    await CrossSessionRecall().record_turns(
+                        user_id=memory_user_id,
+                        session_id=mem_session.session_id,
+                        turns=conversation_messages[-2:],
+                        topic=mem_session.active_topic,
+                        db=_mem_db,
+                    )
                     await _mem_db.commit()
             except Exception as e:
                 logger.warning("memory_turns_save_error", error=str(e))
@@ -608,6 +616,13 @@ async def hint_command(update: Update, context):
                     conversation_messages.append({"role": "user", "content": question})
                     conversation_messages.append({"role": "assistant", "content": result["answer"]})
                     SessionManager().set_messages(mem_session, conversation_messages[-20:])
+                    await CrossSessionRecall().record_turns(
+                        user_id=memory_user_id,
+                        session_id=mem_session.session_id,
+                        turns=conversation_messages[-2:],
+                        topic=mem_session.active_topic,
+                        db=_mem_db,
+                    )
                     await _mem_db.commit()
             except Exception as e:
                 logger.warning("memory_turns_save_error", error=str(e))
@@ -671,6 +686,13 @@ async def ask_command(update: Update, context):
                             conversation_messages.append({"role": "user", "content": question})
                             conversation_messages.append({"role": "assistant", "content": result["answer"]})
                             SessionManager().set_messages(mem_session, conversation_messages[-20:])
+                            await CrossSessionRecall().record_turns(
+                                user_id=memory_user_id,
+                                session_id=mem_session.session_id,
+                                turns=conversation_messages[-2:],
+                                topic=mem_session.active_topic,
+                                db=_mem_db,
+                            )
                             await _mem_db.commit()
                     except Exception as e:
                         logger.warning("memory_turns_save_error", error=str(e))
@@ -904,6 +926,13 @@ async def handle_question(update: Update, context):
                         conversation_messages.append({"role": "user", "content": question})
                         conversation_messages.append({"role": "assistant", "content": result["answer"]})
                         SessionManager().set_messages(mem_session, conversation_messages[-20:])
+                        await CrossSessionRecall().record_turns(
+                            user_id=memory_user_id,
+                            session_id=mem_session.session_id,
+                            turns=conversation_messages[-2:],
+                            topic=mem_session.active_topic,
+                            db=_mem_db,
+                        )
                         await _mem_db.commit()
                 except Exception as e:
                     logger.warning("memory_turns_save_error", error=str(e))
@@ -1652,6 +1681,13 @@ async def handle_hint(update: Update, context):
                     conversation_messages.append({"role": "user", "content": question})
                     conversation_messages.append({"role": "assistant", "content": result["answer"]})
                     SessionManager().set_messages(mem_session, conversation_messages[-20:])
+                    await CrossSessionRecall().record_turns(
+                        user_id=memory_user_id,
+                        session_id=mem_session.session_id,
+                        turns=conversation_messages[-2:],
+                        topic=mem_session.active_topic,
+                        db=_mem_db,
+                    )
                     await _mem_db.commit()
             except Exception as e:
                 logger.warning("memory_turns_save_error", error=str(e))
@@ -1721,6 +1757,13 @@ async def handle_reveal_answer(update: Update, context):
                     conversation_messages.append({"role": "user", "content": question})
                     conversation_messages.append({"role": "assistant", "content": result["answer"]})
                     SessionManager().set_messages(mem_session, conversation_messages[-20:])
+                    await CrossSessionRecall().record_turns(
+                        user_id=memory_user_id,
+                        session_id=mem_session.session_id,
+                        turns=conversation_messages[-2:],
+                        topic=mem_session.active_topic,
+                        db=_mem_db,
+                    )
                     await _mem_db.commit()
             except Exception as e:
                 logger.warning("memory_turns_save_error", error=str(e))

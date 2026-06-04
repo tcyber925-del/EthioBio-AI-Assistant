@@ -2,6 +2,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.memory.cross_session_recall import CrossSessionRecall
 from src.core.memory.retrieval_orchestrator import (
     MEMORY_TOKEN_BUDGET,
     RetrievalOrchestrator,
@@ -19,6 +20,7 @@ SUMMARIES_BUDGET = 500
 class ContextAssembler:
     def __init__(self):
         self.retrieval = RetrievalOrchestrator()
+        self.cross_session = CrossSessionRecall()
 
     async def assemble(
         self,
@@ -36,12 +38,14 @@ class ContextAssembler:
         mastery_part = await self._format_mastery(user_id, topic, db)
         misconceptions_part = await self._format_misconceptions(user_id, topic, db)
         summaries_part = await self._format_summaries(user_id, topic)
+        cross_session_part = await self._format_cross_session(user_id, topic, db)
 
         for label, part in [
             ("Current Session", session_part),
             ("Socratic State", socratic_part),
             ("Topic Mastery", mastery_part),
             ("Active Misconceptions", misconceptions_part),
+            ("Previous Sessions", cross_session_part),
             ("Recent Sessions", summaries_part),
         ]:
             if not part:
@@ -169,4 +173,27 @@ class ContextAssembler:
             return "\n".join(lines)
         except Exception as e:
             logger.warning("summaries_format_error", error=str(e))
+            return ""
+
+    async def _format_cross_session(
+        self, user_id, topic: str | None, db: AsyncSession,
+    ) -> str:
+        if not user_id:
+            return ""
+        try:
+            if topic:
+                turns = await self.cross_session.recall_by_topic(user_id, topic, db, limit=6)
+            else:
+                turns = await self.cross_session.recall_recent(user_id, db, limit=6)
+            if not turns:
+                return ""
+            lines = []
+            for t in turns:
+                role_label = "You" if t["role"] == "user" else "Tutor"
+                content = t["content"][:200]
+                topic_label = f" [{t['topic']}]" if t.get("topic") else ""
+                lines.append(f"- {role_label}{topic_label}: {content}")
+            return "\n".join(lines)
+        except Exception as e:
+            logger.warning("cross_session_format_error", error=str(e))
             return ""

@@ -6,6 +6,7 @@ from src.agents.tutor import TutorAgent
 from src.api.gamification import XP_SOURCES, award_xp, check_achievements, update_streak
 from src.core.learning_intelligence.tutor.tutor_context_adapter import TutorContextAdapter
 from src.core.memory.context_assembler import ContextAssembler
+from src.core.memory.cross_session_recall import CrossSessionRecall
 from src.core.memory.session_manager import SessionManager
 from src.database.session import get_session
 from src.llm.router import ModelRouter
@@ -80,6 +81,13 @@ async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_
             if result["answer"]:
                 conversation_messages.append({"role": "assistant", "content": result["answer"]})
             session_manager.set_messages(mem_session, conversation_messages[-20:])
+            await CrossSessionRecall().record_turns(
+                user_id=request.user_id,
+                session_id=mem_session.session_id,
+                turns=conversation_messages[-2:],
+                topic=request.topic,
+                db=session,
+            )
 
         xp_awarded = 0
         level_up = False
