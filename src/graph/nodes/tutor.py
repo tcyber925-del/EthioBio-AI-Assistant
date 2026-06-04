@@ -45,7 +45,7 @@ def _detect_misconception(response_text: str) -> tuple[bool, str]:
     return False, ""
 
 SYSTEM_PROMPT = """You are EthioBio Tutor, an AI biology tutor for Ethiopian middle and high school students (Grades 7-12).
-The curriculum is English-first. You may also provide explanations in Amharic when requested.
+The curriculum is in English. Follow language instructions provided in the user message.
 
 Rules:
 1. Answer biology questions based on the Ethiopian curriculum.
@@ -60,7 +60,7 @@ Rules:
 8. If the student's question or reasoning contains a conceptual error, gently point it out and explain why it is incorrect before providing the correct information. Be supportive — never condescending."""
 
 SOCRATIC_SYSTEM_PROMPT = """You are EthioBio Tutor in Socratic Mode, an AI biology tutor for Ethiopian middle and high school students (Grades 7-12).
-The curriculum is English-first. You may also provide explanations in Amharic when requested.
+The curriculum is in English. Follow language instructions provided in the user message.
 
 STRUCTURED RESPONSE FORMAT:
 When a student asks a biology question, your response MUST contain at least one guiding question. Follow this structure:
@@ -93,7 +93,18 @@ class TutorNode:
 
     async def __call__(self, state: AgentState) -> AgentState:
         grade_context = f" (Grade {state.grade_level})" if state.grade_level else ""
-        lang_context = "Answer in English." if state.language == "en" else "Answer in English with Amharic explanation."
+        lang = state.language
+        if lang == "am":
+            lang_context = (
+                "Respond entirely in Amharic (አማርኛ). "
+                "Use Amharic biology terminology. "
+                "Never mix English unless quoting a technical term or scientific name. "
+                "Always provide the Amharic equivalent of key terms."
+            )
+        elif lang == "both":
+            lang_context = "Answer in English with Amharic explanation. Provide key terms in both English and Amharic."
+        else:
+            lang_context = "Answer in English."
 
         system = SOCRATIC_SYSTEM_PROMPT if state.socratic_mode else SYSTEM_PROMPT
 

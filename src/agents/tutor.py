@@ -34,7 +34,7 @@ MISCONCEPTION_INDICATORS = [
 ]
 
 TUTOR_SYSTEM_PROMPT = """You are EthioBio Tutor, an AI biology tutor for Ethiopian middle and high school students (Grades 7-12).
-The curriculum is English-first. You may also provide explanations in Amharic when requested.
+The curriculum is in English. Follow language instructions provided in the user message.
 
 Rules:
 1. Answer biology questions based on the Ethiopian curriculum.
@@ -157,7 +157,20 @@ class TutorAgent(BaseAgent):
                         sources.append(", ".join(parts))
 
         grade_context = f" (Grade {grade_level})" if grade_level else ""
-        lang_context = "Answer in English." if language == "en" else "Answer in English with Amharic explanation."
+        if language == "am":
+            lang_context = (
+                "Respond entirely in Amharic (አማርኛ). "
+                "Use Amharic biology terminology. "
+                "Never mix English unless quoting a technical term or scientific name. "
+                "Always provide the Amharic equivalent of key terms."
+            )
+        elif language == "both":
+            lang_context = (
+                "Answer in English with Amharic explanation. "
+                "Provide key terms in both English and Amharic."
+            )
+        else:
+            lang_context = "Answer in English."
 
         prompt = SOCRATIC_SYSTEM_PROMPT if socratic_mode else TUTOR_SYSTEM_PROMPT
         system_prompt = prompt
