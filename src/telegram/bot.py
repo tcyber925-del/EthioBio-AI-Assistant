@@ -76,6 +76,19 @@ async def _try_register_user(telegram_id: int):
 
 async def start(update: Update, context):
     await _try_register_user(update.effective_user.id)
+    if "language" not in context.user_data:
+        async def _load_lang():
+            from src.database.models import User
+            from sqlalchemy import select
+            factory = async_session_factory()
+            async with factory() as session:
+                result = await session.execute(
+                    select(User.language_preference).where(User.telegram_id == update.effective_user.id)
+                )
+                row = result.scalar_one_or_none()
+                if row:
+                    context.user_data["language"] = row
+        await _db_try(_load_lang)
     socratic = context.user_data.get("socratic_mode", False)
     await update.message.reply_text(
         "Welcome to EthioBio AI Assistant!\n\n"
@@ -1482,6 +1495,14 @@ async def handle_language_select(update: Update, context):
     lang_map = {"lang_en": ("en", "English"), "lang_am": ("am", "Amharic"), "lang_both": ("both", "Bilingual")}
     code, name = lang_map.get(query.data, ("en", "English"))
     context.user_data["language"] = code
+    async def _sync_language():
+        async with httpx.AsyncClient() as client:
+            api_base = settings.api_base_url
+            await client.patch(
+                f"{api_base}/users/{update.effective_user.id}/language",
+                params={"language": code},
+            )
+    await _db_try(_sync_language)
     await query.message.reply_text(
         f"Language set to {name}!\n\nYou can now ask biology questions in {name}.",
         reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
