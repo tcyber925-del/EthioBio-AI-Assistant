@@ -487,11 +487,11 @@ async def reveal_command(update: Update, context):
     try:
         telegram_id = update.effective_user.id if update.effective_user else None
         async with async_session_factory()() as _mem_db:
-            memory_user_id, memory_session_id, memory_context = await _build_memory_context(
+            memory_user_id, memory_session_id, memory_context, conversation_messages = await _build_memory_context(
                 telegram_id,
                 context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
                 _mem_db,
-            ) if telegram_id else (None, None, "")
+            ) if telegram_id else (None, None, "", [])
 
             router_llm = ModelRouter()
             agent = TutorAgent(llm_router=router_llm, retriever=None)
@@ -503,8 +503,23 @@ async def reveal_command(update: Update, context):
                 hint_level=hint_level,
                 reveal_answer=True,
                 memory_context=memory_context,
+                messages=conversation_messages,
             )
             await router_llm.close()
+
+        if memory_user_id and memory_session_id:
+            try:
+                mem_session = (await _mem_db.execute(
+                    select(MemorySession).where(MemorySession.session_id == memory_session_id)
+                )).scalar_one_or_none()
+                if mem_session:
+                    conversation_messages.append({"role": "user", "content": question})
+                    conversation_messages.append({"role": "assistant", "content": result["answer"]})
+                    SessionManager().set_messages(mem_session, conversation_messages[-20:])
+                    await _mem_db.commit()
+            except Exception as e:
+                logger.warning("memory_turns_save_error", error=str(e))
+
         attempt_msg = f"\n\n📊 You used {hint_level} hint(s) before revealing the answer." if hint_level > 0 else "\n\n📊 You revealed the answer without using hints."
         response = result["answer"] + attempt_msg
         await _reply_long(
@@ -559,11 +574,11 @@ async def hint_command(update: Update, context):
     try:
         telegram_id = update.effective_user.id if update.effective_user else None
         async with async_session_factory()() as _mem_db:
-            memory_user_id, memory_session_id, memory_context = await _build_memory_context(
+            memory_user_id, memory_session_id, memory_context, conversation_messages = await _build_memory_context(
                 telegram_id,
                 context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
                 _mem_db,
-            ) if telegram_id else (None, None, "")
+            ) if telegram_id else (None, None, "", [])
 
             router_llm = ModelRouter()
             agent = TutorAgent(llm_router=router_llm, retriever=None)
@@ -580,8 +595,23 @@ async def hint_command(update: Update, context):
                 reveal_answer=True,
                 memory_context=memory_context,
                 learner_profile_block=learner_profile_block,
+                messages=conversation_messages,
             )
             await router_llm.close()
+
+        if memory_user_id and memory_session_id:
+            try:
+                mem_session = (await _mem_db.execute(
+                    select(MemorySession).where(MemorySession.session_id == memory_session_id)
+                )).scalar_one_or_none()
+                if mem_session:
+                    conversation_messages.append({"role": "user", "content": question})
+                    conversation_messages.append({"role": "assistant", "content": result["answer"]})
+                    SessionManager().set_messages(mem_session, conversation_messages[-20:])
+                    await _mem_db.commit()
+            except Exception as e:
+                logger.warning("memory_turns_save_error", error=str(e))
+
         response = result["answer"]
         if result.get("misconception_detected"):
             response += "\n\n💡 I noticed a misunderstanding — gently corrected above."
@@ -608,11 +638,11 @@ async def ask_command(update: Update, context):
         try:
             telegram_id = update.effective_user.id if update.effective_user else None
             async with async_session_factory()() as _mem_db:
-                memory_user_id, memory_session_id, memory_context = await _build_memory_context(
+                memory_user_id, memory_session_id, memory_context, conversation_messages = await _build_memory_context(
                     telegram_id,
                     context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
                     _mem_db,
-                ) if telegram_id else (None, None, "")
+                ) if telegram_id else (None, None, "", [])
 
                 router_llm = ModelRouter()
                 agent = TutorAgent(llm_router=router_llm, retriever=None)
@@ -628,6 +658,7 @@ async def ask_command(update: Update, context):
                     socratic_mode=socratic,
                     memory_context=memory_context,
                     learner_profile_block=learner_profile_block,
+                    messages=conversation_messages,
                 )
                 response = result["answer"]
 
@@ -637,12 +668,9 @@ async def ask_command(update: Update, context):
                             select(MemorySession).where(MemorySession.session_id == memory_session_id)
                         )).scalar_one_or_none()
                         if mem_session:
-                            if not isinstance(mem_session.educational_context, dict):
-                                mem_session.educational_context = {}
-                            turns = mem_session.educational_context.setdefault("recent_turns", [])
-                            turns.append({"role": "user", "content": question})
-                            turns.append({"role": "assistant", "content": result["answer"]})
-                            mem_session.educational_context["recent_turns"] = turns[-10:]
+                            conversation_messages.append({"role": "user", "content": question})
+                            conversation_messages.append({"role": "assistant", "content": result["answer"]})
+                            SessionManager().set_messages(mem_session, conversation_messages[-20:])
                             await _mem_db.commit()
                     except Exception as e:
                         logger.warning("memory_turns_save_error", error=str(e))
@@ -793,7 +821,7 @@ async def _build_memory_context(telegram_id: int, topic: str | None, db):
     result = await db.execute(select(User).where(User.telegram_id == telegram_id))
     user = result.scalar_one_or_none()
     if not user:
-        return None, None, ""
+        return None, None, "", []
     mem_session = await session_mgr.get_or_create_active_session(
         user.id, topic=topic, db=db,
     )
@@ -807,7 +835,8 @@ async def _build_memory_context(telegram_id: int, topic: str | None, db):
         } if mem_session else None,
         socratic_state=None,
     )
-    return user.id, mem_session.session_id if mem_session else None, ctx
+    messages = session_mgr.get_messages(mem_session) if mem_session else []
+    return user.id, mem_session.session_id if mem_session else None, ctx, messages
 
 
 _context_adapter = TutorContextAdapter()
@@ -836,10 +865,12 @@ async def handle_question(update: Update, context):
         telegram_id = update.effective_user.id if update.effective_user else None
         async with async_session_factory()() as _mem_db:
             if telegram_id:
-                memory_user_id, memory_session_id, memory_context = await _build_memory_context(
+                memory_user_id, memory_session_id, memory_context, conversation_messages = await _build_memory_context(
                     telegram_id, context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
                     _mem_db,
                 )
+            else:
+                conversation_messages = []
 
             router_llm = ModelRouter()
             agent = TutorAgent(llm_router=router_llm, retriever=None)
@@ -860,6 +891,7 @@ async def handle_question(update: Update, context):
                 reveal_answer=reveal,
                 memory_context=memory_context,
                 learner_profile_block=learner_profile_block,
+                messages=conversation_messages,
             )
             response = result["answer"]
 
@@ -869,12 +901,9 @@ async def handle_question(update: Update, context):
                         select(MemorySession).where(MemorySession.session_id == memory_session_id)
                     )).scalar_one_or_none()
                     if mem_session:
-                        if not isinstance(mem_session.educational_context, dict):
-                            mem_session.educational_context = {}
-                        turns = mem_session.educational_context.setdefault("recent_turns", [])
-                        turns.append({"role": "user", "content": question})
-                        turns.append({"role": "assistant", "content": result["answer"]})
-                        mem_session.educational_context["recent_turns"] = turns[-10:]
+                        conversation_messages.append({"role": "user", "content": question})
+                        conversation_messages.append({"role": "assistant", "content": result["answer"]})
+                        SessionManager().set_messages(mem_session, conversation_messages[-20:])
                         await _mem_db.commit()
                 except Exception as e:
                     logger.warning("memory_turns_save_error", error=str(e))
@@ -1594,11 +1623,11 @@ async def handle_hint(update: Update, context):
     try:
         telegram_id = update.effective_user.id if update.effective_user else None
         async with async_session_factory()() as _mem_db:
-            memory_user_id, memory_session_id, memory_context = await _build_memory_context(
+            memory_user_id, memory_session_id, memory_context, conversation_messages = await _build_memory_context(
                 telegram_id,
                 context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
                 _mem_db,
-            ) if telegram_id else (None, None, "")
+            ) if telegram_id else (None, None, "", [])
 
             router_llm = ModelRouter()
             agent = TutorAgent(llm_router=router_llm, retriever=None)
@@ -1610,8 +1639,23 @@ async def handle_hint(update: Update, context):
                 hint_level=hint_level,
                 reveal_answer=False,
                 memory_context=memory_context,
+                messages=conversation_messages,
             )
             await router_llm.close()
+
+        if memory_user_id and memory_session_id:
+            try:
+                mem_session = (await _mem_db.execute(
+                    select(MemorySession).where(MemorySession.session_id == memory_session_id)
+                )).scalar_one_or_none()
+                if mem_session:
+                    conversation_messages.append({"role": "user", "content": question})
+                    conversation_messages.append({"role": "assistant", "content": result["answer"]})
+                    SessionManager().set_messages(mem_session, conversation_messages[-20:])
+                    await _mem_db.commit()
+            except Exception as e:
+                logger.warning("memory_turns_save_error", error=str(e))
+
         response = result["answer"]
         if result.get("misconception_detected"):
             response += "\n\n💡 I noticed a misunderstanding — gently corrected above."
@@ -1648,11 +1692,11 @@ async def handle_reveal_answer(update: Update, context):
     try:
         telegram_id = update.effective_user.id if update.effective_user else None
         async with async_session_factory()() as _mem_db:
-            memory_user_id, memory_session_id, memory_context = await _build_memory_context(
+            memory_user_id, memory_session_id, memory_context, conversation_messages = await _build_memory_context(
                 telegram_id,
                 context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
                 _mem_db,
-            ) if telegram_id else (None, None, "")
+            ) if telegram_id else (None, None, "", [])
 
             router_llm = ModelRouter()
             agent = TutorAgent(llm_router=router_llm, retriever=None)
@@ -1664,8 +1708,23 @@ async def handle_reveal_answer(update: Update, context):
                 hint_level=hint_level,
                 reveal_answer=True,
                 memory_context=memory_context,
+                messages=conversation_messages,
             )
             await router_llm.close()
+
+        if memory_user_id and memory_session_id:
+            try:
+                mem_session = (await _mem_db.execute(
+                    select(MemorySession).where(MemorySession.session_id == memory_session_id)
+                )).scalar_one_or_none()
+                if mem_session:
+                    conversation_messages.append({"role": "user", "content": question})
+                    conversation_messages.append({"role": "assistant", "content": result["answer"]})
+                    SessionManager().set_messages(mem_session, conversation_messages[-20:])
+                    await _mem_db.commit()
+            except Exception as e:
+                logger.warning("memory_turns_save_error", error=str(e))
+
         attempt_msg = f"\n\n📊 You used {hint_level} hint(s) before revealing the answer." if hint_level > 0 else "\n\n📊 You revealed the answer without using hints."
         response = result["answer"] + attempt_msg
         await _reply_long(
