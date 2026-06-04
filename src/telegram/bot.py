@@ -1,6 +1,8 @@
-import httpx
 import random
+
+import httpx
 import structlog
+from sqlalchemy import select
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -19,12 +21,23 @@ from src.core.learning_intelligence.tutor.tutor_context_adapter import TutorCont
 from src.core.memory.context_assembler import ContextAssembler
 from src.core.memory.cross_session_recall import CrossSessionRecall
 from src.core.memory.session_manager import SessionManager
-from src.database.models import MemorySession, NotificationPreference, ParentChild, ProgressRecord, QuizAttempt, StudentMastery, StudentProfile, User, UserGamification, UserRole
+from src.database.models import (
+    MemorySession,
+    NotificationPreference,
+    ParentChild,
+    ProgressRecord,
+    QuizAttempt,
+    StudentMastery,
+    StudentProfile,
+    User,
+    UserGamification,
+    UserRole,
+)
 from src.database.session import async_session_factory
-from sqlalchemy import select
 from src.llm.router import ModelRouter
 from src.redis_client import get_redis
 from src.telegram.formatter import format_for_telegram, sanitize_for_telegram, strip_markdown
+from src.telegram.i18n import t
 from src.telegram.keyboards import (
     answer_options_keyboard,
     back_keyboard,
@@ -32,7 +45,8 @@ from src.telegram.keyboards import (
     hint_keyboard,
     language_keyboard,
     main_menu_keyboard,
-    model_providers_keyboard, provider_models_keyboard,
+    model_providers_keyboard,
+    provider_models_keyboard,
     quiz_next_keyboard,
     quiz_result_keyboard,
     quiz_type_keyboard,
@@ -57,6 +71,10 @@ async def _db_try(action, fallback=None):
         return fallback
 
 
+def _lang(context) -> str:
+    return context.user_data.get("language", "en")
+
+
 async def _try_register_user(telegram_id: int):
     from sqlalchemy import select
     async def _register():
@@ -78,8 +96,9 @@ async def start(update: Update, context):
     await _try_register_user(update.effective_user.id)
     if "language" not in context.user_data:
         async def _load_lang():
-            from src.database.models import User
             from sqlalchemy import select
+
+            from src.database.models import User
             factory = async_session_factory()
             async with factory() as session:
                 result = await session.execute(
@@ -91,10 +110,8 @@ async def start(update: Update, context):
         await _db_try(_load_lang)
     socratic = context.user_data.get("socratic_mode", False)
     await update.message.reply_text(
-        "Welcome to EthioBio AI Assistant!\n\n"
-        "I'm your biology learning assistant for Ethiopian Grades 7-12.\n\n"
-        "Send me any biology question, or use the menu below:",
-        reply_markup=main_menu_keyboard(socratic),
+        t("welcome", _lang(context)),
+        reply_markup=main_menu_keyboard(socratic, language=_lang(context)),
     )
 
 
@@ -456,13 +473,13 @@ async def help_command(update: Update, context):
         "/hint — Get the next hint level (1-3) in Socratic mode\n"
         "/cancel — Cancel current operation\n\n"
         "Or just type any biology question to get started!",
-        reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+        reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
     )
 
 
 async def cancel(update: Update, context):
     context.user_data.clear()
-    await update.message.reply_text("Cancelled.", reply_markup=main_menu_keyboard())
+    await update.message.reply_text("Cancelled.", reply_markup=main_menu_keyboard(language=_lang(context)))
     return ConversationHandler.END
 
 
@@ -474,7 +491,7 @@ async def grade_command(update: Update, context):
             context.user_data["grade_level"] = grade
             await update.message.reply_text(f"Default grade set to Grade {grade}.")
             return
-    await update.message.reply_text("Usage: /grade <7-12>", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
+    await update.message.reply_text("Usage: /grade <7-12>", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
 
 
 async def language_command(update: Update, context):
@@ -484,7 +501,7 @@ async def language_command(update: Update, context):
         context.user_data["language"] = args[0]
         await update.message.reply_text(f"Language set to {lang_map[args[0]]}.")
     else:
-        await update.message.reply_text("Usage: /language <en|am|both>", reply_markup=language_keyboard())
+        await update.message.reply_text("Usage: /language <en|am|both>", reply_markup=language_keyboard(language=_lang(context)))
 
 
 async def reveal_command(update: Update, context):
@@ -492,7 +509,7 @@ async def reveal_command(update: Update, context):
     if not question:
         await update.message.reply_text(
             "No active question. Ask a question first with /ask or select Tutor from the menu.",
-            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
         )
         return
     hint_level = context.user_data.get("hint_level", 0)
@@ -545,14 +562,14 @@ async def reveal_command(update: Update, context):
         response = result["answer"] + attempt_msg
         await _reply_long(
             update.message, response,
-            reply_markup=hint_keyboard(hint_level, True),
+            reply_markup=hint_keyboard(hint_level, True, language=_lang(context)),
             parse_mode="HTML",
         )
     except Exception as e:
         logger.error("reveal_command_error", error=str(e))
         await update.message.reply_text(
             "Sorry, I encountered an error.",
-            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
         )
 
 
@@ -563,7 +580,7 @@ async def socratic_command(update: Update, context):
     await update.message.reply_text(
         f"Socratic Mode is now {status}.\n\n"
         "In Socratic mode, I'll guide you with questions rather than giving direct answers.",
-        reply_markup=main_menu_keyboard(context.user_data["socratic_mode"]),
+        reply_markup=main_menu_keyboard(context.user_data["socratic_mode"], language=_lang(context)),
     )
 
 
@@ -573,14 +590,14 @@ async def hint_command(update: Update, context):
     if reveal:
         await update.message.reply_text(
             "The answer has already been revealed! Ask a new question to continue.",
-            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
         )
         return
     next_level = hint_level + 1
     if next_level > 3:
         await update.message.reply_text(
             "You've used all hint levels. Tap 'Reveal Answer' to see the full explanation.",
-            reply_markup=hint_keyboard(hint_level, reveal),
+            reply_markup=hint_keyboard(hint_level, reveal, language=_lang(context)),
         )
         return
     context.user_data["hint_level"] = next_level
@@ -588,7 +605,7 @@ async def hint_command(update: Update, context):
     if not question:
         await update.message.reply_text(
             "No active question. Ask a question first with /ask or select Tutor from the menu.",
-            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
         )
         return
     await update.message.reply_text(f"💡 Hint level {next_level}/3...")
@@ -645,14 +662,14 @@ async def hint_command(update: Update, context):
             response += "\n\n💡 I noticed a misunderstanding — gently corrected above."
         await _reply_long(
             update.message, response,
-            reply_markup=hint_keyboard(next_level, False),
+            reply_markup=hint_keyboard(next_level, False, language=_lang(context)),
             parse_mode="HTML",
         )
     except Exception as e:
         logger.error("hint_command_error", error=str(e))
         await update.message.reply_text(
             "Sorry, I encountered an error.",
-            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
         )
 
 
@@ -727,13 +744,13 @@ async def ask_command(update: Update, context):
                 notifications = context.user_data.pop("last_notifications", None)
                 if notifications:
                     response += "\n\n" + "\n".join(notifications)
-            reply_markup = hint_keyboard(0, False) if socratic else main_menu_keyboard(socratic)
+            reply_markup = hint_keyboard(0, False, language=_lang(context)) if socratic else main_menu_keyboard(socratic, language=_lang(context))
             await _reply_long(update.message, response, reply_markup=reply_markup, parse_mode="HTML")
         except Exception as e:
             logger.error("ask_command_error", error=str(e))
-            await update.message.reply_text("Sorry, I encountered an error.", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
+            await update.message.reply_text("Sorry, I encountered an error.", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
     else:
-        await update.message.reply_text("Usage: /ask <your biology question>", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
+        await update.message.reply_text("Usage: /ask <your biology question>", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
 
 
 async def quiz_command(update: Update, context):
@@ -748,10 +765,10 @@ async def quiz_command(update: Update, context):
             topic = " ".join(args)
     if 7 <= grade <= 12:
         context.user_data["quiz_grade"] = grade
-        await update.message.reply_text("Select quiz type:", reply_markup=quiz_type_keyboard())
+        await update.message.reply_text("Select quiz type:", reply_markup=quiz_type_keyboard(language=_lang(context)))
         return QUIZ_TYPE
     else:
-        await update.message.reply_text("Usage: /quiz [grade] [topic]", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
+        await update.message.reply_text("Usage: /quiz [grade] [topic]", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
         return ConversationHandler.END
 
 
@@ -762,13 +779,13 @@ async def menu(update: Update, context):
         await query.edit_message_reply_markup(reply_markup=None)
     except Exception:
         pass
-    await query.message.reply_text("Choose an option:", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
+    await query.message.reply_text("Choose an option:", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
 
 
 async def handle_teacher_tools(update: Update, context):
     query = update.callback_query
     await query.answer()
-    await query.message.reply_text("Teacher Tools:", reply_markup=teacher_tools_keyboard())
+    await query.message.reply_text("Teacher Tools:", reply_markup=teacher_tools_keyboard(language=_lang(context)))
 
 
 async def handle_open_quizzes(update: Update, context):
@@ -779,7 +796,7 @@ async def handle_open_quizzes(update: Update, context):
         "Open the Teacher Dashboard in your browser:\n"
         "http://localhost:3000/quizzes\n\n"
         "The dashboard shows all generated quizzes for review and approval.",
-        reply_markup=teacher_tools_keyboard(),
+        reply_markup=teacher_tools_keyboard(language=_lang(context)),
     )
 
 
@@ -796,7 +813,7 @@ async def handle_open_dashboard(update: Update, context):
         "• 📋 Lesson plans\n"
         "• 📈 Monitoring\n"
         "• 🧬 Test Q&A",
-        reply_markup=teacher_tools_keyboard(),
+        reply_markup=teacher_tools_keyboard(language=_lang(context)),
     )
 
 
@@ -809,12 +826,12 @@ async def handle_tutor(update: Update, context):
             pass
         await query.message.reply_text(
             "Select your grade level:",
-            reply_markup=grade_keyboard("tutor_grade"),
+            reply_markup=grade_keyboard("tutor_grade", language=_lang(context)),
         )
     else:
         await update.message.reply_text(
             "Select your grade level:",
-            reply_markup=grade_keyboard("tutor_grade"),
+            reply_markup=grade_keyboard("tutor_grade", language=_lang(context)),
         )
     return TUTOR_GRADE
 
@@ -829,7 +846,7 @@ async def handle_tutor_grade(update: Update, context):
     context.user_data["tutor_grade"] = grade
     await query.edit_message_text(
         f"Grade {grade} selected. Send me your biology question. I'll help you understand it!",
-        reply_markup=back_keyboard(),
+        reply_markup=back_keyboard(language=_lang(context)),
     )
     return TUTOR
 
@@ -844,7 +861,7 @@ async def end_conversation(update: Update, context):
         await query.edit_message_reply_markup(reply_markup=None)
     except Exception:
         pass
-    await query.message.reply_text("Choose an option:", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
+    await query.message.reply_text("Choose an option:", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
     return ConversationHandler.END
 
 
@@ -967,7 +984,7 @@ async def handle_question(update: Update, context):
             notifications = context.user_data.pop("last_notifications", None)
             if notifications:
                 response += "\n\n" + "\n".join(notifications)
-        reply_markup = hint_keyboard(hint_level, reveal) if socratic else main_menu_keyboard(socratic)
+        reply_markup = hint_keyboard(hint_level, reveal, language=_lang(context)) if socratic else main_menu_keyboard(socratic, language=_lang(context))
         await _reply_long(thinking_msg, response, reply_markup=reply_markup, parse_mode="HTML")
         await router_llm.close()
     except Exception as e:
@@ -975,7 +992,7 @@ async def handle_question(update: Update, context):
         try:
             await thinking_msg.edit_text(
                 "Sorry, I encountered an error. Please try again.",
-                reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+                reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
             )
         except Exception:
             pass
@@ -999,7 +1016,7 @@ async def handle_question(update: Update, context):
 async def handle_quiz_start(update: Update, context):
     query = update.callback_query
     await query.answer()
-    await query.message.reply_text("Select quiz type:", reply_markup=quiz_type_keyboard())
+    await query.message.reply_text("Select quiz type:", reply_markup=quiz_type_keyboard(language=_lang(context)))
     return QUIZ_TYPE
 
 
@@ -1008,7 +1025,7 @@ async def handle_quiz_type(update: Update, context):
     await query.answer()
     type_map = {"quiztype_mc": "multiple_choice", "quiztype_tf": "true_false", "quiztype_mixed": "mixed"}
     context.user_data["quiz_type"] = type_map.get(query.data, "multiple_choice")
-    await query.edit_message_text("Select your grade level:", reply_markup=grade_keyboard("quiz_grade"))
+    await query.edit_message_text("Select your grade level:", reply_markup=grade_keyboard("quiz_grade", language=_lang(context)))
     return QUIZ_GRADE
 
 
@@ -1020,7 +1037,7 @@ async def handle_quiz_grade(update: Update, context):
     await query.edit_message_text(
         f"Grade {grade} selected. What topic should the quiz cover?\n"
         "(e.g., Cell Biology, Genetics, Ecology)",
-        reply_markup=back_keyboard(),
+        reply_markup=back_keyboard(language=_lang(context)),
     )
     return QUIZ_TOPIC
 
@@ -1057,7 +1074,7 @@ async def handle_quiz_topic(update: Update, context):
 
     except Exception as e:
         logger.error("quiz_error", error=str(e))
-        await update.message.reply_text("Error generating quiz.", reply_markup=main_menu_keyboard())
+        await update.message.reply_text("Error generating quiz.", reply_markup=main_menu_keyboard(language=_lang(context)))
         return ConversationHandler.END
 
     return QUIZ_ANSWERING
@@ -1124,14 +1141,14 @@ async def _send_quiz_question(update: Update, context, msg=None, new_message=Fal
 
     reply_markup = None
     if qtype == "true_false" or qtype == "true/false":
-        reply_markup = tf_keyboard()
+        reply_markup = tf_keyboard(language=_lang(context))
     elif q.get("options"):
-        reply_markup = answer_options_keyboard(q["options"])
+        reply_markup = answer_options_keyboard(q["options"], language=_lang(context))
     elif qtype == "short_answer":
         text += "\n\n✏️ Type your answer below, then tap Next."
-        reply_markup = quiz_next_keyboard()
+        reply_markup = quiz_next_keyboard(language=_lang(context))
     else:
-        reply_markup = quiz_next_keyboard()
+        reply_markup = quiz_next_keyboard(language=_lang(context))
 
     if msg:
         await _reply_long(msg, text, reply_markup=reply_markup, parse_mode="HTML", force_new=new_message)
@@ -1149,8 +1166,9 @@ def _calculate_quiz_xp(pct: int) -> int:
 
 
 async def _fetch_recovery_notifications(user_id, session):
-    from src.database.models import RecoveryNotification
     from sqlalchemy import select
+
+    from src.database.models import RecoveryNotification
     result = await session.execute(
         select(RecoveryNotification)
         .where(
@@ -1253,10 +1271,11 @@ async def _show_quiz_result(update: Update, context, msg=None):
     text = "\n".join(lines)
 
     dest = msg or update.effective_message
-    reply_markup = quiz_result_keyboard()
+    reply_markup = quiz_result_keyboard(language=_lang(context))
     try:
-        from src.database.models import RecoveryPlan
         from sqlalchemy import select
+
+        from src.database.models import RecoveryPlan
         telegram_id = update.effective_user.id if update.effective_user else None
         if telegram_id:
             factory = async_session_factory()
@@ -1273,7 +1292,7 @@ async def _show_quiz_result(update: Update, context, msg=None):
                     plan = plans_result.scalar_one_or_none()
                     if plan:
                         from telegram import InlineKeyboardButton
-                        recovery_row = [InlineKeyboardButton("📋 View Recovery Plan", callback_data="recovery_view")]
+                        recovery_row = [InlineKeyboardButton(t("view_recovery", _lang(context)), callback_data="recovery_view")]
                         from telegram import InlineKeyboardMarkup
                         new_buttons = list(reply_markup.inline_keyboard) + [tuple(recovery_row)]
                         reply_markup = InlineKeyboardMarkup(new_buttons)
@@ -1323,7 +1342,7 @@ async def handle_quiz_answer(update: Update, context):
         pass
     await query.message.reply_text(
         f"{feedback}\n\n{_get_explanation(q)}",
-        reply_markup=quiz_next_keyboard(),
+        reply_markup=quiz_next_keyboard(language=_lang(context)),
         parse_mode="HTML",
     )
     return QUIZ_ANSWERING
@@ -1351,7 +1370,7 @@ async def handle_quiz_short_answer(update: Update, context):
     if qtype != "short_answer":
         msg = "Please use the buttons below to answer."
         if q.get("options"):
-            await update.message.reply_text(msg, reply_markup=answer_options_keyboard(q["options"]))
+            await update.message.reply_text(msg, reply_markup=answer_options_keyboard(q["options"], language=_lang(context)))
         else:
             await update.message.reply_text(msg)
         return QUIZ_ANSWERING
@@ -1369,7 +1388,7 @@ async def handle_quiz_short_answer(update: Update, context):
     if q.get("explanation"):
         feedback += f"\n\n<i>{q['explanation'][:200]}</i>"
 
-    await update.message.reply_text(feedback, reply_markup=quiz_next_keyboard(), parse_mode="HTML")
+    await update.message.reply_text(feedback, reply_markup=quiz_next_keyboard(language=_lang(context)), parse_mode="HTML")
     return QUIZ_ANSWERING
 
 
@@ -1414,7 +1433,7 @@ async def handle_quiz_retry(update: Update, context):
 async def handle_lesson_start(update: Update, context):
     query = update.callback_query
     await query.answer()
-    await query.message.reply_text("Select grade level:", reply_markup=grade_keyboard("lesson_grade"))
+    await query.message.reply_text("Select grade level:", reply_markup=grade_keyboard("lesson_grade", language=_lang(context)))
     return LESSON_GRADE
 
 
@@ -1425,7 +1444,7 @@ async def handle_lesson_grade(update: Update, context):
     context.user_data["lesson_grade"] = grade
     await query.edit_message_text(
         f"Grade {grade} selected. What biology topic?",
-        reply_markup=back_keyboard(),
+        reply_markup=back_keyboard(language=_lang(context)),
     )
     return LESSON_TOPIC
 
@@ -1452,11 +1471,11 @@ async def handle_lesson_topic(update: Update, context):
             response += f"\nAssessment:\n{result['assessment'][:500]}"
         if result.get("homework"):
             response += f"\n\nHomework:\n{result['homework'][:500]}"
-        await _reply_long(update.message, response, reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)), parse_mode="HTML")
+        await _reply_long(update.message, response, reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)), parse_mode="HTML")
         await router_llm.close()
     except Exception as e:
         logger.error("lesson_error", error=str(e))
-        await update.message.reply_text("Error creating lesson plan.", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
+        await update.message.reply_text("Error creating lesson plan.", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
 
     return ConversationHandler.END
 
@@ -1478,15 +1497,15 @@ async def handle_progress(update: Update, context):
             await query.edit_message_reply_markup(reply_markup=None)
         except Exception:
             pass
-        await query.message.reply_text(text, reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
+        await query.message.reply_text(text, reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
     else:
-        await update.message.reply_text(text, reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)))
+        await update.message.reply_text(text, reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
 
 
 async def handle_language(update: Update, context):
     query = update.callback_query
     await query.answer()
-    await query.message.reply_text("Choose your language:", reply_markup=language_keyboard())
+    await query.message.reply_text("Choose your language:", reply_markup=language_keyboard(language=_lang(context)))
 
 
 async def handle_language_select(update: Update, context):
@@ -1504,8 +1523,8 @@ async def handle_language_select(update: Update, context):
             )
     await _db_try(_sync_language)
     await query.message.reply_text(
-        f"Language set to {name}!\n\nYou can now ask biology questions in {name}.",
-        reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+        t("language_set", _lang(context)).format(name=name),
+        reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
     )
 
 
@@ -1522,7 +1541,7 @@ async def handle_socratic_toggle(update: Update, context):
     await query.message.reply_text(
         f"Socratic Mode is now {status}.\n\n"
         "In Socratic mode, I'll guide you with questions rather than giving direct answers.",
-        reply_markup=main_menu_keyboard(not current),
+        reply_markup=main_menu_keyboard(not current, language=_lang(context)),
     )
 
 
@@ -1538,7 +1557,7 @@ async def model_command(update: Update, context):
         )
     except Exception as e:
         logger.error("model_command_error", error=str(e))
-        await update.message.reply_text("Failed to fetch models. Is the API server running?", reply_markup=main_menu_keyboard())
+        await update.message.reply_text("Failed to fetch models. Is the API server running?", reply_markup=main_menu_keyboard(language=_lang(context)))
 
 
 async def handle_model_selection(update: Update, context):
@@ -1552,7 +1571,7 @@ async def handle_model_selection(update: Update, context):
             await query.edit_message_reply_markup(reply_markup=None)
         except Exception:
             pass
-        await query.message.reply_text("Main menu:", reply_markup=main_menu_keyboard())
+        await query.message.reply_text("Main menu:", reply_markup=main_menu_keyboard(language=_lang(context)))
         return
 
     if data == "model:back_providers":
@@ -1570,7 +1589,7 @@ async def handle_model_selection(update: Update, context):
             )
         except Exception as e:
             logger.error("model_providers_error", error=str(e))
-            await query.message.reply_text("Failed to fetch providers.", reply_markup=main_menu_keyboard())
+            await query.message.reply_text("Failed to fetch providers.", reply_markup=main_menu_keyboard(language=_lang(context)))
         return
 
     if data == "model:refresh":
@@ -1589,7 +1608,7 @@ async def handle_model_selection(update: Update, context):
             )
         except Exception as e:
             logger.error("model_refresh_error", error=str(e))
-            await query.message.reply_text("Failed to refresh models.", reply_markup=main_menu_keyboard())
+            await query.message.reply_text("Failed to refresh models.", reply_markup=main_menu_keyboard(language=_lang(context)))
         return
 
     if data.startswith("model:provider:"):
@@ -1612,7 +1631,7 @@ async def handle_model_selection(update: Update, context):
             )
         except Exception as e:
             logger.error("model_provider_models_error", error=str(e))
-            await query.message.reply_text("Failed to fetch models.", reply_markup=main_menu_keyboard())
+            await query.message.reply_text("Failed to fetch models.", reply_markup=main_menu_keyboard(language=_lang(context)))
         return
 
     if data.startswith("m:"):
@@ -1634,11 +1653,11 @@ async def handle_model_selection(update: Update, context):
                 pass
             await query.message.reply_text(
                 f"✅ Active model is now: {model_id}",
-                reply_markup=main_menu_keyboard(),
+                reply_markup=main_menu_keyboard(language=_lang(context)),
             )
         except Exception as e:
             logger.error("model_set_error", error=str(e))
-            await query.message.reply_text(f"Failed to set model: {model_id}", reply_markup=main_menu_keyboard())
+            await query.message.reply_text(f"Failed to set model: {model_id}", reply_markup=main_menu_keyboard(language=_lang(context)))
         return
 
 
@@ -1654,7 +1673,7 @@ async def handle_hint(update: Update, context):
             pass
         await query.message.reply_text(
             "The answer has already been revealed! Ask a new question.",
-            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
         )
         return
     question = context.user_data.get("ask_question", "")
@@ -1665,7 +1684,7 @@ async def handle_hint(update: Update, context):
             pass
         await query.message.reply_text(
             "No active question. Ask a question first.",
-            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
         )
         return
     context.user_data["hint_level"] = hint_level
@@ -1718,14 +1737,14 @@ async def handle_hint(update: Update, context):
             response += "\n\n💡 I noticed a misunderstanding — gently corrected above."
         await _reply_long(
             hint_msg, response,
-            reply_markup=hint_keyboard(hint_level, False),
+            reply_markup=hint_keyboard(hint_level, False, language=_lang(context)),
             parse_mode="HTML",
         )
     except Exception as e:
         logger.error("hint_callback_error", error=str(e))
         await hint_msg.edit_text(
             "Sorry, I encountered an error.",
-            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
         )
 
 
@@ -1740,7 +1759,7 @@ async def handle_reveal_answer(update: Update, context):
             pass
         await query.message.reply_text(
             "No active question. Ask a question first.",
-            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
         )
         return
     hint_level = context.user_data.get("hint_level", 0)
@@ -1793,14 +1812,14 @@ async def handle_reveal_answer(update: Update, context):
         response = result["answer"] + attempt_msg
         await _reply_long(
             reveal_msg, response,
-            reply_markup=hint_keyboard(hint_level, True),
+            reply_markup=hint_keyboard(hint_level, True, language=_lang(context)),
             parse_mode="HTML",
         )
     except Exception as e:
         logger.error("reveal_answer_error", error=str(e))
         await reveal_msg.edit_text(
             "Sorry, I encountered an error.",
-            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
         )
 
 
@@ -1819,14 +1838,14 @@ async def handle_general_message(update: Update, context):
             await update.message.reply_text(
                 f"I understood: \"{intent['intent']}\" (confidence: {intent['confidence']:.0%})\n\n"
                 f"Use the 📝 Quiz or 📋 Lesson Plan buttons in the menu.",
-                reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+                reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
             )
             return ConversationHandler.END
         else:
             await update.message.reply_text(
                 f"I understood: \"{intent['intent']}\" (confidence: {intent['confidence']:.0%})\n\n"
                 f"Use the menu buttons to access specific features.",
-                reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False)),
+                reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
             )
             return ConversationHandler.END
     except Exception as e:
@@ -1907,9 +1926,11 @@ async def handle_recovery_complete_task(update: Update, context):
     task_id = query.data.replace("recovery_complete_", "")
 
     from datetime import datetime, timezone
+
     from sqlalchemy import select
+
+    from src.api.gamification import RECOVERY_MILESTONE_THRESHOLDS, XP_SOURCES
     from src.database.models import RecoveryTask
-    from src.api.gamification import XP_SOURCES, RECOVERY_MILESTONE_THRESHOLDS
 
     async def _handle():
         factory = async_session_factory()
@@ -2014,6 +2035,7 @@ async def settings_command(update: Update, context):
 
     async def _handle():
         from sqlalchemy import select
+
         from telegram import InlineKeyboardButton
 
         async with async_session_factory() as session:
