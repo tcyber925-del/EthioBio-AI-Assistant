@@ -1,5 +1,6 @@
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.tutor import TutorAgent
@@ -8,10 +9,12 @@ from src.core.learning_intelligence.tutor.tutor_context_adapter import TutorCont
 from src.core.memory.context_assembler import ContextAssembler
 from src.core.memory.cross_session_recall import CrossSessionRecall
 from src.core.memory.session_manager import SessionManager
+from src.database.models import User
 from src.database.session import get_session
 from src.llm.router import ModelRouter
 from src.rag.retriever import Retriever
 from src.schemas.chat import TutorRequest, TutorResponse
+from src.schemas.common import LanguageEnum
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -26,6 +29,15 @@ async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_
     router_llm = ModelRouter()
     retriever = Retriever()
     agent = TutorAgent(llm_router=router_llm, retriever=retriever)
+
+    effective_language = request.language
+    if request.user_id and effective_language == LanguageEnum.EN:
+        result = await session.execute(
+            select(User.language_preference).where(User.id == request.user_id)
+        )
+        db_lang = result.scalar_one_or_none()
+        if db_lang and db_lang != "en":
+            effective_language = LanguageEnum(db_lang)
 
     try:
         mem_session = None
@@ -65,7 +77,7 @@ async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_
             user_id=request.user_id,
             grade_level=request.grade_level,
             topic=request.topic,
-            language=request.language,
+            language=effective_language,
             use_rag=request.use_rag,
             session=session,
             socratic_mode=request.socratic_mode,
