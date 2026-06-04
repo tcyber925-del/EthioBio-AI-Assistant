@@ -38,8 +38,12 @@ class LessonPlannerAgent(BaseAgent):
         language: str = "en",
         session: Optional[AsyncSession] = None,
     ) -> dict:
-        lang_instruction = "Generate all content in English." if language == "en" else \
-            "Generate content in English with key terms also in Amharic."
+        if language == "am":
+            lang_instruction = "Generate all content in Amharic (አማርኛ). Lesson plan explanation, activities, assessment — all in Amharic."
+        elif language == "both":
+            lang_instruction = "Generate content in English with key terms and explanations also in Amharic."
+        else:
+            lang_instruction = "Generate all content in English."
 
         user_message = f"""Create a biology lesson plan for Grade {grade_level} on topic: {topic}.
 Lesson duration: {duration_minutes} minutes.

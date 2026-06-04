@@ -53,7 +53,12 @@ class QuizAgent(BaseAgent):
         target_difficulty: Optional[str] = None,
     ) -> dict:
         types_str = ", ".join(types or ["multiple_choice", "true_false"])
-        lang_instruction = "Generate all content in English." if language == "en" else "Generate questions in English with Amharic answer explanations."
+        if language == "am":
+            lang_instruction = "Generate all content in Amharic (አማርኛ). Questions, options, correct answer, and explanations must all be in Amharic."
+        elif language == "both":
+            lang_instruction = "Generate questions in English with Amharic answer explanations. Key terms in both languages."
+        else:
+            lang_instruction = "Generate all content in English."
 
         # Retrieve curriculum context to ground questions
         filter_obj = RetrievalFilter(grade_level=grade_level)

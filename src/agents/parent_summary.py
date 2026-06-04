@@ -47,8 +47,12 @@ class ParentSummaryAgent(BaseAgent):
         topics = set(r.topic for r in records) if records else set()
         is_low = avg_score < 60
 
-        lang_instruction = "Write the summary in English." if language == "en" else \
-            "Write the summary in Amharic."
+        if language == "am":
+            lang_instruction = "Write the summary in Amharic (አማርኛ) only. Use polite, encouraging tone."
+        elif language == "both":
+            lang_instruction = "Write the summary in English. Include key points also in Amharic."
+        else:
+            lang_instruction = "Write the summary in English."
 
         user_message = f"""Generate a weekly progress report (in {language}):
 
@@ -73,7 +77,7 @@ Weak areas: {', '.join(profile.weak_areas) if profile and profile.weak_areas els
         )
 
         amharic_content = None
-        if language == "en":
+        if language in ("en", "both"):
             bilingual = await self._call_llm(
                 system_prompt="Translate the following summary to Amharic. Keep the tone positive and constructive.",
                 user_message=result["content"],
