@@ -2,6 +2,7 @@
 
 import re
 
+from src.core.memory.truncation import truncate_messages
 from src.graph.state import AgentState
 from src.llm.router import ModelRouter
 
@@ -124,8 +125,10 @@ class TutorNode:
 
         user_message = f"[Grade{grade_context}] {lang_context}\n\nStudent question: {state.user_message}"
 
+        history = truncate_messages(state.messages, budget=3000)
         messages = [
             {"role": "system", "content": system},
+            *history,
             {"role": "user", "content": user_message},
         ]
 
