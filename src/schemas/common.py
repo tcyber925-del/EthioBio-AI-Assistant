@@ -15,6 +15,16 @@ class Message(SchemaModel):
 class LanguageEnum(str, enum.Enum):
     EN = "en"
     AM = "am"
+    BOTH = "both"
+
+    def is_amharic(self) -> bool:
+        return self == self.AM
+
+    def is_bilingual(self) -> bool:
+        return self == self.BOTH
+
+    def is_english(self) -> bool:
+        return self == self.EN
 
 
 class ChatRequest(SchemaModel):
