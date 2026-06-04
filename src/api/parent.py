@@ -57,7 +57,7 @@ class WeeklySummary(BaseModel):
 
 
 def _require_parent_role(current_user: User) -> None:
-    if current_user.role != UserRole.parent:
+    if current_user.role not in (UserRole.parent, UserRole.admin):
         raise HTTPException(status_code=403, detail="Parent access required")
 
 

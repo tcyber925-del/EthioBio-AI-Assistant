@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { ClipboardCheck, AlertTriangle, Plus, X, Loader2 } from 'lucide-react'
 import { TableSkeleton } from '@/components/Skeleton'
 import ModelSelector from '@/components/ModelSelector'
-import { fetchWithTimeout } from '@/lib/fetch'
+import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
 
 interface Quiz {
@@ -33,7 +33,7 @@ export default function QuizzesPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchWithTimeout(`/api/admin/content/review?type=quiz&status=${filter}`)
+      const data = await fetchWithAuth(`/api/admin/content/review?type=quiz&status=${filter}`)
       setItems(data.items || [])
     } catch (err: any) {
       setError(err.message)
@@ -53,7 +53,7 @@ export default function QuizzesPage() {
     setGenMsg(null)
     try {
       const types = genType === 'mixed' ? ['multiple_choice', 'true_false'] : [genType]
-      const data = await fetchWithTimeout(`/quiz/generate`, {
+      const data = await fetchWithAuth(`/quiz/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ grade_level: genGrade, topic: genTopic, question_count: genCount, types, model: selectedModel }),

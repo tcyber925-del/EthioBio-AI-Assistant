@@ -3,26 +3,27 @@
 import { Activity, BarChart3, BookOpen, ClipboardCheck, FileText, GraduationCap, Home, LogOut, MessageSquare, School, Shield, User, Users } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { clearToken, isAuthenticated } from '@/lib/auth'
+import { clearToken, getUserRole, isAuthenticated } from '@/lib/auth'
 
-const links = [
-  { href: '/', label: 'Dashboard', icon: Home },
-  { href: '/classroom', label: 'Classroom', icon: School },
-  { href: '/school', label: 'School', icon: Shield },
-  { href: '/parent', label: 'Parent', icon: User },
-  { href: '/recovery', label: 'Recovery', icon: Activity },
-  { href: '/quizzes', label: 'Quizzes', icon: ClipboardCheck },
-  { href: '/lessons', label: 'Lesson Plans', icon: FileText },
-  { href: '/students', label: 'Students', icon: Users },
-  { href: '/monitoring', label: 'Monitoring', icon: BarChart3 },
-  { href: '/diagrams', label: 'Diagrams', icon: BarChart3 },
-  { href: '/ask', label: 'Ask Q&A', icon: MessageSquare },
+const allLinks = [
+  { href: '/', label: 'Dashboard', icon: Home, roles: ['admin'] },
+  { href: '/classroom', label: 'Classroom', icon: School, roles: ['admin', 'teacher', 'student'] },
+  { href: '/school', label: 'School', icon: Shield, roles: ['admin'] },
+  { href: '/parent', label: 'Parent', icon: User, roles: ['parent', 'admin'] },
+  { href: '/recovery', label: 'Recovery', icon: Activity, roles: ['admin', 'teacher'] },
+  { href: '/quizzes', label: 'Quizzes', icon: ClipboardCheck, roles: ['admin', 'teacher'] },
+  { href: '/lessons', label: 'Lesson Plans', icon: FileText, roles: ['admin', 'teacher'] },
+  { href: '/students', label: 'Students', icon: Users, roles: ['admin', 'teacher'] },
+  { href: '/monitoring', label: 'Monitoring', icon: BarChart3, roles: ['admin'] },
+  { href: '/diagrams', label: 'Diagrams', icon: BarChart3, roles: ['admin', 'teacher', 'student', 'parent'] },
+  { href: '/ask', label: 'Ask Q&A', icon: MessageSquare, roles: ['admin', 'teacher', 'student', 'parent'] },
 ]
 
 export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const authenticated = isAuthenticated()
+  const role = getUserRole()
 
   const handleLogout = () => {
     clearToken()
@@ -30,6 +31,8 @@ export default function Sidebar() {
   }
 
   if (!authenticated) return null
+
+  const links = allLinks.filter(l => !role || l.roles.includes(role))
 
   return (
     <aside className="w-64 bg-card border-r border-border h-screen overflow-y-auto flex flex-col flex-shrink-0">
@@ -40,7 +43,9 @@ export default function Sidebar() {
           </div>
           <div>
             <h2 className="font-bold text-foreground text-sm">EthioBio</h2>
-            <p className="text-xs text-foreground-muted">Teacher Dashboard</p>
+            <p className="text-xs text-foreground-muted">
+              {role === 'admin' ? 'Admin Panel' : role === 'parent' ? 'Parent Dashboard' : 'Teacher Dashboard'}
+            </p>
           </div>
         </div>
       </div>

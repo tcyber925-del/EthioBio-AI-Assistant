@@ -18,6 +18,7 @@ export default function LoginPage() {
   const [telegramId, setTelegramId] = useState('')
   const [otpCode, setOtpCode] = useState('')
   const [otpSent, setOtpSent] = useState(false)
+  const [selectedRole, setSelectedRole] = useState('teacher')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,7 +30,7 @@ export default function LoginPage() {
         await fetchWithTimeout('/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password, role: 'teacher' }),
+          body: JSON.stringify({ email, password, role: selectedRole }),
         })
       }
 
@@ -144,6 +145,32 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
+
+            {isRegister && (
+              <div>
+                <label className="block text-sm font-medium text-foreground-muted mb-2">Register as</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: 'teacher', label: 'Teacher' },
+                    { value: 'student', label: 'Student' },
+                    { value: 'parent', label: 'Parent' },
+                  ].map(r => (
+                    <button
+                      key={r.value}
+                      type="button"
+                      onClick={() => setSelectedRole(r.value)}
+                      className={`px-3 py-2 text-sm rounded-lg border transition-colors ${
+                        selectedRole === r.value
+                          ? 'bg-primary/10 border-primary text-primary'
+                          : 'bg-background border-border text-foreground-muted hover:border-foreground-muted'
+                      }`}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <button
               type="submit"

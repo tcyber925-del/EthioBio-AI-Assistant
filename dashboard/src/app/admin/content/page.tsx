@@ -27,7 +27,7 @@ export default function AdminContentPage() {
       const params = new URLSearchParams()
       params.set('content_type', ct)
       if (status !== 'all') params.set('status', status)
-      const data = await fetchWithAuth(`/admin/content/review?${params}`)
+      const data = await fetchWithAuth(`/api/admin/content/review?${params}`)
       return data.items || []
     }
     if (type === 'all') {
@@ -54,7 +54,7 @@ export default function AdminContentPage() {
   }, [type, status])
 
   const updateStatus = async (contentType: string, id: string, newStatus: string) => {
-    await fetchWithAuth(`/admin/content/${contentType}/${id}/status?status=${newStatus}`, { method: 'PATCH' })
+    await fetchWithAuth(`/api/admin/content/${contentType}/${id}/status?status=${newStatus}`, { method: 'PATCH' })
     setItems(prev => prev.map(i => i.id === id ? { ...i, status: newStatus } : i))
   }
 

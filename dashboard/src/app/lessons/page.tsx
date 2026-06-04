@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { FileText, AlertTriangle, Plus, X, Loader2 } from 'lucide-react'
 import { TableSkeleton } from '@/components/Skeleton'
 import ModelSelector from '@/components/ModelSelector'
-import { fetchWithTimeout } from '@/lib/fetch'
+import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
 
 interface Lesson {
@@ -32,7 +32,7 @@ export default function LessonsPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchWithTimeout(`/api/admin/content/review?type=lesson&status=${filter}`)
+      const data = await fetchWithAuth(`/api/admin/content/review?type=lesson&status=${filter}`)
       setItems(data.items || [])
     } catch (err: any) {
       setError(err.message)
@@ -51,7 +51,7 @@ export default function LessonsPage() {
     setGenerating(true)
     setGenMsg(null)
     try {
-      await fetchWithTimeout(`/lesson-plan/generate`, {
+      await fetchWithAuth(`/lesson-plan/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ grade_level: genGrade, topic: genTopic, duration_minutes: genDuration, model: selectedModel }),

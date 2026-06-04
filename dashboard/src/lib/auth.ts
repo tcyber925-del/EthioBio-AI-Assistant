@@ -47,3 +47,10 @@ export function getUserId(): string | null {
   const payload = decodeToken(token)
   return payload?.sub || null
 }
+
+export function getUserRole(): string | null {
+  const token = getToken()
+  if (!token) return null
+  const payload = decodeToken(token)
+  return payload?.role || null
+}

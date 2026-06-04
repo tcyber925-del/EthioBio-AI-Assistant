@@ -27,7 +27,7 @@ export default function AdminLessonDetailPage() {
   const router = useRouter()
 
   useEffect(() => {
-    fetchWithAuth(`/admin/content/lesson/${id}`)
+    fetchWithAuth(`/api/admin/content/lesson/${id}`)
       .then(setLesson)
       .catch(err => setError(err instanceof Error ? err.message : String(err)))
   }, [id])
@@ -35,7 +35,7 @@ export default function AdminLessonDetailPage() {
   const toggleStatus = async () => {
     if (!lesson) return
     const newStatus = lesson.status === 'published' ? 'archived' : 'published'
-    await fetchWithAuth(`/admin/content/lesson/${id}/status?status=${newStatus}`, { method: 'PATCH' })
+    await fetchWithAuth(`/api/admin/content/lesson/${id}/status?status=${newStatus}`, { method: 'PATCH' })
     setLesson({ ...lesson, status: newStatus })
   }
 

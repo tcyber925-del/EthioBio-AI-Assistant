@@ -21,7 +21,7 @@ export default function AdminSchoolsPage() {
 
   const load = async () => {
     try {
-      const data = await fetchWithAuth('/admin/schools')
+      const data = await fetchWithAuth('/api/admin/schools')
       setSchools(data)
     } catch (err: any) {
       setError(err instanceof Error ? err.message : String(err))
@@ -36,7 +36,7 @@ export default function AdminSchoolsPage() {
     if (!name.trim()) return
     setError(null)
     try {
-      await fetchWithAuth('/teacher/schools', {
+      await fetchWithAuth('/api/teacher/schools', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim() }),

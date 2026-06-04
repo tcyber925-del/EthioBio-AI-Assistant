@@ -31,7 +31,7 @@ export default function AdminQuizDetailPage() {
   const router = useRouter()
 
   useEffect(() => {
-    fetchWithAuth(`/admin/content/quiz/${id}`)
+    fetchWithAuth(`/api/admin/content/quiz/${id}`)
       .then(setQuiz)
       .catch(err => setError(err instanceof Error ? err.message : String(err)))
   }, [id])
@@ -39,7 +39,7 @@ export default function AdminQuizDetailPage() {
   const toggleStatus = async () => {
     if (!quiz) return
     const newStatus = quiz.status === 'published' ? 'archived' : 'published'
-    await fetchWithAuth(`/admin/content/quiz/${id}/status?status=${newStatus}`, { method: 'PATCH' })
+    await fetchWithAuth(`/api/admin/content/quiz/${id}/status?status=${newStatus}`, { method: 'PATCH' })
     setQuiz({ ...quiz, status: newStatus })
   }
 

@@ -7,7 +7,7 @@ import { isAuthenticated } from '@/lib/auth'
 import StatCard from '@/components/StatCard'
 import { CardSkeleton, TableSkeleton } from '@/components/Skeleton'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { fetchWithTimeout } from '@/lib/fetch'
+import { fetchWithAuth } from '@/lib/fetchWithAuth'
 
 interface DashboardData {
   users: number; teachers: number; students: number
@@ -27,7 +27,7 @@ export default function Dashboard() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      const d = await fetchWithTimeout('/api/admin/dashboard')
+      const d = await fetchWithAuth('/api/admin/dashboard')
       setData(d)
       setError(null)
     } catch (err: unknown) {
