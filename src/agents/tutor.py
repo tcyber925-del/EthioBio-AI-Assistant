@@ -121,6 +121,7 @@ class TutorAgent(BaseAgent):
         reveal_answer: bool = False,
         memory_context: str = "",
         learner_profile_block: str = "",
+        messages: list[dict] | None = None,
     ) -> dict:
         context = ""
         sources = []
@@ -171,13 +172,23 @@ class TutorAgent(BaseAgent):
         elif hint_level > 0 and hint_level in HINT_PROMPTS:
             system_prompt += HINT_PROMPTS[hint_level]
 
+        from src.core.memory.truncation import truncate_messages
+
         user_message = f"[Grade{grade_context}] {lang_context}\n\nStudent question: {question}"
 
-        result = await self._call_llm(
-            system_prompt=system_prompt,
-            user_message=user_message,
-            session=session,
+        history = truncate_messages(messages or [], budget=3000)
+        llm_messages = [
+            {"role": "system", "content": system_prompt},
+            *history,
+            {"role": "user", "content": user_message},
+        ]
+
+        result = await self.llm_router.route(
+            messages=llm_messages,
             request_type="tutor",
+            session=session,
+            temperature=0.7,
+            max_tokens=2048,
         )
 
         content = result["content"]
