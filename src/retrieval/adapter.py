@@ -50,6 +50,8 @@ class RetrievalFilter:
             filters.append({"unit": {"$eq": self.unit}})
         if self.source_type:
             filters.append({"source_type": {"$eq": self.source_type}})
+        if self.language and self.language != "en":
+            filters.append({"language": {"$eq": self.language}})
 
         if not filters:
             return None
