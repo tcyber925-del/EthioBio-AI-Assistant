@@ -67,6 +67,23 @@ class SessionManager:
         logger.info("memory_session_closed", session_id=str(session_id))
         return session
 
+    def get_messages(self, session: MemorySession) -> list[dict]:
+        ctx = session.educational_context
+        if not isinstance(ctx, dict):
+            return []
+        messages = ctx.get("messages")
+        if isinstance(messages, list):
+            return messages
+        recent = ctx.get("recent_turns")
+        if isinstance(recent, list):
+            return recent
+        return []
+
+    def set_messages(self, session: MemorySession, messages: list[dict]) -> None:
+        if not isinstance(session.educational_context, dict):
+            session.educational_context = {}
+        session.educational_context["messages"] = messages
+
     async def get_active_session_for_user(
         self, user_id: UUID, db: AsyncSession,
     ) -> MemorySession | None:
