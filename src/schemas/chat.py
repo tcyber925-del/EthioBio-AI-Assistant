@@ -2,6 +2,7 @@ from typing import Optional
 from uuid import UUID
 
 from src.schemas.base import SchemaModel
+from src.schemas.common import LanguageEnum
 
 
 class TutorRequest(SchemaModel):
@@ -9,7 +10,7 @@ class TutorRequest(SchemaModel):
     question: str
     grade_level: Optional[int] = None
     topic: Optional[str] = None
-    language: str = "en"
+    language: LanguageEnum = LanguageEnum.EN
     use_rag: bool = True
     model: Optional[str] = None
     socratic_mode: bool = False

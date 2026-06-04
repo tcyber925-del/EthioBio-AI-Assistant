@@ -1,3 +1,4 @@
+import enum
 from typing import Optional
 from uuid import UUID
 
@@ -11,12 +12,17 @@ class Message(SchemaModel):
     content: str
 
 
+class LanguageEnum(str, enum.Enum):
+    EN = "en"
+    AM = "am"
+
+
 class ChatRequest(SchemaModel):
     messages: list[Message]
     user_id: UUID
     grade_level: Optional[int] = None
     topic: Optional[str] = None
-    language: str = "en"
+    language: LanguageEnum = LanguageEnum.EN
     stream: bool = False
 
 

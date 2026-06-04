@@ -24,6 +24,7 @@ from src.database.models import (
 )
 from src.database.session import get_session
 from src.llm.router import ModelRouter
+from src.schemas.common import LanguageEnum
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/parent", tags=["Parent"])
@@ -177,7 +178,7 @@ async def get_child_progress(
 @router.get("/children/{student_id}/weekly-summary")
 async def get_weekly_summary(
     student_id: UUID,
-    language: str = "en",
+    language: LanguageEnum = LanguageEnum.EN,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):

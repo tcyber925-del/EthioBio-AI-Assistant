@@ -18,6 +18,7 @@ from src.core.memory.socratic_manager import SocraticManager
 from src.database.session import get_session
 from src.graph.orchestrator import run_graph
 from src.schemas.base import SchemaModel
+from src.schemas.common import LanguageEnum
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/graph", tags=["Graph"])
@@ -34,7 +35,7 @@ class GraphChatRequest(SchemaModel):
     user_id: Optional[UUID] = None
     grade_level: Optional[int] = Field(None, ge=7, le=12)
     topic: Optional[str] = None
-    language: str = "en"
+    language: LanguageEnum = LanguageEnum.EN
     model: Optional[str] = None
     socratic_mode: bool = False
     hint_level: int = 0
