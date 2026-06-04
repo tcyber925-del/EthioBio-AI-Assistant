@@ -1,8 +1,12 @@
+const createNextIntlPlugin = require('next-intl/plugin');
+
+const withNextIntl = createNextIntlPlugin('./i18n.ts');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
   async rewrites() {
-    const api = process.env.NEXT_PUBLIC_API_URL || 'http://app:8000'
+    const api = process.env.NEXT_PUBLIC_API_URL || 'http://app:8000';
     return [
       { source: '/api/:path*', destination: `${api}/:path*` },
       { source: '/models/:path*', destination: `${api}/models/:path*` },
@@ -20,8 +24,9 @@ const nextConfig = {
       { source: '/recovery/:path*', destination: `${api}/recovery/:path*` },
       { source: '/parent/:path*', destination: `${api}/parent/:path*` },
       { source: '/admin/:path*', destination: `${api}/admin/:path*` },
-    ]
+      { source: '/users/:path*', destination: `${api}/users/:path*` },
+    ];
   },
-}
+};
 
-module.exports = nextConfig
+module.exports = withNextIntl(nextConfig);
