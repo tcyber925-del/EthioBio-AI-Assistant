@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { ArrowLeft, AlertTriangle, Check, X, Loader2, RefreshCw } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
@@ -28,6 +29,8 @@ export default function QuizDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [updating, setUpdating] = useState(false)
+  const t = useTranslations('quiz')
+  const tc = useTranslations('common')
 
   const fetchQuiz = async () => {
     setLoading(true)
@@ -66,10 +69,10 @@ export default function QuizDetailPage() {
       <p className="text-red-400">{error}</p>
       <div className="mt-4 flex gap-3 justify-center">
         <button onClick={fetchQuiz} className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover transition-colors">
-          <RefreshCw className="w-4 h-4 inline mr-1" /> Retry
+          <RefreshCw className="w-4 h-4 inline mr-1" /> {tc('retry')}
         </button>
         <Link href="/quizzes" className="px-4 py-2 bg-card border border-border text-foreground rounded-lg text-sm hover:bg-border transition-colors">
-          Back to quizzes
+          {t('back')}
         </Link>
       </div>
     </div>
@@ -79,7 +82,7 @@ export default function QuizDetailPage() {
   return (
     <div>
       <Link href="/quizzes" className="flex items-center gap-2 text-sm text-foreground-muted hover:text-foreground mb-4 transition-colors">
-        <ArrowLeft className="w-4 h-4" /> Back to quizzes
+        <ArrowLeft className="w-4 h-4" /> {t('back')}
       </Link>
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -90,29 +93,29 @@ export default function QuizDetailPage() {
           {quiz.status === 'draft' && (
             <>
               <button onClick={() => updateStatus('archived')} disabled={updating} className="flex items-center gap-2 px-4 py-2 text-sm border border-border rounded-lg hover:bg-card disabled:opacity-50 text-foreground-muted transition-colors">
-                <X className="w-4 h-4" /> Reject
+                <X className="w-4 h-4" /> {t('reject')}
               </button>
               <button onClick={() => updateStatus('published')} disabled={updating} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary-hover disabled:opacity-50 transition-colors">
-                <Check className="w-4 h-4" /> Approve
+                <Check className="w-4 h-4" /> {t('approve')}
               </button>
             </>
           )}
           {quiz.status === 'published' && (
-            <span className="px-4 py-2 text-sm bg-green-500/10 text-green-400 rounded-lg font-medium">Published</span>
+            <span className="px-4 py-2 text-sm bg-green-500/10 text-green-400 rounded-lg font-medium">{t('published')}</span>
           )}
         </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="p-3 bg-card border border-border rounded-lg"><span className="text-xs text-foreground-muted">Grade</span><p className="font-semibold text-foreground">Grade {quiz.grade_level}</p></div>
-        <div className="p-3 bg-card border border-border rounded-lg"><span className="text-xs text-foreground-muted">Topic</span><p className="font-semibold text-foreground">{quiz.topic}</p></div>
-        <div className="p-3 bg-card border border-border rounded-lg"><span className="text-xs text-foreground-muted">Questions</span><p className="font-semibold text-foreground">{quiz.question_count}</p></div>
-        <div className="p-3 bg-card border border-border rounded-lg"><span className="text-xs text-foreground-muted">Status</span><p className="font-semibold text-foreground capitalize">{quiz.status}</p></div>
+        <div className="p-3 bg-card border border-border rounded-lg"><span className="text-xs text-foreground-muted">{t('details_grade')}</span><p className="font-semibold text-foreground">{t('col_grade')} {quiz.grade_level}</p></div>
+        <div className="p-3 bg-card border border-border rounded-lg"><span className="text-xs text-foreground-muted">{t('details_topic')}</span><p className="font-semibold text-foreground">{quiz.topic}</p></div>
+        <div className="p-3 bg-card border border-border rounded-lg"><span className="text-xs text-foreground-muted">{t('details_questions')}</span><p className="font-semibold text-foreground">{quiz.question_count}</p></div>
+        <div className="p-3 bg-card border border-border rounded-lg"><span className="text-xs text-foreground-muted">{t('details_status')}</span><p className="font-semibold text-foreground capitalize">{quiz.status}</p></div>
       </div>
 
       {quiz.questions.length === 0 ? (
         <div className="bg-card rounded-xl border border-border p-8 text-center">
-          <p className="text-foreground-muted">No questions found for this quiz</p>
+          <p className="text-foreground-muted">{t('details_no_questions')}</p>
         </div>
       ) : (
         <div className="bg-card rounded-xl border border-border divide-y divide-border">
@@ -145,7 +148,7 @@ export default function QuizDetailPage() {
                   )}
                   {q.explanation && (
                     <details className="mt-2">
-                      <summary className="text-xs text-foreground-muted cursor-pointer hover:text-foreground transition-colors">Explanation</summary>
+                      <summary className="text-xs text-foreground-muted cursor-pointer hover:text-foreground transition-colors">{t('explanation')}</summary>
                       <MarkdownRenderer content={q.explanation} className="text-sm text-foreground-muted mt-1" />
                     </details>
                   )}
@@ -156,8 +159,8 @@ export default function QuizDetailPage() {
         </div>
       )}
 
-      <p className="text-xs text-foreground-muted mt-4">Created: {quiz.created_at}</p>
-      {updating && <p className="text-sm text-foreground-muted mt-2"><Loader2 className="w-3 h-3 inline animate-spin" /> Updating...</p>}
+      <p className="text-xs text-foreground-muted mt-4">{t('details_created')} {quiz.created_at}</p>
+      {updating && <p className="text-sm text-foreground-muted mt-2"><Loader2 className="w-3 h-3 inline animate-spin" /> {t('details_updating')}</p>}
     </div>
   )
 }

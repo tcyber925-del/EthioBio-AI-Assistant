@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { BookOpen, ClipboardCheck, FileText, Users, BarChart3, AlertTriangle, RefreshCw } from 'lucide-react'
-import { isAuthenticated } from '@/lib/auth'
+import { getUserRole, isAuthenticated } from '@/lib/auth'
 import StatCard from '@/components/StatCard'
 import { CardSkeleton, TableSkeleton } from '@/components/Skeleton'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
@@ -20,6 +21,8 @@ interface DashboardData {
 
 export default function Dashboard() {
   const router = useRouter()
+  const t = useTranslations('admin.dashboard')
+  const tc = useTranslations('common')
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -27,7 +30,8 @@ export default function Dashboard() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      const d = await fetchWithAuth('/api/admin/dashboard')
+      const endpoint = getUserRole() === 'admin' ? '/api/admin/dashboard' : '/api/teacher/dashboard'
+      const d = await fetchWithAuth(endpoint)
       setData(d)
       setError(null)
     } catch (err: unknown) {
@@ -41,12 +45,16 @@ export default function Dashboard() {
     if (!isAuthenticated()) { router.push('/login'); return }
   }, [router])
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => {
+    const role = getUserRole()
+    if (role === 'student') { router.push('/student'); return }
+    fetchData()
+  }, [router])
 
   if (loading && !data) {
     return (
       <div>
-        <h1 className="text-2xl font-bold text-foreground mb-6">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-6">{t('dashboard')}</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
           {Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} />)}
         </div>
@@ -60,10 +68,10 @@ export default function Dashboard() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-3" />
-          <p className="text-red-400 font-medium">Failed to load dashboard</p>
+          <p className="text-red-400 font-medium">{t('error_load')}</p>
           <p className="text-sm text-foreground-muted mt-1">{error}</p>
           <button onClick={fetchData} className="mt-4 px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover transition-colors">
-            Retry
+            {tc('retry')}
           </button>
         </div>
       </div>
@@ -84,26 +92,26 @@ export default function Dashboard() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-sm text-foreground-muted mt-1">EthioBio AI Assistant overview</p>
+          <h1 className="text-2xl font-bold text-foreground">{t('dashboard')}</h1>
+          <p className="text-sm text-foreground-muted mt-1">{t('subtitle')}</p>
         </div>
         <button onClick={fetchData} className="flex items-center gap-2 px-4 py-2 text-sm border border-border rounded-lg hover:bg-card transition-colors text-foreground-muted hover:text-foreground">
-          <RefreshCw className="w-4 h-4" /> Refresh
+          <RefreshCw className="w-4 h-4" /> {tc('refresh')}
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
-        <StatCard icon={<Users className="w-6 h-6" />} label="Total Users" value={data?.users ?? 0} color="blue" subtitle="platform users" />
-        <StatCard icon={<Users className="w-6 h-6" />} label="Teachers" value={data?.teachers ?? 0} color="green" />
-        <StatCard icon={<Users className="w-6 h-6" />} label="Students" value={data?.students ?? 0} color="purple" />
-        <StatCard icon={<ClipboardCheck className="w-6 h-6" />} label="Quizzes" value={data?.quizzes ?? 0} color="orange" />
-        <StatCard icon={<FileText className="w-6 h-6" />} label="Lesson Plans" value={data?.lesson_plans ?? 0} color="indigo" />
-        <StatCard icon={<BarChart3 className="w-6 h-6" />} label="Quiz Attempts" value={data?.quiz_attempts ?? 0} color="teal" />
+        <StatCard icon={<Users className="w-6 h-6" />} label={t('total_users')} value={data?.users ?? 0} color="blue" subtitle={t('platform_users')} />
+        <StatCard icon={<Users className="w-6 h-6" />} label={t('total_teachers')} value={data?.teachers ?? 0} color="green" />
+        <StatCard icon={<Users className="w-6 h-6" />} label={t('total_students')} value={data?.students ?? 0} color="purple" />
+        <StatCard icon={<ClipboardCheck className="w-6 h-6" />} label={t('quizzes')} value={data?.quizzes ?? 0} color="orange" />
+        <StatCard icon={<FileText className="w-6 h-6" />} label={t('lesson_plans')} value={data?.lesson_plans ?? 0} color="indigo" />
+        <StatCard icon={<BarChart3 className="w-6 h-6" />} label={t('quiz_attempts')} value={data?.quiz_attempts ?? 0} color="teal" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div className="lg:col-span-2 bg-card rounded-xl border border-border p-5">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Request Latency</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t('request_latency')}</h2>
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={chartData}>
@@ -115,46 +123,46 @@ export default function Dashboard() {
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-foreground-muted text-sm py-8 text-center">No request data yet</p>
+            <p className="text-foreground-muted text-sm py-8 text-center">{t('no_request_data')}</p>
           )}
         </div>
         <div className="bg-card rounded-xl border border-border p-5">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Request Status</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t('request_status')}</h2>
           {logs.length > 0 ? (
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 bg-green-500/10 rounded-lg">
-                <span className="text-sm font-medium text-green-400">Success</span>
+                <span className="text-sm font-medium text-green-400">{t('success')}</span>
                 <span className="text-lg font-bold text-green-400">{successCount}</span>
               </div>
               <div className="flex items-center justify-between p-3 bg-red-500/10 rounded-lg">
-                <span className="text-sm font-medium text-red-400">Failed</span>
+                <span className="text-sm font-medium text-red-400">{t('failed')}</span>
                 <span className="text-lg font-bold text-red-400">{failCount}</span>
               </div>
               <div className="flex items-center justify-between p-3 bg-border/50 rounded-lg">
-                <span className="text-sm font-medium text-foreground-muted">Success rate</span>
+                <span className="text-sm font-medium text-foreground-muted">{t('success_rate')}</span>
                 <span className="text-lg font-bold text-foreground">
                   {logs.length > 0 ? Math.round(successCount / logs.length * 100) : 0}%
                 </span>
               </div>
             </div>
           ) : (
-            <p className="text-foreground-muted text-sm py-8 text-center">No data yet</p>
+            <p className="text-foreground-muted text-sm py-8 text-center">{tc('no_data')}</p>
           )}
         </div>
       </div>
 
       <div className="bg-card rounded-xl border border-border">
         <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">Recent Activity</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t('recent_activity')}</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-background-secondary">
               <tr>
-                <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">Type</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">Model</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">Status</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">Latency</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">{tc('type')}</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">{t('col_model')}</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">{tc('status')}</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">{t('col_latency')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -166,14 +174,14 @@ export default function Dashboard() {
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       log.success ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
                     }`}>
-                      {log.success ? 'Success' : 'Failed'}
+                      {log.success ? t('success') : t('failed')}
                     </span>
                   </td>
                   <td className="px-5 py-3 text-sm text-foreground-muted">{log.latency_ms}ms</td>
                 </tr>
               ))}
-              {logs.length === 0 && (
-                <tr><td colSpan={4} className="px-5 py-12 text-center text-foreground-muted">No recent activity</td></tr>
+                {logs.length === 0 && (
+                <tr><td colSpan={4} className="px-5 py-12 text-center text-foreground-muted">{t('no_activity')}</td></tr>
               )}
             </tbody>
           </table>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { ClipboardList, AlertTriangle, Loader2, Search, CheckCircle2, Clock, BookOpen, Lightbulb, ArrowRight, Target, Brain, TrendingUp, RotateCcw, Bell, PartyPopper, Sparkles, RefreshCw } from 'lucide-react'
 import { fetchWithTimeout } from '@/lib/fetch'
 import { CardSkeleton } from '@/components/Skeleton'
@@ -128,6 +129,8 @@ export default function RecoveryPage() {
   const [students, setStudents] = useState<Student[]>([])
   const [studentsLoading, setStudentsLoading] = useState(true)
   const [notificationsExpanded, setNotificationsExpanded] = useState(false)
+  const t = useTranslations('recovery')
+  const tc = useTranslations('common')
 
   useEffect(() => {
     if (!isAuthenticated()) { router.push('/login'); return }
@@ -246,7 +249,7 @@ export default function RecoveryPage() {
     return (
       <div className="mt-2">
         <div className="flex items-center justify-between text-xs text-foreground-muted mb-1">
-          <span>Progress over time</span>
+          <span>{t('progress_over_time')}</span>
           <span className={lastVal > firstVal ? 'text-green-400' : lastVal < firstVal ? 'text-red-400' : ''}>
             {firstVal.toFixed(0)}% → {lastVal.toFixed(0)}%
           </span>
@@ -278,9 +281,9 @@ export default function RecoveryPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Recovery Dashboard</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t('title')}</h1>
           <p className="text-sm text-foreground-muted mt-1">
-            Track weak topics, active recovery plans, and personalized recommendations
+            {t('subtitle')}
           </p>
         </div>
       </div>
@@ -288,12 +291,12 @@ export default function RecoveryPage() {
       <div className="bg-card rounded-xl border border-border p-5 mb-6">
         <form onSubmit={handleSubmit} className="flex items-end gap-3">
           <div className="flex-1">
-            <label className="text-xs text-foreground-muted block mb-1.5">Student ID</label>
+            <label className="text-xs text-foreground-muted block mb-1.5">{t('student_id')}</label>
             <input
               type="text"
               value={userId}
               onChange={e => setUserId(e.target.value)}
-              placeholder="Enter student UUID..."
+              placeholder={t('student_id_placeholder')}
               className="w-full px-4 py-2 border border-border rounded-lg text-sm bg-background text-foreground placeholder:text-foreground-muted/50 focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
@@ -302,13 +305,13 @@ export default function RecoveryPage() {
             disabled={loading || !userId.trim()}
             className="px-6 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
           >
-            {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Loading...</> : <><Search className="w-4 h-4" /> Look up</>}
+            {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('generating')}</> : <><Search className="w-4 h-4" /> {t('look_up')}</>}
           </button>
         </form>
 
         {students.length > 0 && (
           <div className="mt-4">
-            <p className="text-xs text-foreground-muted mb-2">Quick select:</p>
+            <p className="text-xs text-foreground-muted mb-2">{t('quick_select')}</p>
             <div className="flex flex-wrap gap-2">
               {students.slice(0, 10).map(s => (
                 <button
@@ -334,7 +337,7 @@ export default function RecoveryPage() {
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-5 flex items-start gap-3 mb-6">
           <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5" />
           <div>
-            <p className="font-medium text-red-400">Error</p>
+            <p className="font-medium text-red-400">{t('error_generic')}</p>
             <p className="text-sm text-red-400/80 mt-1">{error}</p>
           </div>
         </div>
@@ -344,25 +347,25 @@ export default function RecoveryPage() {
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="bg-card rounded-xl border border-border p-5">
-              <p className="text-sm text-foreground-muted">Weak Topics</p>
+              <p className="text-sm text-foreground-muted">{t('weak_topics')}</p>
               <p className="text-2xl font-bold text-foreground mt-1">{data.total_weak_topics}</p>
             </div>
             <div className="bg-card rounded-xl border border-border p-5">
-              <p className="text-sm text-foreground-muted">Active Plans</p>
+              <p className="text-sm text-foreground-muted">{t('active_plans')}</p>
               <p className="text-2xl font-bold text-foreground mt-1">{data.total_active_plans}</p>
             </div>
             <div className="bg-card rounded-xl border border-border p-5">
-              <p className="text-sm text-foreground-muted">Recommendations</p>
+              <p className="text-sm text-foreground-muted">{t('recommendations')}</p>
               <p className="text-2xl font-bold text-foreground mt-1">{data.recommendations.length}</p>
             </div>
             <div className="bg-card rounded-xl border border-border p-5">
-              <p className="text-sm text-foreground-muted">Critical Topics</p>
+              <p className="text-sm text-foreground-muted">{t('critical_topics')}</p>
               <p className="text-2xl font-bold text-red-400 mt-1">
                 {data.weak_topics.filter(w => w.severity === 'critical').length}
               </p>
             </div>
             <div className="bg-card rounded-xl border border-border p-5">
-              <p className="text-sm text-foreground-muted">Due for Review</p>
+              <p className="text-sm text-foreground-muted">{t('due_reviews')}</p>
               <p className={`text-2xl font-bold mt-1 ${data.total_due_reviews > 0 ? 'text-orange-400' : 'text-foreground'}`}>
                 {data.total_due_reviews}
               </p>
@@ -371,7 +374,7 @@ export default function RecoveryPage() {
               className="bg-card rounded-xl border border-border p-5 cursor-pointer hover:bg-background-secondary/50 transition-colors relative"
               onClick={() => setNotificationsExpanded(!notificationsExpanded)}
             >
-              <p className="text-sm text-foreground-muted">Notifications</p>
+              <p className="text-sm text-foreground-muted">{t('notifications')}</p>
               <div className="flex items-center gap-2 mt-1">
                 <p className="text-2xl font-bold text-foreground">{data.unread_notifications}</p>
                 <Bell className="w-4 h-4 text-yellow-400" />
@@ -386,7 +389,7 @@ export default function RecoveryPage() {
 
           {data.weak_topics.length >= 3 && (
             <div className="bg-card rounded-xl border border-border p-5">
-              <h2 className="text-lg font-semibold text-foreground mb-4">Mastery Overview</h2>
+              <h2 className="text-lg font-semibold text-foreground mb-4">{t('mastery_overview')}</h2>
               <MasteryRadarChart
                 data={data.weak_topics.map(wt => ({
                   topic: wt.topic,
@@ -399,7 +402,7 @@ export default function RecoveryPage() {
           {history && Object.keys(history).length >= 2 && (
             <div className="bg-card rounded-xl border border-border p-5">
               <div className="flex items-center gap-2 mb-4">
-                <h2 className="text-lg font-semibold text-foreground">Progress Heatmap</h2>
+                <h2 className="text-lg font-semibold text-foreground">{t('progress_heatmap')}</h2>
               </div>
               <TopicHeatmap history={history} />
             </div>
@@ -410,14 +413,14 @@ export default function RecoveryPage() {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Bell className={`w-5 h-5 ${data.unread_notifications > 0 ? 'text-yellow-400' : 'text-foreground-muted'}`} />
-                  <h2 className="text-lg font-semibold text-foreground">Recent Notifications</h2>
+                  <h2 className="text-lg font-semibold text-foreground">{t('recent_notifications')}</h2>
                 </div>
                 {data.unread_notifications > 0 && (
                   <button
                     onClick={(e) => { e.stopPropagation(); markAllRead() }}
                     className="text-xs text-primary hover:text-primary-hover transition-colors"
                   >
-                    Mark all as read
+                    {t('mark_all_read')}
                   </button>
                 )}
               </div>
@@ -447,7 +450,7 @@ export default function RecoveryPage() {
             <div className="bg-card rounded-xl border border-border p-5">
               <div className="flex items-center gap-2 mb-4">
                 <Lightbulb className="w-5 h-5 text-yellow-400" />
-                <h2 className="text-lg font-semibold text-foreground">Recommendations</h2>
+                <h2 className="text-lg font-semibold text-foreground">{t('recommendations')}</h2>
               </div>
               <div className="space-y-2">
                 {data.recommendations.map((rec, i) => (
@@ -470,8 +473,8 @@ export default function RecoveryPage() {
             <div className="bg-card rounded-xl border border-border p-5">
               <div className="flex items-center gap-2 mb-4">
                 <RotateCcw className="w-5 h-5 text-orange-400" />
-                <h2 className="text-lg font-semibold text-foreground">Due for Review</h2>
-                <span className="ml-auto text-sm text-foreground-muted">{data.total_due_reviews} topic{data.total_due_reviews !== 1 ? 's' : ''} due</span>
+                <h2 className="text-lg font-semibold text-foreground">{t('due_reviews')}</h2>
+                <span className="ml-auto text-sm text-foreground-muted">{data.total_due_reviews} {data.total_due_reviews !== 1 ? t('topics') : t('topic')} {t('due')}</span>
               </div>
               <div className="space-y-2">
                 {data.due_reviews.map((review, i) => (
@@ -481,12 +484,12 @@ export default function RecoveryPage() {
                       <div>
                         <p className="text-sm font-medium text-foreground">{review.topic}</p>
                         <p className="text-xs text-foreground-muted">
-                          Mastery: {review.mastery_score.toFixed(0)}% · Review #{review.review_count + 1} · {review.days_overdue > 0 ? `${review.days_overdue}d overdue` : 'Due today'}
+                           Mastery: {review.mastery_score.toFixed(0)}% · Review #{review.review_count + 1} · {review.days_overdue > 0 ? `${review.days_overdue}d ${t('overdue')}` : t('due_today')}
                         </p>
                       </div>
                     </div>
                     <span className="text-xs text-foreground-muted whitespace-nowrap">
-                      {review.interval_days}d interval
+                      {review.interval_days}{t('d_interval')}
                     </span>
                   </div>
                 ))}
@@ -497,11 +500,11 @@ export default function RecoveryPage() {
           {data.weak_topics.length > 0 ? (
             <div className="bg-card rounded-xl border border-border p-5">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-foreground">Weak Topics</h2>
-                <span className="text-sm text-foreground-muted">{data.total_weak_topics} topic{data.total_weak_topics !== 1 ? 's' : ''}</span>
+                <h2 className="text-lg font-semibold text-foreground">{t('weak_topics')}</h2>
+                <span className="text-sm text-foreground-muted">{data.total_weak_topics} {data.total_weak_topics !== 1 ? t('topics') : t('topic')}</span>
               </div>
               <LearningTree topics={data.weak_topics} />
-              <h2 className="text-lg font-semibold text-foreground mb-4">Weak Topics</h2>
+              <h2 className="text-lg font-semibold text-foreground mb-4">{t('weak_topics')}</h2>
               <div className="space-y-3">
                 {data.weak_topics.map((wt, i) => (
                   <div key={i} className={`p-4 rounded-lg border ${severityColor(wt.severity)}`}>
@@ -518,21 +521,21 @@ export default function RecoveryPage() {
                     </div>
                     <div className="grid grid-cols-3 gap-3 mt-3">
                       <div>
-                        <p className="text-xs text-foreground-muted">Avg Score</p>
+                        <p className="text-xs text-foreground-muted">{t('avg_score')}</p>
                         <p className="text-sm font-semibold text-foreground">{wt.average_score.toFixed(0)}%</p>
                       </div>
                       <div>
-                        <p className="text-xs text-foreground-muted">Attempts</p>
+                        <p className="text-xs text-foreground-muted">{t('attempts')}</p>
                         <p className="text-sm font-semibold text-foreground">{wt.attempt_count}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-foreground-muted">Confidence</p>
+                        <p className="text-xs text-foreground-muted">{t('confidence')}</p>
                         <p className="text-sm font-semibold text-foreground">{(wt.confidence * 100).toFixed(0)}%</p>
                       </div>
                     </div>
                     {wt.misconceptions.length > 0 && (
                       <div className="mt-3 pt-3 border-t border-border/50">
-                        <p className="text-xs font-medium text-foreground-muted mb-2">Misconceptions:</p>
+                        <p className="text-xs font-medium text-foreground-muted mb-2">{t('misconceptions')}</p>
                         {wt.misconceptions.map((mc, j) => (
                           <div key={j} className="flex items-center gap-2 text-xs text-foreground-muted mb-1">
                             <AlertTriangle className="w-3 h-3 text-yellow-400" />
@@ -554,8 +557,8 @@ export default function RecoveryPage() {
           ) : (
             <div className="bg-card rounded-xl border border-border p-8 text-center">
               <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto mb-3" />
-              <p className="text-foreground-muted font-medium">No weak topics found</p>
-              <p className="text-sm text-foreground-muted/60 mt-1">Student is performing well across all topics</p>
+              <p className="text-foreground-muted font-medium">{t('no_weak_topics')}</p>
+              <p className="text-sm text-foreground-muted/60 mt-1">{t('no_weak_topics_subtitle')}</p>
             </div>
           )}
 
@@ -563,7 +566,7 @@ export default function RecoveryPage() {
             <div className="bg-card rounded-xl border border-border p-5">
               <div className="flex items-center gap-2 mb-4">
                 <ClipboardList className="w-5 h-5 text-primary" />
-                <h2 className="text-lg font-semibold text-foreground">Active Recovery Plans</h2>
+                <h2 className="text-lg font-semibold text-foreground">{t('active_plans')}</h2>
               </div>
               <div className="space-y-4">
                 {data.active_plans.map(plan => {
@@ -574,7 +577,7 @@ export default function RecoveryPage() {
                         <div>
                           <h3 className="font-medium text-foreground">{plan.topic}</h3>
                           <p className="text-xs text-foreground-muted">
-                            {plan.completed_tasks}/{plan.total_tasks} tasks completed
+                            {plan.completed_tasks}/{plan.total_tasks} {t('tasks')}
                           </p>
                         </div>
                         <span className="text-sm font-semibold text-foreground">{plan.progress_pct}%</span>
@@ -616,9 +619,9 @@ export default function RecoveryPage() {
             data.weak_topics.length > 0 && (
               <div className="bg-card rounded-xl border border-border p-8 text-center">
                 <ClipboardList className="w-12 h-12 text-border mx-auto mb-3" />
-                <p className="text-foreground-muted font-medium">No active recovery plans</p>
+                <p className="text-foreground-muted font-medium">{t('no_plans')}</p>
                 <p className="text-sm text-foreground-muted/60 mt-1">
-                  Generate a recovery plan using the auto-generate endpoint to start tracking progress
+                  {t('no_plans_instruction')}
                 </p>
               </div>
             )
@@ -629,9 +632,9 @@ export default function RecoveryPage() {
       {!data && !loading && !error && (
         <div className="text-center py-16">
           <Search className="w-12 h-12 text-border mx-auto mb-3" />
-          <p className="text-foreground-muted font-medium">Enter a student ID to get started</p>
+          <p className="text-foreground-muted font-medium">{t('enter_id_hint')}</p>
           <p className="text-sm text-foreground-muted/60 mt-1">
-            Type a UUID or select a student from the quick list above
+            {t('enter_id_subtitle')}
           </p>
         </div>
       )}

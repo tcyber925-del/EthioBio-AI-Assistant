@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { ClipboardCheck, AlertTriangle, Plus, X, Loader2 } from 'lucide-react'
 import { TableSkeleton } from '@/components/Skeleton'
 import ModelSelector from '@/components/ModelSelector'
@@ -28,6 +29,8 @@ export default function QuizzesPage() {
   const [selectedModel, setSelectedModel] = useState('')
   const [generating, setGenerating] = useState(false)
   const [genMsg, setGenMsg] = useState<string | null>(null)
+  const t = useTranslations('quiz')
+  const tc = useTranslations('common')
 
   const fetchQuizzes = async () => {
     setLoading(true)
@@ -73,17 +76,17 @@ export default function QuizzesPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Quizzes</h1>
-          <p className="text-sm text-foreground-muted mt-1">Review and manage generated quizzes</p>
+          <h1 className="text-2xl font-bold text-foreground">{t('title')}</h1>
+          <p className="text-sm text-foreground-muted mt-1">{t('subtitle')}</p>
         </div>
         <div className="flex gap-3">
           <select value={filter} onChange={e => setFilter(e.target.value)} className="px-3 py-2 border border-border rounded-lg text-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
-            <option value="draft">Draft</option>
-            <option value="published">Published</option>
-            <option value="archived">Archived</option>
+            <option value="draft">{t('filter_draft')}</option>
+            <option value="published">{t('filter_published')}</option>
+            <option value="archived">{t('filter_archived')}</option>
           </select>
           <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover transition-colors">
-            <Plus className="w-4 h-4" /> Generate
+            <Plus className="w-4 h-4" /> {t('generate')}
           </button>
         </div>
       </div>
@@ -101,20 +104,20 @@ export default function QuizzesPage() {
       ) : items.length === 0 ? (
         <div className="text-center py-16 bg-card rounded-xl border border-border">
           <ClipboardCheck className="w-12 h-12 text-border mx-auto mb-3" />
-          <p className="text-foreground-muted font-medium">No quizzes found</p>
-          <p className="text-sm text-foreground-muted/60 mt-1">Click "Generate" to create a new quiz</p>
+          <p className="text-foreground-muted font-medium">{t('no_quizzes')}</p>
+          <p className="text-sm text-foreground-muted/60 mt-1">{t('generate_hint')}</p>
         </div>
       ) : (
         <div className="bg-card rounded-xl border border-border overflow-hidden">
           <table className="w-full">
             <thead className="bg-background-secondary">
               <tr>
-                <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">Title</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">Grade</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">Topic</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">Questions</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">Status</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">Created</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">{t('col_title')}</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">{t('col_grade')}</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">{t('col_topic')}</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">{t('col_questions')}</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">{t('col_status')}</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">{t('col_created')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -123,7 +126,7 @@ export default function QuizzesPage() {
                   <td className="px-5 py-3">
                     <Link href={`/quizzes/${q.id}`} className="text-sm font-medium text-primary hover:underline">{q.title}</Link>
                   </td>
-                  <td className="px-5 py-3 text-sm text-foreground-muted">Grade {q.grade_level}</td>
+                  <td className="px-5 py-3 text-sm text-foreground-muted">{t('col_grade')} {q.grade_level}</td>
                   <td className="px-5 py-3 text-sm text-foreground-muted">{q.topic}</td>
                   <td className="px-5 py-3 text-sm text-foreground-muted">{q.question_count}</td>
                   <td className="px-5 py-3">
@@ -144,36 +147,36 @@ export default function QuizzesPage() {
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
           <div className="bg-card border border-border rounded-xl shadow-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-foreground">Generate Quiz</h2>
+              <h2 className="text-lg font-semibold text-foreground">{t('generate_title')}</h2>
               <button onClick={() => setShowModal(false)} className="text-foreground-muted hover:text-foreground transition-colors"><X className="w-5 h-5" /></button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="text-sm text-foreground-muted block mb-1">Grade Level</label>
+                <label className="text-sm text-foreground-muted block mb-1">{t('grade_level')}</label>
                 <select value={genGrade} onChange={e => setGenGrade(Number(e.target.value))} className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
-                  {[7, 8, 9, 10, 11, 12].map(g => <option key={g} value={g}>Grade {g}</option>)}
+                  {[7, 8, 9, 10, 11, 12].map(g => <option key={g} value={g}>{t('col_grade')} {g}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-sm text-foreground-muted block mb-1">Topic</label>
+                <label className="text-sm text-foreground-muted block mb-1">{t('topic')}</label>
                 <input type="text" value={genTopic} onChange={e => setGenTopic(e.target.value)} placeholder="e.g., Cell Biology, Genetics" className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background-secondary text-foreground placeholder:text-foreground-muted/50 focus:outline-none focus:ring-2 focus:ring-primary" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm text-foreground-muted block mb-1">Model</label>
+                  <label className="text-sm text-foreground-muted block mb-1">{t('model')}</label>
                   <ModelSelector value={selectedModel} onChange={setSelectedModel} />
                 </div>
                 <div>
-                  <label className="text-sm text-foreground-muted block mb-1">Questions</label>
+                  <label className="text-sm text-foreground-muted block mb-1">{t('col_questions')}</label>
                   <input type="number" min={1} max={30} value={genCount} onChange={e => setGenCount(Number(e.target.value))} className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
                 </div>
               </div>
               <div>
-                <label className="text-sm text-foreground-muted block mb-1">Type</label>
+                <label className="text-sm text-foreground-muted block mb-1">{t('type')}</label>
                 <select value={genType} onChange={e => setGenType(e.target.value)} className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
-                  <option value="multiple_choice">Multiple Choice</option>
-                  <option value="true_false">True/False</option>
-                  <option value="mixed">Mixed</option>
+                  <option value="multiple_choice">{t('multiple_choice')}</option>
+                  <option value="true_false">{t('true_false')}</option>
+                  <option value="mixed">{t('mixed')}</option>
                 </select>
               </div>
               <button
@@ -181,7 +184,7 @@ export default function QuizzesPage() {
                 disabled={generating || !genTopic.trim()}
                 className="w-full py-3 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
               >
-                {generating ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating...</> : 'Generate Quiz'}
+                {generating ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('generating')}</> : t('generate')}
               </button>
             </div>
           </div>

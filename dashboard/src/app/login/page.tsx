@@ -2,8 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { GraduationCap, AlertTriangle, Eye, EyeOff } from 'lucide-react'
 import { setToken } from '@/lib/auth'
+import { setCookie } from '@/lib/cookies'
 import { fetchWithTimeout } from '@/lib/fetch'
 
 export default function LoginPage() {
@@ -19,6 +21,7 @@ export default function LoginPage() {
   const [otpCode, setOtpCode] = useState('')
   const [otpSent, setOtpSent] = useState(false)
   const [selectedRole, setSelectedRole] = useState('teacher')
+  const t = useTranslations('login')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -41,6 +44,9 @@ export default function LoginPage() {
       })
 
       setToken(data.access_token)
+      if (data.language_preference) {
+        setCookie('NEXT_LOCALE', data.language_preference, 365)
+      }
       router.push('/classroom')
     } catch (err: any) {
       setError(err.message)
@@ -94,15 +100,15 @@ export default function LoginPage() {
             <GraduationCap className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground">EthioBio</h1>
-            <p className="text-xs text-foreground-muted">Teacher Dashboard</p>
+            <h1 className="text-xl font-bold text-foreground">{t('brand_short')}</h1>
+            <p className="text-xs text-foreground-muted">{t('teacher_dashboard')}</p>
           </div>
         </div>
 
         {loginMode === 'email' ? (
           <form onSubmit={handleSubmit} className="bg-card rounded-xl border border-border p-6 space-y-4">
             <h2 className="text-lg font-semibold text-foreground text-center">
-              {isRegister ? 'Create Account' : 'Sign In'}
+              {isRegister ? t('create_account') : t('sign_in')}
             </h2>
 
             {error && (
@@ -113,19 +119,19 @@ export default function LoginPage() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-foreground-muted mb-1">Email</label>
+              <label className="block text-sm font-medium text-foreground-muted mb-1">{t('email')}</label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary transition-colors"
-                placeholder="teacher@school.edu"
+                placeholder={t('email_placeholder')}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground-muted mb-1">Password</label>
+              <label className="block text-sm font-medium text-foreground-muted mb-1">{t('password')}</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -134,7 +140,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   className="w-full bg-background border border-border rounded-lg px-3 py-2.5 pr-10 text-sm text-foreground focus:outline-none focus:border-primary transition-colors"
-                  placeholder="••••••••"
+                  placeholder={t('password_placeholder')}
                 />
                 <button
                   type="button"
@@ -148,12 +154,12 @@ export default function LoginPage() {
 
             {isRegister && (
               <div>
-                <label className="block text-sm font-medium text-foreground-muted mb-2">Register as</label>
+                <label className="block text-sm font-medium text-foreground-muted mb-2">{t('register_as')}</label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { value: 'teacher', label: 'Teacher' },
-                    { value: 'student', label: 'Student' },
-                    { value: 'parent', label: 'Parent' },
+                    { value: 'teacher', label: t('teacher') },
+                    { value: 'student', label: t('student') },
+                    { value: 'parent', label: t('parent') },
                   ].map(r => (
                     <button
                       key={r.value}
@@ -177,54 +183,54 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full bg-primary text-white rounded-lg py-2.5 text-sm font-medium hover:bg-primary-hover transition-colors disabled:opacity-50"
             >
-              {loading ? 'Please wait...' : isRegister ? 'Create & Sign In' : 'Sign In'}
+              {loading ? t('please_wait') : isRegister ? t('create_and_sign_in') : t('sign_in')}
             </button>
 
             <p className="text-xs text-center text-foreground-muted">
               {isRegister ? (
-                <>Already have an account?{' '}<button type="button" onClick={() => setIsRegister(false)} className="text-primary hover:underline">Sign in</button></>
+                <>{t('already_have_account')}{' '}<button type="button" onClick={() => setIsRegister(false)} className="text-primary hover:underline">{t('sign_in')}</button></>
               ) : (
-                <>New teacher?{' '}<button type="button" onClick={() => setIsRegister(true)} className="text-primary hover:underline">Create account</button></>
+                <>{t('new_teacher')}{' '}<button type="button" onClick={() => setIsRegister(true)} className="text-primary hover:underline">{t('create_account')}</button></>
               )}
             </p>
 
             <div className="border-t border-border pt-4 mt-4">
               <button type="button" onClick={() => setLoginMode('telegram')}
                 className="w-full py-2 bg-card border border-border text-foreground rounded-lg text-sm hover:bg-border transition-colors">
-                Login with Telegram
+                {t('login_telegram')}
               </button>
             </div>
           </form>
         ) : (
           <div className="bg-card rounded-xl border border-border p-6">
-            <h2 className="text-lg font-semibold text-foreground text-center mb-4">Telegram OTP Login</h2>
+            <h2 className="text-lg font-semibold text-foreground text-center mb-4">{t('telegram_otp')}</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-foreground-muted mb-1">Telegram ID</label>
+                <label className="block text-sm font-medium text-foreground-muted mb-1">{t('telegram_id')}</label>
                 <input
                   type="number" value={telegramId} onChange={e => setTelegramId(e.target.value)}
                   className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary transition-colors"
-                  placeholder="Your numeric Telegram ID" disabled={otpSent}
+                  placeholder={t('telegram_id_hint')} disabled={otpSent}
                 />
               </div>
               {!otpSent ? (
                 <button onClick={sendOtp} disabled={loading || !telegramId.trim()}
                   className="w-full bg-primary text-white rounded-lg py-2.5 text-sm font-medium hover:bg-primary-hover transition-colors disabled:opacity-50">
-                  {loading ? 'Sending...' : 'Send OTP'}
+                  {loading ? t('sending') : t('send_otp')}
                 </button>
               ) : (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-foreground-muted mb-1">6-digit code</label>
+                    <label className="block text-sm font-medium text-foreground-muted mb-1">{t('otp_code')}</label>
                     <input
                       type="text" value={otpCode} onChange={e => setOtpCode(e.target.value)}
                       className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary transition-colors"
-                      placeholder="123456" maxLength={6}
+                      placeholder={t('otp_placeholder')} maxLength={6}
                     />
                   </div>
                   <button onClick={verifyOtp} disabled={loading || otpCode.length !== 6}
                     className="w-full bg-primary text-white rounded-lg py-2.5 text-sm font-medium hover:bg-primary-hover transition-colors disabled:opacity-50">
-                    {loading ? 'Verifying...' : 'Verify & Login'}
+                    {loading ? t('verifying') : t('verify_login')}
                   </button>
                 </>
               )}
@@ -232,7 +238,7 @@ export default function LoginPage() {
               <div className="border-t border-border pt-4 mt-4">
                 <button type="button" onClick={() => { setLoginMode('email'); setOtpSent(false); setOtpCode(''); setTelegramId(''); setError(null) }}
                   className="w-full py-2 bg-card border border-border text-foreground rounded-lg text-sm hover:bg-border transition-colors">
-                  Back to email login
+                  {t('back_to_email')}
                 </button>
               </div>
             </div>

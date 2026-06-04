@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { AlertTriangle, ArrowLeft, RefreshCw, School, TrendingUp } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
@@ -72,6 +73,8 @@ export default function ClassroomOverviewPage() {
   const [data, setData] = useState<ClassroomProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const t = useTranslations('classroom')
+  const tc = useTranslations('common')
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -97,7 +100,7 @@ export default function ClassroomOverviewPage() {
       <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
       <p className="text-red-400">{error}</p>
       <button onClick={load} className="text-sm text-primary hover:underline mt-3 flex items-center gap-1 mx-auto">
-        <RefreshCw className="w-3 h-3" /> Retry
+        <RefreshCw className="w-3 h-3" /> {tc('retry')}
       </button>
     </div>
   )
@@ -105,10 +108,10 @@ export default function ClassroomOverviewPage() {
   if (!data || data.total_students === 0) return (
     <div className="text-center py-16">
       <School className="w-12 h-12 text-border mx-auto mb-3" />
-      <p className="text-foreground-muted font-medium">No classroom data yet</p>
-      <p className="text-sm text-foreground-muted/60 mt-1">Enroll students to see classroom intelligence.</p>
+      <p className="text-foreground-muted font-medium">{t('no_data_title')}</p>
+      <p className="text-sm text-foreground-muted/60 mt-1">{t('no_data_subtitle')}</p>
       <Link href="/classroom" className="text-sm text-primary hover:underline mt-4 inline-block">
-        Back to classrooms
+        {t('back')}
       </Link>
     </div>
   )
@@ -119,20 +122,20 @@ export default function ClassroomOverviewPage() {
   return (
     <div>
       <Link href="/classroom" className="flex items-center gap-2 text-sm text-foreground-muted hover:text-foreground mb-4 transition-colors">
-        <ArrowLeft className="w-4 h-4" /> Back to classrooms
+        <ArrowLeft className="w-4 h-4" /> {t('back')}
       </Link>
 
       {/* Health Score */}
       <div className={`bg-card rounded-xl border p-6 mb-6 ${healthBg(data.classroom_health)}`}>
         <div className="flex items-center gap-2 mb-1">
           <TrendingUp className="w-5 h-5 text-foreground-muted" />
-          <h2 className="text-lg font-semibold text-foreground">Classroom Health</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t('classroom_health')}</h2>
         </div>
         <div className="flex items-baseline gap-3">
           <span className={`text-5xl font-bold ${healthColor(data.classroom_health)}`}>
             {Math.round(data.classroom_health)}%
           </span>
-          <span className="text-sm text-foreground-muted">{data.total_students} students</span>
+          <span className="text-sm text-foreground-muted">{data.total_students} {t('students')}</span>
         </div>
       </div>
 
@@ -140,16 +143,16 @@ export default function ClassroomOverviewPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Readiness Distribution */}
           <div className="bg-card rounded-xl border border-border p-5">
-            <h3 className="text-sm font-semibold text-foreground mb-3">Readiness Distribution</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-3">{t('readiness_distribution')}</h3>
             {totalDist === 0 ? (
-              <p className="text-xs text-foreground-muted">No readiness data available.</p>
+              <p className="text-xs text-foreground-muted">{t('no_readiness_data')}</p>
             ) : (
               <div className="space-y-2">
                 {[
-                  { band: 'Strong', color: 'bg-green-500', text: 'text-green-400' },
-                  { band: 'Ready', color: 'bg-emerald-500', text: 'text-emerald-400' },
-                  { band: 'Developing', color: 'bg-yellow-500', text: 'text-yellow-400' },
-                  { band: 'Critical', color: 'bg-red-500', text: 'text-red-400' },
+                  { band: t('band_strong'), color: 'bg-green-500', text: 'text-green-400' },
+                  { band: t('band_ready'), color: 'bg-emerald-500', text: 'text-emerald-400' },
+                  { band: t('band_developing'), color: 'bg-yellow-500', text: 'text-yellow-400' },
+                  { band: t('band_critical'), color: 'bg-red-500', text: 'text-red-400' },
                 ].map(({ band, color, text }) => {
                   const count = dist[band] || 0
                   const pct = totalDist > 0 ? (count / totalDist) * 100 : 0
@@ -169,9 +172,9 @@ export default function ClassroomOverviewPage() {
 
           {/* Mastery Heatmap */}
           <div className="bg-card rounded-xl border border-border p-5">
-            <h3 className="text-sm font-semibold text-foreground mb-3">Topic Heatmap</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-3">{t('topic_heatmap')}</h3>
             {Object.keys(data.mastery_heatmap).length === 0 ? (
-              <p className="text-xs text-foreground-muted">No topic data available yet.</p>
+              <p className="text-xs text-foreground-muted">{t('no_topic_data')}</p>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {Object.entries(data.mastery_heatmap).sort((a, b) => a[1] - b[1]).map(([topic, score]) => (
@@ -187,10 +190,10 @@ export default function ClassroomOverviewPage() {
           {/* Risk Students */}
           <div className="bg-card rounded-xl border border-border p-5">
             <h3 className="text-sm font-semibold text-foreground mb-3">
-              At-Risk Students ({data.risk_students.length})
+              {t('at_risk_students')} ({data.risk_students.length})
             </h3>
             {data.risk_students.length === 0 ? (
-              <p className="text-xs text-foreground-muted">No students at risk — all on track.</p>
+              <p className="text-xs text-foreground-muted">{t('no_risk_students')}</p>
             ) : (
               <div className="space-y-2">
                 {data.risk_students.sort((a, b) => a.readiness_score - b.readiness_score).map(s => (
@@ -202,7 +205,7 @@ export default function ClassroomOverviewPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-xs text-foreground-muted">{Math.round(s.readiness_score)}% readiness</span>
+                      <span className="text-xs text-foreground-muted">{Math.round(s.readiness_score)}% {t('readiness_suffix')}</span>
                       <span className="text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded">
                         {s.recommended_action.replace(/_/g, ' ')}
                       </span>
@@ -217,9 +220,9 @@ export default function ClassroomOverviewPage() {
         <div className="space-y-4">
           {/* Intervention Queue */}
           <div className="bg-card rounded-xl border border-border p-5">
-            <h3 className="text-sm font-semibold text-foreground mb-3">Intervention Queue</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-3">{t('intervention_queue')}</h3>
             {data.intervention_candidates.length === 0 ? (
-              <p className="text-xs text-foreground-muted">No interventions needed — all students on track.</p>
+              <p className="text-xs text-foreground-muted">{t('no_interventions')}</p>
             ) : (
               <div className="space-y-2">
                 {data.intervention_candidates.slice(0, 10).map((int, i) => (
@@ -232,14 +235,14 @@ export default function ClassroomOverviewPage() {
                       <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">
                         {int.action_type.replace(/_/g, ' ')}
                       </span>
-                      <span className="text-foreground-muted">{(int.priority * 100).toFixed(0)}% priority</span>
+                      <span className="text-foreground-muted">{(int.priority * 100).toFixed(0)}% {t('priority_label')}</span>
                     </div>
                     <p className="text-foreground-muted/70">{int.reason}</p>
                   </div>
                 ))}
                 {data.intervention_candidates.length > 10 && (
                   <p className="text-xs text-foreground-muted text-center mt-2">
-                    +{data.intervention_candidates.length - 10} more
+                    +{data.intervention_candidates.length - 10} {t('more_count')}
                   </p>
                 )}
               </div>
