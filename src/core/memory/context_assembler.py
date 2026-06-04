@@ -72,20 +72,10 @@ class ContextAssembler:
         ]
 
         ctx = state.get("educational_context")
-        recent_turns = []
         if isinstance(ctx, dict):
-            recent_turns = ctx.get("recent_turns", [])
-            ctx_text = {k: v for k, v in ctx.items() if k != "recent_turns"}
+            ctx_text = {k: v for k, v in ctx.items() if k not in ("messages", "recent_turns")}
             if ctx_text:
                 lines.append(f"- Educational Context: {ctx_text}")
-
-        if recent_turns:
-            turn_lines = []
-            for turn in recent_turns[-4:]:
-                role = turn.get("role", "?")
-                content = turn.get("content", "")[:200]
-                turn_lines.append(f"  {role}: {content}")
-            lines.append("- Recent Conversation:\n" + "\n".join(turn_lines))
 
         questions = state.get("unresolved_questions")
         if questions and isinstance(questions, list) and len(questions) > 0:
