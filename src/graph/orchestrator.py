@@ -62,6 +62,7 @@ async def run_graph(
     socratic_focus: str = "",
     socratic_understanding: str = "",
     socratic_next_question: str = "",
+    messages: list[dict] | None = None,
 ) -> GraphOutput:
     router = ModelRouter(preferred_model=preferred_model)
     adapter = VectorStoreAdapter()
@@ -84,6 +85,7 @@ async def run_graph(
         socratic_focus=socratic_focus,
         socratic_understanding=socratic_understanding,
         socratic_next_question=socratic_next_question,
+        messages=messages or [],
     )
 
     graph = build_graph(router, adapter)

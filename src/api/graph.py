@@ -68,10 +68,12 @@ async def graph_chat(request: GraphChatRequest, db: AsyncSession = Depends(get_s
     try:
         mem_session = None
         socratic_state_rec = None
+        conversation_messages: list[dict] = []
         if request.user_id:
             mem_session = await session_manager.get_or_create_active_session(
                 request.user_id, topic=request.topic, db=db,
             )
+            conversation_messages = session_manager.get_messages(mem_session)
             if request.socratic_mode and request.topic:
                 socratic_state_rec = await socratic_manager.get_state(
                     request.user_id, request.topic, db,
@@ -126,6 +128,7 @@ async def graph_chat(request: GraphChatRequest, db: AsyncSession = Depends(get_s
                 socratic_state_rec.student_understanding if socratic_state_rec else ""
             ),
             socratic_next_question=socratic_state_rec.next_question if socratic_state_rec else "",
+            messages=conversation_messages,
         )
 
         if request.user_id and request.socratic_mode and request.topic:
@@ -142,19 +145,10 @@ async def graph_chat(request: GraphChatRequest, db: AsyncSession = Depends(get_s
             )
 
         if mem_session:
-            if not isinstance(mem_session.educational_context, dict):
-                mem_session.educational_context = {}
-            turns = mem_session.educational_context.setdefault("recent_turns", [])
-            turns.append({
-                "role": "user",
-                "content": request.question,
-            })
+            conversation_messages.append({"role": "user", "content": request.question})
             if result.answer:
-                turns.append({
-                    "role": "assistant",
-                    "content": result.answer,
-                })
-            mem_session.educational_context["recent_turns"] = turns[-10:]
+                conversation_messages.append({"role": "assistant", "content": result.answer})
+            session_manager.set_messages(mem_session, conversation_messages[-20:])
 
             mem_session.unresolved_questions = [
                 getattr(result, attr, "")
