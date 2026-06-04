@@ -16,7 +16,7 @@ from jinja2 import Environment, FileSystemLoader
 from sqlalchemy import select
 
 from src.agents.weak_topic_detection import get_weak_topics
-from src.database.models import NotificationPreference, SpacedRepetitionSchedule
+from src.database.models import NotificationPreference, SpacedRepetitionSchedule, User
 from src.database.session import async_session_factory
 from src.notifications.email_service import send_email
 
@@ -30,7 +30,6 @@ async def main():
         "src", "notifications", "templates",
     )
     env = Environment(loader=FileSystemLoader(template_dir))
-    template = env.get_template("digest.html")
 
     async with factory() as session:
         result = await session.execute(
@@ -68,13 +67,26 @@ async def main():
                     for d in due
                 ]
 
+                lang = "en"
+                user_result = await session.execute(
+                    select(User.language_preference).where(User.id == prefs.user_id)
+                )
+                user_lang = user_result.scalar_one_or_none()
+                if user_lang in ("am", "both"):
+                    lang = "am"
+
+                template_name = "digest.html" if lang == "en" else "digest_am.html"
+                template = env.get_template(template_name)
                 html = template.render(
                     frequency=prefs.digest_frequency.capitalize(),
                     mastery_changes=mastery_changes,
                     due_reviews=due_reviews,
                 )
 
-                subject = f"{prefs.digest_frequency.capitalize()} Biology Progress Digest"
+                subject_en = f"{prefs.digest_frequency.capitalize()} Biology Progress Digest"
+                freq_am = "ዕለታዊ" if prefs.digest_frequency == "daily" else "ሳምንታዊ"
+                subject_am = f"{freq_am} የባዮሎጂ እድገት ማጠቃለያ"
+                subject = subject_am if lang == "am" else subject_en
                 await send_email(prefs.email, subject, html)
 
             except Exception as e:

@@ -30,6 +30,7 @@ from src.database.models import (
     RecoveryTask,
     StudentMastery,
     TopicMasteryHistory,
+    User,
 )
 from src.database.session import get_session
 from src.llm.router import ModelRouter
@@ -197,17 +198,35 @@ async def complete_recovery_task(
                     plan.completed_tasks / max(plan.total_tasks, 1) * 100, 1
                 )
                 if improvement >= MILESTONE_EMAIL_THRESHOLD:
-                    template = _TEMPLATE_ENV.get_template("milestone_alert.html")
+                    lang = "en"
+                    user_result = await session.execute(
+                        select(User.language_preference).where(User.id == user_id)
+                    )
+                    user_lang = user_result.scalar_one_or_none()
+                    if user_lang in ("am", "both"):
+                        lang = "am"
+
+                    template_name = (
+                        "milestone_alert.html" if lang == "en" else "milestone_alert_am.html"
+                    )
+                    template = _TEMPLATE_ENV.get_template(template_name)
+                    message_en = (
+                        f"You've completed {plan.completed_tasks} of {plan.total_tasks}"
+                        f" recovery tasks for {plan.topic}!"
+                    )
+                    message_am = (
+                        f"ለ{plan.topic} ከ{plan.total_tasks} ውስጥ {plan.completed_tasks}"
+                        f" የማገገሚያ ተግባራትን አጠናቀዋል!"
+                    )
                     html = template.render(
                         title=_MILESTONE_EMAIL_TITLE,
-                        message=(
-                            f"You've completed {plan.completed_tasks} of {plan.total_tasks}"
-                            f" recovery tasks for {plan.topic}!"
-                        ),
+                        message=message_am if lang == "am" else message_en,
                         improvement_pct=f"{improvement:.0f}",
                         topic=plan.topic,
                     )
-                    subject = f"Milestone: {improvement:.0f}% complete in {plan.topic}"
+                    subject_en = f"Milestone: {improvement:.0f}% complete in {plan.topic}"
+                    subject_am = f"የእድገት ደረጃ: በ{plan.topic} ላይ {improvement:.0f}% ተጠናቋል"
+                    subject = subject_am if lang == "am" else subject_en
                     await send_email(prefs.email, subject, html)
         except Exception as e:
             logger.error("recovery_milestone_email_error", error=str(e))
