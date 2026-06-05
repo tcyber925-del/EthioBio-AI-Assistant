@@ -8,7 +8,10 @@
     "cancelled": "ተሰርዟል።",
     "usage_ask": "አጠቃቀም፦ /ask <የባዮሎጂ ጥያቄዎ>",
     "thinking": "በማሰብ ላይ...",
-    "generating": "በማዘጋጀት ላይ..."
+    "generating": "በማዘጋጀት ላይ...",
+    "choose_option": "አንድ አማራጭ ይምረጡ:",
+    "teacher_tools": "👨‍🏫 የመምህራን መሣሪያዎች:",
+    "main_menu": "ዋና ሜኑ:"
   },
   "help": {
     "text": "ኢትዮባዮ AI ረዳት — እገዛ\n\nትዕዛዞች፦\n/start — ሜኑ አሳይ\n/help — ይህ መልእክት\n/ask <ጥያቄ> — የባዮሎጂ ጥያቄ ጠይቅ\n/quiz [ክፍል] [ርዕስ] — ፈተና ውሰድ\n/grade <7-12> — የክፍል ደረጃ አዘጋጅ\n/language <en|am|both> — ቋንቋ አዘጋጅ\n/socratic — የሶክራቲክ ሁነታን ቀይር\n/hint — ቀጣዩን የፍንጭ ደረጃ አግኝ\n/cancel — ሂደቱን ሰርዝ\n\nማንኛውንም የባዮሎጂ ጥያቄ በመተየብ ይጀምሩ!"

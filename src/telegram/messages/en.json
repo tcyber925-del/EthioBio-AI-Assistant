@@ -8,7 +8,10 @@
     "cancelled": "Cancelled.",
     "usage_ask": "Usage: /ask <your biology question>",
     "thinking": "Thinking...",
-    "generating": "Generating..."
+    "generating": "Generating...",
+    "choose_option": "Choose an option:",
+    "teacher_tools": "Teacher Tools:",
+    "main_menu": "Main menu:"
   },
   "help": {
     "text": "EthioBio AI Assistant — Help\n\nCommands:\n/start — Show menu\n/help — This message\n/ask <question> — Ask a biology question\n/quiz [grade] [topic] — Generate a quiz\n/grade <7-12> — Set your default grade\n/language <en|am|both> — Set language\n/socratic — Toggle Socratic tutoring mode\n/hint — Get the next hint level (1-3) in Socratic mode\n/cancel — Cancel current operation\n\nOr just type any biology question to get started!"

@@ -761,13 +761,13 @@ async def menu(update: Update, context):
         await query.edit_message_reply_markup(reply_markup=None)
     except Exception:
         pass
-    await query.message.reply_text("Choose an option:", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
+    await query.message.reply_text(t("common.choose_option", _lang(context)), reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
 
 
 async def handle_teacher_tools(update: Update, context):
     query = update.callback_query
     await query.answer()
-    await query.message.reply_text("Teacher Tools:", reply_markup=teacher_tools_keyboard(language=_lang(context)))
+    await query.message.reply_text(t("common.teacher_tools", _lang(context)), reply_markup=teacher_tools_keyboard(language=_lang(context)))
 
 
 async def handle_open_quizzes(update: Update, context):
@@ -843,7 +843,7 @@ async def end_conversation(update: Update, context):
         await query.edit_message_reply_markup(reply_markup=None)
     except Exception:
         pass
-    await query.message.reply_text("Choose an option:", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
+    await query.message.reply_text(t("common.choose_option", _lang(context)), reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
     return ConversationHandler.END
 
 
@@ -1487,7 +1487,7 @@ async def handle_progress(update: Update, context):
 async def handle_language(update: Update, context):
     query = update.callback_query
     await query.answer()
-    await query.message.reply_text("Choose your language:", reply_markup=language_keyboard(language=_lang(context)))
+    await query.message.reply_text(t("choose_language", _lang(context)), reply_markup=language_keyboard(language=_lang(context)))
 
 
 async def handle_language_select(update: Update, context):
@@ -1551,7 +1551,7 @@ async def handle_model_selection(update: Update, context):
             await query.edit_message_reply_markup(reply_markup=None)
         except Exception:
             pass
-        await query.message.reply_text("Main menu:", reply_markup=main_menu_keyboard(language=_lang(context)))
+        await query.message.reply_text(t("common.main_menu", _lang(context)), reply_markup=main_menu_keyboard(language=_lang(context)))
         return
 
     if data == "model:back_providers":
