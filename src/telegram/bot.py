@@ -496,13 +496,13 @@ async def reveal_command(update: Update, context):
     question = context.user_data.get("ask_question", "")
     if not question:
         await update.message.reply_text(
-            "No active question. Ask a question first with /ask or select Tutor from the menu.",
+            t("tutor.no_question", _lang(context)),
             reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
         )
         return
     hint_level = context.user_data.get("hint_level", 0)
     context.user_data["reveal_answer"] = True
-    await update.message.reply_text("🔍 Revealing the full answer...")
+    await update.message.reply_text(t("tutor.revealing_answer", _lang(context)))
     try:
         telegram_id = update.effective_user.id if update.effective_user else None
         async with async_session_factory()() as _mem_db:
@@ -546,7 +546,7 @@ async def reveal_command(update: Update, context):
             except Exception as e:
                 logger.warning("memory_turns_save_error", error=str(e))
 
-        attempt_msg = f"\n\n📊 You used {hint_level} hint(s) before revealing the answer." if hint_level > 0 else "\n\n📊 You revealed the answer without using hints."
+        attempt_msg = t("tutor.hint_usage", _lang(context), count=hint_level) if hint_level > 0 else ""
         response = result["answer"] + attempt_msg
         await _reply_long(
             update.message, response,
@@ -564,10 +564,8 @@ async def reveal_command(update: Update, context):
 async def socratic_command(update: Update, context):
     current = context.user_data.get("socratic_mode", False)
     context.user_data["socratic_mode"] = not current
-    status = "ON 🧠" if context.user_data["socratic_mode"] else "OFF"
     await update.message.reply_text(
-        f"Socratic Mode is now {status}.\n\n"
-        "In Socratic mode, I'll guide you with questions rather than giving direct answers.",
+        t("tutor.socratic_on" if context.user_data["socratic_mode"] else "tutor.socratic_off", _lang(context)),
         reply_markup=main_menu_keyboard(context.user_data["socratic_mode"], language=_lang(context)),
     )
 
@@ -577,14 +575,14 @@ async def hint_command(update: Update, context):
     reveal = context.user_data.get("reveal_answer", False)
     if reveal:
         await update.message.reply_text(
-            "The answer has already been revealed! Ask a new question to continue.",
+            t("tutor.hint_revealed", _lang(context)),
             reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
         )
         return
     next_level = hint_level + 1
     if next_level > 3:
         await update.message.reply_text(
-            "You've used all hint levels. Tap 'Reveal Answer' to see the full explanation.",
+            t("tutor.hint_exhausted", _lang(context)),
             reply_markup=hint_keyboard(hint_level, reveal, language=_lang(context)),
         )
         return
@@ -592,11 +590,11 @@ async def hint_command(update: Update, context):
     question = context.user_data.get("ask_question", "")
     if not question:
         await update.message.reply_text(
-            "No active question. Ask a question first with /ask or select Tutor from the menu.",
+            t("tutor.no_question", _lang(context)),
             reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
         )
         return
-    await update.message.reply_text(f"💡 Hint level {next_level}/3...")
+    await update.message.reply_text(t("tutor.hint_level", _lang(context), level=next_level))
     try:
         telegram_id = update.effective_user.id if update.effective_user else None
         async with async_session_factory()() as _mem_db:
@@ -647,7 +645,7 @@ async def hint_command(update: Update, context):
 
         response = result["answer"]
         if result.get("misconception_detected"):
-            response += "\n\n💡 I noticed a misunderstanding — gently corrected above."
+            response += t("tutor.misconception", _lang(context))
         await _reply_long(
             update.message, response,
             reply_markup=hint_keyboard(next_level, False, language=_lang(context)),
@@ -656,7 +654,7 @@ async def hint_command(update: Update, context):
     except Exception as e:
         logger.error("hint_command_error", error=str(e))
         await update.message.reply_text(
-            "Sorry, I encountered an error.",
+            t("common.error", _lang(context)),
             reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
         )
 
@@ -717,9 +715,9 @@ async def ask_command(update: Update, context):
 
                 await router_llm.close()
             if result.get("misconception_detected"):
-                response += "\n\n💡 I noticed a misunderstanding — gently corrected above."
+                response += t("tutor.misconception", _lang(context))
             if result.get("sources"):
-                response += "\n\n---\nSources: " + ", ".join(result["sources"][:3])
+                response += t("tutor.sources", _lang(context), sources=", ".join(result["sources"][:3]))
             if telegram_id:
                 await _save_tutor_rewards(telegram_id, context)
                 xp_awarded = context.user_data.get("last_xp_awarded", 0)
@@ -833,7 +831,7 @@ async def handle_tutor_grade(update: Update, context):
     grade = int(query.data.split("_")[-1])
     context.user_data["tutor_grade"] = grade
     await query.edit_message_text(
-        f"Grade {grade} selected. Send me your biology question. I'll help you understand it!",
+        t("tutor.grade_prompt", _lang(context), grade=grade),
         reply_markup=back_keyboard(language=_lang(context)),
     )
     return TUTOR
@@ -956,9 +954,9 @@ async def handle_question(update: Update, context):
                     logger.warning("memory_turns_save_error", error=str(e))
 
         if result.get("misconception_detected"):
-            response += "\n\n💡 I noticed a misunderstanding — gently corrected above."
+            response += t("tutor.misconception", _lang(context))
         if result.get("sources"):
-            response += "\n\n---\nSources: " + ", ".join(result["sources"][:3])
+            response += t("tutor.sources", _lang(context), sources=", ".join(result["sources"][:3]))
         telegram_id = update.effective_user.id if update.effective_user else None
         if telegram_id:
             await _save_tutor_rewards(telegram_id, context)
@@ -1521,14 +1519,12 @@ async def handle_socratic_toggle(update: Update, context):
     await query.answer()
     current = context.user_data.get("socratic_mode", False)
     context.user_data["socratic_mode"] = not current
-    status = "ON 🧠" if context.user_data["socratic_mode"] else "OFF"
     try:
         await query.edit_message_reply_markup(reply_markup=None)
     except Exception:
         pass
     await query.message.reply_text(
-        f"Socratic Mode is now {status}.\n\n"
-        "In Socratic mode, I'll guide you with questions rather than giving direct answers.",
+        t("tutor.socratic_on" if context.user_data["socratic_mode"] else "tutor.socratic_off", _lang(context)),
         reply_markup=main_menu_keyboard(not current, language=_lang(context)),
     )
 
@@ -1660,7 +1656,7 @@ async def handle_hint(update: Update, context):
         except Exception:
             pass
         await query.message.reply_text(
-            "The answer has already been revealed! Ask a new question.",
+            t("tutor.hint_revealed", _lang(context)),
             reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
         )
         return
@@ -1671,12 +1667,12 @@ async def handle_hint(update: Update, context):
         except Exception:
             pass
         await query.message.reply_text(
-            "No active question. Ask a question first.",
+            t("tutor.no_question", _lang(context)),
             reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
         )
         return
     context.user_data["hint_level"] = hint_level
-    hint_msg = await query.message.reply_text(f"💡 Hint level {hint_level}/3...")
+    hint_msg = await query.message.reply_text(t("tutor.hint_level", _lang(context), level=hint_level))
     try:
         telegram_id = update.effective_user.id if update.effective_user else None
         async with async_session_factory()() as _mem_db:
@@ -1722,7 +1718,7 @@ async def handle_hint(update: Update, context):
 
         response = result["answer"]
         if result.get("misconception_detected"):
-            response += "\n\n💡 I noticed a misunderstanding — gently corrected above."
+            response += t("tutor.misconception", _lang(context))
         await _reply_long(
             hint_msg, response,
             reply_markup=hint_keyboard(hint_level, False, language=_lang(context)),
@@ -1731,7 +1727,7 @@ async def handle_hint(update: Update, context):
     except Exception as e:
         logger.error("hint_callback_error", error=str(e))
         await hint_msg.edit_text(
-            "Sorry, I encountered an error.",
+            t("common.error", _lang(context)),
             reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
         )
 
@@ -1746,13 +1742,13 @@ async def handle_reveal_answer(update: Update, context):
         except Exception:
             pass
         await query.message.reply_text(
-            "No active question. Ask a question first.",
+            t("tutor.no_question", _lang(context)),
             reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
         )
         return
     hint_level = context.user_data.get("hint_level", 0)
     context.user_data["reveal_answer"] = True
-    reveal_msg = await query.message.reply_text("🔍 Revealing the full answer...")
+    reveal_msg = await query.message.reply_text(t("tutor.revealing_answer", _lang(context)))
     try:
         telegram_id = update.effective_user.id if update.effective_user else None
         async with async_session_factory()() as _mem_db:
@@ -1796,7 +1792,7 @@ async def handle_reveal_answer(update: Update, context):
             except Exception as e:
                 logger.warning("memory_turns_save_error", error=str(e))
 
-        attempt_msg = f"\n\n📊 You used {hint_level} hint(s) before revealing the answer." if hint_level > 0 else "\n\n📊 You revealed the answer without using hints."
+        attempt_msg = t("tutor.hint_usage", _lang(context), count=hint_level) if hint_level > 0 else ""
         response = result["answer"] + attempt_msg
         await _reply_long(
             reveal_msg, response,
@@ -1806,7 +1802,7 @@ async def handle_reveal_answer(update: Update, context):
     except Exception as e:
         logger.error("reveal_answer_error", error=str(e))
         await reveal_msg.edit_text(
-            "Sorry, I encountered an error.",
+            t("common.error", _lang(context)),
             reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
         )
 
