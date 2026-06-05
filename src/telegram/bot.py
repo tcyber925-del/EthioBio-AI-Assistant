@@ -131,9 +131,7 @@ async def register_parent(update: Update, context):
     email = (context.args[0] if context.args else "").strip().lower()
     if not email:
         await update.message.reply_text(
-            "Usage: <code>/parent_register your@email.com</code>\n\n"
-            "You need a parent account on the dashboard first. "
-            "Register at the dashboard, then link your Telegram here.",
+            t("parent.usage", _lang(context)),
             parse_mode="HTML",
         )
         return
@@ -151,20 +149,18 @@ async def register_parent(update: Update, context):
             user = result.scalar_one_or_none()
             if not user:
                 await update.message.reply_text(
-                    "No parent account found with that email. "
-                    "Make sure you registered as a parent on the dashboard first."
+                    t("parent.no_account", _lang(context))
                 )
                 return
             if user.telegram_id and user.telegram_id != update.effective_user.id:
                 await update.message.reply_text(
-                    "This account is already linked to another Telegram user. "
-                    "Contact support if you need to relink."
+                    t("parent.already_linked", _lang(context))
                 )
                 return
             user.telegram_id = update.effective_user.id
             await session.commit()
             await update.message.reply_text(
-                "Telegram linked! Use /children to view your children's progress."
+                t("parent.linked", _lang(context))
             )
     await _db_try(_link)
 
@@ -184,7 +180,7 @@ async def list_children(update: Update, context):
             user = user_result.scalar_one_or_none()
             if not user or user.role != UserRole.parent:
                 await update.message.reply_text(
-                    "Please register first with /parent_register"
+                    t("parent.need_register", _lang(context))
                 )
                 return
 
@@ -231,11 +227,11 @@ async def list_children(update: Update, context):
     await _db_try(_fetch)
 
 
-async def _send_child_progress(session, child_id, telegram_id, update, query=None):
+async def _send_child_progress(session, child_id, telegram_id, update, query=None, context=None):
     child_result = await session.execute(select(User).where(User.id == child_id))
     child = child_result.scalar_one_or_none()
     if not child:
-        text = "Student not found."
+        text = t("parent.no_student", _lang(context))
         (query.edit_message_text if query else update.message.reply_text)(text)
         return
 
@@ -304,7 +300,7 @@ async def handle_parent_child_progress(update: Update, context):
             )
             parent = user_result.scalar_one_or_none()
             if not parent:
-                await query.edit_message_text("Parent account not found.")
+                await query.edit_message_text(t("parent.no_parent", _lang(context)))
                 return
 
             ownership = await session.execute(
@@ -314,10 +310,10 @@ async def handle_parent_child_progress(update: Update, context):
                 )
             )
             if not ownership.scalar_one_or_none():
-                await query.edit_message_text("Child not found.")
+                await query.edit_message_text(t("parent.no_child", _lang(context)))
                 return
 
-            await _send_child_progress(session, child_id, update.effective_user.id, update, query)
+            await _send_child_progress(session, child_id, update.effective_user.id, update, query, context)
     await _db_try(_fetch)
 
 
@@ -335,7 +331,7 @@ async def child_progress(update: Update, context):
             )
             user = user_result.scalar_one_or_none()
             if not user or user.role != UserRole.parent:
-                await update.message.reply_text("Please register first with /parent_register")
+                await update.message.reply_text(t("parent.need_register", _lang(context)))
                 return
 
             children_result = await session.execute(
@@ -352,7 +348,7 @@ async def child_progress(update: Update, context):
                 return
 
             if len(children) == 1:
-                await _send_child_progress(session, str(children[0].id), telegram_id, update)
+                await _send_child_progress(session, str(children[0].id), telegram_id, update, context=context)
                 return
 
             keyboard = []
@@ -387,7 +383,7 @@ async def handle_parent_summary(update: Update, context):
             )
             parent = user_result.scalar_one_or_none()
             if not parent:
-                await query.edit_message_text("Parent account not found.")
+                await query.edit_message_text(t("parent.no_parent", _lang(context)))
                 return
 
             ownership = await session.execute(
@@ -397,13 +393,13 @@ async def handle_parent_summary(update: Update, context):
                 )
             )
             if not ownership.scalar_one_or_none():
-                await query.edit_message_text("Child not found.")
+                await query.edit_message_text(t("parent.no_child", _lang(context)))
                 return
 
             child_result = await session.execute(select(User).where(User.id == child_id))
             child = child_result.scalar_one_or_none()
             if not child:
-                await query.edit_message_text("Student not found.")
+                await query.edit_message_text(t("parent.no_student", _lang(context)))
                 return
 
             profile_result = await session.execute(
@@ -477,9 +473,9 @@ async def grade_command(update: Update, context):
         grade = int(args[0])
         if 7 <= grade <= 12:
             context.user_data["grade_level"] = grade
-            await update.message.reply_text(f"Default grade set to Grade {grade}.")
+            await update.message.reply_text(t("grade.set", _lang(context), grade=grade))
             return
-    await update.message.reply_text("Usage: /grade <7-12>", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
+    await update.message.reply_text(t("grade.usage", _lang(context)), reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
 
 
 async def language_command(update: Update, context):
@@ -487,9 +483,9 @@ async def language_command(update: Update, context):
     lang_map = {"en": "English", "am": "Amharic", "both": "Bilingual"}
     if args and args[0] in lang_map:
         context.user_data["language"] = args[0]
-        await update.message.reply_text(f"Language set to {lang_map[args[0]]}.")
+        await update.message.reply_text(t("language.set_cmd", _lang(context), name=lang_map[args[0]]))
     else:
-        await update.message.reply_text("Usage: /language <en|am|both>", reply_markup=language_keyboard(language=_lang(context)))
+        await update.message.reply_text(t("language.usage", _lang(context)), reply_markup=language_keyboard(language=_lang(context)))
 
 
 async def reveal_command(update: Update, context):
@@ -1509,7 +1505,7 @@ async def handle_language_select(update: Update, context):
             )
     await _db_try(_sync_language)
     await query.message.reply_text(
-        t("language_set", _lang(context)).format(name=name),
+        t("language.set", _lang(context), name=name),
         reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
     )
 
@@ -1541,7 +1537,7 @@ async def model_command(update: Update, context):
         )
     except Exception as e:
         logger.error("model_command_error", error=str(e))
-        await update.message.reply_text("Failed to fetch models. Is the API server running?", reply_markup=main_menu_keyboard(language=_lang(context)))
+        await update.message.reply_text(t("model.no_models", _lang(context)), reply_markup=main_menu_keyboard(language=_lang(context)))
 
 
 async def handle_model_selection(update: Update, context):
@@ -1573,7 +1569,7 @@ async def handle_model_selection(update: Update, context):
             )
         except Exception as e:
             logger.error("model_providers_error", error=str(e))
-            await query.message.reply_text("Failed to fetch providers.", reply_markup=main_menu_keyboard(language=_lang(context)))
+            await query.message.reply_text(t("model.no_providers", _lang(context)), reply_markup=main_menu_keyboard(language=_lang(context)))
         return
 
     if data == "model:refresh":
@@ -1592,7 +1588,7 @@ async def handle_model_selection(update: Update, context):
             )
         except Exception as e:
             logger.error("model_refresh_error", error=str(e))
-            await query.message.reply_text("Failed to refresh models.", reply_markup=main_menu_keyboard(language=_lang(context)))
+            await query.message.reply_text(t("model.refresh_failed", _lang(context)), reply_markup=main_menu_keyboard(language=_lang(context)))
         return
 
     if data.startswith("model:provider:"):
@@ -1615,7 +1611,7 @@ async def handle_model_selection(update: Update, context):
             )
         except Exception as e:
             logger.error("model_provider_models_error", error=str(e))
-            await query.message.reply_text("Failed to fetch models.", reply_markup=main_menu_keyboard(language=_lang(context)))
+            await query.message.reply_text(t("model.no_models", _lang(context)), reply_markup=main_menu_keyboard(language=_lang(context)))
         return
 
     if data.startswith("m:"):
@@ -1641,7 +1637,7 @@ async def handle_model_selection(update: Update, context):
             )
         except Exception as e:
             logger.error("model_set_error", error=str(e))
-            await query.message.reply_text(f"Failed to set model: {model_id}", reply_markup=main_menu_keyboard(language=_lang(context)))
+            await query.message.reply_text(t("model.set_failed", _lang(context), model=model_id), reply_markup=main_menu_keyboard(language=_lang(context)))
         return
 
 
@@ -1869,7 +1865,7 @@ async def recovery_command(update: Update, context):
             plans = list(plans_result.scalars().all())
 
             if not plans:
-                await _reply_long(update, "📋 *No Active Recovery Plans*\n\nComplete quizzes to identify weak areas — a recovery plan will be generated automatically when needed.", parse_mode="Markdown")
+                await _reply_long(update, t("recovery.no_plans", _lang(context)), parse_mode="Markdown")
                 return
 
             from src.agents.weak_topic_detection import get_weak_topics
@@ -1922,7 +1918,7 @@ async def handle_recovery_complete_task(update: Update, context):
             result = await session.execute(select(User).where(User.telegram_id == update.effective_user.id))
             user = result.scalar_one_or_none()
             if not user:
-                await query.edit_message_text("❌ User not found. Please /start first.")
+                await query.edit_message_text(t("recovery.user_not_found", _lang(context)))
                 return
 
             task_result = await session.execute(
@@ -1930,10 +1926,10 @@ async def handle_recovery_complete_task(update: Update, context):
             )
             task = task_result.scalar_one_or_none()
             if not task:
-                await query.edit_message_text("❌ Task not found.")
+                await query.edit_message_text(t("recovery.task_not_found", _lang(context)))
                 return
             if task.is_completed:
-                await query.edit_message_text(f"✅ Task *{task.title}* was already completed!", parse_mode="Markdown")
+                await query.edit_message_text(t("recovery.task_done", _lang(context), title=task.title), parse_mode="Markdown")
                 return
 
             task.is_completed = True
@@ -1990,14 +1986,14 @@ async def progress_command(update: Update, context):
             result = await session.execute(select(User).where(User.telegram_id == update.effective_user.id))
             user = result.scalar_one_or_none()
             if not user:
-                await _reply_long(update, "❌ You need to /start first.")
+                await _reply_long(update, t("progress.need_start", _lang(context)))
                 return
 
             from src.agents.weak_topic_detection import get_weak_topics
             weak_topics = await get_weak_topics(user.id, session)
 
             if not weak_topics:
-                await _reply_long(update, "📊 *Mastery Progress*\n\nNo weak topics detected! You're doing great across all subjects.", parse_mode="Markdown")
+                await _reply_long(update, t("progress.no_weak", _lang(context)), parse_mode="Markdown")
                 return
 
             lines = ["📊 *Mastery Progress*"]
@@ -2026,7 +2022,7 @@ async def settings_command(update: Update, context):
             user_result = await session.execute(select(User).where(User.telegram_id == telegram_id))
             user = user_result.scalar_one_or_none()
             if not user:
-                await update.message.reply_text("Please /start first to register.")
+                await update.message.reply_text(t("progress.need_start", _lang(context)))
                 return
 
             prefs_result = await session.execute(
@@ -2034,22 +2030,11 @@ async def settings_command(update: Update, context):
             )
             prefs = prefs_result.scalar_one_or_none()
 
-            email_status = prefs.email if prefs else "Not set"
-            verified = "✅" if prefs and prefs.email_verified else "❌"
             milestone = "✅ On" if prefs and prefs.milestone_alerts else "⬜ Off"
             reminders = "✅ On" if prefs and prefs.review_reminders else "⬜ Off"
             digest = (prefs.digest_frequency.capitalize() if prefs else "Never")
 
-            lines = [
-                "⚙️ *Notification Settings*",
-                "",
-                f"📧 Email: `{email_status}` {verified}",
-                f"📊 Milestone Alerts: {milestone}",
-                f"🔔 Review Reminders: {reminders}",
-                f"📬 Digest: {digest}",
-                "",
-                "Use `/email you@example.com` to set your email.",
-            ]
+            text = t("settings.text", _lang(context), milestone=milestone, reminder=reminders, digest=digest)
 
             buttons = []
             row = []
@@ -2073,7 +2058,7 @@ async def settings_command(update: Update, context):
             ])
 
             await update.message.reply_text(
-                "\n".join(lines),
+                text,
                 reply_markup=InlineKeyboardMarkup(buttons),
                 parse_mode="Markdown",
             )
