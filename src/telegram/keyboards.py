@@ -9,9 +9,9 @@ def main_menu_keyboard(socratic_enabled: bool = False, language: str = "en"):
         [InlineKeyboardButton(t("take_quiz", language), callback_data="quiz")],
         [InlineKeyboardButton(t("my_progress", language), callback_data="progress")],
         [InlineKeyboardButton(socratic_label, callback_data="socratic_toggle")],
-        [InlineKeyboardButton(t("language", language), callback_data="language")],
+        [InlineKeyboardButton(t("language_btn", language), callback_data="language")],
         [InlineKeyboardButton(t("teacher_tools", language), callback_data="teacher_tools")],
-        [InlineKeyboardButton(t("help", language), callback_data="help")],
+        [InlineKeyboardButton(t("help_btn", language), callback_data="help")],
     ]
     return InlineKeyboardMarkup(buttons)
 

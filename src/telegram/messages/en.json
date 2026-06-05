@@ -1,0 +1,136 @@
+{
+  "start": {
+    "dashboard_login": "Your dashboard login code: <b>{code}</b>\n\nThis code expires in 5 minutes. Enter it on the login page.",
+    "welcome": "Welcome to EthioBio AI Assistant!\n\nI'm your biology learning assistant for Ethiopian Grades 7-12.\n\nSend me any biology question, or use the menu below:"
+  },
+  "common": {
+    "error": "Sorry, I encountered an error. Please try again.",
+    "cancelled": "Cancelled.",
+    "usage_ask": "Usage: /ask <your biology question>",
+    "thinking": "Thinking...",
+    "generating": "Generating..."
+  },
+  "help": {
+    "text": "EthioBio AI Assistant — Help\n\nCommands:\n/start — Show menu\n/help — This message\n/ask <question> — Ask a biology question\n/quiz [grade] [topic] — Generate a quiz\n/grade <7-12> — Set your default grade\n/language <en|am|both> — Set language\n/socratic — Toggle Socratic tutoring mode\n/hint — Get the next hint level (1-3) in Socratic mode\n/cancel — Cancel current operation\n\nOr just type any biology question to get started!"
+  },
+  "tutor": {
+    "grade_prompt": "Grade {grade} selected. Send me your biology question. I'll help you understand it!",
+    "no_question": "No active question. Ask a question first with /ask or select Tutor from the menu.",
+    "socratic_on": "Socratic Mode is now ON.\n\nIn Socratic mode, I'll guide you through questions rather than giving direct answers — helping you discover the answer yourself!",
+    "socratic_off": "Socratic Mode is now OFF.\n\nI'll give you direct answers with explanations.",
+    "revealing_answer": "🔍 Revealing the full answer...",
+    "hint_level": "💡 Hint level {level}/3...",
+    "hint_revealed": "The answer has already been revealed! Ask a new question to continue.",
+    "hint_exhausted": "You've used all hint levels. Tap 'Reveal Answer' to see the full explanation.",
+    "hint_usage": "\n\n📊 You used {count} hint(s) before revealing the answer.",
+    "misconception": "\n\n💡 I noticed a misunderstanding — gently corrected above.",
+    "sources": "\n\n---\nSources: {sources}"
+  },
+  "gamification": {
+    "xp_earned": "\n\n⭐ +{xp} XP for this session",
+    "level_up": "\n🎉 LEVEL UP! You are now Level {level}!",
+    "xp_quiz": "\n\n⭐ +{xp} XP",
+    "level_up_quiz": "\n🎉 LEVEL UP! Now Level {level}!"
+  },
+  "quiz": {
+    "grade_prompt": "Select your grade level:",
+    "topic_prompt": "Grade {grade} selected. What topic should the quiz cover?\n(e.g., Cell Biology, Genetics, Ecology)",
+    "quiz_type_prompt": "Select quiz type:",
+    "generating": "Generating your quiz...",
+    "error": "Error generating quiz.",
+    "question": "📝 {title}\n\nQuestion {current}/{total}\n<i>{qtype}</i>\n\n{qtext}",
+    "correct": "✅ Correct!",
+    "wrong": "❌ Wrong. The answer was: {answer}",
+    "short_answer": "\n\n✏️ Type your answer below, then tap Next.",
+    "complete": "📊 Quiz Complete!\nScore: {correct}/{total} ({pct}%)",
+    "score": "⭐ XP earned this quiz: {xp}",
+    "cancelled": "Quiz cancelled."
+  },
+  "lesson": {
+    "grade_prompt": "Select grade level:",
+    "generating": "Creating lesson plan...",
+    "error": "Error creating lesson plan."
+  },
+  "settings": {
+    "text": "⚙️ Notification Settings\n\nMilestone Alerts: {milestone}\nReview Reminders: {reminder}\nDigest Frequency: {digest}\n\nTap to toggle or change settings."
+  },
+  "language": {
+    "choose": "Choose your language:",
+    "set": "Language set to {name}!",
+    "usage": "Usage: /language <en|am|both>",
+    "set_cmd": "Language set to {name}."
+  },
+  "grade": {
+    "set": "Default grade set to Grade {grade}.",
+    "usage": "Usage: /grade <7-12>"
+  },
+  "model": {
+    "no_models": "Failed to fetch models. Is the API server running?",
+    "no_providers": "Failed to fetch providers.",
+    "refresh_failed": "Failed to refresh models.",
+    "set_failed": "Failed to set model: {model}",
+    "refresh": "🔄 Refresh Models",
+    "back_providers": "← Back to Providers"
+  },
+  "progress": {
+    "no_weak": "📊 *Mastery Progress*\n\nNo weak topics detected! You're doing great across all subjects.",
+    "need_start": "Please /start first to register."
+  },
+  "recovery": {
+    "no_plans": "📋 *No Active Recovery Plans*\n\nComplete quizzes to identify weak areas. Recovery plans help you strengthen your understanding of challenging topics.",
+    "user_not_found": "❌ User not found. Please /start first.",
+    "task_not_found": "❌ Task not found.",
+    "task_done": "✅ Task *{title}* was already completed!"
+  },
+  "parent": {
+    "usage": "Usage: <code>/parent_register your@email.com</code>\n\nYou need a parent account on the dashboard first. Register at the dashboard, then link your Telegram here.",
+    "no_account": "No parent account found with that email. Make sure you registered as a parent on the dashboard first.",
+    "already_linked": "This account is already linked to another Telegram user. Contact support if you need to relink.",
+    "linked": "Telegram linked! Use /children to view your children's progress.",
+    "need_register": "Please register first with /parent_register",
+    "no_child": "Child not found.",
+    "no_parent": "Parent account not found.",
+    "no_student": "Student not found."
+  },
+  "ask_question": "🧬 Ask a Question",
+  "take_quiz": "📝 Take a Quiz",
+  "my_progress": "📊 My Progress",
+  "socratic_on": "🧠 Socratic: ON",
+  "socratic_off": "🧠 Socratic: OFF",
+  "language_btn": "🌐 Language",
+  "teacher_tools": "👨‍🏫 Teacher Tools",
+  "help_btn": "❓ Help",
+  "start_quiz": "Start Quiz",
+  "next_question": "➡️ Next Question",
+  "show_hint": "💡 Show Hint",
+  "reveal_answer": "🔍 Reveal Answer",
+  "grade_quiz": "Grade Quiz",
+  "retry_quiz": "🔁 Retry Quiz",
+  "new_quiz": "📝 New Quiz",
+  "main_menu": "🏠 Main Menu",
+  "back": "← Back",
+  "back_to_menu": "← Back to Menu",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "yes": "Yes",
+  "no": "No",
+  "loading": "Loading...",
+  "error_generic": "Something went wrong. Please try again.",
+  "choose_language": "Choose your language:",
+  "language_set": "Language set to {name}!",
+  "create_lesson_plan": "📋 Create Lesson Plan",
+  "review_quizzes": "📄 Review Quizzes",
+  "open_dashboard": "📈 Open Dashboard",
+  "view_recovery": "Recovery Plan",
+  "view_progress": "📊 Progress",
+  "broad_hint": "💡 Broad Hint",
+  "specific_hint": "💡 Specific Hint",
+  "strong_hint": "💡 Strong Hint",
+  "end_quiz": "🔙 End Quiz",
+  "true": "✅ True",
+  "false": "❌ False",
+  "choose_grade": "Choose your grade:",
+  "choose_topic": "Choose a topic:",
+  "choose_quiz_type": "Choose quiz type:",
+  "welcome": "Welcome to EthioBio AI Assistant!\n\nI'm your biology learning assistant for Ethiopian Grades 7-12.\n\nSend me any biology question, or use the menu below:"
+}

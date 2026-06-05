@@ -1,0 +1,136 @@
+{
+  "start": {
+    "dashboard_login": "የዳሽቦርድ መግቢያ ኮድዎ፦ <b>{code}</b>\n\nይህ ኮድ በ5 ደቂቃ ውስጥ ያበቃል። በመግቢያ ገፁ ላይ ያስገቡት።",
+    "welcome": "እንኳን ወደ ኢትዮባዮ AI ረዳት በደህና መጡ!\n\nየባዮሎጂ ትምህርት ረዳትዎ ነኝ ለኢትዮጵያ 7-12 ክፍሎች።\n\nማንኛውንም የባዮሎጂ ጥያቄ ይላኩ፣ ወይም ከታች ያለውን ሜኑ ይጠቀሙ፦"
+  },
+  "common": {
+    "error": "ይቅርታ፣ ስህተት ተፈጥሯል። እባክዎ እንደገና ይሞክሩ።",
+    "cancelled": "ተሰርዟል።",
+    "usage_ask": "አጠቃቀም፦ /ask <የባዮሎጂ ጥያቄዎ>",
+    "thinking": "በማሰብ ላይ...",
+    "generating": "በማዘጋጀት ላይ..."
+  },
+  "help": {
+    "text": "ኢትዮባዮ AI ረዳት — እገዛ\n\nትዕዛዞች፦\n/start — ሜኑ አሳይ\n/help — ይህ መልእክት\n/ask <ጥያቄ> — የባዮሎጂ ጥያቄ ጠይቅ\n/quiz [ክፍል] [ርዕስ] — ፈተና ውሰድ\n/grade <7-12> — የክፍል ደረጃ አዘጋጅ\n/language <en|am|both> — ቋንቋ አዘጋጅ\n/socratic — የሶክራቲክ ሁነታን ቀይር\n/hint — ቀጣዩን የፍንጭ ደረጃ አግኝ\n/cancel — ሂደቱን ሰርዝ\n\nማንኛውንም የባዮሎጂ ጥያቄ በመተየብ ይጀምሩ!"
+  },
+  "tutor": {
+    "grade_prompt": "{grade}ኛ ክፍል ተመርጧል። የባዮሎጂ ጥያቄዎን ይላኩ። እንዲረዱት እረዳዎታለሁ!",
+    "no_question": "ምንም ንቁ ጥያቄ የለም። በመጀመሪያ በ /ask ወይም በሜኑ ውስጥ Tutor ን ይምረጡ።",
+    "socratic_on": "የሶክራቲክ ሁነታ አሁን በርቷል።\n\nበሶክራቲክ ሁነታ፣ ቀጥተኛ መልስ ከመስጠት ይልቅ በጥያቄዎች እመራለሁ — መልሱን በራስዎ እንዲያገኙ እረዳዎታለሁ!",
+    "socratic_off": "የሶክራቲክ ሁነታ አሁን ጠፍቷል።\n\nቀጥተኛ መልሶች ከማብራሪያ ጋር እሰጣለሁ።",
+    "revealing_answer": "🔍 ሙሉ መልሱን በመግለጽ ላይ...",
+    "hint_level": "💡 የፍንጭ ደረጃ {level}/3...",
+    "hint_revealed": "መልሱ አስቀድሞ ተገልጿል! ለመቀጠል አዲስ ጥያቄ ይጠይቁ።",
+    "hint_exhausted": "ሁሉንም የፍንጭ ደረጃዎች ተጠቅመዋል። ሙሉ ማብራሪያ ለማየት 'መልሱን ግለጽ' የሚለውን ይንኩ።",
+    "hint_usage": "\n\n📊 መልሱን ከመግለጽዎ በፊት {count} ፍንጭ(ች) ተጠቅመዋል።",
+    "misconception": "\n\n💡 የተሳሳተ ግንዛቤ አስተውያለሁ — ከላይ በትክክል ተስተካክሏል።",
+    "sources": "\n\n---\nምንጮች፦ {sources}"
+  },
+  "gamification": {
+    "xp_earned": "\n\n⭐ +{xp} XP ለዚህ ክፍለ ጊዜ",
+    "level_up": "\n🎉 ደረጃ ጨመሩ! አሁን ደረጃ {level}!",
+    "xp_quiz": "\n\n⭐ +{xp} XP",
+    "level_up_quiz": "\n🎉 ደረጃ ጨመሩ! አሁን ደረጃ {level}!"
+  },
+  "quiz": {
+    "grade_prompt": "የክፍል ደረጃዎን ይምረጡ:",
+    "topic_prompt": "{grade}ኛ ክፍል ተመርጧል። ፈተናው ምን ርዕስ ይሸፍን?\n(ለምሳሌ፦ ሴል ባዮሎጂ፣ ዘረመል፣ ኢኮሎጂ)",
+    "quiz_type_prompt": "የፈተና አይነት ይምረጡ:",
+    "generating": "ፈተናዎን በማዘጋጀት ላይ...",
+    "error": "ፈተና በማዘጋጀት ላይ ስህተት ተፈጥሯል።",
+    "question": "📝 {title}\n\nጥያቄ {current}/{total}\n<i>{qtype}</i>\n\n{qtext}",
+    "correct": "✅ ትክክል!",
+    "wrong": "❌ ስህተት። ትክክለኛው መልስ፦ {answer}",
+    "short_answer": "\n\n✏️ መልስዎን ከታች ይተይቡ፣ ከዚያ ቀጣይ የሚለውን ይንኩ።",
+    "complete": "📊 ፈተና ተጠናቋል!\nውጤት፦ {correct}/{total} ({pct}%)",
+    "score": "⭐ በዚህ ፈተና ያገኙት XP፦ {xp}",
+    "cancelled": "ፈተና ተሰርዟል።"
+  },
+  "lesson": {
+    "grade_prompt": "የክፍል ደረጃ ይምረጡ:",
+    "generating": "የትምህርት እቅድ በማዘጋጀት ላይ...",
+    "error": "የትምህርት እቅድ በማዘጋጀት ላይ ስህተት ተፈጥሯል።"
+  },
+  "settings": {
+    "text": "⚙️ የማሳወቂያ ቅንብሮች\n\nየምዕራፍ ማንቂያዎች፦ {milestone}\nየመገምገሚያ አስታዋሾች፦ {reminder}\nየማጠቃለያ ድግግሞሽ፦ {digest}\n\nለመቀየር ይንኩ።"
+  },
+  "language": {
+    "choose": "ቋንቋዎን ይምረጡ:",
+    "set": "ቋንቋ ወደ {name} ተቀይሯል!",
+    "usage": "አጠቃቀም፦ /language <en|am|both>",
+    "set_cmd": "ቋንቋ ወደ {name} ተቀይሯል።"
+  },
+  "grade": {
+    "set": "ነባሪ ክፍል ወደ {grade}ኛ ክፍል ተቀይሯል።",
+    "usage": "አጠቃቀም፦ /grade <7-12>"
+  },
+  "model": {
+    "no_models": "ሞዴሎችን ማምጣት አልተቻለም። የ API አገልጋይ እየሰራ ነው?",
+    "no_providers": "አቅራቢዎችን ማምጣት አልተቻለም።",
+    "refresh_failed": "ሞዴሎችን ማደስ አልተቻለም።",
+    "set_failed": "ሞዴል {model} ማዘጋጀት አልተቻለም።",
+    "refresh": "🔄 ሞዴሎችን አድስ",
+    "back_providers": "← ወደ አቅራቢዎች ተመለስ"
+  },
+  "progress": {
+    "no_weak": "📊 *የእድገት ደረጃ*\n\nምንም ደካማ ርዕሶች አልተገኙም! በሁሉም የትምህርት ዘርፎች ጥሩ እየሰሩ ነው።",
+    "need_start": "በመጀመሪያ ለመመዝገብ /start ይጫኑ።"
+  },
+  "recovery": {
+    "no_plans": "📋 *ምንም ንቁ የማገገሚያ እቅዶች የሉም*\n\nደካማ ቦታዎችን ለመለየት ፈተናዎችን ይውሰዱ። የማገገሚያ እቅዶች ፈታኝ ርዕሶችን በደንብ እንዲረዱ ይረዱዎታል።",
+    "user_not_found": "❌ ተጠቃሚ አልተገኘም። እባክዎ /start ይጫኑ።",
+    "task_not_found": "❌ ተግባር አልተገኘም።",
+    "task_done": "✅ ተግባር *{title}* አስቀድሞ ተጠናቋል!"
+  },
+  "parent": {
+    "usage": "አጠቃቀም፦ <code>/parent_register your@email.com</code>\n\nመጀመሪያ በዳሽቦርዱ ላይ የወላጅ አካውንት ያስፈልግዎታል። በዳሽቦርዱ ይመዝገቡ፣ ከዚያ ቴሌግራምዎን እዚህ ያገናኙ።",
+    "no_account": "በዚህ ኢሜይል ምንም የወላጅ አካውንት አልተገኘም። በመጀመሪያ በዳሽቦርዱ ላይ እንደ ወላጅ መመዝገብዎን ያረጋግጡ።",
+    "already_linked": "ይህ አካውንት አስቀድሞ ከሌላ ቴሌግራም ተጠቃሚ ጋር ተገናኝቷል። እንደገና ማገናኘት ከፈለጉ ድጋፍን ያግኙ።",
+    "linked": "ቴሌግራም ተገናኝቷል! የልጆችን እድገት ለማየት /children ይጠቀሙ።",
+    "need_register": "በመጀመሪያ በ /parent_register ይመዝገቡ",
+    "no_child": "ልጅ አልተገኘም።",
+    "no_parent": "የወላጅ አካውንት አልተገኘም።",
+    "no_student": "ተማሪ አልተገኘም።"
+  },
+  "ask_question": "🧬 ጥያቄ ጠይቅ",
+  "take_quiz": "📝 ፈተና ውሰድ",
+  "my_progress": "📊 እድገቴ",
+  "socratic_on": "🧠 ሶክራቲክ: በርቷል",
+  "socratic_off": "🧠 ሶክራቲክ: ጠፍቷል",
+  "language_btn": "🌐 ቋንቋ",
+  "teacher_tools": "👨‍🏫 የመምህራን መሣሪያዎች",
+  "help_btn": "❓ እገዛ",
+  "start_quiz": "ፈተና ጀምር",
+  "next_question": "➡️ ቀጣይ ጥያቄ",
+  "show_hint": "💡 ፍንጭ አሳይ",
+  "reveal_answer": "🔍 መልሱን ግለጽ",
+  "grade_quiz": "ፈተናውን አስተካክል",
+  "retry_quiz": "🔁 ፈተናውን ድገም",
+  "new_quiz": "📝 አዲስ ፈተና",
+  "main_menu": "🏠 ዋና ሜኑ",
+  "back": "← ተመለስ",
+  "back_to_menu": "← ወደ ዋና ሜኑ ተመለስ",
+  "cancel": "ሰርዝ",
+  "confirm": "አረጋግጥ",
+  "yes": "አዎ",
+  "no": "አይ",
+  "loading": "በመጫን ላይ...",
+  "error_generic": "የሆነ ስህተት ተፈጥሯል። እባክዎ እንደገና ይሞክሩ።",
+  "choose_language": "ቋንቋዎን ይምረጡ:",
+  "language_set": "ቋንቋ ወደ {name} ተቀይሯል!",
+  "create_lesson_plan": "📋 የትምህርት እቅድ ፍጠር",
+  "review_quizzes": "📄 ፈተናዎችን አስተካክል",
+  "open_dashboard": "📈 ዳሽቦርድ ክፈት",
+  "view_recovery": "የማገገሚያ እቅድ",
+  "view_progress": "📊 እድገት",
+  "broad_hint": "💡 ሰፊ ፍንጭ",
+  "specific_hint": "💡 ዝርዝር ፍንጭ",
+  "strong_hint": "💡 ጠንካራ ፍንጭ",
+  "end_quiz": "🔙 ፈተናውን ጨርስ",
+  "true": "✅ እውነት",
+  "false": "❌ ሐሰት",
+  "choose_grade": "ክፍልዎን ይምረጡ:",
+  "choose_topic": "ርዕስ ይምረጡ:",
+  "choose_quiz_type": "የፈተና አይነት ይምረጡ:",
+  "welcome": "እንኳን ወደ ኢትዮባዮ AI ረዳት በደህና መጡ!\n\nየባዮሎጂ ትምህርት ረዳትዎ ነኝ ለኢትዮጵያ 7-12 ክፍሎች።\n\nማንኛውንም የባዮሎጂ ጥያቄ ይላኩ፣ ወይም ከታች ያለውን ሜኑ ይጠቀሙ:"
+}
