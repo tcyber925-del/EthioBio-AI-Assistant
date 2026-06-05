@@ -1,6 +1,6 @@
 'use client'
 
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import {
   LineChart,
   Line,
@@ -22,6 +22,7 @@ interface ProgressTrendGraphProps {
 }
 
 export function ProgressTrendGraph({ data, topic }: ProgressTrendGraphProps) {
+  const locale = useLocale()
   const t = useTranslations('recovery')
 
   if (!data || data.length < 2) {
@@ -33,7 +34,7 @@ export function ProgressTrendGraph({ data, topic }: ProgressTrendGraphProps) {
   }
 
   const formatted = data.map(p => ({
-    date: new Date(p.recorded_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+    date: new Date(p.recorded_at).toLocaleDateString(locale, { month: 'short', day: 'numeric' }),
     score: p.average_score,
   }))
 

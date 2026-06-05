@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import {
   AlertTriangle,
   BarChart3,
@@ -63,6 +63,7 @@ function healthBg(score: number): string {
 
 export default function SchoolDashboardPage() {
   const router = useRouter()
+  const locale = useLocale()
   const ts = useTranslations('admin.schools')
   const tc = useTranslations('common')
   const [schools, setSchools] = useState<SchoolItem[]>([])
@@ -202,7 +203,7 @@ export default function SchoolDashboardPage() {
                   {trends.map((t, i) => (
                     <div key={i} className="flex items-center gap-3 text-xs">
                       <span className="text-foreground-muted w-24 shrink-0">
-                        {new Date(t.snapshot_date).toLocaleDateString()}
+                        {new Date(t.snapshot_date).toLocaleDateString(locale)}
                       </span>
                       <div className="flex-1 h-2 bg-background-secondary rounded-full overflow-hidden">
                         <div

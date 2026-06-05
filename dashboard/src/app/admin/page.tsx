@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 
 interface DashboardData {
@@ -16,6 +16,7 @@ interface DashboardData {
 }
 
 export default function AdminDashboardPage() {
+  const locale = useLocale()
   const ta = useTranslations('admin.dashboard')
   const tc = useTranslations('common')
   const [data, setData] = useState<DashboardData | null>(null)
@@ -65,7 +66,7 @@ export default function AdminDashboardPage() {
                   <td className="p-2 font-mono text-xs">{u.id.slice(0, 8)}...</td>
                   <td className="p-2 capitalize">{u.role}</td>
                   <td className="p-2">{u.grade_level ?? '-'}</td>
-                  <td className="p-2 text-gray-500">{new Date(u.created_at).toLocaleDateString()}</td>
+                  <td className="p-2 text-gray-500">{new Date(u.created_at).toLocaleDateString(locale)}</td>
                 </tr>
               ))}
             </tbody>

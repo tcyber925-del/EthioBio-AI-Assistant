@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { ClipboardList, AlertTriangle, Loader2, Search, CheckCircle2, Clock, BookOpen, Lightbulb, ArrowRight, Target, Brain, TrendingUp, RotateCcw, Bell, PartyPopper, Sparkles, RefreshCw } from 'lucide-react'
 import { fetchWithTimeout } from '@/lib/fetch'
 import { CardSkeleton } from '@/components/Skeleton'
@@ -129,6 +129,7 @@ export default function RecoveryPage() {
   const [students, setStudents] = useState<Student[]>([])
   const [studentsLoading, setStudentsLoading] = useState(true)
   const [notificationsExpanded, setNotificationsExpanded] = useState(false)
+  const locale = useLocale()
   const t = useTranslations('recovery')
   const tc = useTranslations('common')
 
@@ -435,7 +436,7 @@ export default function RecoveryPage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-foreground">{n.message}</p>
                         <p className="text-xs text-foreground-muted mt-1">
-                          {n.topic} · {new Date(n.created_at).toLocaleDateString()}
+                          {n.topic} · {new Date(n.created_at).toLocaleDateString(locale)}
                           {n.improvement_pct && ` · +${n.improvement_pct.toFixed(0)}%`}
                         </p>
                       </div>

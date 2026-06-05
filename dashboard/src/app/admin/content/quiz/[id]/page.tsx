@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 
 interface QuizData {
@@ -27,6 +27,7 @@ interface QuizData {
 
 export default function AdminQuizDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const locale = useLocale()
   const tc = useTranslations('admin.content')
   const tcommon = useTranslations('common')
   const [quiz, setQuiz] = useState<QuizData | null>(null)
@@ -59,7 +60,7 @@ export default function AdminQuizDetailPage() {
         <div><strong>{tc('status_label')}</strong> <span className={`px-2 py-0.5 rounded text-xs ${quiz.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{quiz.status}</span></div>
         <div><strong>{tc('model')}</strong> {quiz.model_used}</div>
         <div><strong>{tc('questions')}</strong> {quiz.question_count}</div>
-        <div><strong>{tc('created_label')}</strong> {quiz.created_at ? new Date(quiz.created_at).toLocaleDateString() : '-'}</div>
+        <div><strong>{tc('created_label')}</strong> {quiz.created_at ? new Date(quiz.created_at).toLocaleDateString(locale) : '-'}</div>
       </div>
       <button onClick={toggleStatus} className={`px-4 py-2 rounded text-white ${quiz.status === 'published' ? 'bg-red-600' : 'bg-green-600'}`}>
         {quiz.status === 'published' ? tc('archive_quiz') : tc('publish_quiz')}

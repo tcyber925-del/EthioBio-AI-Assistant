@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { Users, AlertTriangle, RefreshCw } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
@@ -17,6 +17,7 @@ interface Student {
 
 export default function StudentsPage() {
   const router = useRouter()
+  const locale = useLocale()
   const t = useTranslations('common')
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
@@ -94,7 +95,7 @@ export default function StudentsPage() {
                     </td>
                     <td className="px-5 py-3 text-sm text-foreground-muted capitalize">{s.language_preference}</td>
                     <td className="px-5 py-3 text-sm text-foreground-muted">{s.grade_level ? `${t('grade')} ${s.grade_level}` : '—'}</td>
-                    <td className="px-5 py-3 text-sm text-foreground-muted">{new Date(s.created_at).toLocaleDateString()}</td>
+                    <td className="px-5 py-3 text-sm text-foreground-muted">{new Date(s.created_at).toLocaleDateString(locale)}</td>
                   </tr>
                 ))}
               </tbody>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 
 interface LessonData {
@@ -23,6 +23,7 @@ interface LessonData {
 
 export default function AdminLessonDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const locale = useLocale()
   const tc = useTranslations('admin.content')
   const tcommon = useTranslations('common')
   const [lesson, setLesson] = useState<LessonData | null>(null)
@@ -53,7 +54,7 @@ export default function AdminLessonDetailPage() {
         <div><strong>{tc('grade_label')}</strong> {lesson.grade_level}</div>
         <div><strong>{tc('status_label')}</strong> <span className={`px-2 py-0.5 rounded text-xs ${lesson.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{lesson.status}</span></div>
         <div><strong>{tc('model')}</strong> {lesson.model_used}</div>
-        <div><strong>{tc('created_label')}</strong> {lesson.created_at ? new Date(lesson.created_at).toLocaleDateString() : '-'}</div>
+        <div><strong>{tc('created_label')}</strong> {lesson.created_at ? new Date(lesson.created_at).toLocaleDateString(locale) : '-'}</div>
       </div>
       <button onClick={toggleStatus} className={`px-4 py-2 rounded text-white ${lesson.status === 'published' ? 'bg-red-600' : 'bg-green-600'}`}>
         {lesson.status === 'published' ? tc('archive_lesson') : tc('publish_lesson')}

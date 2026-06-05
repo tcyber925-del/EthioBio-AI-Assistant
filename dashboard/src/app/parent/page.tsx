@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import {
   AlertTriangle,
   Award,
@@ -72,6 +72,7 @@ export default function ParentDashboardPage() {
   const [loadingProgress, setLoadingProgress] = useState(false)
   const [generatingSummary, setGeneratingSummary] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const locale = useLocale()
   const t = useTranslations('parent.dashboard')
   const tc = useTranslations('common')
 
@@ -281,7 +282,7 @@ export default function ParentDashboardPage() {
                       <div key={i} className="flex items-center gap-3 text-xs">
                         <Calendar className="w-3 h-3 text-foreground-muted shrink-0" />
                         <span className="text-foreground-muted w-20 shrink-0">
-                          {new Date(q.created_at).toLocaleDateString()}
+                          {new Date(q.created_at).toLocaleDateString(locale)}
                         </span>
                         <div className="flex-1 h-2 bg-background-secondary rounded-full overflow-hidden">
                           <div
@@ -317,7 +318,7 @@ export default function ParentDashboardPage() {
             {summary ? (
               <div>
                 <p className="text-xs text-foreground-muted mb-2">
-                  {new Date(summary.week_start).toLocaleDateString()} – {new Date(summary.week_end).toLocaleDateString()}
+                  {new Date(summary.week_start).toLocaleDateString(locale)} – {new Date(summary.week_end).toLocaleDateString(locale)}
                 </p>
                 {summary.is_low_performance_warning && (
                   <div className="flex items-center gap-2 text-xs text-red-400 bg-red-500/10 rounded-lg px-3 py-2 mb-3">

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { AlertTriangle, ChevronLeft, ChevronRight, RefreshCw, Search, Shield, UserCheck, Users } from 'lucide-react'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 
@@ -19,6 +19,7 @@ interface UserData {
 }
 
 export default function AdminUsersPage() {
+  const locale = useLocale()
   const tu = useTranslations('admin.users')
   const tc = useTranslations('common')
   const [users, setUsers] = useState<UserData[]>([])
@@ -209,7 +210,7 @@ export default function AdminUsersPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-foreground-muted">
-                      {u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}
+                      {u.created_at ? new Date(u.created_at).toLocaleDateString(locale) : '—'}
                     </td>
                     <td className="px-4 py-3">
                       <button

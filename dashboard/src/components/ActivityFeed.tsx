@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { Zap, FileCheck, MessageSquare, Medal, AlertTriangle, RefreshCw } from 'lucide-react'
 import { fetchWithTimeout } from '@/lib/fetch'
 import { CardSkeleton } from '@/components/Skeleton'
@@ -23,7 +23,7 @@ const ICON_MAP: Record<string, { icon: typeof Zap; color: string }> = {
 
 const DEFAULT_ICON = { icon: Zap, color: 'text-foreground-muted bg-border/50' }
 
-function timeAgo(ts: string, t: (key: string, params?: any) => string): string {
+function timeAgo(ts: string, t: (key: string, params?: any) => string, locale?: string): string {
   const diff = Date.now() - new Date(ts).getTime()
   const mins = Math.floor(diff / 60000)
   if (mins < 1) return t('just_now')
@@ -32,10 +32,11 @@ function timeAgo(ts: string, t: (key: string, params?: any) => string): string {
   if (hours < 24) return t('hours_ago', { h: hours })
   const days = Math.floor(hours / 24)
   if (days < 7) return t('days_ago', { d: days })
-  return new Date(ts).toLocaleDateString()
+  return new Date(ts).toLocaleDateString(locale)
 }
 
 export default function ActivityFeed({ userId }: { userId: string }) {
+  const locale = useLocale()
   const tc = useTranslations('common')
   const [activities, setActivities] = useState<ActivityItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -96,7 +97,7 @@ export default function ActivityFeed({ userId }: { userId: string }) {
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-foreground truncate">{a.title}</p>
                 <p className="text-[11px] text-foreground-muted truncate">{a.description}</p>
-                <p className="text-[10px] text-foreground-muted/60 mt-0.5">{timeAgo(a.timestamp, tc)}</p>
+                <p className="text-[10px] text-foreground-muted/60 mt-0.5">{timeAgo(a.timestamp, tc, locale)}</p>
               </div>
             </div>
           )

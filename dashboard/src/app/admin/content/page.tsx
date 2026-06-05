@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 
 interface ContentItem {
@@ -16,6 +16,7 @@ interface ContentItem {
 }
 
 export default function AdminContentPage() {
+  const locale = useLocale()
   const tc = useTranslations('admin.content')
   const tcommon = useTranslations('common')
   const [items, setItems] = useState<ContentItem[]>([])
@@ -108,7 +109,7 @@ export default function AdminContentPage() {
                   'bg-gray-100 text-gray-700'
                 }`}>{item.status}</span>
               </td>
-              <td className="p-2 text-gray-500">{item.created_at ? new Date(item.created_at).toLocaleDateString() : '-'}</td>
+              <td className="p-2 text-gray-500">{item.created_at ? new Date(item.created_at).toLocaleDateString(locale) : '-'}</td>
               <td className="p-2 flex gap-2">
                 <button
                   onClick={() => {

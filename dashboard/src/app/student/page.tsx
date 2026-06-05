@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import {
   Activity,
   AlertTriangle,
@@ -63,6 +63,7 @@ export default function StudentDashboardPage() {
   const [data, setData] = useState<StudentDashboard | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const locale = useLocale()
   const t = useTranslations('student.dashboard')
   const tc = useTranslations('common')
 
@@ -265,7 +266,7 @@ export default function StudentDashboardPage() {
                         )}
                         <span className="text-foreground flex-1">{item.description}</span>
                         <span className="text-xs text-foreground-muted shrink-0">
-                          {item.created_at ? new Date(item.created_at).toLocaleDateString() : ''}
+                          {item.created_at ? new Date(item.created_at).toLocaleDateString(locale) : ''}
                         </span>
                       </div>
                     ))}
