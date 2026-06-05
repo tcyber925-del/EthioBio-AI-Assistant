@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import {
   LineChart,
   Line,
@@ -21,10 +22,12 @@ interface ProgressTrendGraphProps {
 }
 
 export function ProgressTrendGraph({ data, topic }: ProgressTrendGraphProps) {
+  const t = useTranslations('recovery')
+
   if (!data || data.length < 2) {
     return (
       <div className="flex items-center justify-center h-32 text-foreground-muted text-xs">
-        Not enough data yet
+        {t('not_enough_data')}
       </div>
     )
   }
@@ -41,7 +44,7 @@ export function ProgressTrendGraph({ data, topic }: ProgressTrendGraphProps) {
   return (
     <div className="w-full h-32">
       <div className="flex items-center justify-between text-xs text-foreground-muted mb-1">
-        <span>Progress over time</span>
+        <span>{t('progress_over_time')}</span>
         <span style={{ color: trendColor }}>
           {firstVal.toFixed(0)}% → {lastVal.toFixed(0)}%
         </span>

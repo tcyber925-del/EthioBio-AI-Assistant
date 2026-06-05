@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 
 interface DashboardData {
@@ -15,6 +16,8 @@ interface DashboardData {
 }
 
 export default function AdminDashboardPage() {
+  const ta = useTranslations('admin.dashboard')
+  const tc = useTranslations('common')
   const [data, setData] = useState<DashboardData | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -24,19 +27,19 @@ export default function AdminDashboardPage() {
       .catch(err => setError(err instanceof Error ? err.message : String(err)))
   }, [])
 
-  if (error) return <p className="text-red-600">Error: {error}</p>
-  if (!data) return <p className="text-gray-500">Loading...</p>
+  if (error) return <p className="text-red-600">{tc('error')}: {error}</p>
+  if (!data) return <p className="text-gray-500">{tc('loading')}</p>
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Dashboard Overview</h1>
+      <h1 className="text-2xl font-bold mb-6">{ta('overview')}</h1>
       <div className="grid grid-cols-5 gap-4 mb-8">
         {[
-          { label: 'Users', value: data.users, color: 'bg-blue-50 text-blue-700' },
-          { label: 'Teachers', value: data.teachers, color: 'bg-green-50 text-green-700' },
-          { label: 'Students', value: data.students, color: 'bg-purple-50 text-purple-700' },
-          { label: 'Quizzes', value: data.quizzes, color: 'bg-amber-50 text-amber-700' },
-          { label: 'Lessons', value: data.lesson_plans, color: 'bg-rose-50 text-rose-700' },
+          { label: ta('users'), value: data.users, color: 'bg-blue-50 text-blue-700' },
+          { label: ta('total_teachers'), value: data.teachers, color: 'bg-green-50 text-green-700' },
+          { label: ta('total_students'), value: data.students, color: 'bg-purple-50 text-purple-700' },
+          { label: ta('quizzes'), value: data.quizzes, color: 'bg-amber-50 text-amber-700' },
+          { label: ta('lessons'), value: data.lesson_plans, color: 'bg-rose-50 text-rose-700' },
         ].map(({ label, value, color }) => (
           <div key={label} className={`p-4 rounded-lg ${color}`}>
             <div className="text-2xl font-bold">{value}</div>
@@ -46,14 +49,14 @@ export default function AdminDashboardPage() {
       </div>
       <div className="grid grid-cols-2 gap-6">
         <section>
-          <h2 className="text-lg font-semibold mb-3">Recent Users</h2>
+          <h2 className="text-lg font-semibold mb-3">{ta('recent_users')}</h2>
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-100">
-                <th className="p-2 text-left">ID</th>
-                <th className="p-2 text-left">Role</th>
-                <th className="p-2 text-left">Grade</th>
-                <th className="p-2 text-left">Created</th>
+                <th className="p-2 text-left">{ta('col_id')}</th>
+                <th className="p-2 text-left">{ta('col_role')}</th>
+                <th className="p-2 text-left">{ta('col_grade')}</th>
+                <th className="p-2 text-left">{ta('col_created')}</th>
               </tr>
             </thead>
             <tbody>
@@ -69,14 +72,14 @@ export default function AdminDashboardPage() {
           </table>
         </section>
         <section>
-          <h2 className="text-lg font-semibold mb-3">Recent Model Logs</h2>
+          <h2 className="text-lg font-semibold mb-3">{ta('recent_model_logs')}</h2>
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-100">
-                <th className="p-2 text-left">Type</th>
-                <th className="p-2 text-left">Model</th>
-                <th className="p-2 text-left">Status</th>
-                <th className="p-2 text-left">Latency</th>
+                <th className="p-2 text-left">{ta('col_type')}</th>
+                <th className="p-2 text-left">{ta('col_model')}</th>
+                <th className="p-2 text-left">{ta('col_status')}</th>
+                <th className="p-2 text-left">{ta('col_latency')}</th>
               </tr>
             </thead>
             <tbody>

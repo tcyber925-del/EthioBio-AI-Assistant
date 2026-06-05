@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { Award } from 'lucide-react'
 
 interface XpCardProps {
@@ -10,6 +11,8 @@ interface XpCardProps {
 }
 
 export default function XpCard({ totalXp, level, nextLevelXp, progressPct }: XpCardProps) {
+  const tg = useTranslations('gamification')
+
   return (
     <div className="bg-card rounded-xl border border-border p-5">
       <div className="flex items-center gap-3 mb-4">
@@ -17,13 +20,13 @@ export default function XpCard({ totalXp, level, nextLevelXp, progressPct }: XpC
           <Award className="w-5 h-5" />
         </div>
         <div>
-          <p className="text-sm text-foreground-muted">XP & Level</p>
-          <p className="text-lg font-bold text-foreground">Level {level}</p>
+          <p className="text-sm text-foreground-muted">{tg('xp_and_level')}</p>
+          <p className="text-lg font-bold text-foreground">{tg('level_value', { level })}</p>
         </div>
       </div>
       <div className="mb-2 flex items-center justify-between text-sm">
-        <span className="text-foreground-muted">{totalXp.toLocaleString()} XP</span>
-        <span className="text-foreground-muted">{nextLevelXp.toLocaleString()} XP to next level</span>
+        <span className="text-foreground-muted">{tg('xp_count', { count: totalXp.toLocaleString() })}</span>
+        <span className="text-foreground-muted">{tg('xp_to_next_level', { xp: nextLevelXp.toLocaleString() })}</span>
       </div>
       <div className="w-full bg-border rounded-full h-2.5">
         <div

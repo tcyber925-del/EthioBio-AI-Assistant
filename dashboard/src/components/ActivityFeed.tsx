@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Zap, FileCheck, MessageSquare, Medal, AlertTriangle, RefreshCw } from 'lucide-react'
 import { fetchWithTimeout } from '@/lib/fetch'
 import { CardSkeleton } from '@/components/Skeleton'
@@ -22,19 +23,20 @@ const ICON_MAP: Record<string, { icon: typeof Zap; color: string }> = {
 
 const DEFAULT_ICON = { icon: Zap, color: 'text-foreground-muted bg-border/50' }
 
-function timeAgo(ts: string): string {
+function timeAgo(ts: string, t: (key: string, params?: any) => string): string {
   const diff = Date.now() - new Date(ts).getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
+  if (mins < 1) return t('just_now')
+  if (mins < 60) return t('minutes_ago', { m: mins })
   const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h ago`
+  if (hours < 24) return t('hours_ago', { h: hours })
   const days = Math.floor(hours / 24)
-  if (days < 7) return `${days}d ago`
+  if (days < 7) return t('days_ago', { d: days })
   return new Date(ts).toLocaleDateString()
 }
 
 export default function ActivityFeed({ userId }: { userId: string }) {
+  const tc = useTranslations('common')
   const [activities, setActivities] = useState<ActivityItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -63,7 +65,7 @@ export default function ActivityFeed({ userId }: { userId: string }) {
         <AlertTriangle className="w-8 h-8 text-red-400 mx-auto mb-2" />
         <p className="text-sm text-red-400 mb-2">{error}</p>
         <button onClick={fetchFeed} className="text-xs text-primary hover:underline flex items-center gap-1 mx-auto">
-          <RefreshCw className="w-3 h-3" /> Retry
+          <RefreshCw className="w-3 h-3" /> {tc('retry')}
         </button>
       </div>
     )
@@ -73,15 +75,15 @@ export default function ActivityFeed({ userId }: { userId: string }) {
     return (
       <div className="bg-card rounded-xl border border-border p-5 text-center">
         <MessageSquare className="w-8 h-8 text-border mx-auto mb-2" />
-        <p className="text-sm text-foreground-muted font-medium">No recent activity</p>
-        <p className="text-xs text-foreground-muted/60 mt-1">Activity will appear here as the student interacts</p>
+        <p className="text-sm text-foreground-muted font-medium">{tc('no_recent_activity')}</p>
+        <p className="text-xs text-foreground-muted/60 mt-1">{tc('activity_desc')}</p>
       </div>
     )
   }
 
   return (
     <div className="bg-card rounded-xl border border-border p-5">
-      <h3 className="text-sm font-semibold text-foreground mb-4">Recent Activity</h3>
+      <h3 className="text-sm font-semibold text-foreground mb-4">{tc('recent_activity')}</h3>
       <div className="space-y-3">
         {activities.map((a, i) => {
           const cfg = ICON_MAP[a.activity_type] || DEFAULT_ICON
@@ -94,7 +96,7 @@ export default function ActivityFeed({ userId }: { userId: string }) {
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-foreground truncate">{a.title}</p>
                 <p className="text-[11px] text-foreground-muted truncate">{a.description}</p>
-                <p className="text-[10px] text-foreground-muted/60 mt-0.5">{timeAgo(a.timestamp)}</p>
+                <p className="text-[10px] text-foreground-muted/60 mt-0.5">{timeAgo(a.timestamp, tc)}</p>
               </div>
             </div>
           )

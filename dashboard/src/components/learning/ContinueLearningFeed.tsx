@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import {
   Sparkles, Target, BookOpen, ClipboardList, FileCheck,
@@ -32,13 +33,6 @@ interface ContinueLearningFeedData {
   primary_action: LearningCardData | null
   sections: Record<string, LearningCardData[]>
   summary: FeedSummaryData
-}
-
-const SECTION_LABELS: Record<string, string> = {
-  recovery_actions: 'Recovery Tasks',
-  review_actions: 'Review Topics',
-  quiz_opportunities: 'Quiz Opportunities',
-  tutor_actions: 'Tutor Sessions',
 }
 
 const ACTION_ICONS: Record<string, { icon: typeof Target; color: string }> = {
@@ -77,6 +71,7 @@ function getActionLink(card: LearningCardData): string {
 }
 
 export default function ContinueLearningFeed({ userId }: { userId: string }) {
+  const t = useTranslations('common')
   const [feed, setFeed] = useState<ContinueLearningFeedData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -104,7 +99,7 @@ export default function ContinueLearningFeed({ userId }: { userId: string }) {
         <AlertTriangle className="w-8 h-8 text-red-400 mx-auto mb-2" />
         <p className="text-sm text-red-400 mb-2">{error}</p>
         <button onClick={fetchFeed} className="text-xs text-primary hover:underline flex items-center gap-1 mx-auto">
-          <RefreshCw className="w-3 h-3" /> Retry
+          <RefreshCw className="w-3 h-3" /> {t('retry')}
         </button>
       </div>
     )
@@ -116,16 +111,26 @@ export default function ContinueLearningFeed({ userId }: { userId: string }) {
     return (
       <div className="bg-card rounded-xl border border-border p-5 text-center">
         <Sparkles className="w-8 h-8 text-primary mx-auto mb-2" />
-        <p className="text-sm text-foreground font-medium mb-1">Start Your Learning Journey</p>
-        <p className="text-xs text-foreground-muted mb-3">Take a quiz to get personalized recommendations</p>
+        <p className="text-sm text-foreground font-medium mb-1">{t('start_journey')}</p>
+        <p className="text-xs text-foreground-muted mb-3">{t('start_journey_desc')}</p>
         <Link
           href="/quizzes/"
           className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white text-xs font-medium rounded-lg hover:bg-primary-hover transition-colors"
         >
-          <FileCheck className="w-3.5 h-3.5" /> Start with a Quiz
+          <FileCheck className="w-3.5 h-3.5" /> {t('start_with_quiz')}
         </Link>
       </div>
     )
+  }
+
+  const sectionLabel = (key: string): string => {
+    switch (key) {
+      case 'recovery_actions': return t('section_recovery_actions')
+      case 'review_actions': return t('section_review_actions')
+      case 'quiz_opportunities': return t('section_quiz_opportunities')
+      case 'tutor_actions': return t('section_tutor_actions')
+      default: return key
+    }
   }
 
   const sectionOrder = ['recovery_actions', 'review_actions', 'quiz_opportunities', 'tutor_actions']
@@ -134,7 +139,7 @@ export default function ContinueLearningFeed({ userId }: { userId: string }) {
   return (
     <div className="bg-card rounded-xl border border-border p-5">
       <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-        <Target className="w-4 h-4 text-primary" /> Continue Learning
+        <Target className="w-4 h-4 text-primary" /> {t('continue_learning')}
       </h3>
 
       {feed!.primary_action && (
@@ -144,7 +149,7 @@ export default function ContinueLearningFeed({ userId }: { userId: string }) {
       {activeSections.map(sectionKey => (
         <div key={sectionKey} className="mt-4">
           <h4 className="text-xs font-semibold text-foreground-muted uppercase tracking-wider mb-2">
-            {SECTION_LABELS[sectionKey] || sectionKey} ({feed!.sections[sectionKey].length})
+            {sectionLabel(sectionKey)} ({feed!.sections[sectionKey].length})
           </h4>
           <div className="space-y-2">
             {feed!.sections[sectionKey].map(card => (
@@ -156,10 +161,10 @@ export default function ContinueLearningFeed({ userId }: { userId: string }) {
 
       <div className="mt-4 pt-3 border-t border-border flex items-center justify-between text-xs text-foreground-muted">
         <span className="flex items-center gap-1">
-          <Clock className="w-3 h-3" /> {feed!.summary.estimated_minutes} min
+          <Clock className="w-3 h-3" /> {feed!.summary.estimated_minutes} {t('minutes')}
         </span>
         <span className="flex items-center gap-1">
-          <Zap className="w-3 h-3 text-yellow-400" /> {feed!.summary.xp_available} XP
+          <Zap className="w-3 h-3 text-yellow-400" /> {feed!.summary.xp_available} {t('xp')}
         </span>
       </div>
     </div>
@@ -167,6 +172,7 @@ export default function ContinueLearningFeed({ userId }: { userId: string }) {
 }
 
 function LearningCardComponent({ card, highlighted = false }: { card: LearningCardData; highlighted?: boolean }) {
+  const t = useTranslations('common')
   const cfg = ACTION_ICONS[card.action_type] || DEFAULT_ICON
   const Icon = cfg.icon
   const href = getActionLink(card)
@@ -190,8 +196,8 @@ function LearningCardComponent({ card, highlighted = false }: { card: LearningCa
           </p>
           <p className="text-[11px] text-foreground-muted mt-0.5 line-clamp-1">{card.description}</p>
           <p className="text-[10px] text-foreground-muted/60 mt-1">
-            {card.estimated_minutes} min
-            {card.xp_reward != null && ` \u00b7 ${card.xp_reward} XP`}
+            {card.estimated_minutes} {t('minutes')}
+            {card.xp_reward != null && ` \u00b7 ${card.xp_reward} ${t('xp')}`}
           </p>
         </div>
         <ChevronRight className="w-3.5 h-3.5 text-foreground-muted/40 group-hover:text-foreground-muted transition-colors shrink-0 mt-1" />

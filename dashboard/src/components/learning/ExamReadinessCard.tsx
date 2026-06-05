@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { AlertTriangle, RefreshCw, TrendingUp } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
 import { fetchWithTimeout } from '@/lib/fetch'
@@ -74,6 +75,7 @@ function actionBadgeStyle(actionType: string): string {
 }
 
 export default function ExamReadinessCard({ userId }: { userId: string }) {
+  const t = useTranslations('common')
   const [data, setData] = useState<ExamReadinessProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -95,28 +97,28 @@ export default function ExamReadinessCard({ userId }: { userId: string }) {
     <div className="bg-card rounded-xl border border-border p-5">
       <div className="flex items-center gap-2 text-red-400 mb-2">
         <AlertTriangle className="w-4 h-4" />
-        <span className="text-sm font-medium">Unable to load readiness data</span>
+        <span className="text-sm font-medium">{t('load_error')}</span>
       </div>
       <button onClick={load} className="text-xs text-primary hover:underline flex items-center gap-1">
-        <RefreshCw className="w-3 h-3" /> Retry
+        <RefreshCw className="w-3 h-3" /> {t('retry')}
       </button>
     </div>
   )
 
   if (!data || data.topic_readiness.length === 0) return (
     <div className="bg-card rounded-xl border border-border p-5">
-      <p className="text-sm font-semibold text-foreground mb-2">Exam Readiness</p>
-      <p className="text-xs text-foreground-muted">No readiness data yet — take quizzes to assess your readiness.</p>
+      <p className="text-sm font-semibold text-foreground mb-2">{t('exam_readiness')}</p>
+      <p className="text-xs text-foreground-muted">{t('no_readiness')}</p>
     </div>
   )
 
   return (
     <div className={`bg-card rounded-xl border p-5 ${readinessBg(data.readiness_band)}`}>
       <div className="flex items-center gap-2 mb-2">
-        <p className="text-sm font-semibold text-foreground">Exam Readiness</p>
+        <p className="text-sm font-semibold text-foreground">{t('exam_readiness')}</p>
         {data.confidence_score < 0.7 && (
           <span className="text-[10px] text-foreground-muted bg-foreground-muted/10 px-1.5 py-0.5 rounded">
-            low confidence
+            {t('low_confidence')}
           </span>
         )}
       </div>
@@ -133,17 +135,17 @@ export default function ExamReadinessCard({ userId }: { userId: string }) {
       {data.projected_exam_score > 0 && (
         <div className="flex items-center gap-1.5 mb-3 text-xs text-foreground-muted">
           <TrendingUp className="w-3 h-3" />
-          <span>Projected: <strong className="text-foreground">{Math.round(data.projected_exam_score)}%</strong></span>
+          <span>{t('projected')} <strong className="text-foreground">{Math.round(data.projected_exam_score)}%</strong></span>
         </div>
       )}
 
       <p className="text-xs text-foreground-muted mb-2">
-        {data.topic_readiness.length} topic{data.topic_readiness.length > 1 ? 's' : ''} evaluated
+        {t('topics_evaluated', { count: data.topic_readiness.length })}
       </p>
 
       {data.risk_topics.length > 0 && (
         <div className="mb-3">
-          <p className="text-xs font-medium text-foreground-muted mb-1.5">Risk Topics</p>
+          <p className="text-xs font-medium text-foreground-muted mb-1.5">{t('risk_topics')}</p>
           <div className="flex flex-wrap gap-1.5">
             {data.risk_topics.map(topic => {
               const tr = data.topic_readiness.find(t => t.topic === topic)
@@ -155,7 +157,7 @@ export default function ExamReadinessCard({ userId }: { userId: string }) {
                     </span>
                     {tr?.forgetting_risk != null && (
                       <span className="text-[10px] text-foreground-muted">
-                        forget risk: {(tr.forgetting_risk * 100).toFixed(0)}%
+                        {t('forget_risk', { pct: (tr.forgetting_risk * 100).toFixed(0) })}
                       </span>
                     )}
                   </div>
@@ -176,7 +178,7 @@ export default function ExamReadinessCard({ userId }: { userId: string }) {
 
       {data.recommended_interventions.length > 0 && (
         <div>
-          <p className="text-xs font-medium text-foreground-muted mb-1.5">Recommended Actions</p>
+          <p className="text-xs font-medium text-foreground-muted mb-1.5">{t('recommended_actions')}</p>
           <div className="flex flex-col gap-1.5">
             {data.recommended_interventions.slice(0, 3).map((int, i) => (
               <div key={i} className="text-xs bg-background/50 rounded-lg p-2 border border-border/50">

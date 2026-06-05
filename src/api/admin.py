@@ -12,6 +12,7 @@ from src.api.auth import get_current_user
 from src.database.models import (
     LessonPlan,
     ModelRoutingLog,
+    ParentChild,
     Question,
     Quiz,
     QuizAttempt,
@@ -318,19 +319,35 @@ async def list_users(
     result = await session.execute(query)
     users = result.scalars().all()
 
+    result_data = []
+    for u in users:
+        children_list = []
+        if u.role == UserRole.parent:
+            pc_query = (
+                select(ParentChild)
+                .where(ParentChild.parent_id == u.id)
+                .options(selectinload(ParentChild.student))
+            )
+            pc_result = await session.execute(pc_query)
+            for pc in pc_result.scalars().all():
+                children_list.append({
+                    "id": str(pc.student.id),
+                    "email": pc.student.email or f"Student #{str(pc.student.id)[:8]}",
+                })
+
+        result_data.append({
+            "id": str(u.id),
+            "email": u.email,
+            "role": u.role.value if u.role else None,
+            "grade_level": u.grade_level,
+            "telegram_id": u.telegram_id,
+            "is_active": u.is_active,
+            "created_at": u.created_at.isoformat() if u.created_at else None,
+            "children": children_list if children_list else None,
+        })
+
     return {
-        "users": [
-            {
-                "id": str(u.id),
-                "email": u.email,
-                "role": u.role.value if u.role else None,
-                "grade_level": u.grade_level,
-                "telegram_id": u.telegram_id,
-                "is_active": u.is_active,
-                "created_at": u.created_at.isoformat() if u.created_at else None,
-            }
-            for u in users
-        ],
+        "users": result_data,
         "total": total,
         "page": page,
         "per_page": per_page,
@@ -356,6 +373,34 @@ async def update_user_status(
     user.is_active = body.is_active
     await session.commit()
     return {"ok": True, "user_id": user_id, "is_active": user.is_active}
+
+
+class UpdateUserRoleRequest(BaseModel):
+    role: str
+
+
+@router.patch("/users/{user_id}/role")
+async def update_user_role(
+    user_id: str,
+    body: UpdateUserRoleRequest,
+    session: AsyncSession = Depends(get_session),
+    _: User = Depends(require_admin),
+):
+    try:
+        uid = UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid user ID")
+
+    user = await session.get(User, uid)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if body.role not in ("student", "teacher", "parent", "admin"):
+        raise HTTPException(status_code=400, detail="Invalid role")
+
+    user.role = UserRole(body.role)
+    await session.commit()
+    return {"ok": True, "user_id": user_id, "role": body.role}
 
 
 @router.get("/schools")

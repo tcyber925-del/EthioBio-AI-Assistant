@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import { useTranslations } from 'next-intl'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { fetchWithTimeout } from '@/lib/fetch'
 import { CardSkeleton } from '@/components/Skeleton'
@@ -40,6 +41,8 @@ interface GamificationData {
 }
 
 export default function GamificationProfile({ userId }: { userId: string }) {
+  const tg = useTranslations('gamification')
+  const tc = useTranslations('common')
   const [data, setData] = useState<GamificationData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -95,7 +98,7 @@ export default function GamificationProfile({ userId }: { userId: string }) {
         <AlertTriangle className="w-8 h-8 text-red-400 mx-auto mb-2" />
         <p className="text-sm text-red-400 mb-2">{error}</p>
         <button onClick={fetchProfile} className="text-xs text-primary hover:underline flex items-center gap-1 mx-auto">
-          <RefreshCw className="w-3 h-3" /> Retry
+          <RefreshCw className="w-3 h-3" /> {tc('retry')}
         </button>
       </div>
     )
@@ -107,13 +110,13 @@ export default function GamificationProfile({ userId }: { userId: string }) {
 
   const allAchievements = [
     ...data.achievements,
-    ...getLockedAchievements(data.achievements),
+    ...getLockedAchievements(data.achievements, tg),
   ]
 
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-        Gamification
+        {tg('title')}
       </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -169,7 +172,7 @@ const ACHIEVEMENT_DEFINITIONS: Achievement[] = [
   { id: 'level_10', title: 'Master Biologist', description: 'Reach Level 10', icon: 'medal', unlocked_at: null },
 ]
 
-function getLockedAchievements(unlocked: Achievement[]): Achievement[] {
+function getLockedAchievements(unlocked: Achievement[], t: (key: string) => string): Achievement[] {
   const unlockedIds = new Set(unlocked.map(a => a.id))
   return ACHIEVEMENT_DEFINITIONS.filter(a => !unlockedIds.has(a.id))
 }

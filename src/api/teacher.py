@@ -3,14 +3,24 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.api.auth import get_current_user
 from src.core.learning_intelligence.school import SchoolService
 from src.core.learning_intelligence.teacher import TeacherService
-from src.database.models import ClassEnrollment, ClassGroup, School, User, UserRole
+from src.database.models import (
+    ClassEnrollment,
+    ClassGroup,
+    LessonPlan,
+    ModelRoutingLog,
+    Quiz,
+    QuizAttempt,
+    School,
+    User,
+    UserRole,
+)
 from src.database.session import get_session
 
 logger = structlog.get_logger()
@@ -283,6 +293,52 @@ async def _enroll_students(
             student_id=sid,
         )
         session.add(enrollment)
+
+
+@router.get("/dashboard")
+async def teacher_dashboard(
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        user_count = await session.scalar(select(func.count(User.id)))
+        teacher_count = await session.scalar(
+            select(func.count(User.id)).where(User.role == UserRole.teacher)
+        )
+        student_count = await session.scalar(
+            select(func.count(User.id)).where(User.role == UserRole.student)
+        )
+        quiz_count = await session.scalar(select(func.count(Quiz.id)))
+        lesson_count = await session.scalar(select(func.count(LessonPlan.id)))
+        attempt_count = await session.scalar(select(func.count(QuizAttempt.id)))
+
+        latest_logs = await session.execute(
+            select(ModelRoutingLog).order_by(ModelRoutingLog.created_at.desc()).limit(20)
+        )
+        logs = latest_logs.scalars().all()
+
+        return {
+            "users": user_count or 0,
+            "teachers": teacher_count or 0,
+            "students": student_count or 0,
+            "quizzes": quiz_count or 0,
+            "lesson_plans": lesson_count or 0,
+            "quiz_attempts": attempt_count or 0,
+            "recent_logs": [
+                {
+                    "id": str(log.id),
+                    "request_type": log.request_type,
+                    "model_used": log.model_used,
+                    "success": log.success,
+                    "latency_ms": log.latency_ms,
+                    "created_at": log.created_at.isoformat() if log.created_at else None,
+                }
+                for log in logs
+            ],
+        }
+    except Exception as e:
+        logger.error("teacher_dashboard_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 def _require_admin(current_user: User) -> None:

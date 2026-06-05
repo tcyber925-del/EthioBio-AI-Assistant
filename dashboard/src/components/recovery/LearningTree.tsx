@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { ChevronRight, ChevronDown, AlertTriangle } from 'lucide-react'
 
 interface Misconception {
@@ -25,6 +26,7 @@ interface LearningTreeProps {
 }
 
 function TopicNode({ topic, defaultOpen }: { topic: WeakTopic; defaultOpen: boolean }) {
+  const t = useTranslations('recovery')
   const [open, setOpen] = useState(defaultOpen)
 
   const masteryColor =
@@ -48,7 +50,7 @@ function TopicNode({ topic, defaultOpen }: { topic: WeakTopic; defaultOpen: bool
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-foreground truncate">{topic.topic}</p>
           <p className="text-xs text-foreground-muted truncate">
-            {topic.unit && `${topic.unit} · `}Grade {topic.grade_level}
+            {topic.unit && `${topic.unit} · `}{t('grade_with_num', { grade: topic.grade_level })}
           </p>
         </div>
         <span className={`text-sm font-semibold ${masteryColor}`}>
@@ -59,26 +61,26 @@ function TopicNode({ topic, defaultOpen }: { topic: WeakTopic; defaultOpen: bool
         <div className="px-3 pb-3 pt-0 border-t border-border/50">
           <div className="grid grid-cols-3 gap-3 mt-3">
             <div>
-              <p className="text-xs text-foreground-muted">Attempts</p>
+              <p className="text-xs text-foreground-muted">{t('attempts_label')}</p>
               <p className="text-sm font-semibold text-foreground">{topic.attempt_count}</p>
             </div>
             <div>
-              <p className="text-xs text-foreground-muted">Confidence</p>
+              <p className="text-xs text-foreground-muted">{t('confidence_label')}</p>
               <p className="text-sm font-semibold text-foreground">{(topic.confidence * 100).toFixed(0)}%</p>
             </div>
             <div>
-              <p className="text-xs text-foreground-muted">Severity</p>
+              <p className="text-xs text-foreground-muted">{t('severity')}</p>
               <p className={`text-sm font-semibold capitalize ${masteryColor}`}>{topic.severity}</p>
             </div>
           </div>
           {topic.misconceptions.length > 0 && (
             <div className="mt-3 pt-3 border-t border-border/50">
-              <p className="text-xs font-medium text-foreground-muted mb-2">Misconceptions:</p>
+              <p className="text-xs font-medium text-foreground-muted mb-2">{t('misconceptions_label')}</p>
               {topic.misconceptions.map((mc, j) => (
                 <div key={j} className="flex items-center gap-2 text-xs text-foreground-muted mb-1">
                   <AlertTriangle className="w-3 h-3 text-yellow-400 flex-shrink-0" />
                   <span>{mc.pattern_type}: {mc.description}</span>
-                  <span className="text-foreground-muted/60">({mc.frequency}x)</span>
+                  <span className="text-foreground-muted/60">{t('frequency', { count: mc.frequency })}</span>
                 </div>
               ))}
             </div>
@@ -90,10 +92,11 @@ function TopicNode({ topic, defaultOpen }: { topic: WeakTopic; defaultOpen: bool
 }
 
 export function LearningTree({ topics }: LearningTreeProps) {
+  const t = useTranslations('recovery')
   if (topics.length === 0) {
     return (
       <div className="text-center py-8 text-foreground-muted text-sm">
-        No weak topics to display
+        {t('no_weak_topics')}
       </div>
     )
   }

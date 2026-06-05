@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import {
   RadarChart,
   PolarGrid,
@@ -20,10 +21,12 @@ interface MasteryRadarChartProps {
 }
 
 export function MasteryRadarChart({ data }: MasteryRadarChartProps) {
+  const t = useTranslations('recovery')
+
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-64 text-foreground-muted text-sm">
-        No topic data available
+        {t('no_topic_data')}
       </div>
     )
   }
@@ -54,10 +57,10 @@ export function MasteryRadarChart({ data }: MasteryRadarChartProps) {
               borderRadius: '8px',
               fontSize: '13px',
             }}
-            formatter={(value: number) => [`${value.toFixed(0)}%`, 'Mastery']}
+            formatter={(value: number) => [`${value.toFixed(0)}%`, t('mastery_label')]}
           />
           <Radar
-            name="Mastery"
+            name={t('mastery_label')}
             dataKey="mastery"
             stroke="hsl(var(--primary))"
             fill="hsl(var(--primary))"

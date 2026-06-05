@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { Image, Send, Loader2, AlertTriangle, CheckCircle2, XCircle, RefreshCw } from 'lucide-react'
 import { fetchWithTimeout } from '@/lib/fetch'
 import { isAuthenticated } from '@/lib/auth'
@@ -52,6 +53,8 @@ const PLACEHOLDER_USER_ID = '00000000-0000-0000-0000-000000000001'
 
 export default function DiagramsPage() {
   const router = useRouter()
+  const td = useTranslations('diagrams')
+  const tc = useTranslations('common')
   const [models, setModels] = useState<ModelOption[]>([])
   const [modelsLoading, setModelsLoading] = useState(true)
   const [prompt, setPrompt] = useState('')
@@ -187,29 +190,29 @@ export default function DiagramsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Diagrams</h1>
-          <p className="text-sm text-foreground-muted mt-1">Generate and explore biology diagrams with labeled structures</p>
+          <h1 className="text-2xl font-bold text-foreground">{td('title')}</h1>
+          <p className="text-sm text-foreground-muted mt-1">{td('diagrams_subtitle')}</p>
         </div>
       </div>
 
       <div className="bg-card rounded-xl border border-border p-5 mb-6">
         <div className="grid grid-cols-6 gap-3 mb-4">
           <div>
-            <label className="text-xs text-foreground-muted block mb-1.5">Topic</label>
+            <label className="text-xs text-foreground-muted block mb-1.5">{td('topic')}</label>
             <select value={topic} onChange={e => setTopic(e.target.value)}
               className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
               {TOPICS.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-xs text-foreground-muted block mb-1.5">Difficulty</label>
+            <label className="text-xs text-foreground-muted block mb-1.5">{td('difficulty')}</label>
             <select value={difficulty} onChange={e => setDifficulty(e.target.value)}
               className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
               {DIFFICULTIES.map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-xs text-foreground-muted block mb-1.5">Provider</label>
+            <label className="text-xs text-foreground-muted block mb-1.5">{td('provider')}</label>
             <select value={selectedProvider} onChange={e => {
               const provider = e.target.value
               setSelectedProvider(provider)
@@ -224,7 +227,7 @@ export default function DiagramsPage() {
             </select>
           </div>
           <div>
-            <label className="text-xs text-foreground-muted block mb-1.5">Model</label>
+            <label className="text-xs text-foreground-muted block mb-1.5">{tc('model_label')}</label>
             <select value={selectedModel} onChange={e => setSelectedModel(e.target.value)}
               className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
               disabled={modelsLoading || !selectedProvider}>
@@ -232,20 +235,20 @@ export default function DiagramsPage() {
                 .filter(m => m.provider === selectedProvider)
                 .map(m => (
                   <option key={m.id} value={m.id} disabled={!m.available}>
-                    {m.name}{m.is_default ? ' ★' : ''}{!m.available ? ' (not configured)' : ''}
+                    {m.name}{m.is_default ? ' ★' : ''}{!m.available ? ` (${td('not_configured')})` : ''}
                   </option>
                 ))}
             </select>
           </div>
           <div className="col-span-3">
-            <label className="text-xs text-foreground-muted block mb-1.5">Prompt</label>
+            <label className="text-xs text-foreground-muted block mb-1.5">{td('prompt')}</label>
             <div className="flex gap-3">
               <input
                 type="text"
                 value={prompt}
                 onChange={e => setPrompt(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && generateDiagram()}
-                placeholder="e.g., 'Label the parts of a plant cell'"
+                placeholder={td('prompt_placeholder')}
                 className="flex-1 px-4 py-2 border border-border rounded-lg text-sm bg-background text-foreground placeholder:text-foreground-muted/50 focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <button
@@ -253,7 +256,7 @@ export default function DiagramsPage() {
                 disabled={loading || !prompt.trim()}
                 className="px-6 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
               >
-                {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating...</> : <><Send className="w-4 h-4" /> Generate</>}
+                {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> {td('generating')}...</> : <><Send className="w-4 h-4" /> {td('generate_button')}</>}
               </button>
             </div>
           </div>
@@ -267,7 +270,7 @@ export default function DiagramsPage() {
             <div className="h-4 bg-border rounded w-1/2 mx-auto" />
             <div className="h-4 bg-border rounded w-2/3 mx-auto" />
           </div>
-          <p className="text-sm text-foreground-muted mt-4">Generating {topic} diagram...</p>
+          <p className="text-sm text-foreground-muted mt-4">{td('generating_topic', { topic })}</p>
         </div>
       )}
 
@@ -275,7 +278,7 @@ export default function DiagramsPage() {
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-5 flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5" />
           <div>
-            <p className="font-medium text-red-400">Error</p>
+            <p className="font-medium text-red-400">{tc('error')}</p>
             <p className="text-sm text-red-400/80 mt-1">{error}</p>
           </div>
         </div>
@@ -335,9 +338,9 @@ export default function DiagramsPage() {
           </div>
 
           <div className="bg-card rounded-xl border border-border p-6">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Label the Diagram</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-4">{td('label_diagram')}</h3>
             <p className="text-sm text-foreground-muted mb-4">
-              Type the correct name for each numbered structure on the diagram.
+              {td('label_instruction')}
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
@@ -360,7 +363,7 @@ export default function DiagramsPage() {
                       <div className="flex-1 px-3 py-2 rounded-lg text-sm bg-green-500/10 border border-green-500/30 text-green-400 flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
                         <span className="font-medium">{labelInputs[label.id]}</span>
-                        <span className="text-xs text-green-400/60 ml-auto">Confirmed</span>
+                        <span className="text-xs text-green-400/60 ml-auto">{td('confirmed')}</span>
                       </div>
                     ) : isRevealed ? (
                       <div className={`flex-1 px-3 py-2 rounded-lg text-sm border ${
@@ -375,7 +378,7 @@ export default function DiagramsPage() {
                             <XCircle className="w-4 h-4 flex-shrink-0" />
                           )}
                           <span className={isCorrect ? '' : 'line-through opacity-60'}>
-                            {valResult?.submitted_text || '(empty)'}
+                            {valResult?.submitted_text || td('empty_label')}
                           </span>
                           {!isCorrect && (
                             <span className="text-green-400 ml-1">
@@ -405,7 +408,7 @@ export default function DiagramsPage() {
                           }
                         }}
                         id={`label-input-${label.id}`}
-                        placeholder="Enter label..."
+                        placeholder={td('enter_label')}
                         className="flex-1 px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground placeholder:text-foreground-muted/50 focus:outline-none focus:ring-2 focus:ring-primary"
                       />
                     )}
@@ -419,17 +422,17 @@ export default function DiagramsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-lg font-bold text-foreground">
-                      Score: {validationResult.score}%
+                      {td('score_label', { score: validationResult.score })}
                     </span>
                     <span className="text-sm text-foreground-muted ml-2">
-                      ({validationResult.correct_count}/{validationResult.total_labels} correct)
+                      {td('correct_count', { correct: validationResult.correct_count, total: validationResult.total_labels })}
                     </span>
                   </div>
                   <button
                     onClick={resetExercise}
                     className="px-4 py-2 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-background-secondary transition-colors flex items-center gap-2"
                   >
-                    <RefreshCw className="w-4 h-4" /> Try Again
+                    <RefreshCw className="w-4 h-4" /> {td('try_again')}
                   </button>
                 </div>
               </div>
@@ -441,7 +444,7 @@ export default function DiagramsPage() {
                 disabled={submitting}
                 className="px-6 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
               >
-                {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Validating...</> : <><CheckCircle2 className="w-4 h-4" /> Submit Labels</>}
+                {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> {td('validating')}...</> : <><CheckCircle2 className="w-4 h-4" /> {td('submit_labels')}</>}
               </button>
             )}
           </div>
@@ -451,8 +454,8 @@ export default function DiagramsPage() {
       {!result && !loading && !error && (
         <div className="text-center py-16">
           <Image className="w-12 h-12 text-border mx-auto mb-3" />
-          <p className="text-foreground-muted font-medium">Generate a diagram to get started</p>
-          <p className="text-sm text-foreground-muted/60 mt-1">Choose a topic, set difficulty, and describe what you want to see</p>
+          <p className="text-foreground-muted font-medium">{td('no_diagrams')}</p>
+          <p className="text-sm text-foreground-muted/60 mt-1">{td('no_diagrams_subtitle')}</p>
         </div>
       )}
     </div>

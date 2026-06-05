@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { Users, AlertTriangle, RefreshCw } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
@@ -16,6 +17,7 @@ interface Student {
 
 export default function StudentsPage() {
   const router = useRouter()
+  const t = useTranslations('common')
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -44,7 +46,7 @@ export default function StudentsPage() {
       <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
       <p className="text-red-400">{error}</p>
       <button onClick={fetchStudents} className="mt-4 px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover transition-colors">
-        <RefreshCw className="w-4 h-4 inline mr-1" /> Retry
+        <RefreshCw className="w-4 h-4 inline mr-1" /> {t('retry')}
       </button>
     </div>
   )
@@ -53,16 +55,16 @@ export default function StudentsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Students</h1>
-          <p className="text-sm text-foreground-muted mt-1">View registered users</p>
+          <h1 className="text-2xl font-bold text-foreground">{t('students')}</h1>
+          <p className="text-sm text-foreground-muted mt-1">{t('students_subtitle')}</p>
         </div>
       </div>
 
       {students.length === 0 ? (
         <div className="bg-card rounded-xl border border-border p-8 text-center">
           <Users className="w-12 h-12 text-border mx-auto mb-3" />
-          <p className="text-foreground-muted font-medium">No students yet</p>
-          <p className="text-sm text-foreground-muted/60 mt-1">Students will appear here when they interact with the bot</p>
+          <p className="text-foreground-muted font-medium">{t('no_students')}</p>
+          <p className="text-sm text-foreground-muted/60 mt-1">{t('no_students_desc')}</p>
         </div>
       ) : (
         <div className="bg-card rounded-xl border border-border">
@@ -70,11 +72,11 @@ export default function StudentsPage() {
             <table className="w-full">
               <thead className="bg-background-secondary">
                 <tr>
-                  <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">Telegram ID</th>
-                  <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">Role</th>
-                  <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">Language</th>
-                  <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">Grade</th>
-                  <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">Joined</th>
+                  <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">{t('telegram_id')}</th>
+                  <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">{t('role')}</th>
+                  <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">{t('language')}</th>
+                  <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">{t('grade')}</th>
+                  <th className="px-5 py-3 text-left text-xs font-medium text-foreground-muted uppercase">{t('joined')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -91,7 +93,7 @@ export default function StudentsPage() {
                       </span>
                     </td>
                     <td className="px-5 py-3 text-sm text-foreground-muted capitalize">{s.language_preference}</td>
-                    <td className="px-5 py-3 text-sm text-foreground-muted">{s.grade_level ? `Grade ${s.grade_level}` : '—'}</td>
+                    <td className="px-5 py-3 text-sm text-foreground-muted">{s.grade_level ? `${t('grade')} ${s.grade_level}` : '—'}</td>
                     <td className="px-5 py-3 text-sm text-foreground-muted">{new Date(s.created_at).toLocaleDateString()}</td>
                   </tr>
                 ))}

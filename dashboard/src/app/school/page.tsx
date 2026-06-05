@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import {
   AlertTriangle,
   BarChart3,
@@ -62,6 +63,8 @@ function healthBg(score: number): string {
 
 export default function SchoolDashboardPage() {
   const router = useRouter()
+  const ts = useTranslations('admin.schools')
+  const tc = useTranslations('common')
   const [schools, setSchools] = useState<SchoolItem[]>([])
   const [selectedId, setSelectedId] = useState<string>('')
   const [profile, setProfile] = useState<SchoolProfile | null>(null)
@@ -110,16 +113,16 @@ export default function SchoolDashboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <School className="w-6 h-6" />
-            School Intelligence
+            {ts('school_intelligence')}
           </h1>
-          <p className="text-foreground-muted text-sm mt-1">District-wide oversight across all classrooms</p>
+          <p className="text-foreground-muted text-sm mt-1">{ts('school_intelligence_subtitle')}</p>
         </div>
         <select
           value={selectedId}
           onChange={e => setSelectedId(e.target.value)}
           className="bg-card border border-border rounded-lg px-3 py-2 text-sm text-foreground"
         >
-          <option value="">Select a school...</option>
+          <option value="">{ts('select_school')}</option>
           {schools.map(s => (
             <option key={s.id} value={s.id}>{s.name}</option>
           ))}
@@ -131,7 +134,7 @@ export default function SchoolDashboardPage() {
           <AlertTriangle className="w-8 h-8 text-red-400 mx-auto mb-2" />
           <p className="text-red-400 text-sm">{error}</p>
           <button onClick={() => selectedId && loadSchool(selectedId)} className="text-sm text-primary hover:underline mt-2 flex items-center gap-1 mx-auto">
-            <RefreshCw className="w-3 h-3" /> Retry
+            <RefreshCw className="w-3 h-3" /> {tc('retry')}
           </button>
         </div>
       )}
@@ -145,7 +148,7 @@ export default function SchoolDashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className={`rounded-xl border p-4 ${healthBg(profile.avg_health)}`}>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-foreground-muted font-medium">School Health</span>
+                <span className="text-xs text-foreground-muted font-medium">{ts('school_health')}</span>
                 <Shield className={`w-4 h-4 ${healthColor(profile.avg_health)}`} />
               </div>
               <p className={`text-2xl font-bold ${healthColor(profile.avg_health)}`}>
@@ -158,11 +161,11 @@ export default function SchoolDashboardPage() {
 
             <div className="rounded-xl border border-border bg-card p-4">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-foreground-muted font-medium">Teachers</span>
+                <span className="text-xs text-foreground-muted font-medium">{ts('teacher_count')}</span>
                 <Users className="w-4 h-4 text-primary" />
               </div>
               <p className="text-2xl font-bold text-foreground">{profile.total_teachers}</p>
-              <p className="text-xs text-foreground-muted mt-1">Active educators</p>
+              <p className="text-xs text-foreground-muted mt-1">{ts('active_educators')}</p>
             </div>
 
             <div className="rounded-xl border border-border bg-card p-4">
@@ -182,7 +185,7 @@ export default function SchoolDashboardPage() {
                 <AlertTriangle className="w-4 h-4 text-red-400" />
               </div>
               <p className="text-2xl font-bold text-red-400">{profile.at_risk_classrooms.length}</p>
-              <p className="text-xs text-foreground-muted mt-1">Need attention</p>
+              <p className="text-xs text-foreground-muted mt-1">{ts('need_attention')}</p>
             </div>
           </div>
 
@@ -190,10 +193,10 @@ export default function SchoolDashboardPage() {
             <div className="rounded-xl border border-border bg-card p-4">
               <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-primary" />
-                Health Trend (30 days)
+                {ts('health_trend')}
               </h3>
               {trends.length === 0 ? (
-                <p className="text-xs text-foreground-muted py-4 text-center">No trend data yet. Take a snapshot to start tracking.</p>
+                <p className="text-xs text-foreground-muted py-4 text-center">{ts('no_trend_data')}</p>
               ) : (
                 <div className="space-y-2">
                   {trends.map((t, i) => (
@@ -222,7 +225,7 @@ export default function SchoolDashboardPage() {
                   }}
                   className="text-xs text-primary hover:underline"
                 >
-                  Take Snapshot
+                  {ts('take_snapshot')}
                 </button>
               </div>
             </div>
@@ -230,7 +233,7 @@ export default function SchoolDashboardPage() {
             <div className="rounded-xl border border-border bg-card p-4">
               <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                 <Shield className="w-4 h-4 text-primary" />
-                Health Distribution
+                {ts('health_distribution')}
               </h3>
               <div className="space-y-3">
                 {[
@@ -256,15 +259,15 @@ export default function SchoolDashboardPage() {
           </div>
 
           <div className="rounded-xl border border-border bg-card p-4 mb-6">
-            <h3 className="text-sm font-semibold text-foreground mb-3">Teacher Performance</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-3">{ts('teacher_performance')}</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-foreground-muted text-xs border-b border-border">
-                    <th className="pb-2 font-medium">Teacher ID</th>
+                    <th className="pb-2 font-medium">{ts('teacher_id')}</th>
                     <th className="pb-2 font-medium">Classrooms</th>
-                    <th className="pb-2 font-medium">Avg Readiness</th>
-                    <th className="pb-2 font-medium">Intervention Rate</th>
+                    <th className="pb-2 font-medium">{ts('avg_readiness')}</th>
+                    <th className="pb-2 font-medium">{ts('intervention_rate')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -279,7 +282,7 @@ export default function SchoolDashboardPage() {
                     </tr>
                   ))}
                   {profile.teacher_metrics.length === 0 && (
-                    <tr><td colSpan={4} className="py-4 text-center text-foreground-muted text-xs">No teacher data</td></tr>
+                    <tr><td colSpan={4} className="py-4 text-center text-foreground-muted text-xs">{tc('no_teacher_data')}</td></tr>
                   )}
                 </tbody>
               </table>
@@ -308,7 +311,7 @@ export default function SchoolDashboardPage() {
       {!loadingProfile && !error && !profile && selectedId && (
         <div className="text-center py-12">
           <School className="w-10 h-10 text-border mx-auto mb-2" />
-          <p className="text-foreground-muted text-sm">No school data available. Ensure classrooms are assigned to this school.</p>
+          <p className="text-foreground-muted text-sm">{ts('no_school_data')}</p>
         </div>
       )}
     </div>

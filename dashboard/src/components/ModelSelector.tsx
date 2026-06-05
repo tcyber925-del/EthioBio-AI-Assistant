@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 import { Loader2, RefreshCw } from 'lucide-react'
 import { fetchWithTimeout } from '@/lib/fetch'
 
@@ -18,6 +19,7 @@ interface ModelSelectorProps {
 }
 
 export default function ModelSelector({ value, onChange, disabled }: ModelSelectorProps) {
+  const tc = useTranslations('common')
   const [models, setModels] = useState<ModelInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -49,7 +51,7 @@ export default function ModelSelector({ value, onChange, disabled }: ModelSelect
     }
   }
 
-  if (loading) return <div className="flex items-center gap-2 text-sm text-foreground-muted"><Loader2 className="w-4 h-4 animate-spin" />Loading models...</div>
+  if (loading) return <div className="flex items-center gap-2 text-sm text-foreground-muted"><Loader2 className="w-4 h-4 animate-spin" />{tc('models_loading')}</div>
 
   return (
     <div className="flex items-center gap-2">
@@ -69,7 +71,7 @@ export default function ModelSelector({ value, onChange, disabled }: ModelSelect
         onClick={handleRefresh}
         disabled={refreshing}
         className="p-2 border border-border rounded-lg hover:bg-card transition-colors disabled:opacity-50"
-        title="Refresh models list"
+        title={tc('refresh_models')}
       >
         <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
       </button>

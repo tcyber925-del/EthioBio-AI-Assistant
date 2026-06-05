@@ -1,5 +1,7 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
+
 interface HistoryRecord {
   average_score: number
   recorded_at: string
@@ -15,6 +17,7 @@ interface DayBucket {
 }
 
 export function TopicHeatmap({ history }: TopicHeatmapProps) {
+  const t = useTranslations('recovery')
   const dayMap = new Map<string, number[]>()
 
   for (const records of Object.values(history)) {
@@ -36,7 +39,7 @@ export function TopicHeatmap({ history }: TopicHeatmapProps) {
   if (days.length < 2) {
     return (
       <div className="flex items-center justify-center h-24 text-foreground-muted text-sm">
-        Complete activities to see your progress heatmap
+        {t('progress_heatmap_desc')}
       </div>
     )
   }
@@ -73,13 +76,13 @@ export function TopicHeatmap({ history }: TopicHeatmapProps) {
         })}
       </div>
       <div className="flex items-center gap-2 mt-2 text-xs text-foreground-muted">
-        <span>Less</span>
+        <span>{t('heatmap_less')}</span>
         <div className="w-3 h-3 rounded bg-red-500/20" />
         <div className="w-3 h-3 rounded bg-orange-500/30" />
         <div className="w-3 h-3 rounded bg-yellow-500/40" />
         <div className="w-3 h-3 rounded bg-green-500/40" />
-        <span>More</span>
-        <span className="ml-auto">Last 28 days</span>
+        <span>{t('heatmap_more')}</span>
+        <span className="ml-auto">{t('last_28_days')}</span>
       </div>
     </div>
   )

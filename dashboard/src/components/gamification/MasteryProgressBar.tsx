@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { BarChart3 } from 'lucide-react'
 
 interface MasteryProgressBarProps {
@@ -10,6 +11,8 @@ interface MasteryProgressBarProps {
 }
 
 export default function MasteryProgressBar({ level, totalXp, nextLevelXp, progressPct }: MasteryProgressBarProps) {
+  const tg = useTranslations('gamification')
+
   return (
     <div className="bg-card rounded-xl border border-border p-5">
       <div className="flex items-center gap-3 mb-4">
@@ -17,8 +20,8 @@ export default function MasteryProgressBar({ level, totalXp, nextLevelXp, progre
           <BarChart3 className="w-5 h-5" />
         </div>
         <div>
-          <p className="text-sm text-foreground-muted">Mastery Progress</p>
-          <p className="text-lg font-bold text-foreground">Level {level}</p>
+          <p className="text-sm text-foreground-muted">{tg('mastery_progress')}</p>
+          <p className="text-lg font-bold text-foreground">{tg('level_value', { level })}</p>
         </div>
         <div className="ml-auto">
           <span className="text-2xl font-bold text-green-400">{Math.round(progressPct)}%</span>
@@ -31,8 +34,8 @@ export default function MasteryProgressBar({ level, totalXp, nextLevelXp, progre
         />
       </div>
       <div className="mt-2 flex items-center justify-between text-xs text-foreground-muted">
-        <span>{totalXp.toLocaleString()} XP earned</span>
-        <span>{nextLevelXp.toLocaleString()} XP to Level {level + 1}</span>
+        <span>{tg('xp_earned_label', { xp: totalXp.toLocaleString() })}</span>
+        <span>{tg('xp_to_next_level_value', { xp: nextLevelXp.toLocaleString(), level: level + 1 })}</span>
       </div>
     </div>
   )

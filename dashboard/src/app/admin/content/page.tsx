@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 
 interface ContentItem {
@@ -15,6 +16,8 @@ interface ContentItem {
 }
 
 export default function AdminContentPage() {
+  const tc = useTranslations('admin.content')
+  const tcommon = useTranslations('common')
   const [items, setItems] = useState<ContentItem[]>([])
   const [loading, setLoading] = useState(true)
   const [type, setType] = useState('all')
@@ -58,34 +61,34 @@ export default function AdminContentPage() {
     setItems(prev => prev.map(i => i.id === id ? { ...i, status: newStatus } : i))
   }
 
-  if (error) return <p className="text-red-600">Error: {error}</p>
-  if (loading) return <p className="text-gray-500">Loading...</p>
+  if (error) return <p className="text-red-600">{tcommon('error')}: {error}</p>
+  if (loading) return <p className="text-gray-500">{tcommon('loading')}</p>
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Content Review</h1>
+      <h1 className="text-2xl font-bold mb-6">{tc('title')}</h1>
       <div className="flex gap-4 mb-4">
         <select value={type} onChange={e => setType(e.target.value)} className="border rounded px-3 py-2">
-          <option value="all">All Types</option>
-          <option value="quiz">Quizzes</option>
-          <option value="lesson">Lessons</option>
+          <option value="all">{tc('all_types')}</option>
+          <option value="quiz">{tc('quiz')}</option>
+          <option value="lesson">{tc('lesson')}</option>
         </select>
         <select value={status} onChange={e => setStatus(e.target.value)} className="border rounded px-3 py-2">
-          <option value="all">All Status</option>
-          <option value="draft">Draft</option>
-          <option value="published">Published</option>
+          <option value="all">{tc('all_status')}</option>
+          <option value="draft">{tc('draft')}</option>
+          <option value="published">{tc('published')}</option>
           <option value="archived">Archived</option>
         </select>
       </div>
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-gray-100">
-            <th className="p-2 text-left">Title</th>
-            <th className="p-2 text-left">Type</th>
-            <th className="p-2 text-left">Grade</th>
-            <th className="p-2 text-left">Status</th>
-            <th className="p-2 text-left">Created</th>
-            <th className="p-2 text-left">Actions</th>
+            <th className="p-2 text-left">{tc('col_title')}</th>
+            <th className="p-2 text-left">{tcommon('type')}</th>
+            <th className="p-2 text-left">{tcommon('grade')}</th>
+            <th className="p-2 text-left">{tc('status_label')}</th>
+            <th className="p-2 text-left">{tcommon('created')}</th>
+            <th className="p-2 text-left">{tcommon('actions')}</th>
           </tr>
         </thead>
         <tbody>
@@ -113,12 +116,12 @@ export default function AdminContentPage() {
                     router.push(`/admin/content/${ct}/${item.id}`)
                   }}
                   className="text-blue-600 hover:underline text-xs"
-                >View</button>
+                >{tcommon('view')}</button>
                 {item.status !== 'published' && (
-                  <button onClick={() => updateStatus(item.question_count !== undefined ? 'quiz' : 'lesson', item.id, 'published')} className="text-green-600 hover:underline text-xs">Publish</button>
+                  <button onClick={() => updateStatus(item.question_count !== undefined ? 'quiz' : 'lesson', item.id, 'published')} className="text-green-600 hover:underline text-xs">{tc('publish')}</button>
                 )}
                 {item.status === 'published' && (
-                  <button onClick={() => updateStatus(item.question_count !== undefined ? 'quiz' : 'lesson', item.id, 'archived')} className="text-red-600 hover:underline text-xs">Archive</button>
+                  <button onClick={() => updateStatus(item.question_count !== undefined ? 'quiz' : 'lesson', item.id, 'archived')} className="text-red-600 hover:underline text-xs">{tc('archive')}</button>
                 )}
               </td>
             </tr>
