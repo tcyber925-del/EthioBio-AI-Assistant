@@ -9,6 +9,8 @@ import { CardSkeleton } from '@/components/Skeleton'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 interface Student {
   id: string; telegram_id: number | null
   role: string; language_preference: string

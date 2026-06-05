@@ -9,6 +9,8 @@ import ModelSelector from '@/components/ModelSelector'
 import { fetchWithTimeout } from '@/lib/fetch'
 import { isAuthenticated } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 export default function AskPage() {
   const router = useRouter()
   const ta = useTranslations('ask')

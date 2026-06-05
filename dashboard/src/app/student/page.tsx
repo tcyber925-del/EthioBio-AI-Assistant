@@ -23,6 +23,8 @@ import { getUserRole, isAuthenticated } from '@/lib/auth'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { CardSkeleton } from '@/components/Skeleton'
 
+export const dynamic = 'force-dynamic'
+
 interface StudentDashboard {
   user: { id: string; email: string; grade_level: number | null; created_at: string | null }
   gamification: {

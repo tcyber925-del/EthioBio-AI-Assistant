@@ -10,6 +10,8 @@ import ModelSelector from '@/components/ModelSelector'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 interface Lesson {
   id: string; topic: string; grade_level: number
   objective: string; status: string; created_at: string

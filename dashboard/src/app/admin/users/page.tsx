@@ -5,6 +5,8 @@ import { useLocale, useTranslations } from 'next-intl'
 import { AlertTriangle, ChevronLeft, ChevronRight, RefreshCw, Search, Shield, UserCheck, Users } from 'lucide-react'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 
+export const dynamic = 'force-dynamic'
+
 const ROLES = ['all', 'student', 'teacher', 'parent', 'admin'] as const
 
 interface UserData {

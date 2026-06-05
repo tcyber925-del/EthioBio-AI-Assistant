@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@swc/helpers": "^0.5.23",
     "clsx": "^2.1.0",
     "lucide-react": "^0.441.0",
     "marked": "^18.0.3",

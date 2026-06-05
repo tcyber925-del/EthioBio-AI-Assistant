@@ -13,6 +13,8 @@ import GamificationProfile from '@/components/gamification/GamificationProfile'
 import ActivityFeed from '@/components/ActivityFeed'
 import ExamReadinessCard from '@/components/learning/ExamReadinessCard'
 
+export const dynamic = 'force-dynamic'
+
 export default function StudentDetailPage() {
   const params = useParams()
   const router = useRouter()

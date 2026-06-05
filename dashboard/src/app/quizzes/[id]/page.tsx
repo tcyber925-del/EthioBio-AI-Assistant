@@ -10,6 +10,8 @@ import MarkdownRenderer from '@/components/MarkdownRenderer'
 import { fetchWithTimeout } from '@/lib/fetch'
 import { isAuthenticated } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 interface Question {
   id: string; question_type: string; question_text: string
   options: string[] | null; correct_answer: string

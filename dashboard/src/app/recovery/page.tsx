@@ -11,6 +11,8 @@ import { MasteryRadarChart } from '@/components/recovery/MasteryRadarChart'
 import { TopicHeatmap } from '@/components/recovery/TopicHeatmap'
 import { LearningTree } from '@/components/recovery/LearningTree'
 
+export const dynamic = 'force-dynamic'
+
 interface Misconception {
   pattern_type: string
   description: string

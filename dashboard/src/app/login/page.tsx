@@ -8,6 +8,8 @@ import { setToken } from '@/lib/auth'
 import { setCookie } from '@/lib/cookies'
 import { fetchWithTimeout } from '@/lib/fetch'
 
+export const dynamic = 'force-dynamic'
+
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')

@@ -9,6 +9,8 @@ import { CardSkeleton } from '@/components/Skeleton'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 interface StudentRisk {
   student_id: string
   readiness_score: number

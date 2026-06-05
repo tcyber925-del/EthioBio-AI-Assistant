@@ -10,6 +10,8 @@ import MarkdownRenderer from '@/components/MarkdownRenderer'
 import { fetchWithTimeout } from '@/lib/fetch'
 import { isAuthenticated } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 interface LessonDetail {
   id: string; topic: string; grade_level: number
   objective: string; prior_knowledge: string | null

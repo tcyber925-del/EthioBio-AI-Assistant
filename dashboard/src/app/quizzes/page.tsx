@@ -10,6 +10,8 @@ import ModelSelector from '@/components/ModelSelector'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 interface Quiz {
   id: string; title: string; grade_level: number
   topic: string; question_count: number; status: string; created_at: string

@@ -18,6 +18,8 @@ import { CardSkeleton } from '@/components/Skeleton'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 interface ChildSummary {
   student_id: string
   name: string

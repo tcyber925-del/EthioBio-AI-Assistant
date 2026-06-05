@@ -7,6 +7,8 @@ import { Image, Send, Loader2, AlertTriangle, CheckCircle2, XCircle, RefreshCw }
 import { fetchWithTimeout } from '@/lib/fetch'
 import { isAuthenticated } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 interface DiagramLabel {
   id: string
   text: string

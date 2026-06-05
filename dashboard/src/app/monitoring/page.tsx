@@ -9,6 +9,8 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 interface MonitoringData {
   total_requests: number; failed_requests: number
   fallback_rate: number; fallbacks: number

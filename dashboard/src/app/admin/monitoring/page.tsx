@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 
+export const dynamic = 'force-dynamic'
+
 interface MonitoringData {
   total_requests: number
   failed_requests: number

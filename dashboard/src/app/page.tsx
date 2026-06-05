@@ -10,6 +10,8 @@ import { CardSkeleton, TableSkeleton } from '@/components/Skeleton'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 
+export const dynamic = 'force-dynamic'
+
 interface DashboardData {
   users: number; teachers: number; students: number
   quizzes: number; lesson_plans: number; quiz_attempts: number

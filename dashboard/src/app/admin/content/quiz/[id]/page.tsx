@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 
+export const dynamic = 'force-dynamic'
+
 interface QuizData {
   id: string
   title: string
