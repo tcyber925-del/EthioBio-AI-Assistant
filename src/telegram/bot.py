@@ -723,10 +723,10 @@ async def ask_command(update: Update, context):
                 xp_awarded = context.user_data.get("last_xp_awarded", 0)
                 level_up = context.user_data.get("last_level_up", False)
                 if xp_awarded:
-                    response += f"\n\n⭐ +{xp_awarded} XP for this session"
+                    response += t("gamification.xp_earned", _lang(context), xp=xp_awarded)
                 if level_up:
                     new_level = context.user_data.get("last_new_level", 1)
-                    response += f"\n🎉 LEVEL UP! You are now Level {new_level}!"
+                    response += t("gamification.level_up", _lang(context), level=new_level)
                 notifications = context.user_data.pop("last_notifications", None)
                 if notifications:
                     response += "\n\n" + "\n".join(notifications)
@@ -751,7 +751,7 @@ async def quiz_command(update: Update, context):
             topic = " ".join(args)
     if 7 <= grade <= 12:
         context.user_data["quiz_grade"] = grade
-        await update.message.reply_text("Select quiz type:", reply_markup=quiz_type_keyboard(language=_lang(context)))
+        await update.message.reply_text(t("quiz.quiz_type_prompt", _lang(context)), reply_markup=quiz_type_keyboard(language=_lang(context)))
         return QUIZ_TYPE
     else:
         await update.message.reply_text("Usage: /quiz [grade] [topic]", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
@@ -963,10 +963,10 @@ async def handle_question(update: Update, context):
             xp_awarded = context.user_data.get("last_xp_awarded", 0)
             level_up = context.user_data.get("last_level_up", False)
             if xp_awarded:
-                response += f"\n\n⭐ +{xp_awarded} XP for this session"
+                response += t("gamification.xp_earned", _lang(context), xp=xp_awarded)
             if level_up:
                 new_level = context.user_data.get("last_new_level", 1)
-                response += f"\n🎉 LEVEL UP! You are now Level {new_level}!"
+                response += t("gamification.level_up", _lang(context), level=new_level)
             notifications = context.user_data.pop("last_notifications", None)
             if notifications:
                 response += "\n\n" + "\n".join(notifications)
@@ -1002,7 +1002,7 @@ async def handle_question(update: Update, context):
 async def handle_quiz_start(update: Update, context):
     query = update.callback_query
     await query.answer()
-    await query.message.reply_text("Select quiz type:", reply_markup=quiz_type_keyboard(language=_lang(context)))
+    await query.message.reply_text(t("quiz.quiz_type_prompt", _lang(context)), reply_markup=quiz_type_keyboard(language=_lang(context)))
     return QUIZ_TYPE
 
 
@@ -1011,7 +1011,7 @@ async def handle_quiz_type(update: Update, context):
     await query.answer()
     type_map = {"quiztype_mc": "multiple_choice", "quiztype_tf": "true_false", "quiztype_mixed": "mixed"}
     context.user_data["quiz_type"] = type_map.get(query.data, "multiple_choice")
-    await query.edit_message_text("Select your grade level:", reply_markup=grade_keyboard("quiz_grade", language=_lang(context)))
+    await query.edit_message_text(t("quiz.grade_prompt", _lang(context)), reply_markup=grade_keyboard("quiz_grade", language=_lang(context)))
     return QUIZ_GRADE
 
 
@@ -1021,8 +1021,7 @@ async def handle_quiz_grade(update: Update, context):
     grade = int(query.data.split("_")[-1])
     context.user_data["quiz_grade"] = grade
     await query.edit_message_text(
-        f"Grade {grade} selected. What topic should the quiz cover?\n"
-        "(e.g., Cell Biology, Genetics, Ecology)",
+        t("quiz.topic_prompt", _lang(context), grade=grade),
         reply_markup=back_keyboard(language=_lang(context)),
     )
     return QUIZ_TOPIC
@@ -1033,7 +1032,7 @@ async def handle_quiz_topic(update: Update, context):
     grade = context.user_data.get("quiz_grade", 10)
     qtype = context.user_data.get("quiz_type", "multiple_choice")
     types = qtype.split("_") if qtype == "mixed" else [qtype]
-    msg = await update.message.reply_text("Generating your quiz...")
+    msg = await update.message.reply_text(t("quiz.generating", _lang(context)))
 
     try:
         router_llm = ModelRouter()
@@ -1060,7 +1059,7 @@ async def handle_quiz_topic(update: Update, context):
 
     except Exception as e:
         logger.error("quiz_error", error=str(e))
-        await update.message.reply_text("Error generating quiz.", reply_markup=main_menu_keyboard(language=_lang(context)))
+        await update.message.reply_text(t("quiz.error", _lang(context)), reply_markup=main_menu_keyboard(language=_lang(context)))
         return ConversationHandler.END
 
     return QUIZ_ANSWERING
@@ -1110,12 +1109,7 @@ async def _send_quiz_question(update: Update, context, msg=None, new_message=Fal
 
     q = qs[idx]
     qtype = q.get("question_type", "multiple_choice")
-    text = (
-        f"📝 {session.get('title', 'Quiz')}\n\n"
-        f"Question {idx + 1}/{session.get('total', len(qs))}\n"
-        f"<i>{qtype.replace('_', ' ')}</i>\n\n"
-        f"{q['question_text']}"
-    )
+    text = t("quiz.question", _lang(context), title=session.get('title', 'Quiz'), current=idx+1, total=session.get('total', len(qs)), qtype=qtype.replace('_',' '), qtext=q['question_text'])
 
     if qtype == "multiple_choice" and q.get("options"):
         letters = ["A", "B", "C", "D", "E", "F"]
@@ -1131,7 +1125,7 @@ async def _send_quiz_question(update: Update, context, msg=None, new_message=Fal
     elif q.get("options"):
         reply_markup = answer_options_keyboard(q["options"], language=_lang(context))
     elif qtype == "short_answer":
-        text += "\n\n✏️ Type your answer below, then tap Next."
+        text += t("quiz.short_answer", _lang(context))
         reply_markup = quiz_next_keyboard(language=_lang(context))
     else:
         reply_markup = quiz_next_keyboard(language=_lang(context))
@@ -1240,12 +1234,12 @@ async def _show_quiz_result(update: Update, context, msg=None):
 
     xp_awarded = context.user_data.get("last_xp_awarded", _calculate_quiz_xp(pct))
     level_up = context.user_data.pop("last_level_up", False)
-    lines = [f"📊 Quiz Complete!\nScore: {correct}/{total} ({pct}%)"]
+    lines = [t("quiz.complete", _lang(context), correct=correct, total=total, pct=pct)]
     if xp_awarded:
-        lines.append(f"⭐ XP Earned: +{xp_awarded} XP")
+        lines.append(t("gamification.xp_quiz", _lang(context), xp=xp_awarded))
     if level_up:
         new_level = context.user_data.get("last_new_level", 1)
-        lines.append(f"🎉 LEVEL UP! You are now Level {new_level}!")
+        lines.append(t("gamification.level_up_quiz", _lang(context), level=new_level))
     notifications = context.user_data.pop("last_notifications", None)
     if notifications:
         lines.append("")
@@ -1321,7 +1315,10 @@ async def handle_quiz_answer(update: Update, context):
         session["correct"] += 1
     session["current"] += 1
 
-    feedback = "✅ Correct!" if is_correct else f"❌ Wrong. The answer was: {correct_answer}"
+    if is_correct:
+        feedback = t("quiz.correct", _lang(context))
+    else:
+        feedback = t("quiz.wrong", _lang(context), answer=correct_answer)
     try:
         await query.edit_message_reply_markup(reply_markup=None)
     except Exception:
@@ -1370,7 +1367,10 @@ async def handle_quiz_short_answer(update: Update, context):
         session["correct"] += 1
     session["current"] += 1
 
-    feedback = "✅ Correct!" if is_correct else f"❌ Wrong. The answer was: {correct_answer}"
+    if is_correct:
+        feedback = t("quiz.correct", _lang(context))
+    else:
+        feedback = t("quiz.wrong", _lang(context), answer=correct_answer)
     if q.get("explanation"):
         feedback += f"\n\n<i>{q['explanation'][:200]}</i>"
 
@@ -1419,7 +1419,7 @@ async def handle_quiz_retry(update: Update, context):
 async def handle_lesson_start(update: Update, context):
     query = update.callback_query
     await query.answer()
-    await query.message.reply_text("Select grade level:", reply_markup=grade_keyboard("lesson_grade", language=_lang(context)))
+    await query.message.reply_text(t("lesson.grade_prompt", _lang(context)), reply_markup=grade_keyboard("lesson_grade", language=_lang(context)))
     return LESSON_GRADE
 
 
@@ -1438,7 +1438,7 @@ async def handle_lesson_grade(update: Update, context):
 async def handle_lesson_topic(update: Update, context):
     topic = update.message.text
     grade = context.user_data.get("lesson_grade", 10)
-    await update.message.reply_text("Creating lesson plan...")
+    await update.message.reply_text(t("lesson.generating", _lang(context)))
 
     try:
         router_llm = ModelRouter()
@@ -1461,7 +1461,7 @@ async def handle_lesson_topic(update: Update, context):
         await router_llm.close()
     except Exception as e:
         logger.error("lesson_error", error=str(e))
-        await update.message.reply_text("Error creating lesson plan.", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
+        await update.message.reply_text(t("lesson.error", _lang(context)), reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
 
     return ConversationHandler.END
 
