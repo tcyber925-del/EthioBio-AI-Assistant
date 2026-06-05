@@ -110,7 +110,7 @@ async def start(update: Update, context):
         await _db_try(_load_lang)
     socratic = context.user_data.get("socratic_mode", False)
     await update.message.reply_text(
-        t("welcome", _lang(context)),
+        t("start.welcome", _lang(context)),
         reply_markup=main_menu_keyboard(socratic, language=_lang(context)),
     )
 
@@ -122,8 +122,7 @@ async def dashboard_login_command(update: Update, context):
     redis_conn = await get_redis()
     await redis_conn.setex(f"otp:{user_id}", 300, code)
     await update.message.reply_text(
-        f"Your dashboard login code: <b>{code}</b>\n\n"
-        "This code expires in 5 minutes. Enter it on the login page.",
+        t("start.dashboard_login", _lang(context), code=code),
         parse_mode="HTML",
     )
 
@@ -461,25 +460,14 @@ async def handle_children_back(update: Update, context):
 
 async def help_command(update: Update, context):
     await update.message.reply_text(
-        "EthioBio AI Assistant — Help\n\n"
-        "Commands:\n"
-        "/start — Show menu\n"
-        "/help — This message\n"
-        "/ask <question> — Ask a biology question\n"
-        "/quiz [grade] [topic] — Generate a quiz\n"
-        "/grade <7-12> — Set your default grade\n"
-        "/language <en|am|both> — Set language\n"
-        "/socratic — Toggle Socratic tutoring mode\n"
-        "/hint — Get the next hint level (1-3) in Socratic mode\n"
-        "/cancel — Cancel current operation\n\n"
-        "Or just type any biology question to get started!",
+        t("help.text", _lang(context)),
         reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
     )
 
 
 async def cancel(update: Update, context):
     context.user_data.clear()
-    await update.message.reply_text("Cancelled.", reply_markup=main_menu_keyboard(language=_lang(context)))
+    await update.message.reply_text(t("common.cancelled", _lang(context)), reply_markup=main_menu_keyboard(language=_lang(context)))
     return ConversationHandler.END
 
 
@@ -568,7 +556,7 @@ async def reveal_command(update: Update, context):
     except Exception as e:
         logger.error("reveal_command_error", error=str(e))
         await update.message.reply_text(
-            "Sorry, I encountered an error.",
+            t("common.error", _lang(context)),
             reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
         )
 
@@ -679,7 +667,7 @@ async def ask_command(update: Update, context):
         context.user_data["ask_question"] = question
         context.user_data["hint_level"] = 0
         context.user_data["reveal_answer"] = False
-        await update.message.reply_text("Thinking...")
+        await update.message.reply_text(t("common.thinking", _lang(context)))
         try:
             telegram_id = update.effective_user.id if update.effective_user else None
             async with async_session_factory()() as _mem_db:
@@ -748,9 +736,9 @@ async def ask_command(update: Update, context):
             await _reply_long(update.message, response, reply_markup=reply_markup, parse_mode="HTML")
         except Exception as e:
             logger.error("ask_command_error", error=str(e))
-            await update.message.reply_text("Sorry, I encountered an error.", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
+            await update.message.reply_text(t("common.error", _lang(context)), reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
     else:
-        await update.message.reply_text("Usage: /ask <your biology question>", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
+        await update.message.reply_text(t("common.usage_ask", _lang(context)), reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
 
 
 async def quiz_command(update: Update, context):
@@ -907,7 +895,7 @@ async def handle_question(update: Update, context):
     context.user_data["ask_question"] = question
     context.user_data["hint_level"] = 0
     context.user_data["reveal_answer"] = False
-    thinking_msg = await update.message.reply_text("Thinking...")
+    thinking_msg = await update.message.reply_text(t("common.thinking", _lang(context)))
 
     result = None
     memory_user_id = None
