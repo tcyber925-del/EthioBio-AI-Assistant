@@ -192,14 +192,11 @@ async def list_children(update: Update, context):
             children = list(children_result.scalars().all())
 
             if not children:
-                await update.message.reply_text(
-                    "No children linked to your account yet. "
-                    "Ask an admin to link your children, or check the dashboard."
-                )
+                await update.message.reply_text(t("parent.no_children", _lang(context)))
                 return
 
             keyboard = []
-            lines = ["<b>Your Children:</b>\n"]
+            lines = [f"<b>{t('parent.your_children', _lang(context))}</b>\n"]
             for child in children:
                 profile_result = await session.execute(
                     select(StudentProfile).where(StudentProfile.user_id == child.id)
@@ -217,7 +214,7 @@ async def list_children(update: Update, context):
                         callback_data=f"parent_child_{child.id}",
                     )
                 ])
-            keyboard.append([InlineKeyboardButton("← Back to Menu", callback_data="menu")])
+            keyboard.append([InlineKeyboardButton(t("back_to_menu", _lang(context)), callback_data="menu")])
 
             await update.message.reply_text(
                 "\n".join(lines),
@@ -277,8 +274,8 @@ async def _send_child_progress(session, child_id, telegram_id, update, query=Non
             lines.append(f"• Quiz — {pct:.0f}% ({date_str})")
 
     keyboard = [
-        [InlineKeyboardButton("📋 Weekly Summary", callback_data=f"parent_summary_{child.id}")],
-        [InlineKeyboardButton("← Back to Children", callback_data="children")],
+        [InlineKeyboardButton(t("parent.weekly_summary", _lang(context)), callback_data=f"parent_summary_{child.id}")],
+        [InlineKeyboardButton(t("parent.back_children", _lang(context)), callback_data="children")],
     ]
     reply = "\n".join(lines)
     if query:
@@ -342,9 +339,7 @@ async def child_progress(update: Update, context):
             children = list(children_result.scalars().all())
 
             if not children:
-                await update.message.reply_text(
-                    "No children linked to your account yet."
-                )
+                await update.message.reply_text(t("parent.no_children_short", _lang(context)))
                 return
 
             if len(children) == 1:
@@ -352,7 +347,7 @@ async def child_progress(update: Update, context):
                 return
 
             keyboard = []
-            lines = ["<b>Your Children:</b>\n"]
+            lines = [f"<b>{t('parent.your_children', _lang(context))}</b>\n"]
             for child in children:
                 name = child.email or f"Student {str(child.id)[:8]}"
                 grade = child.grade_level or ""
@@ -442,7 +437,7 @@ async def handle_parent_summary(update: Update, context):
                 text,
                 parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("← Back to Progress", callback_data=f"parent_child_{child_id}")],
+                    [InlineKeyboardButton(t("parent.back_progress", _lang(context)), callback_data=f"parent_child_{child_id}")],
                 ]),
             )
     await _db_try(_fetch)
@@ -750,7 +745,7 @@ async def quiz_command(update: Update, context):
         await update.message.reply_text(t("quiz.quiz_type_prompt", _lang(context)), reply_markup=quiz_type_keyboard(language=_lang(context)))
         return QUIZ_TYPE
     else:
-        await update.message.reply_text("Usage: /quiz [grade] [topic]", reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
+        await update.message.reply_text(t("quiz.usage", _lang(context)), reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
         return ConversationHandler.END
 
 
@@ -774,10 +769,7 @@ async def handle_open_quizzes(update: Update, context):
     query = update.callback_query
     await query.answer()
     await query.message.reply_text(
-        "📄 Review Quizzes\n\n"
-        "Open the Teacher Dashboard in your browser:\n"
-        "http://localhost:3000/quizzes\n\n"
-        "The dashboard shows all generated quizzes for review and approval.",
+        t("quiz.teacher_list", _lang(context), dashboard_url="http://localhost:3000"),
         reply_markup=teacher_tools_keyboard(language=_lang(context)),
     )
 
@@ -786,15 +778,7 @@ async def handle_open_dashboard(update: Update, context):
     query = update.callback_query
     await query.answer()
     await query.message.reply_text(
-        "📈 Teacher Dashboard\n\n"
-        "Open in your browser:\n"
-        "http://localhost:3000\n\n"
-        "Features:\n"
-        "• 📊 Stats overview\n"
-        "• 📝 Quiz management\n"
-        "• 📋 Lesson plans\n"
-        "• 📈 Monitoring\n"
-        "• 🧬 Test Q&A",
+        t("quiz.teacher_dashboard", _lang(context), dashboard_url="http://localhost:3000"),
         reply_markup=teacher_tools_keyboard(language=_lang(context)),
     )
 
@@ -807,12 +791,12 @@ async def handle_tutor(update: Update, context):
         except Exception:
             pass
         await query.message.reply_text(
-            "Select your grade level:",
+            t("tutor.grade_select", _lang(context)),
             reply_markup=grade_keyboard("tutor_grade", language=_lang(context)),
         )
     else:
         await update.message.reply_text(
-            "Select your grade level:",
+            t("tutor.grade_select", _lang(context)),
             reply_markup=grade_keyboard("tutor_grade", language=_lang(context)),
         )
     return TUTOR_GRADE
@@ -973,7 +957,7 @@ async def handle_question(update: Update, context):
         logger.error("tutor_error", error=str(e))
         try:
             await thinking_msg.edit_text(
-                "Sorry, I encountered an error. Please try again.",
+                t("common.error_try_again", _lang(context)),
                 reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
             )
         except Exception:
@@ -1036,7 +1020,7 @@ async def handle_quiz_topic(update: Update, context):
         result = await agent.generate(grade_level=grade, topic=topic, question_count=5, types=types)
 
         if not result.get("questions"):
-            await msg.edit_text("Sorry, couldn't generate the quiz. Try a different topic.")
+            await msg.edit_text(t("quiz.generate_failed", _lang(context)))
             await router_llm.close()
             return ConversationHandler.END
 
@@ -1425,7 +1409,7 @@ async def handle_lesson_grade(update: Update, context):
     grade = int(query.data.split("_")[-1])
     context.user_data["lesson_grade"] = grade
     await query.edit_message_text(
-        f"Grade {grade} selected. What biology topic?",
+        t("lesson.topic_prompt", _lang(context), grade=grade),
         reply_markup=back_keyboard(language=_lang(context)),
     )
     return LESSON_TOPIC
@@ -2069,11 +2053,11 @@ async def settings_command(update: Update, context):
 async def email_command(update: Update, context):
     args = context.args
     if not args:
-        await update.message.reply_text("Usage: `/email you@example.com`", parse_mode="Markdown")
+        await update.message.reply_text(t("common.email_usage", _lang(context)), parse_mode="Markdown")
         return
     email = args[0].strip()
     if "@" not in email or "." not in email:
-        await update.message.reply_text("Please provide a valid email address.")
+        await update.message.reply_text(t("common.email_invalid", _lang(context)))
         return
 
     telegram_id = update.effective_user.id
@@ -2085,7 +2069,7 @@ async def email_command(update: Update, context):
             user_result = await session.execute(select(User).where(User.telegram_id == telegram_id))
             user = user_result.scalar_one_or_none()
             if not user:
-                await update.message.reply_text("Please /start first to register.")
+                await update.message.reply_text(t("common.need_start", _lang(context)))
                 return
 
             prefs_result = await session.execute(
@@ -2103,7 +2087,7 @@ async def email_command(update: Update, context):
                 session.add(prefs)
             await session.commit()
 
-        await update.message.reply_text(f"✅ Email set to `{email}`. Use /settings to customize notifications.", parse_mode="Markdown")
+        await update.message.reply_text(t("common.email_set", _lang(context), email=email), parse_mode="Markdown")
 
     await _db_try(_handle)
 

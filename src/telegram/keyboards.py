@@ -28,19 +28,19 @@ def teacher_tools_keyboard(language: str = "en"):
 
 def language_keyboard(language: str = "en"):
     buttons = [
-        [InlineKeyboardButton("🇬🇧 English", callback_data="lang_en")],
-        [InlineKeyboardButton("🇪🇹 አማርኛ (Amharic)", callback_data="lang_am")],
-        [InlineKeyboardButton("🌍 Bilingual", callback_data="lang_both")],
-        [InlineKeyboardButton("← Back", callback_data="menu")],
+        [InlineKeyboardButton(t("language.en_label", language), callback_data="lang_en")],
+        [InlineKeyboardButton(t("language.am_label", language), callback_data="lang_am")],
+        [InlineKeyboardButton(t("language.both_label", language), callback_data="lang_both")],
+        [InlineKeyboardButton(t("back", language), callback_data="menu")],
     ]
     return InlineKeyboardMarkup(buttons)
 
 
 def quiz_type_keyboard(language: str = "en"):
     buttons = [
-        [InlineKeyboardButton("✅ Multiple Choice", callback_data="quiztype_mc")],
-        [InlineKeyboardButton("📋 True / False", callback_data="quiztype_tf")],
-        [InlineKeyboardButton("🔀 Mixed", callback_data="quiztype_mixed")],
+        [InlineKeyboardButton(t("quiz.type_mc", language), callback_data="quiztype_mc")],
+        [InlineKeyboardButton(t("quiz.type_tf", language), callback_data="quiztype_tf")],
+        [InlineKeyboardButton(t("quiz.type_mixed", language), callback_data="quiztype_mixed")],
         [InlineKeyboardButton(t("back", language), callback_data="menu")],
     ]
     return InlineKeyboardMarkup(buttons)
@@ -50,7 +50,7 @@ def grade_keyboard(callback_prefix: str = "grade", language: str = "en"):
     buttons = []
     row = []
     for grade in range(7, 13):
-        row.append(InlineKeyboardButton(f"Grade {grade}", callback_data=f"{callback_prefix}_{grade}"))
+        row.append(InlineKeyboardButton(t("common.grade_label", language, grade=grade), callback_data=f"{callback_prefix}_{grade}"))
         if len(row) == 3:
             buttons.append(row)
             row = []

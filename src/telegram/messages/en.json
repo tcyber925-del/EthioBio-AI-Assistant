@@ -11,13 +11,20 @@
     "generating": "Generating...",
     "choose_option": "Choose an option:",
     "teacher_tools": "Teacher Tools:",
-    "main_menu": "Main menu:"
+    "main_menu": "Main menu:",
+    "error_try_again": "Sorry, I encountered an error. Please try again.",
+    "email_usage": "Usage: `/email you@example.com`",
+    "email_invalid": "Please provide a valid email address.",
+    "need_start": "Please /start first to register.",
+    "email_set": "✅ Email set to `{email}`. Use /settings to customize notifications.",
+    "grade_label": "Grade {grade}"
   },
   "help": {
     "text": "EthioBio AI Assistant — Help\n\nCommands:\n/start — Show menu\n/help — This message\n/ask <question> — Ask a biology question\n/quiz [grade] [topic] — Generate a quiz\n/grade <7-12> — Set your default grade\n/language <en|am|both> — Set language\n/socratic — Toggle Socratic tutoring mode\n/hint — Get the next hint level (1-3) in Socratic mode\n/cancel — Cancel current operation\n\nOr just type any biology question to get started!"
   },
   "tutor": {
     "grade_prompt": "Grade {grade} selected. Send me your biology question. I'll help you understand it!",
+    "grade_select": "Select your grade level:",
     "no_question": "No active question. Ask a question first with /ask or select Tutor from the menu.",
     "socratic_on": "Socratic Mode is now ON.\n\nIn Socratic mode, I'll guide you through questions rather than giving direct answers — helping you discover the answer yourself!",
     "socratic_off": "Socratic Mode is now OFF.\n\nI'll give you direct answers with explanations.",
@@ -41,6 +48,13 @@
     "quiz_type_prompt": "Select quiz type:",
     "generating": "Generating your quiz...",
     "error": "Error generating quiz.",
+    "usage": "Usage: /quiz [grade] [topic]",
+    "generate_failed": "Sorry, couldn't generate the quiz. Try a different topic.",
+    "teacher_list": "📄 Review Quizzes\n\nOpen the Teacher Dashboard in your browser:\n{dashboard_url}/quizzes\n\nThe dashboard shows all generated quizzes for review and approval.",
+    "teacher_dashboard": "📈 Teacher Dashboard\n\nOpen in your browser:\n{dashboard_url}\n\nFeatures:\n• 📊 Stats overview\n• 📝 Quiz management\n• 📋 Lesson plans\n• 📈 Monitoring\n• 🧬 Test Q&A",
+    "type_mc": "✅ Multiple Choice",
+    "type_tf": "📋 True / False",
+    "type_mixed": "🔀 Mixed",
     "question": "📝 {title}\n\nQuestion {current}/{total}\n<i>{qtype}</i>\n\n{qtext}",
     "correct": "✅ Correct!",
     "wrong": "❌ Wrong. The answer was: {answer}",
@@ -52,7 +66,8 @@
   "lesson": {
     "grade_prompt": "Select grade level:",
     "generating": "Creating lesson plan...",
-    "error": "Error creating lesson plan."
+    "error": "Error creating lesson plan.",
+    "topic_prompt": "Grade {grade} selected. What biology topic?"
   },
   "settings": {
     "text": "⚙️ Notification Settings\n\nMilestone Alerts: {milestone}\nReview Reminders: {reminder}\nDigest Frequency: {digest}\n\nTap to toggle or change settings."
@@ -61,7 +76,10 @@
     "choose": "Choose your language:",
     "set": "Language set to {name}!",
     "usage": "Usage: /language <en|am|both>",
-    "set_cmd": "Language set to {name}."
+    "set_cmd": "Language set to {name}.",
+    "en_label": "🇬🇧 English",
+    "am_label": "🇪🇹 አማርኛ (Amharic)",
+    "both_label": "🌍 Bilingual"
   },
   "grade": {
     "set": "Default grade set to Grade {grade}.",
@@ -93,7 +111,13 @@
     "need_register": "Please register first with /parent_register",
     "no_child": "Child not found.",
     "no_parent": "Parent account not found.",
-    "no_student": "Student not found."
+    "no_student": "Student not found.",
+    "no_children": "No children linked to your account yet. Ask an admin to link your children, or check the dashboard.",
+    "no_children_short": "No children linked to your account yet.",
+    "your_children": "Your Children:",
+    "back_children": "← Back to Children",
+    "back_progress": "← Back to Progress",
+    "weekly_summary": "📋 Weekly Summary"
   },
   "ask_question": "🧬 Ask a Question",
   "take_quiz": "📝 Take a Quiz",
