@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 
 from src.core.loops.controller import RetrievalLoopController
 from src.core.loops.feedback_processor import FeedbackProcessor
+from src.core.loops.telemetry import record_loop_decision
 
 
 @dataclass
@@ -210,3 +211,27 @@ def test_feedback_empty_gaps_low_coverage():
     result = processor.process(missing_information=[], coverage_score=0.2)
     assert len(result) == 1
     assert "Broader" in result[0] or "broaden" in result[0].lower()
+
+
+# ─── Telemetry Tests ──────────────────────────────────────────────────
+
+
+def test_record_loop_decision_returns_metrics():
+    state = FakeState(
+        retrieval_iterations=2,
+        max_iterations=3,
+        coverage_score=0.7,
+        coverage_history=[0.3, 0.7],
+        previous_evidence_count=1,
+        evidence_ids=["e1", "e2"],
+    )
+    state.sufficiency_score = 0.8
+    state.termination_reason = "MAX_ITERATIONS"
+
+    metrics = record_loop_decision(state)
+    assert metrics["iteration"] == 2
+    assert metrics["coverage"] == 0.7
+    assert metrics["sufficiency"] == 0.8
+    assert metrics["termination"] == "MAX_ITERATIONS"
+    assert metrics["evidence_count"] == 2
+    assert metrics["coverage_history"] == [0.3, 0.7]
