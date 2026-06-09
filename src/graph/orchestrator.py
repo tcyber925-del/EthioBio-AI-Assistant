@@ -9,6 +9,7 @@ from langgraph.graph import END, StateGraph
 
 from src.core.monitoring import pipeline_monitor
 from src.graph.nodes.claim_verifier import ClaimVerifierNode, route_after_verification
+from src.graph.nodes.evidence_graph import EvidenceGraphNode
 from src.graph.nodes.orchestrator import OrchestratorNode, needs_retrieval
 from src.graph.nodes.plan_executor import PlanExecutor
 from src.graph.nodes.planner import PlannerNode
@@ -74,6 +75,7 @@ def build_agentic_graph(router: ModelRouter, adapter: VectorStoreAdapter) -> Sta
     workflow.add_node("synthesis", SynthesisNode(router))
     workflow.add_node("tutor", TutorNode(router))
     workflow.add_node("claim_verifier", ClaimVerifierNode(router))
+    workflow.add_node("evidence_graph", EvidenceGraphNode(db_session_factory=None))
     workflow.add_node("safety", SafetyNode(router))
 
     workflow.set_entry_point("orchestrator")
@@ -85,7 +87,8 @@ def build_agentic_graph(router: ModelRouter, adapter: VectorStoreAdapter) -> Sta
     )
 
     workflow.add_edge("planner", "plan_executor")
-    workflow.add_edge("plan_executor", "sufficient_context")
+    workflow.add_edge("plan_executor", "evidence_graph")
+    workflow.add_edge("evidence_graph", "sufficient_context")
 
     workflow.add_conditional_edges(
         "sufficient_context",
@@ -245,6 +248,7 @@ def build_unified_graph(router: ModelRouter, adapter: VectorStoreAdapter) -> Sta
     # Agentic pipeline nodes
     workflow.add_node("planner", PlannerNode(router))
     workflow.add_node("plan_executor", PlanExecutor(adapter))
+    workflow.add_node("evidence_graph", EvidenceGraphNode(db_session_factory=None))
     workflow.add_node("sufficient_context", SufficientContextNode())
     workflow.add_node("synthesis", SynthesisNode(router))
     workflow.add_node("claim_verifier", ClaimVerifierNode(router))
@@ -268,7 +272,8 @@ def build_unified_graph(router: ModelRouter, adapter: VectorStoreAdapter) -> Sta
 
     # Agentic pipeline
     workflow.add_edge("planner", "plan_executor")
-    workflow.add_edge("plan_executor", "sufficient_context")
+    workflow.add_edge("plan_executor", "evidence_graph")
+    workflow.add_edge("evidence_graph", "sufficient_context")
 
     workflow.add_conditional_edges(
         "sufficient_context",
