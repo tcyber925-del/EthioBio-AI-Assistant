@@ -128,12 +128,12 @@ class SufficientContextNode:
         record_loop_decision(state)
 
         logger.info(
-            "sufficiency_evaluated",
-            score=result.score,
-            action=result.action,
-            iterations=state.retrieval_iterations,
-            termination=state.termination_reason,
-            evidence_count=len(state.evidence_ids),
+            "sufficiency_evaluated score=%s action=%s iterations=%s termination=%s evidence_count=%s",
+            round(result.score, 2),
+            result.action,
+            state.retrieval_iterations,
+            state.termination_reason,
+            len(state.evidence_ids),
         )
 
         return state

@@ -32,7 +32,7 @@ class RetrievalLoopController:
 
         # 1. Max iterations
         if iterations >= max_iter:
-            logger.info("loop_stop: max_iterations", current=iterations, max=max_iter)
+            logger.info("loop_stop: max_iterations current=%s max=%s", iterations, max_iter)
             return LoopDecision(should_continue=False, reason="MAX_ITERATIONS")
 
         # 2. No progress (requires at least NO_PROGRESS_CONSECUTIVE history entries)
@@ -42,17 +42,17 @@ class RetrievalLoopController:
             recent_gains = all_gains[-NO_PROGRESS_CONSECUTIVE:]
             if all(g < NO_PROGRESS_THRESHOLD for g in recent_gains):
                 logger.info(
-                    "loop_stop: no_progress",
-                    gains=[round(g, 4) for g in recent_gains],
+                    "loop_stop: no_progress gains=%s",
+                    [round(g, 4) for g in recent_gains],
                 )
                 return LoopDecision(should_continue=False, reason="NO_PROGRESS")
 
         # 3. No new evidence (only after first iteration)
         if iterations > 0 and len(state.evidence_ids) <= state.previous_evidence_count:
             logger.info(
-                "loop_stop: no_new_evidence",
-                previous=state.previous_evidence_count,
-                current=len(state.evidence_ids),
+                "loop_stop: no_new_evidence previous=%s current=%s",
+                state.previous_evidence_count,
+                len(state.evidence_ids),
             )
             return LoopDecision(should_continue=False, reason="NO_NEW_EVIDENCE")
 

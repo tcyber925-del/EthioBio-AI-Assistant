@@ -33,9 +33,9 @@ class FeedbackProcessor:
 
         if directives:
             logger.info(
-                "feedback_generated",
-                count=len(directives),
-                from_gaps=len(missing_information),
+                "feedback_generated count=%s from_gaps=%s",
+                len(directives),
+                len(missing_information),
             )
 
         return directives

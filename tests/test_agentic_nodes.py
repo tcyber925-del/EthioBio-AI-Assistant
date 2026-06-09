@@ -217,12 +217,13 @@ class TestSufficientContextNode:
     async def test_node_sufficient_context(self):
         node = SufficientContextNode()
         state = AgentState(user_message="test")
-        state.context = "A" * 600
+        state.evidence_ids = ["e1", "e2", "e3"]
+        state.coverage_score = 0.8
 
         result = await node(state)
 
         assert result.sufficiency_score > 0.5
-        assert result.coverage_score > 0.5
+        assert result.retrieval_feedback is not None
 
     @pytest.mark.asyncio
     async def test_node_insufficient_context(self):
