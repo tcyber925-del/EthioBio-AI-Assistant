@@ -71,11 +71,11 @@ def build_agentic_graph(router: ModelRouter, adapter: VectorStoreAdapter) -> Sta
     workflow.add_node("orchestrator", OrchestratorNode(router))
     workflow.add_node("planner", PlannerNode(router))
     workflow.add_node("plan_executor", PlanExecutor(adapter))
+    workflow.add_node("evidence_graph", EvidenceGraphNode(db_session_factory=None))
     workflow.add_node("sufficient_context", SufficientContextNode())
     workflow.add_node("synthesis", SynthesisNode(router))
     workflow.add_node("tutor", TutorNode(router))
     workflow.add_node("claim_verifier", ClaimVerifierNode(router))
-    workflow.add_node("evidence_graph", EvidenceGraphNode(db_session_factory=None))
     workflow.add_node("safety", SafetyNode(router))
 
     workflow.set_entry_point("orchestrator")

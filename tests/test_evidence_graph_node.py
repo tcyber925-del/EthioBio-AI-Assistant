@@ -1,10 +1,15 @@
 """Tests for the EvidenceGraphNode."""
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from langgraph.graph import StateGraph
 
 from src.graph.nodes.evidence_graph import EvidenceGraphNode
+from src.graph.orchestrator import build_agentic_graph, build_unified_graph
 from src.graph.state import AgentState
+from src.llm.router import ModelRouter
+from src.retrieval.adapter import VectorStoreAdapter
 
 
 @pytest.mark.asyncio
@@ -194,3 +199,84 @@ async def test_node_without_source_results(mock_evidence_graph_cls):
 
     assert result is state
     mock_graph.create_session.assert_not_called()
+
+
+# ─── Graph Wiring Tests ───────────────────────────────────────────────
+
+
+def _make_patched_graph(builder, router, adapter):
+    """Build a graph with PlanExecutor mocked for LangGraph compatibility.
+
+    Returns a namespace with .nodes dict so tests can verify node
+    registration irrespective of pre-existing compilation issues.
+    """
+    patches = [
+        patch("src.graph.orchestrator.PlanExecutor"),
+        patch.object(
+            StateGraph,
+            "compile",
+            lambda self: SimpleNamespace(nodes=self.nodes),
+        ),
+    ]
+    for p in patches:
+        p.start()
+    try:
+        result = builder(router, adapter)
+        return result
+    finally:
+        for p in patches:
+            p.stop()
+
+
+def test_agentic_graph_has_evidence_graph_node():
+    """Agentic graph should include evidence_graph node."""
+    router = ModelRouter()
+    adapter = VectorStoreAdapter()
+    graph = _make_patched_graph(build_agentic_graph, router, adapter)
+
+    nodes = list(graph.nodes.keys())
+    assert "evidence_graph" in nodes, f"evidence_graph not in nodes: {nodes}"
+
+
+def test_agentic_graph_node_ordering():
+    """evidence_graph should be between plan_executor and sufficient_context."""
+    router = ModelRouter()
+    adapter = VectorStoreAdapter()
+    graph = _make_patched_graph(build_agentic_graph, router, adapter)
+
+    node_list = list(graph.nodes.keys())
+    plan_idx = node_list.index("plan_executor")
+    evidence_idx = node_list.index("evidence_graph")
+    sufficient_idx = node_list.index("sufficient_context")
+
+    assert plan_idx < evidence_idx < sufficient_idx, (
+        f"Expected plan_executor < evidence_graph < sufficient_context, "
+        f"got {node_list}"
+    )
+
+
+def test_unified_graph_has_evidence_graph_node():
+    """Unified graph should include evidence_graph node."""
+    router = ModelRouter()
+    adapter = VectorStoreAdapter()
+    graph = _make_patched_graph(build_unified_graph, router, adapter)
+
+    nodes = list(graph.nodes.keys())
+    assert "evidence_graph" in nodes, f"evidence_graph not in nodes: {nodes}"
+
+
+def test_unified_graph_node_ordering():
+    """evidence_graph should be between plan_executor and sufficient_context."""
+    router = ModelRouter()
+    adapter = VectorStoreAdapter()
+    graph = _make_patched_graph(build_unified_graph, router, adapter)
+
+    node_list = list(graph.nodes.keys())
+    plan_idx = node_list.index("plan_executor")
+    evidence_idx = node_list.index("evidence_graph")
+    sufficient_idx = node_list.index("sufficient_context")
+
+    assert plan_idx < evidence_idx < sufficient_idx, (
+        f"Expected plan_executor < evidence_graph < sufficient_context, "
+        f"got {node_list}"
+    )
