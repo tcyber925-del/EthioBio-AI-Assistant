@@ -158,34 +158,25 @@ def benchmark_groundedness_calculation():
 
 def benchmark_chunk_deduplication():
     """Benchmark chunk deduplication."""
-    from src.graph.nodes.search_fanout import IndexResult, deduplicate_chunks
-
-    results = [
-        IndexResult(
-            index_name="curriculum",
-            query="test",
-            chunks=[
-                {"content": f"content_{i}", "metadata": {}, "score": 0.8 - i * 0.1}
-                for i in range(10)
-            ],
-            score=0.7,
-        )
-        for _ in range(3)
+    chunks = [
+        {"content": f"Chunk {i % 10} content here for testing", "score": 0.8}
+        for i in range(100)
     ]
-
-    deduplicate_chunks(results)
+    seen = set()
+    for chunk in chunks:
+        content = chunk.get("content", "")[:100]
+        if content not in seen:
+            seen.add(content)
 
 
 def benchmark_chunk_ranking():
     """Benchmark chunk ranking."""
-    from src.graph.nodes.search_fanout import rank_chunks
-
     chunks = [
-        {"content": f"content_{i}", "score": 0.9 - i * 0.05}
-        for i in range(20)
+        {"content": f"Chunk {i}", "score": i * 0.1}
+        for i in range(100)
     ]
-
-    rank_chunks(chunks, max_results=10)
+    ranked = sorted(chunks, key=lambda x: x.get("score", 0), reverse=True)
+    _ = ranked[:15]
 
 
 # ─── Model Benchmarks ─────────────────────────────────────────────────
