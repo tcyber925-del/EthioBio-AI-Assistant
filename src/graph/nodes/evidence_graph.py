@@ -4,6 +4,7 @@ Normalizes raw retrieval output into persisted, selected, and scored
 evidence records. Sits between PlanExecutor and SufficientContextNode.
 """
 import logging
+from collections.abc import Callable
 from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,7 +31,7 @@ class EvidenceGraphNode:
 
     def __init__(
         self,
-        db_session_factory: Optional[callable] = None,
+        db_session_factory: Optional[Callable[[], AsyncSession]] = None,
         router=None,
     ):
         self.db_session_factory = db_session_factory
