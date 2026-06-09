@@ -7,9 +7,9 @@ Phase 0: Skeleton — runs subtasks but uses simplified retrieval.
 """
 
 import logging
-from typing import Any
 
 from src.graph.nodes.search_fanout import SearchFanoutNode
+from src.graph.state import AgentState
 from src.retrieval.adapter import VectorStoreAdapter
 
 logger = logging.getLogger(__name__)
@@ -95,6 +95,12 @@ class PlanExecutor:
         """
         objective = subtask.get("objective", state.user_message)
         query = objective if objective else state.user_message
+
+        # On re-entry (iteration > 0), append retrieval feedback directives
+        # to make the search more targeted toward identified gaps
+        if state.retrieval_iterations > 0 and state.retrieval_feedback:
+            feedback_prefix = "; ".join(state.retrieval_feedback[:2])
+            query = f"{query} — {feedback_prefix}"
 
         # Use SearchFanout for parallel retrieval across multiple indices
         state.retrieval_queries = [query]
