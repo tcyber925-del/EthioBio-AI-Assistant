@@ -1,5 +1,5 @@
 """Tests for the EvidenceGraphNode."""
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -18,17 +18,18 @@ async def test_node_passthrough_when_no_db():
 
 
 @pytest.mark.asyncio
-async def test_node_creates_session():
+@patch("src.graph.nodes.evidence_graph.EvidenceGraph")
+async def test_node_creates_session(mock_evidence_graph_cls):
     """With a DB factory, node should create an EvidenceSession."""
     mock_session = AsyncMock()
     mock_graph = AsyncMock()
     mock_graph.create_session.return_value = "internal-session-uuid"
     mock_graph.add.return_value = "evidence-uuid"
+    mock_evidence_graph_cls.return_value = mock_graph
 
     mock_factory = MagicMock(return_value=mock_session)
 
     node = EvidenceGraphNode(db_session_factory=mock_factory)
-    node.graph = mock_graph  # inject mock
 
     state = AgentState(user_message="test", trace_id="trace-1")
     state.retrieval_source_results = {
@@ -49,18 +50,19 @@ async def test_node_creates_session():
 
 
 @pytest.mark.asyncio
-async def test_node_persists_records():
+@patch("src.graph.nodes.evidence_graph.EvidenceGraph")
+async def test_node_persists_records(mock_evidence_graph_cls):
     """Each chunk should become an EvidenceRecord."""
     mock_session = AsyncMock()
     mock_graph = AsyncMock()
     mock_graph.create_session.return_value = "internal-session-uuid"
     mock_graph.add.return_value = "evidence-uuid"
     mock_graph.get_evidence_for_session.return_value = []
+    mock_evidence_graph_cls.return_value = mock_graph
 
     mock_factory = MagicMock(return_value=mock_session)
 
     node = EvidenceGraphNode(db_session_factory=mock_factory)
-    node.graph = mock_graph
 
     state = AgentState(user_message="test", trace_id="trace-1")
     state.retrieval_source_results = {
@@ -89,23 +91,33 @@ async def test_node_persists_records():
 
 
 @pytest.mark.asyncio
-async def test_node_updates_evidence_ids():
+@patch("src.graph.nodes.evidence_graph.EvidenceGraph")
+async def test_node_updates_evidence_ids(mock_evidence_graph_cls):
     """Node should populate state.evidence_ids from selector output."""
     mock_session = AsyncMock()
     mock_graph = AsyncMock()
     mock_graph.create_session.return_value = "internal-session-uuid"
     mock_graph.add.return_value = "evidence-uuid"
     mock_graph.get_evidence_for_session.return_value = [
-        MagicMock(id="e1", confidence=0.95), MagicMock(id="e2", confidence=0.85)
+        MagicMock(
+            id="e1",
+            content="Cell theory states all living things are made of cells.",
+            source_type="curriculum",
+            confidence=0.95,
+        ),
+        MagicMock(
+            id="e2",
+            content="Mitosis is the process of cell division.",
+            source_type="curriculum",
+            confidence=0.85,
+        ),
     ]
+    mock_evidence_graph_cls.return_value = mock_graph
 
     mock_selector = AsyncMock()
     mock_selector.select_for_generation.return_value = ["e1"]
 
-    mock_factory = MagicMock(return_value=mock_session)
-
-    node = EvidenceGraphNode(db_session_factory=mock_factory)
-    node.graph = mock_graph
+    node = EvidenceGraphNode(db_session_factory=MagicMock(return_value=mock_session))
     node.selector = mock_selector
 
     state = AgentState(user_message="test", trace_id="trace-1")
@@ -127,7 +139,8 @@ async def test_node_updates_evidence_ids():
 
 
 @pytest.mark.asyncio
-async def test_node_sets_coverage_and_missing():
+@patch("src.graph.nodes.evidence_graph.EvidenceGraph")
+async def test_node_sets_coverage_and_missing(mock_evidence_graph_cls):
     """Node should populate coverage_score and missing_information."""
     mock_session = AsyncMock()
     mock_graph = AsyncMock()
@@ -136,17 +149,15 @@ async def test_node_sets_coverage_and_missing():
     mock_graph.get_evidence_for_session.return_value = [
         MagicMock(id="e1", content="Cell theory", source_type="curriculum", confidence=0.95),
     ]
+    mock_evidence_graph_cls.return_value = mock_graph
 
     mock_selector = AsyncMock()
     mock_selector.select_for_generation.return_value = ["e1"]
 
-    mock_factory = MagicMock(return_value=mock_session)
-
-    node = EvidenceGraphNode(db_session_factory=mock_factory)
-    node.graph = mock_graph
+    node = EvidenceGraphNode(db_session_factory=MagicMock(return_value=mock_session))
     node.selector = mock_selector
 
-    state = AgentState(user_message="What is cell theory?", trace_id="trace-1")
+    state = AgentState(user_message="Cell theory", trace_id="trace-1")
     state.retrieval_source_results = {
         "curriculum": [
             {
@@ -160,22 +171,21 @@ async def test_node_sets_coverage_and_missing():
 
     result = await node(state)
 
-    assert result.coverage_score >= 0.0
-    assert isinstance(result.missing_information, list)
-    assert isinstance(result.evidence_summary, str)
+    assert result.coverage_score == 1.0
+    assert result.missing_information == []
+    assert "evidence items" in result.evidence_summary
 
 
 @pytest.mark.asyncio
-async def test_node_without_source_results():
+@patch("src.graph.nodes.evidence_graph.EvidenceGraph")
+async def test_node_without_source_results(mock_evidence_graph_cls):
     """Node should handle empty retrieval_source_results gracefully."""
     mock_session = AsyncMock()
     mock_graph = AsyncMock()
     mock_graph.create_session.return_value = "internal-session-uuid"
+    mock_evidence_graph_cls.return_value = mock_graph
 
-    mock_factory = MagicMock(return_value=mock_session)
-
-    node = EvidenceGraphNode(db_session_factory=mock_factory)
-    node.graph = mock_graph
+    node = EvidenceGraphNode(db_session_factory=MagicMock(return_value=mock_session))
 
     state = AgentState(user_message="test", trace_id="trace-1")
     state.retrieval_source_results = {}

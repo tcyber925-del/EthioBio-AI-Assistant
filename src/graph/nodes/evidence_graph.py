@@ -43,8 +43,7 @@ class EvidenceGraphNode:
             return state
 
         session: AsyncSession = self.db_session_factory()
-        if self.graph is None:
-            self.graph = EvidenceGraph(session)
+        self.graph = EvidenceGraph(session)
 
         trace_id = state.trace_id or ""
         session_key = state.session_id or trace_id or "default"
@@ -56,7 +55,7 @@ class EvidenceGraphNode:
             trace_id=trace_id,
             user_id=user_id_str,
         )
-        logger.info("evidence_graph: session_created", session_id=internal_session_id)
+        logger.info("evidence_graph: session_created %s", internal_session_id)
 
         # 2. Persist all chunks as evidence records
         evidence_count = 0
@@ -80,7 +79,7 @@ class EvidenceGraphNode:
                 await self.graph.add(evidence, internal_session_id)
                 evidence_count += 1
 
-        logger.info("evidence_graph: records_persisted", count=evidence_count)
+        logger.info("evidence_graph: records_persisted %s", evidence_count)
 
         # 3. Get evidence for selection
         evidence_list = await self.graph.get_evidence_for_session(session_key)
