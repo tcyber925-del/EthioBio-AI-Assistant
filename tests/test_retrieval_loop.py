@@ -2,6 +2,7 @@
 from dataclasses import dataclass, field
 
 from src.core.loops.controller import RetrievalLoopController
+from src.core.loops.feedback_processor import FeedbackProcessor
 
 
 @dataclass
@@ -170,3 +171,42 @@ def test_controller_first_iteration_new_evidence_continues():
     controller = RetrievalLoopController()
     decision = controller.decide(state)
     assert decision.reason != "NO_NEW_EVIDENCE"
+
+
+# ─── FeedbackProcessor Tests ──────────────────────────────────────────
+
+
+def test_feedback_empty_gaps():
+    processor = FeedbackProcessor()
+    result = processor.process(missing_information=[], coverage_score=0.95)
+    assert result == []
+
+
+def test_feedback_single_gap():
+    processor = FeedbackProcessor()
+    result = processor.process(
+        missing_information=["Explain DNA replication steps"],
+        coverage_score=0.6,
+    )
+    assert len(result) == 1
+    assert "DNA replication" in result[0]
+
+
+def test_feedback_multiple_gaps():
+    processor = FeedbackProcessor()
+    result = processor.process(
+        missing_information=[
+            "Describe mitosis phases",
+            "Define cell wall function",
+            "List organelles",
+        ],
+        coverage_score=0.3,
+    )
+    assert len(result) == 3
+
+
+def test_feedback_empty_gaps_low_coverage():
+    processor = FeedbackProcessor()
+    result = processor.process(missing_information=[], coverage_score=0.2)
+    assert len(result) == 1
+    assert "Broader" in result[0] or "broaden" in result[0].lower()
