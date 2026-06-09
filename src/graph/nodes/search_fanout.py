@@ -13,7 +13,6 @@ from src.retrieval.adapter import VectorStoreAdapter
 
 logger = logging.getLogger(__name__)
 
-MAX_RESULTS_PER_SOURCE = 5
 TOTAL_MAX_RESULTS = 15
 
 
@@ -57,12 +56,12 @@ class SearchFanoutNode:
         """
         return []
 
-    async def _search_learner(self, query: str) -> dict:
+    async def _search_learner(self, query: str) -> list[dict]:
         """Stub: Learner profile retriever.
 
         TODO: Implement real learner retriever (future PRD).
         """
-        return {}
+        return []
 
     async def _search_recommendation(self, query: str) -> list[dict]:
         """Stub: Recommendation retriever.
@@ -73,7 +72,7 @@ class SearchFanoutNode:
 
     async def _safe_search(
         self, source: str, query: str
-    ) -> tuple[str, list[dict] | dict]:
+    ) -> tuple[str, list[dict]]:
         """Execute a single source search, catching exceptions."""
         try:
             if source == "curriculum":
@@ -90,8 +89,6 @@ class SearchFanoutNode:
             return source, result
         except Exception as e:
             logger.warning("search_failed source=%s error=%s", source, str(e))
-            if source == "learner":
-                return source, {}
             return source, []
 
     async def __call__(self, state: AgentState) -> AgentState:
@@ -117,12 +114,16 @@ class SearchFanoutNode:
 
         # Merge results
         all_chunks: list[dict] = []
-        source_results: dict[str, list[dict] | dict] = {}
+        source_results: dict[str, list[dict]] = {}
         for r in raw_results:
-            if isinstance(r, tuple):
+            if isinstance(r, Exception):
+                logger.warning("search_task_exception: %s", str(r))
+            elif isinstance(r, tuple):
                 source, result = r
-                source_results[source] = result
+                if source not in source_results:
+                    source_results[source] = []
                 if isinstance(result, list):
+                    source_results[source].extend(result)
                     all_chunks.extend(result)
 
         # Deduplicate by content

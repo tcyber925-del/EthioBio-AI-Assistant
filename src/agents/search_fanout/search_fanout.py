@@ -22,7 +22,7 @@ class SearchFanoutAgent:
     """
 
     def __init__(self, max_queries: int = MAX_QUERIES):
-        self.max_queries = max_queries
+        self.max_queries = max(max_queries, 0)
 
     def plan(
         self, query_groups: dict[str, list[str]]
@@ -43,7 +43,7 @@ class SearchFanoutAgent:
         for source_type, queries in query_groups.items():
             remaining = self.max_queries - total
             if remaining <= 0:
-                break
+                continue
             capped_groups[source_type] = queries[:remaining]
             total += len(capped_groups[source_type])
 

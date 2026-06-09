@@ -272,3 +272,28 @@ class TestSearchFanoutAgent:
         groups = {"curriculum": ["q1", "q2", "q3", "q4"]}
         tasks, _ = agent.plan(groups)
         assert len(tasks) <= 2
+
+    def test_plan_cap_both_sources_under_budget(self):
+        from src.agents.search_fanout.search_fanout import SearchFanoutAgent
+
+        agent = SearchFanoutAgent(max_queries=5)
+        groups = {"curriculum": ["q1", "q2"], "memory": ["m1", "m2"]}
+        tasks, _ = agent.plan(groups)
+        assert len(tasks) == 4
+        sources = {t.target_source for t in tasks}
+        assert sources == {"curriculum", "memory"}
+
+    def test_plan_cap_respects_global_budget(self):
+        from src.agents.search_fanout.search_fanout import SearchFanoutAgent
+
+        agent = SearchFanoutAgent(max_queries=3)
+        groups = {"curriculum": ["q1", "q2", "q3", "q4"], "memory": ["m1", "m2"]}
+        tasks, _ = agent.plan(groups)
+        assert len(tasks) == 3
+
+    def test_plan_max_queries_zero(self):
+        from src.agents.search_fanout.search_fanout import SearchFanoutAgent
+
+        agent = SearchFanoutAgent(max_queries=0)
+        tasks, _ = agent.plan({"curriculum": ["q1", "q2"]})
+        assert len(tasks) == 0

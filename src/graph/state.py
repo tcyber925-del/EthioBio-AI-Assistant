@@ -99,7 +99,7 @@ class AgentState:
     retrieval_iterations: int = 0
     previous_evidence_count: int = 0
     retrieval_strategy: dict = field(default_factory=dict)
-    retrieval_source_results: dict[str, list[dict] | dict] = field(default_factory=dict)
+    retrieval_source_results: dict[str, list[dict]] = field(default_factory=dict)
 
     # Evidence State
     evidence_ids: list[str] = field(default_factory=list)
