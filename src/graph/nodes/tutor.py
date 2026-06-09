@@ -131,7 +131,9 @@ class TutorNode:
             system += REVEAL_PROMPT
         elif state.hint_level > 0 and state.hint_level in HINT_PROMPTS:
             system += HINT_PROMPTS[state.hint_level]
-        if state.context:
+        if state.evidence_synthesis:
+            system += f"\n\n## Evidence Synthesis\n{state.evidence_synthesis}\n\nUse the above evidence synthesis to ground your answer."
+        elif state.context:
             system += f"\n\n## Curriculum Context\n{state.context}\n\nUse the above context to ground your answer."
 
         user_message = f"[Grade{grade_context}] {lang_context}\n\nStudent question: {state.user_message}"

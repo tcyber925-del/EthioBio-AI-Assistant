@@ -67,7 +67,58 @@ class AgentState:
     learner_profile_block: str = ""
     use_learner_awareness: bool = False
 
+    # Claim Verification
+    groundedness_score: float = 0.0
+    safety_action: str = ""
+    safety_reason: str = ""
+    ungrounded_claims: list[str] = field(default_factory=list)
+
     messages: list[dict] = field(default_factory=list)
+
+    # ============================================================
+    # Agentic RAG Fields (Phase 0 — safe defaults, backward-compatible)
+    # ============================================================
+
+    # Routing
+    requires_planning: bool = False
+
+    # Planning State
+    execution_plan: dict = field(default_factory=dict)
+    subtasks: list[dict] = field(default_factory=list)
+    complexity_score: float = 0.0
+
+    # Query State
+    rewritten_queries: list[str] = field(default_factory=list)
+    query_intents: list[str] = field(default_factory=list)
+    query_groups: dict[str, list[str]] = field(default_factory=dict)
+    query_source_types: list[str] = field(default_factory=list)
+    coverage_estimate: float = 0.0
+
+    # Retrieval State
+    retrieval_tasks: list[dict] = field(default_factory=list)
+    retrieval_iterations: int = 0
+    previous_evidence_count: int = 0
+
+    # Evidence State
+    evidence_ids: list[str] = field(default_factory=list)
+    evidence_synthesis: str = ""
+    evidence_summary: str = ""
+    coverage_score: float = 0.0
+
+    # Context Sufficiency
+    sufficiency_score: float = 0.0
+    sufficiency_reason: str = ""
+    missing_information: list[str] = field(default_factory=list)
+    requires_iteration: bool = False
+
+    # Learner State (snapshot added explicitly for agentic flow)
+    learner_snapshot: dict = field(default_factory=dict)
+    learning_recommendations: list[dict] = field(default_factory=list)
+    readiness_score: float = 0.0
+
+    # Socratic Session Caching
+    socratic_session_active: bool = False
+    socratic_evidence_bundle_id: Optional[str] = None
 
 
 @dataclass

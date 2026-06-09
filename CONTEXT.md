@@ -195,3 +195,45 @@ Association table (`parent_children`) linking parent Users to student Users. Sel
 
 ## Parent API
 `APIRouter(prefix="/parent")` at `src/api/parent.py`. Endpoints: `GET /parent/children` (list linked students with readiness), `GET /parent/children/{id}/progress` (mastery, quiz history, streak), `GET /parent/children/{id}/weekly-summary` (generate or fetch cached weekly report via `ParentSummaryAgent`). Auth guards: `_require_parent_role` + `_verify_child_ownership`.
+
+## AgenticRAGState
+Extended `AgentState` with additional fields for the Google-style Multi-Agent Agentic RAG platform. Adds `execution_plan`, `subtasks`, `rewritten_queries`, `evidence_ids`, `sufficiency_score`, `requires_planning`, and other state fields. Owned by the Agentic RAG pipeline but backward-compatible with the existing LangGraph pipeline.
+
+## EvidenceGraph
+Central evidence registry for the Agentic RAG platform. Persistent PostgreSQL repository — evidence is a first-class system artifact, not transient retrieval output. Sessions define provenance boundaries; the repository defines persistence. Stores full chunk content (not just references) for auditability and reproducibility. Hierarchy: `trace_id → session_id → evidence_id`. See ADR-0004.
+
+## EvidenceRecord
+Single immutable evidence unit. Contains: `id`, `trace_id`, `user_id`, `session_id`, `source_type` (curriculum/memory/learner_profile/misconceptions), `source_name`, `chunk_id`, `content` (full text), `original_query`, `retrieval_query`, `retrieval_score`, `rerank_score`, `confidence`, `retrieved_by`, `archived`, `expires_at`. Never deleted — only archived.
+
+## EvidenceSession
+Execution boundary for a single graph run. Groups EvidenceRecords by query/execution. Fields: `id`, `user_id`, `session_id`, `trace_id`, `status` (active/closed), `created_at`. A session is the grouping boundary, not the storage boundary.
+
+## EvidenceSelector
+Component that selects the top evidence bundle for generation. Ranks evidence by coverage contribution, confidence, source quality, relevance, and diversity. Caps at ~8-10 records per generation to fit context window. Operates between the Evidence Graph and the Tutor Synthesis Agent.
+
+## PlanExecutor
+LangGraph node that orchestrates sequential subtask execution. Runs `Rewriter → Fanout → Retrievers` per subtask, with parallel retrieval within each subtask. Manages the loop until all subtasks complete or stopping criteria are met.
+
+## ClaimVerifier
+Node between Tutor and Safety in the Agentic RAG pipeline. Extracts factual claims from the tutor's draft response, verifies each against the top evidence bundle, and calculates a groundedness score. Routes to `revise` if >20% unsupported, `reject` if >50% unsupported, `finalize` otherwise. Skips verification when `requires_planning=False` or `socratic_mode=True`.
+
+## SocraticEvidenceBundle
+Cached evidence for an active Socratic session. Populated on the first Socratic turn (which goes through the full Agentic RAG pipeline), then reused for follow-up turns without re-planning or re-retrieval. Managed via `socratic_session_active`, `socratic_evidence_bundle_id` state fields.
+
+## QueryRewriter
+LangGraph node that expands and refines retrieval queries for better evidence coverage. Supports single-query, multi-query, and cross-lingual expansion (English/Amharic). Decomposes complex queries into sub-queries based on plan subtasks. Routes to appropriate retriever based on query and subtask type.
+
+## SearchFanout
+LangGraph node that retrieves evidence from multiple indices in parallel. Supports curriculum, evidence, and cross_session indices. Deduplicates chunks across indices by content hash. Ranks results by score and returns top N results.
+
+## SufficientContextNode
+LangGraph node that evaluates whether collected evidence is sufficient to answer the user's question. Returns SUFFICIENT, MINOR_GAP, or MAJOR_GAP. Routes to tutor, rewrite (minor gaps), or replan (major gaps). Uses heuristic evaluation based on evidence count and coverage.
+
+## ClaimVerifierNode
+LangGraph node that extracts factual claims from tutor's response and verifies them against evidence. Calculates groundedness score. Routes to finalize, revise, or reject based on groundedness. Phase 1: heuristic verification. Phase 2+: LLM-based verification.
+
+## PipelineMonitor
+Monitoring and observability for Agentic RAG pipeline. Provides trace_id generation, performance metrics, and pipeline tracing. Tracks node-level timing, status, and metadata. Logs structured traces for observability.
+
+## Unified Graph
+Single graph that handles both legacy and agentic pipelines. Routes based on `requires_planning` after OrchestratorNode. Legacy pipeline: retrieve → tutor → safety. Agentic pipeline: planner → plan_executor → sufficient_context → tutor → claim_verifier → safety. Includes iterative retrieval loop and claim verification.

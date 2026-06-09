@@ -320,6 +320,71 @@ Key environment variables (see `.env.example` for full list):
 | POST | `/notifications/preferences/{user_id}/verify` | Notifications | Send verification code |
 | POST | `/notifications/preferences/{user_id}/verify/{code}` | Notifications | Confirm verification code |
 | GET | `/activity/{user_id}` | Activity | Get recent activity feed |
+| GET | `/graph/traces` | Graph | List recent pipeline traces |
+| GET | `/graph/traces/{trace_id}` | Graph | Get specific trace details |
+
+## Agentic RAG Pipeline
+
+The EthioBio AI Assistant now includes a Google-style Multi-Agent Agentic RAG platform for handling complex educational queries.
+
+### Features
+
+- **Hybrid Routing** — Simple queries use legacy pipeline, complex queries use agentic pipeline
+- **Query Rewriting** — LLM-based query expansion and decomposition
+- **Multi-Index Search** — Parallel retrieval from curriculum, evidence, and cross-session indices
+- **Iterative Retrieval** — Re-plan and re-retrieve when evidence is insufficient
+- **Claim Verification** — Verify factual claims against evidence for accuracy
+- **Performance Monitoring** — Trace ID generation and node-level timing
+
+### Graph Topology
+
+```
+orchestrator → planner → query_rewriter → search_fanout
+    → sufficient_context → tutor → claim_verifier → safety
+```
+
+### Routing Logic
+
+| Query Complexity | Pipeline | Nodes |
+|------------------|----------|-------|
+| Simple (fact lookup) | Legacy | orchestrator → retrieve → tutor → safety |
+| Complex (multi-hop) | Agentic | orchestrator → planner → query_rewriter → search_fanout → sufficient_context → tutor → claim_verifier → safety |
+
+### API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/graph/chat` | Unified endpoint (routes to legacy or agentic) |
+| GET | `/graph/status` | Graph structure and features |
+| GET | `/graph/traces` | List recent pipeline traces |
+| GET | `/graph/traces/{trace_id}` | Get specific trace details |
+
+### Configuration
+
+Enable/disable agentic features via environment variables:
+
+```bash
+# Enable agentic RAG (default: true)
+AGENTIC_RAG_ENABLED=true
+
+# Complexity threshold for agentic routing (0.0-1.0)
+AGENTIC_RAG_THRESHOLD=0.5
+
+# Maximum retrieval iterations
+AGENTIC_RAG_MAX_ITERATIONS=3
+```
+
+### Monitoring
+
+Check pipeline performance:
+
+```bash
+# List recent traces
+curl http://localhost:8000/graph/traces
+
+# Get specific trace
+curl http://localhost:8000/graph/traces/trace_abc123
+```
 
 ## Telegram Bot
 

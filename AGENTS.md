@@ -168,6 +168,77 @@ The recommendation engine produces prioritized educational actions from `Learner
 18. **NotificationPreference has a 1:1 user_id PK** — There is no separate `id` column; `user_id` is the PK. Upsert on conflict or check existence before `PUT`.
 19. **Milestone email fires at 10% progress intervals** — `MILESTONE_EMAIL_THRESHOLD = 10.0` means the alert triggers when completion percentage crosses 10%, 20%, 30%, etc. — not at every individual task completion.
 20. **Adaptive quiz requires user_id for topic ability lookup** — `select_adaptive_questions()` falls back to random selection when `user_id` is not provided; adaptive mode only works when both `adaptive=true` and `user_id` are set.
+21. **`requires_planning` gates Agentic RAG** — OrchestratorNode derives `requires_planning` from `subtasks` count, NOT from intent. Use `build_unified_graph()` for production.
+22. **PlannerAgent requires `objective` field** — `Plan` model uses `objective` (not `query`); `ComplexityLevel` uses LOW/MEDIUM/HIGH enum values.
+23. **QueryRewriter uses LLM with heuristic fallback** — When `router` is provided, uses LLM for rewriting; falls back to heuristic expansion. Check `retrieval_metadata["method"]` for "llm" or "heuristic".
+24. **SearchFanout uses parallel retrieval** — Executes all index-query combinations concurrently via `asyncio.gather()`. Fallback to sequential on error.
+25. **EvidenceGraph stores full chunk content** — Per ADR-0001, evidence records store complete text (not just IDs) for auditability. `EvidenceRecord` is defined in `src/database/models.py`.
+
+## Agentic RAG Pipeline (`src/graph/nodes/`, `src/core/evidence/`, `src/agents/planner/`)
+
+The EthioBio AI Assistant includes a Google-style Multi-Agent Agentic RAG platform for complex educational queries.
+
+### Architecture
+
+```
+orchestrator → planner → plan_executor → query_rewriter → search_fanout
+                  │                        │                   │
+                  │                   (per subtask)        (parallel)
+                  │                                           │
+                  └─────────────────────────────────────────→ sufficient_context
+                                                                      │
+                                                              (gap? rewrite/replan)
+                                                                      │
+                                                              tutor → claim_verifier → safety
+                                                                      │
+                                                              (revise/finalize/reject)
+```
+
+### Key Components
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `AgentState` | `src/graph/state.py:73` | 60 fields with safe defaults, backward-compatible |
+| `PlannerAgent` | `src/agents/planner/planner.py` | Generates execution plans via LLM |
+| `PlanExecutor` | `src/graph/nodes/plan_executor.py` | Iterates subtasks, manages execution |
+| `QueryRewriter` | `src/graph/nodes/query_rewriter.py` | LLM-based query expansion with heuristic fallback |
+| `SearchFanout` | `src/graph/nodes/search_fanout.py` | Parallel retrieval via `asyncio.gather()` |
+| `SufficientContextNode` | `src/graph/nodes/sufficient_context.py` | Heuristic coverage evaluation |
+| `ClaimVerifierNode` | `src/graph/nodes/claim_verifier.py` | Claim extraction and verification |
+| `EvidenceGraph` | `src/core/evidence/graph.py` | PostgreSQL CRUD, session-scoped |
+| `EvidenceSelector` | `src/core/evidence/selector.py` | Selects evidence for Tutor |
+| `ConfidenceScore` | `src/core/evidence/scoring.py` | Weighted confidence calculation |
+| `CoverageAnalysis` | `src/core/evidence/scoring.py` | Coverage gap detection |
+| `EvidenceSummary` | `src/core/evidence/summarizer.py` | Evidence summarization |
+| `AgentResult` | `src/graph/nodes/agent_result.py` | Standardized agent results |
+| `PipelineMonitor` | `src/core/monitoring.py` | Trace-level observability |
+
+### Entry Points
+
+```python
+from src.graph.orchestrator import build_unified_graph, build_graph
+
+# Production (with monitoring)
+graph = build_unified_graph(retriever, router)
+result = await graph.ainvoke(state)
+
+# Legacy (simple pipeline)
+graph = build_graph(retriever, router)
+result = await graph.ainvoke(state)
+```
+
+### Tests
+
+```bash
+# Unit tests (32 tests)
+pytest tests/test_agentic_nodes.py -v
+
+# Planner tests (20 tests)
+pytest tests/agents/test_planner.py -v
+
+# Benchmarks (9 tests)
+pytest tests/test_benchmarks.py -v
+```
 
 ## Ralph PRD Generation (`scripts/ralph/`)
 

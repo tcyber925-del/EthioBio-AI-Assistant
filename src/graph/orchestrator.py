@@ -2,13 +2,20 @@
 EthioBio AI Assistant — LangGraph orchestration graph.
 
 Builds the graph with dependency-injected nodes (router, adapter).
+Supports both the legacy pipeline and the new Agentic RAG pipeline.
 """
 
 from langgraph.graph import END, StateGraph
 
+from src.core.monitoring import pipeline_monitor
+from src.graph.nodes.claim_verifier import ClaimVerifierNode, route_after_verification
 from src.graph.nodes.orchestrator import OrchestratorNode, needs_retrieval
+from src.graph.nodes.plan_executor import PlanExecutor
+from src.graph.nodes.planner import PlannerNode
 from src.graph.nodes.retrieval import RetrievalNode, SkipRetrievalNode
 from src.graph.nodes.safety import SafetyNode, should_revise
+from src.graph.nodes.sufficient_context import SufficientContextNode, route_after_sufficiency
+from src.graph.nodes.synthesis import SynthesisNode
 from src.graph.nodes.tutor import TutorNode
 from src.graph.state import AgentState, GraphOutput
 from src.llm.router import ModelRouter
@@ -45,6 +52,61 @@ def build_graph(router: ModelRouter, adapter: VectorStoreAdapter) -> StateGraph:
     return workflow.compile()
 
 
+def build_agentic_graph(router: ModelRouter, adapter: VectorStoreAdapter) -> StateGraph:
+    """Build the Agentic RAG graph for complex queries.
+
+    Graph topology:
+        orchestrator -> planner -> plan_executor -> sufficient_context
+            -> synthesis -> tutor -> claim_verifier -> safety
+
+    The orchestrator classifies complexity and routes to this graph
+    when requires_planning=True.
+
+    Iterative loop: If context is insufficient, routes back to plan_executor
+    for retrieval iteration (max 2 iterations).
+    """
+    workflow = StateGraph(AgentState)
+
+    workflow.add_node("orchestrator", OrchestratorNode(router))
+    workflow.add_node("planner", PlannerNode(router))
+    workflow.add_node("plan_executor", PlanExecutor(adapter))
+    workflow.add_node("sufficient_context", SufficientContextNode())
+    workflow.add_node("synthesis", SynthesisNode(router))
+    workflow.add_node("tutor", TutorNode(router))
+    workflow.add_node("claim_verifier", ClaimVerifierNode(router))
+    workflow.add_node("safety", SafetyNode(router))
+
+    workflow.set_entry_point("orchestrator")
+
+    workflow.add_conditional_edges(
+        "orchestrator",
+        needs_retrieval,
+        {"retrieve": "planner", "skip_retrieval": "skip_retrieval"},
+    )
+
+    workflow.add_edge("planner", "plan_executor")
+    workflow.add_edge("plan_executor", "sufficient_context")
+
+    workflow.add_conditional_edges(
+        "sufficient_context",
+        route_after_sufficiency,
+        {"synthesis": "synthesis", "rewrite": "plan_executor", "replan": "planner"},
+    )
+
+    workflow.add_edge("synthesis", "tutor")
+    workflow.add_edge("tutor", "claim_verifier")
+
+    workflow.add_conditional_edges(
+        "claim_verifier",
+        route_after_verification,
+        {"finalize": "safety", "revise": "tutor", "reject": "safety"},
+    )
+
+    workflow.add_edge("safety", END)
+
+    return workflow.compile()
+
+
 async def run_graph(
     user_message: str,
     user_id=None,
@@ -64,6 +126,18 @@ async def run_graph(
     socratic_next_question: str = "",
     messages: list[dict] | None = None,
 ) -> GraphOutput:
+    """Run the unified graph with monitoring.
+
+    Routes to either legacy or agentic pipeline based on query complexity.
+    """
+    trace = pipeline_monitor.start_trace(
+        metadata={
+            "user_id": str(user_id) if user_id else None,
+            "language": language,
+            "socratic_mode": socratic_mode,
+        }
+    )
+
     router = ModelRouter(preferred_model=preferred_model)
     adapter = VectorStoreAdapter()
 
@@ -88,12 +162,26 @@ async def run_graph(
         messages=messages or [],
     )
 
-    graph = build_graph(router, adapter)
-    config = {"configurable": {"thread_id": "ethiobio-run-1"}}
+    graph = build_unified_graph(router, adapter)
+    config = {"configurable": {"thread_id": f"ethiobio-{session_id or 'default'}"}}
 
     try:
         result = await graph.ainvoke(initial_state, config)
+        trace.finish(status="completed")
+        # Populate trace metadata with 5 key metrics
+        trace.metadata.update({
+            "retrieval_iterations": result.get("retrieval_iterations", 0),
+            "coverage_score": result.get("coverage_score", 0.0),
+            "groundedness": result.get("groundedness_score", 0.0),
+            "verdict": result.get("safety_action", ""),
+            "requires_teacher_review": result.get("requires_teacher_review", False),
+            "evidence_count": len(result.get("evidence_ids", [])),
+        })
+    except Exception as e:
+        trace.finish(status="failed", error=str(e))
+        raise
     finally:
+        pipeline_monitor.log_trace(trace)
         await router.close()
 
     sources = []
@@ -134,3 +222,91 @@ async def run_graph(
         misconception_detected=result.get("misconception_detected", False),
         misconception_correction=result.get("misconception_correction", ""),
     )
+
+
+def build_unified_graph(router: ModelRouter, adapter: VectorStoreAdapter) -> StateGraph:
+    """Build a unified graph that handles both legacy and agentic pipelines.
+
+    Routes based on requires_planning after the OrchestratorNode:
+    - requires_planning=False: Legacy pipeline (retrieve -> tutor -> safety)
+    - requires_planning=True: Agentic pipeline with iterative retrieval
+    """
+    workflow = StateGraph(AgentState)
+
+    # Shared nodes
+    workflow.add_node("orchestrator", OrchestratorNode(router))
+    workflow.add_node("tutor", TutorNode(router))
+    workflow.add_node("safety", SafetyNode(router))
+
+    # Legacy pipeline nodes
+    workflow.add_node("retrieve", RetrievalNode(adapter))
+    workflow.add_node("skip_retrieval", SkipRetrievalNode(adapter))
+
+    # Agentic pipeline nodes
+    workflow.add_node("planner", PlannerNode(router))
+    workflow.add_node("plan_executor", PlanExecutor(adapter))
+    workflow.add_node("sufficient_context", SufficientContextNode())
+    workflow.add_node("synthesis", SynthesisNode(router))
+    workflow.add_node("claim_verifier", ClaimVerifierNode(router))
+
+    workflow.set_entry_point("orchestrator")
+
+    # Routing from orchestrator based on requires_planning and intent
+    workflow.add_conditional_edges(
+        "orchestrator",
+        _route_after_orchestrator,
+        {
+            "planner": "planner",
+            "retrieve": "retrieve",
+            "skip_retrieval": "skip_retrieval",
+        },
+    )
+
+    # Legacy pipeline
+    workflow.add_edge("retrieve", "tutor")
+    workflow.add_edge("skip_retrieval", "tutor")
+
+    # Agentic pipeline
+    workflow.add_edge("planner", "plan_executor")
+    workflow.add_edge("plan_executor", "sufficient_context")
+
+    workflow.add_conditional_edges(
+        "sufficient_context",
+        route_after_sufficiency,
+        {"synthesis": "synthesis", "rewrite": "plan_executor", "replan": "planner"},
+    )
+
+    # Evidence synthesis before tutor
+    workflow.add_edge("synthesis", "tutor")
+
+    # Claim verification
+    workflow.add_edge("tutor", "claim_verifier")
+
+    workflow.add_conditional_edges(
+        "claim_verifier",
+        route_after_verification,
+        {"finalize": "safety", "revise": "tutor", "reject": "safety"},
+    )
+
+    # Safety
+    workflow.add_edge("safety", END)
+
+    return workflow.compile()
+
+
+def _route_after_orchestrator(state: AgentState) -> str:
+    """Route after orchestrator based on combination of requires_planning and intent.
+
+    requires_planning is derived from complexity heuristics (subtask count,
+    cross-session indicators, etc.). intent is from LLM classification.
+    Both are needed: requires_planning decides if planning is needed at all,
+    intent decides which pipeline to use.
+    """
+    # Agentic RAG: requires_planning=True AND intent supports planning
+    if state.requires_planning and state.intent in ("tutor", "lesson_plan", "progress"):
+        return "planner"
+    # Legacy RAG: standard intents that need retrieval but not planning
+    if state.intent in ("tutor", "quiz", "lesson_plan"):
+        return "retrieve"
+    # No retrieval needed
+    return "skip_retrieval"
