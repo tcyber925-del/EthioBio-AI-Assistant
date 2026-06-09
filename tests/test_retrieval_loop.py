@@ -1,9 +1,16 @@
 """Tests for the RetrievalLoopController."""
 from dataclasses import dataclass, field
 
+import pytest
+
 from src.core.loops.controller import RetrievalLoopController
 from src.core.loops.feedback_processor import FeedbackProcessor
 from src.core.loops.telemetry import record_loop_decision
+from src.graph.nodes.sufficient_context import (
+    SufficientContextNode,
+    route_after_sufficiency,
+)
+from src.graph.state import AgentState
 
 
 @dataclass
@@ -235,3 +242,87 @@ def test_record_loop_decision_returns_metrics():
     assert metrics["termination"] == "MAX_ITERATIONS"
     assert metrics["evidence_count"] == 2
     assert metrics["coverage_history"] == [0.3, 0.7]
+
+
+# ─── SufficientContextNode Integration Tests ──────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_sufficient_context_node_delegates_to_controller():
+    """Verify the node sets termination_reason and requires_iteration."""
+    node = SufficientContextNode()
+    state = AgentState(user_message="test")
+    state.evidence_ids = ["e1"]
+    state.coverage_score = 0.5
+    state.missing_information = ["gap about dna"]
+
+    result = await node(state)
+
+    assert result.termination_reason in (
+        "CONTINUE", "MAX_ITERATIONS", "NO_PROGRESS", "NO_NEW_EVIDENCE"
+    )
+    assert result.retrieval_iterations == 1
+    assert result.retrieval_feedback is not None
+
+
+@pytest.mark.asyncio
+async def test_sufficient_context_node_appends_coverage_history():
+    """Verify coverage is appended to history before controller."""
+    node = SufficientContextNode()
+    state = AgentState(user_message="test")
+    state.evidence_ids = ["e1"]
+    state.coverage_score = 0.5
+
+    result = await node(state)
+
+    assert len(result.coverage_history) == 1
+    assert result.coverage_history[0] == 0.5
+
+
+@pytest.mark.asyncio
+async def test_sufficient_context_node_increments_iterations():
+    """Verify iteration counter increments."""
+    node = SufficientContextNode()
+    state = AgentState(user_message="test")
+    state.evidence_ids = ["e1"]
+    state.coverage_score = 0.5
+    state.retrieval_iterations = 0
+
+    result = await node(state)
+
+    assert result.retrieval_iterations == 1
+
+
+def test_route_after_sufficiency_returns_synthesis_when_stopped():
+    state = AgentState(user_message="test")
+    state.sufficiency_score = 0.8
+    state.coverage_score = 0.8
+    state.requires_iteration = False
+
+    route = route_after_sufficiency(state)
+
+    assert route == "synthesis"
+
+
+def test_route_after_sufficiency_returns_rewrite_for_minor_gap():
+    state = AgentState(user_message="test")
+    state.sufficiency_score = 0.3
+    state.coverage_score = 0.3
+    state.requires_iteration = True
+    state.missing_information = ["Explain mitosis"]
+
+    route = route_after_sufficiency(state)
+
+    assert route == "rewrite"
+
+
+def test_route_after_sufficiency_returns_replan_for_major_gap():
+    state = AgentState(user_message="test")
+    state.sufficiency_score = 0.1
+    state.coverage_score = 0.1
+    state.requires_iteration = True
+    state.missing_information = ["gap 1", "gap 2", "gap 3"]
+
+    route = route_after_sufficiency(state)
+
+    assert route == "replan"
