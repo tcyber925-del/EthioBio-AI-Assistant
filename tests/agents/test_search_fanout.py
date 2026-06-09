@@ -220,3 +220,55 @@ class TestDeriveStrategy:
         strategy = derive_strategy({"curriculum": ["q1"], "memory": ["m1"]})
         assert "curriculum" in strategy.expected_sources
         assert "memory" in strategy.expected_sources
+
+
+# ============================================================
+# Agent Tests
+# ============================================================
+
+
+class TestSearchFanoutAgent:
+    def test_plan_creates_tasks(self):
+        from src.agents.search_fanout.search_fanout import SearchFanoutAgent
+
+        agent = SearchFanoutAgent()
+        groups = {
+            "curriculum": ["mitosis stages"],
+            "memory": ["past mistakes meiosis"],
+        }
+        tasks, strategy = agent.plan(groups)
+        assert len(tasks) == 2
+        assert strategy.strategy_name == "PERSONALIZED"
+
+    def test_plan_single_group(self):
+        from src.agents.search_fanout.search_fanout import SearchFanoutAgent
+
+        agent = SearchFanoutAgent()
+        tasks, strategy = agent.plan({"curriculum": ["default query"]})
+        assert len(tasks) == 1
+        assert strategy.strategy_name == "SIMPLE"
+        assert tasks[0].target_source == "curriculum"
+
+    def test_plan_empty_groups(self):
+        from src.agents.search_fanout.search_fanout import SearchFanoutAgent
+
+        agent = SearchFanoutAgent()
+        tasks, strategy = agent.plan({})
+        assert len(tasks) == 0
+        assert strategy.strategy_name == "SIMPLE"
+
+    def test_plan_includes_reasoning(self):
+        from src.agents.search_fanout.search_fanout import SearchFanoutAgent
+
+        agent = SearchFanoutAgent()
+        groups = {"curriculum": ["meiosis"]}
+        tasks, _ = agent.plan(groups)
+        assert "Routed from" in tasks[0].reasoning
+
+    def test_plan_respects_max_queries(self):
+        from src.agents.search_fanout.search_fanout import SearchFanoutAgent
+
+        agent = SearchFanoutAgent(max_queries=2)
+        groups = {"curriculum": ["q1", "q2", "q3", "q4"]}
+        tasks, _ = agent.plan(groups)
+        assert len(tasks) <= 2
