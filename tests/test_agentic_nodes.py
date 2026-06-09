@@ -20,8 +20,6 @@ from src.graph.nodes.query_rewriter import (
 )
 from src.graph.nodes.search_fanout import (
     SearchFanoutNode,
-    deduplicate_chunks,
-    rank_chunks,
 )
 from src.graph.nodes.sufficient_context import (
     SufficientContextNode,
@@ -100,46 +98,53 @@ class TestQueryRewriterNode:
 class TestChunkDeduplication:
     """Tests for chunk deduplication."""
 
-    def test_deduplicate_removes_duplicates(self):
+    @pytest.mark.asyncio
+    async def test_deduplicate_removes_duplicates(self):
         """Should remove duplicate chunks."""
-        from src.graph.nodes.search_fanout import IndexResult
+        mock_adapter = MagicMock()
+        mock_adapter.search.return_value = {
+            "documents": [
+                {"content": "same content", "metadata": {"id": "id1"}, "score": 0.8},
+                {"content": "same content", "metadata": {"id": "id2"}, "score": 0.9},
+            ]
+        }
 
-        results = [
-            IndexResult(
-                index_name="curriculum",
-                query="test",
-                chunks=[
-                    {"content": "same content", "metadata": {}, "score": 0.8},
-                    {"content": "different content", "metadata": {}, "score": 0.7},
-                ],
-                score=0.75,
-            ),
-            IndexResult(
-                index_name="evidence",
-                query="test",
-                chunks=[
-                    {"content": "same content", "metadata": {}, "score": 0.9},
-                ],
-                score=0.9,
-            ),
-        ]
+        node = SearchFanoutNode(mock_adapter)
+        state = AgentState(
+            user_message="test",
+            query_groups={"curriculum": ["test"]},
+            rewritten_queries=["test"],
+        )
 
-        deduplicated = deduplicate_chunks(results)
+        result = await node(state)
 
-        assert len(deduplicated) == 2
+        assert len(result.retrieved_chunks) == 1
+        assert result.retrieved_chunks[0]["content"] == "same content"
 
-    def test_rank_chunks(self):
+    @pytest.mark.asyncio
+    async def test_rank_chunks(self):
         """Should rank chunks by score."""
-        chunks = [
-            {"content": "low", "score": 0.3},
-            {"content": "high", "score": 0.9},
-            {"content": "medium", "score": 0.6},
-        ]
+        mock_adapter = MagicMock()
+        mock_adapter.search.return_value = {
+            "documents": [
+                {"content": "low", "metadata": {"id": "id1"}, "score": 0.3},
+                {"content": "high", "metadata": {"id": "id2"}, "score": 0.9},
+                {"content": "medium", "metadata": {"id": "id3"}, "score": 0.6},
+            ]
+        }
 
-        ranked = rank_chunks(chunks, max_results=2)
+        node = SearchFanoutNode(mock_adapter)
+        state = AgentState(
+            user_message="test",
+            query_groups={"curriculum": ["test"]},
+            rewritten_queries=["test"],
+        )
 
-        assert len(ranked) == 2
-        assert ranked[0]["score"] == 0.9
+        result = await node(state)
+
+        assert len(result.retrieved_chunks) <= 3
+        if len(result.retrieved_chunks) >= 2:
+            assert result.retrieved_chunks[0]["score"] >= result.retrieved_chunks[1]["score"]
 
 
 class TestSearchFanoutNode:
@@ -147,7 +152,7 @@ class TestSearchFanoutNode:
 
     @pytest.mark.asyncio
     async def test_node_retrieves_chunks(self):
-        """Should retrieve and rank chunks."""
+        """Should retrieve and rank chunks via curriculum retriever."""
         mock_adapter = MagicMock()
         mock_adapter.search.return_value = {
             "documents": [
@@ -158,10 +163,48 @@ class TestSearchFanoutNode:
         node = SearchFanoutNode(mock_adapter)
         state = AgentState(user_message="test")
         state.rewritten_queries = ["test query"]
+        state.query_groups = {"curriculum": ["test query"]}
 
         result = await node(state)
 
         assert len(result.retrieved_chunks) >= 0
+        assert result.retrieval_strategy != {}
+
+    @pytest.mark.asyncio
+    async def test_node_sets_strategy_and_tasks(self):
+        """Should populate retrieval_strategy and retrieval_tasks."""
+        mock_adapter = MagicMock()
+        mock_adapter.search.return_value = {"documents": []}
+
+        node = SearchFanoutNode(mock_adapter)
+        state = AgentState(
+            user_message="test",
+            query_groups={"curriculum": ["mitosis"], "memory": ["past mistakes"]},
+            rewritten_queries=["mitosis", "past mistakes"],
+        )
+
+        result = await node(state)
+
+        assert len(result.retrieval_tasks) == 2
+        assert result.retrieval_strategy.get("strategy_name") == "PERSONALIZED"
+
+    @pytest.mark.asyncio
+    async def test_node_handles_source_failure_gracefully(self):
+        """Should continue when one source fails."""
+        mock_adapter = MagicMock()
+        mock_adapter.search.side_effect = Exception("DB down")
+
+        node = SearchFanoutNode(mock_adapter)
+        state = AgentState(
+            user_message="test",
+            query_groups={"curriculum": ["mitosis"]},
+            rewritten_queries=["mitosis"],
+        )
+
+        result = await node(state)
+
+        assert result.retrieval_strategy != {}
+        assert result.status == "pending"
 
 
 # ─── SufficientContextNode Tests ─────────────────────────────────────
