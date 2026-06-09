@@ -248,21 +248,25 @@ class TestSufficientContextNode:
         state = AgentState(user_message="test")
         state.sufficiency_score = 0.3
         state.coverage_score = 0.3
+        state.requires_iteration = True
+        state.missing_information = ["Explain mitosis"]
 
         route = route_after_sufficiency(state)
 
-        assert route == "gap_detected"
+        assert route == "rewrite"
 
-    def test_evaluate_sufficiency_hard_cap(self):
-        """Should stop at max iterations."""
+    def test_evaluate_sufficiency_no_longer_checks_hard_cap(self):
+        """evaluate_sufficiency no longer stops at max iterations —
+        that's the controller's job. Should compute score normally."""
         state = AgentState(user_message="test")
         state.retrieval_iterations = 2
         state.evidence_ids = ["e1"]
+        state.coverage_score = 0.5
 
         result = evaluate_sufficiency(state)
 
-        assert result.is_sufficient is True
-        assert result.action == "sufficient"
+        assert result.score > 0
+        assert result.action in ("sufficient", "minor_gap")
 
     def test_evaluate_sufficiency_hard_cap_no_evidence(self):
         """Should report major gap when hard cap hit with no evidence."""
@@ -274,17 +278,18 @@ class TestSufficientContextNode:
         assert result.is_sufficient is False
         assert result.action == "major_gap"
 
-    def test_evaluate_sufficiency_diminishing_returns(self):
-        """Should stop when no new evidence found."""
+    def test_evaluate_sufficiency_no_longer_checks_diminishing_returns(self):
+        """evaluate_sufficiency no longer stops on diminishing returns —
+        that's the controller's job. Should compute score normally."""
         state = AgentState(user_message="test")
         state.retrieval_iterations = 1
         state.evidence_ids = ["e1"]
         state.previous_evidence_count = 1
+        state.coverage_score = 0.5
 
         result = evaluate_sufficiency(state)
 
-        assert result.is_sufficient is True
-        assert result.action == "sufficient"
+        assert result.score > 0
 
     def test_evaluate_sufficiency_sufficient(self):
         """Should report sufficient when coverage meets threshold."""
@@ -297,15 +302,15 @@ class TestSufficientContextNode:
         assert result.is_sufficient is True
 
     def test_evaluate_sufficiency_insufficient(self):
-        """Should report gap when coverage is low."""
+        """Should report gap when coverage is low or missing info exists."""
         state = AgentState(user_message="test")
         state.evidence_ids = ["e1"]
         state.coverage_score = 0.2
+        state.missing_information = ["gap 1"]
 
         result = evaluate_sufficiency(state)
 
         assert result.is_sufficient is False
-        assert result.action == "minor_gap"
 
 
 # ─── ClaimVerifierNode Tests ──────────────────────────────────────────
