@@ -113,6 +113,12 @@ class AgentState:
     missing_information: list[str] = field(default_factory=list)
     requires_iteration: bool = False
 
+    # Iterative Retrieval Loop
+    max_iterations: int = 3
+    coverage_history: list[float] = field(default_factory=list)
+    termination_reason: str = ""
+    retrieval_feedback: list[str] = field(default_factory=list)
+
     # Learner State (snapshot added explicitly for agentic flow)
     learner_snapshot: dict = field(default_factory=dict)
     learning_recommendations: list[dict] = field(default_factory=list)
