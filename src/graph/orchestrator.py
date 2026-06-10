@@ -182,9 +182,9 @@ async def run_graph(
 
     try:
         result = await graph.ainvoke(initial_state, config)
-        trace.finish(status="completed")
-        # Populate trace metadata with 5 key metrics
-        trace.metadata.update({
+        metadata = {
+            "user_message": initial_state.user_message,
+            "response": result.get("draft", ""),
             "retrieval_iterations": result.get("retrieval_iterations", 0),
             "coverage_score": result.get("coverage_score", 0.0),
             "groundedness": result.get("groundedness_score", 0.0),
@@ -192,12 +192,17 @@ async def run_graph(
             "verdict": result.get("safety_action", ""),
             "requires_teacher_review": result.get("requires_teacher_review", False),
             "evidence_count": len(result.get("evidence_ids", [])),
-        })
+        }
+        await pipeline_monitor.finalize_trace(
+            trace.trace_id, "completed", metadata=metadata,
+        )
     except Exception as e:
-        trace.finish(status="failed", error=str(e))
+        await pipeline_monitor.finalize_trace(
+            trace.trace_id, "failed",
+            metadata={"user_message": initial_state.user_message, "error": str(e)},
+        )
         raise
     finally:
-        pipeline_monitor.log_trace(trace)
         await router.close()
 
     sources = []
