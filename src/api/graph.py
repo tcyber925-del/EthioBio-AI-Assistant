@@ -16,7 +16,7 @@ from src.core.memory.event_logger import EventLogger
 from src.core.memory.session_manager import SessionManager
 from src.core.memory.socratic_manager import SocraticManager
 from src.core.monitoring import pipeline_monitor
-from src.database.session import get_session
+from src.database.session import async_session_factory, get_session
 from src.graph.orchestrator import run_graph
 from src.schemas.base import SchemaModel
 from src.schemas.common import LanguageEnum
@@ -132,6 +132,7 @@ async def graph_chat(request: GraphChatRequest, db: AsyncSession = Depends(get_s
             ),
             socratic_next_question=socratic_state_rec.next_question if socratic_state_rec else "",
             messages=conversation_messages,
+            db_session_factory=async_session_factory,
         )
 
         if request.user_id and request.socratic_mode and request.topic:

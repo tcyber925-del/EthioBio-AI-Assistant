@@ -7,6 +7,10 @@ Phase 0: Skeleton — runs subtasks but uses simplified retrieval.
 """
 
 import logging
+from collections.abc import Callable
+from typing import Optional
+
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.graph.nodes.search_fanout import SearchFanoutNode
 from src.graph.state import AgentState
@@ -27,14 +31,19 @@ class PlanExecutor:
     earlier evidence. Retrieval within a subtask can be parallelized.
     """
 
-    def __init__(self, adapter: VectorStoreAdapter):
+    def __init__(
+        self,
+        adapter: VectorStoreAdapter,
+        db_session_factory: Optional[Callable[[], AsyncSession]] = None,
+    ):
         """Initialize with a VectorStoreAdapter for retrieval.
 
         Args:
             adapter: VectorStoreAdapter instance for curriculum retrieval.
+            db_session_factory: Optional factory for real async DB sessions.
         """
         self.adapter = adapter
-        self.search_fanout = SearchFanoutNode(adapter)
+        self.search_fanout = SearchFanoutNode(adapter, db_session_factory=db_session_factory)
 
     async def execute_plan(self, state: AgentState) -> AgentState:
         """Execute all subtasks in the plan sequentially.

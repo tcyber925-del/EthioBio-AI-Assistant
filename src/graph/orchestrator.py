@@ -5,7 +5,11 @@ Builds the graph with dependency-injected nodes (router, adapter).
 Supports both the legacy pipeline and the new Agentic RAG pipeline.
 """
 
+from collections.abc import Callable
+from typing import Optional
+
 from langgraph.graph import END, StateGraph
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.monitoring import pipeline_monitor
 from src.graph.nodes.claim_verifier import ClaimVerifierNode, route_after_verification
@@ -53,7 +57,11 @@ def build_graph(router: ModelRouter, adapter: VectorStoreAdapter) -> StateGraph:
     return workflow.compile()
 
 
-def build_agentic_graph(router: ModelRouter, adapter: VectorStoreAdapter) -> StateGraph:
+def build_agentic_graph(
+    router: ModelRouter,
+    adapter: VectorStoreAdapter,
+    db_session_factory: Optional[Callable[[], AsyncSession]] = None,
+) -> StateGraph:
     """Build the Agentic RAG graph for complex queries.
 
     Graph topology:
@@ -70,7 +78,7 @@ def build_agentic_graph(router: ModelRouter, adapter: VectorStoreAdapter) -> Sta
 
     workflow.add_node("orchestrator", OrchestratorNode(router))
     workflow.add_node("planner", PlannerNode(router))
-    workflow.add_node("plan_executor", PlanExecutor(adapter))
+    workflow.add_node("plan_executor", PlanExecutor(adapter, db_session_factory=db_session_factory))
     workflow.add_node("evidence_graph", EvidenceGraphNode(db_session_factory=None))
     workflow.add_node("sufficient_context", SufficientContextNode())
     workflow.add_node("synthesis", SynthesisNode(router))
@@ -128,6 +136,7 @@ async def run_graph(
     socratic_understanding: str = "",
     socratic_next_question: str = "",
     messages: list[dict] | None = None,
+    db_session_factory: Optional[Callable[[], AsyncSession]] | None = None,
 ) -> GraphOutput:
     """Run the unified graph with monitoring.
 
@@ -165,7 +174,7 @@ async def run_graph(
         messages=messages or [],
     )
 
-    graph = build_unified_graph(router, adapter)
+    graph = build_unified_graph(router, adapter, db_session_factory=db_session_factory)
     config = {"configurable": {"thread_id": f"ethiobio-{session_id or 'default'}"}}
 
     try:
@@ -227,7 +236,11 @@ async def run_graph(
     )
 
 
-def build_unified_graph(router: ModelRouter, adapter: VectorStoreAdapter) -> StateGraph:
+def build_unified_graph(
+    router: ModelRouter,
+    adapter: VectorStoreAdapter,
+    db_session_factory: Optional[Callable[[], AsyncSession]] = None,
+) -> StateGraph:
     """Build a unified graph that handles both legacy and agentic pipelines.
 
     Routes based on requires_planning after the OrchestratorNode:
@@ -247,7 +260,7 @@ def build_unified_graph(router: ModelRouter, adapter: VectorStoreAdapter) -> Sta
 
     # Agentic pipeline nodes
     workflow.add_node("planner", PlannerNode(router))
-    workflow.add_node("plan_executor", PlanExecutor(adapter))
+    workflow.add_node("plan_executor", PlanExecutor(adapter, db_session_factory=db_session_factory))
     workflow.add_node("evidence_graph", EvidenceGraphNode(db_session_factory=None))
     workflow.add_node("sufficient_context", SufficientContextNode())
     workflow.add_node("synthesis", SynthesisNode(router))
