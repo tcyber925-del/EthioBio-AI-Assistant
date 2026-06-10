@@ -1,4 +1,6 @@
+import asyncio
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 
 import structlog
@@ -33,17 +35,50 @@ from src.api.intelligence.continue_learning_router import (
 from src.api.models import router as models_router
 from src.config import settings
 from src.core.memory.router import router as memory_router
-from src.database.session import close_db, init_db
+from src.core.monitoring import pipeline_monitor
+from src.core.tracing import TraceRepository
+from src.database.session import async_session_factory, close_db, init_db
 from src.llm.router import ModelRouter
 from src.schemas.common import HealthResponse
 
 logger = structlog.get_logger()
 
 
+async def _save_trace_from_pipeline(trace, repo):
+    """Save a completed PipelineTrace to persistent storage."""
+    try:
+        end = datetime.fromtimestamp(trace.end_time, tz=timezone.utc) if trace.end_time else None
+        await repo.save_trace(
+            trace_id=trace.trace_id,
+            start_time=datetime.fromtimestamp(trace.start_time, tz=timezone.utc),
+            status=trace.status,
+            user_message=trace.metadata.get("user_message", ""),
+            response=trace.metadata.get("response"),
+            end_time=end,
+            error=trace.error,
+            nodes_visited=trace.nodes_visited,
+            node_timings={
+                k: v for k, v in trace.node_timings.items()
+                if not k.endswith("_start")
+            },
+            metadata={k: v for k, v in trace.metadata.items()
+                      if k not in ("user_message", "response")},
+            duration_ms=trace.duration_ms,
+        )
+    except Exception:
+        logger.exception("trace_persist_failed", trace_id=trace.trace_id)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("app_starting", name=settings.app_name)
     await init_db()
+    repo = TraceRepository(async_session_factory)
+    pipeline_monitor.set_on_complete(
+        lambda trace: asyncio.create_task(
+            _save_trace_from_pipeline(trace, repo)
+        )
+    )
     yield
     await close_db()
     logger.info("app_shutdown")
