@@ -126,6 +126,7 @@ class PipelineMonitor:
     def __init__(self):
         self.traces: dict[str, PipelineTrace] = {}
         self._metrics_interval = METRICS_WINDOW_SECONDS
+        self._on_complete: Optional[callable] = None
 
     def start_trace(self, metadata: Optional[dict] = None) -> PipelineTrace:
         """Start a new trace."""
@@ -137,6 +138,28 @@ class PipelineMonitor:
         )
         self.traces[trace_id] = trace
         return trace
+
+    def set_on_complete(self, callback: callable) -> None:
+        """Set a callback invoked when a trace completes.
+
+        Callback signature: callback(trace: PipelineTrace) -> None
+        For async callbacks, use asyncio.create_task() inside the callback.
+        """
+        self._on_complete = callback
+
+    async def finalize_trace(
+        self, trace_id: str, status: str, metadata: Optional[dict] = None,
+    ) -> None:
+        """Finalize a trace, update metadata, log it, and fire on_complete."""
+        trace = self.traces.get(trace_id)
+        if not trace:
+            return
+        if metadata:
+            trace.metadata.update(metadata)
+        trace.finish(status=status)
+        self.log_trace(trace)
+        if self._on_complete:
+            self._on_complete(trace)
 
     def get_trace(self, trace_id: str) -> Optional[PipelineTrace]:
         """Get a trace by ID."""
