@@ -1,5 +1,7 @@
 """Tutor node — generates biology answers with curriculum grounding."""
 
+# ruff: noqa: E501
+
 import re
 
 from src.agents.tutor.tutor import TutorSynthesisAgent
