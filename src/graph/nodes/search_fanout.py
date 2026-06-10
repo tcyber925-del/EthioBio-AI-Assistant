@@ -6,6 +6,11 @@ Uses SearchFanoutAgent for task planning and source routing.
 
 import asyncio
 import logging
+from collections.abc import Callable
+from typing import Optional
+
+from sqlalchemy import desc, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.search_fanout.search_fanout import SearchFanoutAgent
 from src.graph.state import AgentState
@@ -24,9 +29,15 @@ class SearchFanoutNode:
     stub retrievers for memory, learner, and recommendation.
     """
 
-    def __init__(self, adapter: VectorStoreAdapter, max_queries: int = 20):
+    def __init__(
+        self,
+        adapter: VectorStoreAdapter,
+        max_queries: int = 20,
+        db_session_factory: Optional[Callable[[], AsyncSession]] = None,
+    ):
         self.adapter = adapter
         self.agent = SearchFanoutAgent(max_queries=max_queries)
+        self.db_session_factory = db_session_factory
 
     async def _search_curriculum(self, query: str, n_results: int = 5) -> list[dict]:
         """Search curriculum index via VectorStoreAdapter."""
@@ -49,12 +60,82 @@ class SearchFanoutNode:
             logger.warning("curriculum_search_failed: %s", str(e))
             return []
 
-    async def _search_memory(self, query: str) -> list[dict]:
-        """Stub: Memory retriever.
+    async def _search_memory(self, query: str, user_id: Optional[str] = None) -> list[dict]:
+        """Retrieve relevant conversation turns and educational summaries."""
+        if not self.db_session_factory or not user_id:
+            return []
 
-        TODO: Implement real memory retriever (future PRD).
-        """
-        return []
+        from datetime import datetime, timezone
+
+        from src.database.models import ConversationTurn, MemoryEducationalSummary
+
+        factory = self.db_session_factory()
+        async with factory as session:
+            terms = [t.lower() for t in query.split() if len(t) > 3]
+
+            stmt = (
+                select(ConversationTurn)
+                .where(ConversationTurn.user_id == user_id)
+                .order_by(desc(ConversationTurn.created_at))
+                .limit(10)
+            )
+            result = await session.execute(stmt)
+            turns = result.scalars().all()
+
+            chunks = []
+            now = datetime.now(timezone.utc)
+            for turn in turns:
+                content_lower = turn.content.lower()
+                if terms and not any(t in content_lower for t in terms):
+                    continue
+
+                age_days = (now - turn.created_at).days if turn.created_at else 365
+                if age_days == 0:
+                    score = 1.0
+                elif age_days < 7:
+                    score = 0.8
+                elif age_days < 30:
+                    score = 0.5
+                else:
+                    score = 0.2
+
+                chunks.append({
+                    "content": turn.content,
+                    "metadata": {
+                        "id": str(turn.id),
+                        "topic": turn.topic or "",
+                        "role": turn.role,
+                        "source_name": "conversation_turn",
+                    },
+                    "score": score,
+                    "source": "memory",
+                })
+
+            if terms:
+                summary_stmt = (
+                    select(MemoryEducationalSummary)
+                    .where(MemoryEducationalSummary.user_id == user_id)
+                    .order_by(desc(MemoryEducationalSummary.created_at))
+                    .limit(3)
+                )
+                summary_result = await session.execute(summary_stmt)
+                summaries = summary_result.scalars().all()
+                for summary in summaries:
+                    content_lower = (summary.topic or "").lower()
+                    if not any(t in content_lower for t in terms):
+                        continue
+                    chunks.append({
+                        "content": summary.next_learning_goal or f"Summary for {summary.topic}",
+                        "metadata": {
+                            "id": str(summary.id),
+                            "topic": summary.topic or "",
+                            "source_name": "educational_summary",
+                        },
+                        "score": summary.confidence or 0.5,
+                        "source": "memory",
+                    })
+
+            return chunks
 
     async def _search_learner(self, query: str) -> list[dict]:
         """Stub: Learner profile retriever.
@@ -71,14 +152,14 @@ class SearchFanoutNode:
         return []
 
     async def _safe_search(
-        self, source: str, query: str
+        self, source: str, query: str, user_id: Optional[str] = None
     ) -> tuple[str, list[dict]]:
         """Execute a single source search, catching exceptions."""
         try:
             if source == "curriculum":
                 result = await self._search_curriculum(query)
             elif source == "memory":
-                result = await self._search_memory(query)
+                result = await self._search_memory(query, user_id=user_id)
             elif source == "learner":
                 result = await self._search_learner(query)
             elif source == "recommendation":
@@ -100,6 +181,7 @@ class SearchFanoutNode:
         tasks, strategy = self.agent.plan(query_groups)
 
         # Execute: gather unique (source, query) pairs in parallel
+        user_id = str(state.user_id) if state.user_id else None
         seen = set()
         search_coros = []
         for task in tasks:
@@ -107,7 +189,7 @@ class SearchFanoutNode:
             if key not in seen:
                 seen.add(key)
                 search_coros.append(
-                    self._safe_search(task.target_source, task.query)
+                    self._safe_search(task.target_source, task.query, user_id=user_id)
                 )
 
         raw_results = await asyncio.gather(*search_coros, return_exceptions=True)

@@ -206,6 +206,49 @@ class TestSearchFanoutNode:
         assert result.retrieval_strategy != {}
         assert result.status == "pending"
 
+    @pytest.mark.asyncio
+    async def test_search_memory_returns_results(self):
+        """Memory retriever should return ConversationTurn data."""
+        from unittest.mock import AsyncMock, MagicMock
+
+        from src.graph.nodes.search_fanout import SearchFanoutNode
+
+        mock_turn = MagicMock()
+        mock_turn.id = "turn-1"
+        mock_turn.content = "Student asked about cell division."
+        mock_turn.topic = "Cell Division"
+        mock_turn.role = "user"
+        mock_turn.created_at = None
+
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [mock_turn]
+
+        mock_session = AsyncMock()
+        mock_session.execute.return_value = mock_result
+
+        mock_factory = MagicMock()
+        mock_factory.return_value.__aenter__.return_value = mock_session
+
+        from src.retrieval.adapter import VectorStoreAdapter
+        adapter = VectorStoreAdapter()
+        node = SearchFanoutNode(adapter, db_session_factory=mock_factory)
+
+        chunks = await node._search_memory("cell division", user_id="user-1")
+
+        assert len(chunks) >= 1
+        assert chunks[0]["source"] == "memory"
+        assert "cell division" in chunks[0]["content"].lower()
+
+    @pytest.mark.asyncio
+    async def test_search_memory_no_user_id(self):
+        """Memory retriever should return [] when user_id is None."""
+        from src.graph.nodes.search_fanout import SearchFanoutNode
+        from src.retrieval.adapter import VectorStoreAdapter
+
+        node = SearchFanoutNode(VectorStoreAdapter())
+        chunks = await node._search_memory("test", user_id=None)
+        assert chunks == []
+
 
 # ─── SufficientContextNode Tests ─────────────────────────────────────
 
