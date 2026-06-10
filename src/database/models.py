@@ -702,7 +702,7 @@ class AgentTrace(Base):
     grade_level: Mapped[int] = mapped_column(Integer, nullable=True)
     language: Mapped[str] = mapped_column(String(8), nullable=True)
     intent: Mapped[str] = mapped_column(String(64), nullable=True)
-    nodes_visited: Mapped[dict] = mapped_column(JSON, default=list)
+    nodes_visited: Mapped[list] = mapped_column(JSON, default=list)
     node_timings: Mapped[dict] = mapped_column(JSON, default=dict)
     event_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
     duration_ms: Mapped[float] = mapped_column(Float, default=0.0)
