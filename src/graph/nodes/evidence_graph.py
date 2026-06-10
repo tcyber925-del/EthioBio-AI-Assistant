@@ -9,6 +9,7 @@ from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.evidence.deduplication import compute_content_hash, filter_duplicates
 from src.core.evidence.graph import Evidence, EvidenceGraph
 from src.core.evidence.scoring import (
     analyze_coverage,
@@ -58,31 +59,52 @@ class EvidenceGraphNode:
         )
         logger.info("evidence_graph: session_created %s", internal_session_id)
 
-        # 2. Persist all chunks as evidence records
-        evidence_count = 0
+        # 2. Deduplicate chunks before persisting
+        seen_hashes: set[str] = set()
+        seen_contents: list[str] = []
+        all_deduped: list[tuple[str, dict]] = []
+
         for source_type, chunks in state.retrieval_source_results.items():
-            for chunk in chunks:
-                evidence = Evidence(
-                    id="",
-                    source_type=source_type,
-                    source_name=chunk.get("source", source_type),
-                    chunk_id=chunk.get("metadata", {}).get("id"),
-                    content=chunk.get("content", ""),
-                    original_query=state.user_message,
-                    retrieval_query=state.user_message,
-                    retrieval_score=chunk.get("score", 0.0),
-                    rerank_score=chunk.get("score", 0.0),
-                    confidence=chunk.get("score", 0.0),
-                    retrieved_by="search_fanout",
-                    trace_id=trace_id,
-                    user_id=user_id_str,
-                )
-                await self.graph.add(evidence, internal_session_id)
-                evidence_count += 1
+            deduped = filter_duplicates(
+                chunks,
+                existing_contents=seen_contents,
+                existing_hashes=seen_hashes,
+            )
+            for chunk in deduped:
+                all_deduped.append((source_type, chunk))
+                h = compute_content_hash(chunk.get("content", ""))
+                seen_hashes.add(h)
+                seen_contents.append(chunk.get("content", ""))
+
+        total_input = sum(len(v) for v in state.retrieval_source_results.values())
+        dedup_count = total_input - len(all_deduped)
+        if dedup_count:
+            logger.info("evidence_graph: deduplicated %s chunks", dedup_count)
+
+        # 3. Persist all deduplicated chunks as evidence records
+        evidence_count = 0
+        for source_type, chunk in all_deduped:
+            evidence = Evidence(
+                id="",
+                source_type=source_type,
+                source_name=chunk.get("source", source_type),
+                chunk_id=chunk.get("metadata", {}).get("id"),
+                content=chunk.get("content", ""),
+                original_query=state.user_message,
+                retrieval_query=state.user_message,
+                retrieval_score=chunk.get("score", 0.0),
+                rerank_score=chunk.get("score", 0.0),
+                confidence=chunk.get("score", 0.0),
+                retrieved_by="search_fanout",
+                trace_id=trace_id,
+                user_id=user_id_str,
+            )
+            await self.graph.add(evidence, internal_session_id)
+            evidence_count += 1
 
         logger.info("evidence_graph: records_persisted %s", evidence_count)
 
-        # 3. Get evidence for selection
+        # 4. Get evidence for selection
         evidence_list = await self.graph.get_evidence_for_session(session_key)
         evidence_ids = [e.id for e in evidence_list]
 

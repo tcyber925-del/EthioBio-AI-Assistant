@@ -319,3 +319,47 @@ def test_unified_graph_node_ordering():
         f"Expected plan_executor < evidence_graph < sufficient_context, "
         f"got {node_list}"
     )
+
+
+@pytest.mark.asyncio
+@patch("src.graph.nodes.evidence_graph.EvidenceGraph")
+async def test_node_skips_duplicates(mock_evidence_graph_cls):
+    """Duplicate chunks should be deduplicated before persisting."""
+    mock_session = AsyncMock()
+    mock_graph = AsyncMock()
+    mock_graph.create_session.return_value = "internal-session-uuid"
+    mock_graph.add.return_value = "evidence-uuid"
+    mock_evidence_graph_cls.return_value = mock_graph
+
+    mock_factory = MagicMock(return_value=mock_session)
+
+    node = EvidenceGraphNode(db_session_factory=mock_factory)
+
+    state = AgentState(user_message="test", trace_id="trace-1")
+    state.retrieval_source_results = {
+        "curriculum": [
+            {"content": "Cell theory states all living things are made of cells.",
+             "metadata": {"id": "chunk-1"}, "score": 0.95, "source": "curriculum"},
+            # Exact duplicate
+            {"content": "Cell theory states all living things are made of cells.",
+             "metadata": {"id": "chunk-2"}, "score": 0.90, "source": "curriculum"},
+            # Semantic duplicate
+            {"content": "Cell theory: all living things are made of cells",
+             "metadata": {"id": "chunk-3"}, "score": 0.85, "source": "curriculum"},
+            # Unique
+            {"content": "Mitosis is the process of cell division.",
+             "metadata": {"id": "chunk-4"}, "score": 0.80, "source": "curriculum"},
+        ]
+    }
+
+    await node(state)
+
+    # Should only persist 2 out of 4 chunks (1 unique, 2 duplicates skipped)
+    assert mock_graph.add.call_count == 2, (
+        f"Expected 2 persists, got {mock_graph.add.call_count}"
+    )
+    persisted_contents = [
+        call[0][0].content for call in mock_graph.add.call_args_list
+    ]
+    assert "Cell theory states all living things are made of cells." in persisted_contents
+    assert "Mitosis is the process of cell division." in persisted_contents
