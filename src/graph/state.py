@@ -103,6 +103,11 @@ class AgentState:
 
     # Evidence State
     evidence_ids: list[str] = field(default_factory=list)
+    evidence_items: list[dict] = field(default_factory=list)
+    teaching_strategy: str = ""
+    citation_map: list[dict] = field(default_factory=list)
+    grounded_response: str = ""
+    recommendations: list[str] = field(default_factory=list)
     evidence_synthesis: str = ""
     evidence_summary: str = ""
     coverage_score: float = 0.0
