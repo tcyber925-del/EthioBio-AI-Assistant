@@ -1,5 +1,10 @@
+"""Pydantic models for the Tutor Synthesis Agent.
+
+Defines TeachingStrategy enum, CitationEntry for grounded response
+segments, and TutorResponse as the structured output of the agent.
+"""
+
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -16,7 +21,6 @@ class CitationEntry(BaseModel):
     response_segment: str
     evidence_ids: list[str]
     source_names: list[str]
-    source_name: Optional[str] = None
 
 
 class TutorResponse(BaseModel):
