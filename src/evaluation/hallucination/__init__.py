@@ -6,8 +6,8 @@ from src.evaluation.hallucination.structural import structural_check
 __all__ = [
     "ClaimAssessment",
     "DetectionMode",
-    "HallucinationReport",
-    "structural_check",
-    "semantic_check",
     "HallucinationDetector",
+    "HallucinationReport",
+    "semantic_check",
+    "structural_check",
 ]
