@@ -1,5 +1,7 @@
 import json
 
+DEFAULT_TOLERANCE = 0.15
+
 
 class RegressionDetector:
     def __init__(self, baselines: dict[str, dict]):
@@ -20,7 +22,7 @@ class RegressionDetector:
 
         min_g = baseline.get("min_groundedness")
         if min_g is not None:
-            actual = metrics.get("groundedness_score", 1.0)
+            actual = metrics.get("groundedness_score", 0.0)
             if actual < min_g:
                 issues.append(
                     f"groundedness {actual:.3f} < min {min_g:.3f}"
@@ -52,7 +54,9 @@ class RegressionDetector:
 
         return issues
 
-    def generate_baseline(self, scenario_id: str, metrics: dict, tolerance: float = 0.15) -> dict:
+    def generate_baseline(
+        self, _scenario_id: str, metrics: dict, tolerance: float = DEFAULT_TOLERANCE,
+    ) -> dict:
         groundedness = metrics.get("groundedness_score")
         hallucination = metrics.get("hallucination_rate")
         coverage = metrics.get("coverage_score")

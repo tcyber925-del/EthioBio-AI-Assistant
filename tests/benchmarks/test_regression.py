@@ -41,13 +41,14 @@ def test_unknown_scenario_no_regression():
     assert issues == []
 
 
-def test_missing_metric_key_no_error():
+def test_missing_metric_triggers_regression():
     baselines = {
         "test-1": {"min_groundedness": 0.8},
     }
     detector = RegressionDetector(baselines)
     issues = detector.check("test-1", {})
-    assert issues == []
+    assert len(issues) == 1
+    assert "groundedness" in issues[0].lower()
 
 
 def test_from_json():
