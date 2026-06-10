@@ -84,11 +84,16 @@ async def test_list_traces_with_filters(repo, mock_session):
             nodes_visited=[], node_timings={}, event_metadata={}, duration_ms=100.0,
         ),
     ]
-    mock_session.execute.return_value = mock_result
+
+    mock_count_result = MagicMock()
+    mock_count_result.scalar.return_value = 1
+
+    mock_session.execute.side_effect = [mock_count_result, mock_result]
 
     results, total = await repo.list_traces(status="completed", limit=10)
     assert len(results) == 1
     assert results[0]["trace_id"] == "t1"
+    assert total == 1
 
 
 @pytest.mark.asyncio
@@ -116,16 +121,11 @@ async def test_delete_nonexistent_trace(repo, mock_session):
 @pytest.mark.asyncio
 async def test_cleanup_old_traces(repo, mock_session):
     mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = [
-        MagicMock(trace_id="old1"),
-        MagicMock(trace_id="old2"),
-    ]
+    mock_result.rowcount = 2
     mock_session.execute.return_value = mock_result
 
     count = await repo.cleanup_old(max_age_days=1)
     assert count == 2
-    assert mock_session.delete.await_count == 2
-    mock_session.flush.assert_awaited()
 
 
 @pytest.mark.asyncio
