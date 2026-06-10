@@ -108,6 +108,8 @@ class AgentState:
     citation_map: list[dict] = field(default_factory=list)
     grounded_response: str = ""
     recommendations: list[str] = field(default_factory=list)
+    hallucination_report: Optional[dict] = None
+    hallucination_rate: float = 0.0
     evidence_synthesis: str = ""
     evidence_summary: str = ""
     coverage_score: float = 0.0
