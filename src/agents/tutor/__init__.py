@@ -1,4 +1,3 @@
-from src.agents.tutor_agent import TutorAgent
 from src.agents.tutor.grounding import extract_citations
 from src.agents.tutor.models import CitationEntry, TeachingStrategy, TutorResponse
 from src.agents.tutor.personalization import build_personalization_block
@@ -8,7 +7,6 @@ from src.agents.tutor.tutor import TutorSynthesisAgent
 __all__ = [
     "CitationEntry",
     "TeachingStrategy",
-    "TutorAgent",
     "TutorResponse",
     "TutorSynthesisAgent",
     "select_teaching_strategy",

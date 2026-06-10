@@ -51,9 +51,9 @@ class AgentTrace(Base):
     grade_level: Mapped[int] = mapped_column(Integer, nullable=True)
     language: Mapped[str] = mapped_column(String(8), nullable=True)
     intent: Mapped[str] = mapped_column(String(64), nullable=True)
-    nodes_visited: Mapped[dict] = mapped_column(JSON, default=list)
+    nodes_visited: Mapped[list] = mapped_column(JSON, default=list)
     node_timings: Mapped[dict] = mapped_column(JSON, default=dict)
-    metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+    event_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
     duration_ms: Mapped[float] = mapped_column(Float, default=0.0)
 ```
 
@@ -131,7 +131,7 @@ async def test_save_and_get_trace(repo, mock_session):
         intent="tutor",
         nodes_visited=["orchestrator"],
         node_timings={},
-        metadata={},
+        event_metadata={},
         duration_ms=0.0,
     )
     mock_session.execute.return_value = mock_result
@@ -174,7 +174,7 @@ async def test_list_traces_with_filters(repo, mock_session):
             end_time=datetime.now(timezone.utc), status="completed",
             error=None, user_message="q1", response="a1",
             user_id=None, grade_level=8, language="en", intent="tutor",
-            nodes_visited=[], node_timings={}, metadata={}, duration_ms=100.0,
+            nodes_visited=[], node_timings={}, event_metadata={}, duration_ms=100.0,
         ),
     ]
     mock_session.execute.return_value = mock_result
@@ -285,7 +285,7 @@ class TraceRepository:
                 intent=intent,
                 nodes_visited=nodes_visited or [],
                 node_timings=node_timings or {},
-                metadata=metadata or {},
+                event_metadata=metadata or {},
                 duration_ms=duration_ms,
             )
             session.add(trace)
@@ -412,7 +412,7 @@ class TraceRepository:
             "intent": trace.intent,
             "nodes_visited": trace.nodes_visited,
             "node_timings": trace.node_timings,
-            "metadata": trace.metadata,
+            "metadata": trace.event_metadata,
             "duration_ms": trace.duration_ms,
         }
 ```
