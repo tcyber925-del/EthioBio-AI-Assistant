@@ -686,3 +686,23 @@ class EvidenceRecord(Base):
     archived: Mapped[bool] = mapped_column(Boolean, default=False)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class AgentTrace(Base):
+    __tablename__ = "agent_traces"
+
+    trace_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="running")
+    error: Mapped[str] = mapped_column(Text, nullable=True)
+    user_message: Mapped[str] = mapped_column(Text)
+    response: Mapped[str] = mapped_column(Text, nullable=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)
+    grade_level: Mapped[int] = mapped_column(Integer, nullable=True)
+    language: Mapped[str] = mapped_column(String(8), nullable=True)
+    intent: Mapped[str] = mapped_column(String(64), nullable=True)
+    nodes_visited: Mapped[dict] = mapped_column(JSON, default=list)
+    node_timings: Mapped[dict] = mapped_column(JSON, default=dict)
+    event_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+    duration_ms: Mapped[float] = mapped_column(Float, default=0.0)
