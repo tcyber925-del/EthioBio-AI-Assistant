@@ -543,3 +543,90 @@ class TestClaimVerifierNode:
         state.safety_action = "reject"
         route = route_after_verification(state)
         assert route == "reject"
+
+
+class TestTutorNodePRD008:
+    """Tests for the refactored TutorNode with TutorSynthesisAgent."""
+
+    @pytest.mark.asyncio
+    async def test_agentic_path_delegates_to_tutor_synthesis_agent(self):
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from src.agents.tutor.models import CitationEntry, TeachingStrategy, TutorResponse
+        from src.graph.nodes.tutor import TutorNode
+        from src.graph.state import AgentState
+        from src.llm.router import ModelRouter
+
+        mock_router = MagicMock(spec=ModelRouter)
+        node = TutorNode(mock_router)
+
+        state = AgentState(
+            user_message="What is meiosis?",
+            evidence_items=[{"id": "bio_1", "content": "Meiosis", "source_name": "curriculum"}],
+            evidence_synthesis="Synthesis",
+            grade_level=10,
+            language="en",
+            socratic_mode=False,
+            hint_level=0,
+            reveal_answer=False,
+            learner_profile_block="",
+            messages=[],
+            intent="tutor",
+            misconception_detected=False,
+        )
+
+        expected_response = TutorResponse(
+            content="Meiosis produces diversity.",
+            confidence=0.9,
+            teaching_strategy=TeachingStrategy.DIRECT_EXPLANATION,
+            citation_map=[
+                CitationEntry(
+                    response_segment="",
+                    evidence_ids=["bio_1"],
+                    source_names=["curriculum"],
+                )
+            ],
+            misconceptions_addressed=[],
+            recommendations=[],
+        )
+
+        with patch.object(node, 'agent') as mock_agent:
+            mock_agent.generate = AsyncMock(return_value=expected_response)
+            result = await node(state)
+
+        assert result.draft == "Meiosis produces diversity."
+        assert result.teaching_strategy == "direct_explanation"
+        assert len(result.citation_map) == 1
+        assert result.citation_map[0]["evidence_ids"] == ["bio_1"]
+        assert result.confidence == 0.9
+
+    @pytest.mark.asyncio
+    async def test_legacy_path_when_no_evidence_items(self):
+        from unittest.mock import AsyncMock, MagicMock
+
+        from src.graph.nodes.tutor import TutorNode
+        from src.graph.state import AgentState
+        from src.llm.router import ModelRouter
+
+        mock_router = MagicMock(spec=ModelRouter)
+        node = TutorNode(mock_router)
+
+        mock_router.route = AsyncMock(return_value={
+            "content": "Legacy response",
+            "model": "test",
+            "confidence": 0.8,
+        })
+
+        state = AgentState(
+            user_message="What is mitosis?",
+            evidence_items=[],
+            context="Some curriculum context",
+            grade_level=8,
+            language="en",
+            socratic_mode=False,
+            messages=[],
+        )
+
+        result = await node(state)
+        assert result.draft == "Legacy response"
+        assert result.teaching_strategy == ""

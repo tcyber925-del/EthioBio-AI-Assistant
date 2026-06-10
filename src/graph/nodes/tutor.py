@@ -2,6 +2,7 @@
 
 import re
 
+from src.agents.tutor.tutor import TutorSynthesisAgent
 from src.core.memory.truncation import truncate_messages
 from src.graph.state import AgentState
 from src.llm.router import ModelRouter
@@ -90,8 +91,14 @@ REVEAL_PROMPT = "\n\nThe student has requested the final answer. Provide the com
 class TutorNode:
     def __init__(self, router: ModelRouter):
         self.router = router
+        self.agent = TutorSynthesisAgent(router)
 
     async def __call__(self, state: AgentState) -> AgentState:
+        if state.evidence_items:
+            return await self._agentic_call(state)
+        return await self._legacy_call(state)
+
+    async def _legacy_call(self, state: AgentState) -> AgentState:
         grade_context = f" (Grade {state.grade_level})" if state.grade_level else ""
         lang = state.language
         if lang == "am":
@@ -155,5 +162,36 @@ class TutorNode:
         detected, correction = _detect_misconception(content)
         state.misconception_detected = detected
         state.misconception_correction = correction
+
+        return state
+
+    async def _agentic_call(self, state: AgentState) -> AgentState:
+        student_misconceptions = []
+        if state.misconception_correction:
+            student_misconceptions = [state.misconception_correction]
+
+        response = await self.agent.generate(
+            user_message=state.user_message,
+            evidence_items=state.evidence_items,
+            evidence_synthesis=state.evidence_synthesis,
+            grade_level=state.grade_level,
+            language=state.language,
+            socratic_mode=state.socratic_mode,
+            hint_level=state.hint_level,
+            reveal_answer=state.reveal_answer,
+            learner_profile_block=state.learner_profile_block or "",
+            messages=state.messages,
+            intent=state.intent,
+            misconception_detected=state.misconception_detected,
+            student_misconceptions=student_misconceptions,
+        )
+
+        state.draft = response.content
+        state.grounded_response = response.content
+        state.confidence = response.confidence
+        state.teaching_strategy = response.teaching_strategy.value
+        state.citation_map = [e.model_dump() for e in response.citation_map]
+        state.recommendations = response.recommendations
+        state.misconception_correction = ", ".join(response.misconceptions_addressed) if response.misconceptions_addressed else state.misconception_correction
 
         return state
