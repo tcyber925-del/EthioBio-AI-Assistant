@@ -3,13 +3,13 @@ from src.agents.tutor.models import CitationEntry, TeachingStrategy, TutorRespon
 from src.agents.tutor.personalization import build_personalization_block
 from src.agents.tutor.strategy import select_teaching_strategy
 
-# TODO: Import TutorSynthesisAgent after tutor.py is created
-# from src.agents.tutor.tutor import TutorSynthesisAgent
+from src.agents.tutor.tutor import TutorSynthesisAgent
 
 __all__ = [
     "CitationEntry",
     "TeachingStrategy",
     "TutorResponse",
+    "TutorSynthesisAgent",
     "select_teaching_strategy",
     "build_personalization_block",
     "extract_citations",
