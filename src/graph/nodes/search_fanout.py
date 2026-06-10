@@ -13,6 +13,9 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.search_fanout.search_fanout import SearchFanoutAgent
+from src.core.learning_intelligence.recommendation.services.service import (
+    RecommendationService,
+)
 from src.graph.state import AgentState
 from src.retrieval.adapter import VectorStoreAdapter
 
@@ -214,12 +217,39 @@ class SearchFanoutNode:
 
         return chunks
 
-    async def _search_recommendation(self, query: str) -> list[dict]:
-        """Stub: Recommendation retriever.
+    async def _search_recommendation(self, query: str, user_id: Optional[str] = None) -> list[dict]:
+        """Retrieve recommendations via RecommendationService."""
+        if not self.db_session_factory or not user_id:
+            return []
 
-        TODO: Implement real recommendation retriever (future PRD).
-        """
-        return []
+        factory = self.db_session_factory()
+        async with factory as session:
+            service = RecommendationService()
+            recommendations = await service.get_recommendations(session, user_id)
+
+        if not recommendations:
+            return []
+
+        terms = [t.lower() for t in query.split() if len(t) > 3]
+        chunks = []
+        for rec in recommendations:
+            topic_lower = (rec.topic or "").lower()
+            if terms and not any(t in topic_lower for t in terms):
+                if not any(t in rec.reason.lower() for t in terms):
+                    continue
+            chunks.append({
+                "content": f"Recommendation for '{rec.topic}': {rec.reason}",
+                "metadata": {
+                    "id": rec.id or f"rec:{rec.action_type}:{(rec.topic or 'unknown').lower().replace(' ', '_')}",  # noqa: E501
+                    "action_type": rec.action_type,
+                    "topic": rec.topic or "",
+                    "source_name": "recommendation_engine",
+                },
+                "score": rec.priority_score * 0.9,
+                "source": "recommendation",
+            })
+
+        return chunks
 
     async def _safe_search(
         self, source: str, query: str, user_id: Optional[str] = None
@@ -233,7 +263,7 @@ class SearchFanoutNode:
             elif source == "learner":
                 result = await self._search_learner(query, user_id=user_id)
             elif source == "recommendation":
-                result = await self._search_recommendation(query)
+                result = await self._search_recommendation(query, user_id=user_id)
             else:
                 logger.warning("unknown_source: %s", source)
                 result = []

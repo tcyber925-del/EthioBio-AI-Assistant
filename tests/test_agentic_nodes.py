@@ -300,6 +300,52 @@ class TestSearchFanoutNode:
         chunks = await node._search_learner("test", user_id=None)
         assert chunks == []
 
+    @pytest.mark.asyncio
+    async def test_search_recommendation_returns_results(self):
+        """Recommendation retriever should return LearningRecommendation data."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from src.graph.nodes.search_fanout import SearchFanoutNode
+        from src.retrieval.adapter import VectorStoreAdapter
+
+        mock_rec = MagicMock()
+        mock_rec.action_type = "REVIEW_TOPIC"
+        mock_rec.topic = "Photosynthesis"
+        mock_rec.priority_score = 0.85
+        mock_rec.reason = "Weak mastery, exam approaching"
+        mock_rec.id = "rec-1"
+
+        mock_service = MagicMock()
+        mock_service.get_recommendations = AsyncMock(return_value=[mock_rec])
+
+        mock_session = AsyncMock()
+
+        mock_factory = MagicMock()
+        mock_factory.return_value.__aenter__.return_value = mock_session
+
+        adapter = VectorStoreAdapter()
+        node = SearchFanoutNode(adapter, db_session_factory=mock_factory)
+
+        with patch(
+            "src.graph.nodes.search_fanout.RecommendationService",
+            MagicMock(return_value=mock_service),
+        ):
+            chunks = await node._search_recommendation("photosynthesis", user_id="user-1")
+
+        assert len(chunks) >= 1
+        assert chunks[0]["source"] == "recommendation"
+        assert "Photosynthesis" in chunks[0]["content"]
+
+    @pytest.mark.asyncio
+    async def test_search_recommendation_no_user_id(self):
+        """Recommendation retriever should return [] when user_id is None."""
+        from src.graph.nodes.search_fanout import SearchFanoutNode
+        from src.retrieval.adapter import VectorStoreAdapter
+
+        node = SearchFanoutNode(VectorStoreAdapter())
+        chunks = await node._search_recommendation("test", user_id=None)
+        assert chunks == []
+
 
 # ─── SufficientContextNode Tests ─────────────────────────────────────
 
