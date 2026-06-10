@@ -1,0 +1,44 @@
+name: "curriculum-grade-8"
+description: "Grade 8 biology curriculum questions from the Ethiopian curriculum"
+grade_level: 8
+language: "en"
+scenarios:
+  - id: "cell-theory"
+    question: "What is the cell theory and who proposed it?"
+    expected_topics: ["cell theory"]
+    tags: ["curriculum", "factual", "retrieval"]
+
+  - id: "mitosis-phases"
+    question: "What are the phases of mitosis?"
+    expected_topics: ["mitosis", "cell division"]
+    tags: ["curriculum", "factual", "retrieval"]
+
+  - id: "meiosis-vs-mitosis"
+    question: "Compare and contrast mitosis and meiosis"
+    expected_topics: ["mitosis", "meiosis", "cell division"]
+    tags: ["curriculum", "comparison", "synthesis"]
+
+  - id: "photosynthesis-formula"
+    question: "What is the chemical equation for photosynthesis?"
+    expected_topics: ["photosynthesis"]
+    tags: ["curriculum", "factual"]
+
+  - id: "digestive-system-path"
+    question: "Trace the path of food through the digestive system"
+    expected_topics: ["digestive system"]
+    tags: ["curriculum", "sequential"]
+
+  - id: "cell-organelles-function"
+    question: "What are the functions of the mitochondria, ribosomes, and nucleus?"
+    expected_topics: ["cell organelles", "mitochondria", "ribosomes", "nucleus"]
+    tags: ["curriculum", "factual", "multi-topic"]
+
+  - id: "genetics-dominant-recessive"
+    question: "Explain the difference between dominant and recessive traits"
+    expected_topics: ["genetics", "dominant", "recessive"]
+    tags: ["curriculum", "comparison"]
+
+  - id: "ecosystem-food-chain"
+    question: "Describe how energy flows through a food chain"
+    expected_topics: ["ecosystem", "food chain", "energy flow"]
+    tags: ["curriculum", "sequential"]
