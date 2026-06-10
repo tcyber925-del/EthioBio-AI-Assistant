@@ -249,6 +249,57 @@ class TestSearchFanoutNode:
         chunks = await node._search_memory("test", user_id=None)
         assert chunks == []
 
+    @pytest.mark.asyncio
+    async def test_search_learner_returns_results(self):
+        """Learner retriever should return mastery/ability data."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from src.graph.nodes.search_fanout import SearchFanoutNode
+        from src.retrieval.adapter import VectorStoreAdapter
+
+        mock_snapshot = MagicMock()
+        mock_snapshot.mastery_by_topic = {
+            "Cell Biology": {
+                "average_score": 0.75,
+                "severity": "good",
+                "attempt_count": 12,
+            }
+        }
+        mock_snapshot.ability_by_topic = {
+            "Cell Biology": {
+                "ability_score": 0.62,
+                "uncertainty": 0.3,
+            }
+        }
+        mock_snapshot.misconceptions = []
+
+        mock_session = AsyncMock()
+        mock_factory = MagicMock()
+        mock_factory.return_value.__aenter__.return_value = mock_session
+
+        adapter = VectorStoreAdapter()
+        node = SearchFanoutNode(adapter, db_session_factory=mock_factory)
+
+        with patch(
+            "src.core.learning_intelligence.snapshot.snapshot_service.SnapshotService.get_snapshot",
+            AsyncMock(return_value=mock_snapshot),
+        ):
+            chunks = await node._search_learner("cell biology", user_id="user-1")
+
+        assert len(chunks) >= 1
+        assert chunks[0]["source"] == "learner"
+        assert "Cell Biology" in chunks[0]["content"]
+
+    @pytest.mark.asyncio
+    async def test_search_learner_no_user_id(self):
+        """Learner retriever should return [] when user_id is None."""
+        from src.graph.nodes.search_fanout import SearchFanoutNode
+        from src.retrieval.adapter import VectorStoreAdapter
+
+        node = SearchFanoutNode(VectorStoreAdapter())
+        chunks = await node._search_learner("test", user_id=None)
+        assert chunks == []
+
 
 # ─── SufficientContextNode Tests ─────────────────────────────────────
 

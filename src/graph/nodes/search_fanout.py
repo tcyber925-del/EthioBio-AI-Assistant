@@ -137,12 +137,82 @@ class SearchFanoutNode:
 
             return chunks
 
-    async def _search_learner(self, query: str) -> list[dict]:
-        """Stub: Learner profile retriever.
+    async def _search_learner(self, query: str, user_id: Optional[str] = None) -> list[dict]:
+        """Retrieve learner profile data via SnapshotService."""
+        if not self.db_session_factory or not user_id:
+            return []
 
-        TODO: Implement real learner retriever (future PRD).
-        """
-        return []
+        from src.core.learning_intelligence.snapshot.snapshot_service import SnapshotService
+
+        factory = self.db_session_factory()
+        async with factory as session:
+            snapshot_service = SnapshotService()
+            snapshot = await snapshot_service.get_snapshot(session, user_id)
+
+        if not snapshot:
+            return []
+
+        terms = [t.lower() for t in query.split() if len(t) > 3]
+        chunks = []
+
+        for topic, mastery in (snapshot.mastery_by_topic or {}).items():
+            if terms and not any(t in topic.lower() for t in terms):
+                continue
+            severity_map = {"critical": 0.2, "moderate": 0.4, "mild": 0.6, "good": 0.8}
+            severity = mastery.get("severity", "") if isinstance(mastery, dict) else ""
+            score = severity_map.get(severity, 0.5)
+            content = (
+                f"Topic '{topic}': mastery={mastery.get('average_score', 0):.2f} "
+                f"({severity}), attempts={mastery.get('attempt_count', 0)}"
+            )
+            chunks.append({
+                "content": content,
+                "metadata": {
+                    "id": f"learner:mastery:{topic.lower().replace(' ', '_')}",
+                    "topic": topic,
+                    "source_name": "student_mastery",
+                },
+                "score": score,
+                "source": "learner",
+            })
+
+        for topic, ability in (snapshot.ability_by_topic or {}).items():
+            if terms and not any(t in topic.lower() for t in terms):
+                continue
+            chunks.append({
+                "content": (
+                    f"Topic '{topic}': ability={ability.get('ability_score', 0):.2f}, "
+                    f"uncertainty={ability.get('uncertainty', 0):.2f}"
+                ),
+                "metadata": {
+                    "id": f"learner:ability:{topic.lower().replace(' ', '_')}",
+                    "topic": topic,
+                    "source_name": "student_ability",
+                },
+                "score": min(1.0, ability.get("ability_score", 0) + 0.3),
+                "source": "learner",
+            })
+
+        for mc in (snapshot.misconceptions or []):
+            mc_topic = getattr(mc, "topic", "") or ""
+            if terms and not any(t in mc_topic.lower() for t in terms):
+                continue
+            chunks.append({
+                "content": (
+                    f"Misconception in '{mc_topic}': "
+                    f"{getattr(mc, 'pattern_type', '')} "
+                    f"(frequency={getattr(mc, 'frequency', 0)})"
+                ),
+                "metadata": {
+                    "id": f"learner:misconception:{mc_topic.lower().replace(' ', '_')}",
+                    "topic": mc_topic,
+                    "source_name": "misconception_pattern",
+                },
+                "score": min(0.7, getattr(mc, "frequency", 0) * 0.15),
+                "source": "learner",
+            })
+
+        return chunks
 
     async def _search_recommendation(self, query: str) -> list[dict]:
         """Stub: Recommendation retriever.
@@ -161,7 +231,7 @@ class SearchFanoutNode:
             elif source == "memory":
                 result = await self._search_memory(query, user_id=user_id)
             elif source == "learner":
-                result = await self._search_learner(query)
+                result = await self._search_learner(query, user_id=user_id)
             elif source == "recommendation":
                 result = await self._search_recommendation(query)
             else:
