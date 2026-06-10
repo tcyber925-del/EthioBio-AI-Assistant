@@ -3,7 +3,7 @@ from typing import Optional
 from uuid import UUID
 
 import structlog
-from sqlalchemy import delete, select, func
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.models import AgentTrace
