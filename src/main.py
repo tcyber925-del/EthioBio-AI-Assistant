@@ -23,6 +23,7 @@ from src.api import (
     recovery,
     student,
     teacher,
+    tracing,
     users,
 )
 from src.api.graph import router as graph_router
@@ -85,6 +86,7 @@ app.include_router(parent.router)
 app.include_router(teacher.router)
 
 app.include_router(student.router)
+app.include_router(tracing.router)
 app.include_router(users.router)
 diagram_static_dir = Path("data/diagrams")
 diagram_static_dir.mkdir(parents=True, exist_ok=True)
