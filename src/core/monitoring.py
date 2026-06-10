@@ -105,6 +105,7 @@ class PipelineMetrics:
 
     # Metric 4: Claim groundedness
     avg_groundedness: float = 0.0
+    avg_hallucination_rate: float = 0.0
     revision_rate: float = 0.0
     rejection_rate: float = 0.0
 
@@ -214,6 +215,16 @@ class PipelineMonitor:
             if groundedness_scores else 0.0
         )
 
+        hallucination_rates = [
+            t.metadata.get("hallucination_rate", 0.0)
+            for t in completed
+            if "hallucination_rate" in t.metadata
+        ]
+        avg_hallucination_rate = (
+            sum(hallucination_rates) / max(len(hallucination_rates), 1)
+            if hallucination_rates else 0.0
+        )
+
         revisions = sum(
             1 for t in completed
             if t.metadata.get("verdict") == "revise"
@@ -256,6 +267,7 @@ class PipelineMonitor:
             avg_coverage_score=round(avg_coverage, 3),
             coverage_scores=coverage_scores,
             avg_groundedness=round(avg_groundedness, 3),
+            avg_hallucination_rate=round(avg_hallucination_rate, 3),
             revision_rate=round(revision_rate, 3),
             rejection_rate=round(rejection_rate, 3),
             teacher_review_rate=round(teacher_review_rate, 3),

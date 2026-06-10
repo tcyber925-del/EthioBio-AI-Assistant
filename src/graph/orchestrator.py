@@ -188,6 +188,7 @@ async def run_graph(
             "retrieval_iterations": result.get("retrieval_iterations", 0),
             "coverage_score": result.get("coverage_score", 0.0),
             "groundedness": result.get("groundedness_score", 0.0),
+            "hallucination_rate": result.get("hallucination_rate", 0.0),
             "verdict": result.get("safety_action", ""),
             "requires_teacher_review": result.get("requires_teacher_review", False),
             "evidence_count": len(result.get("evidence_ids", [])),
