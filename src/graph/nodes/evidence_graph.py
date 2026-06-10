@@ -93,6 +93,19 @@ class EvidenceGraphNode:
         )
         state.evidence_ids = selected_ids
 
+        selected_set = set(selected_ids) if selected_ids else set()
+        evidence_items: list[dict] = [
+            {
+                "id": str(e.id),
+                "content": e.content,
+                "source_name": e.source_name,
+                "confidence": e.confidence,
+            }
+            for e in evidence_list
+            if e.id in selected_set or not selected_set
+        ]
+        state.evidence_items = evidence_items
+
         # 5. Analyze coverage
         evidence_dicts: list[dict[str, Any]] = [
             {

@@ -265,6 +265,45 @@ def test_unified_graph_has_evidence_graph_node():
     assert "evidence_graph" in nodes, f"evidence_graph not in nodes: {nodes}"
 
 
+@pytest.mark.asyncio
+@patch("src.graph.nodes.evidence_graph.EvidenceGraph")
+async def test_node_sets_evidence_items(mock_evidence_graph_cls):
+    """Evidence graph node should populate evidence_items with full dicts."""
+    mock_session = AsyncMock()
+    mock_graph = AsyncMock()
+    mock_graph.create_session.return_value = "internal-session-uuid"
+    mock_graph.add.return_value = "evidence-uuid"
+
+    mock_record = MagicMock()
+    mock_record.id = "e1"
+    mock_record.content = "Meiosis creates diversity"
+    mock_record.source_name = "curriculum"
+    mock_record.confidence = 0.9
+    mock_record.archived = False
+
+    mock_graph.get_evidence_for_session.return_value = [mock_record]
+    mock_evidence_graph_cls.return_value = mock_graph
+
+    node = EvidenceGraphNode(db_session_factory=MagicMock(return_value=mock_session))
+    node.selector = AsyncMock()
+    node.selector.select_for_generation.return_value = ["e1"]
+
+    state = AgentState(user_message="test", trace_id="trace-1")
+    state.retrieval_source_results = {
+        "curriculum": [
+            {"content": "test", "metadata": {}, "score": 0.9, "source": "curriculum"},
+        ]
+    }
+
+    result = await node(state)
+
+    assert len(result.evidence_items) >= 1
+    assert result.evidence_items[0]["id"] == "e1"
+    assert "content" in result.evidence_items[0]
+    assert "source_name" in result.evidence_items[0]
+    assert "confidence" in result.evidence_items[0]
+
+
 def test_unified_graph_node_ordering():
     """evidence_graph should be between plan_executor and sufficient_context."""
     router = ModelRouter()
