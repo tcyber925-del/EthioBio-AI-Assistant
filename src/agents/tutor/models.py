@@ -20,7 +20,7 @@ class TeachingStrategy(str, Enum):
 class CitationEntry(BaseModel):
     response_segment: str
     evidence_ids: list[str]
-    source_names: list[str]
+    source_names: list[str] = []
 
 
 class TutorResponse(BaseModel):
