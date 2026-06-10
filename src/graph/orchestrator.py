@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.monitoring import pipeline_monitor
 from src.graph.nodes.claim_verifier import ClaimVerifierNode, route_after_verification
 from src.graph.nodes.evidence_graph import EvidenceGraphNode
+from src.graph.nodes.hallucination import HallucinationNode
 from src.graph.nodes.orchestrator import OrchestratorNode, needs_retrieval
 from src.graph.nodes.plan_executor import PlanExecutor
 from src.graph.nodes.planner import PlannerNode
@@ -66,7 +67,7 @@ def build_agentic_graph(
 
     Graph topology:
         orchestrator -> planner -> plan_executor -> sufficient_context
-            -> synthesis -> tutor -> claim_verifier -> safety
+            -> synthesis -> tutor -> hallucination -> claim_verifier -> safety
 
     The orchestrator classifies complexity and routes to this graph
     when requires_planning=True.
@@ -83,6 +84,7 @@ def build_agentic_graph(
     workflow.add_node("sufficient_context", SufficientContextNode())
     workflow.add_node("synthesis", SynthesisNode(router))
     workflow.add_node("tutor", TutorNode(router))
+    workflow.add_node("hallucination", HallucinationNode())
     workflow.add_node("claim_verifier", ClaimVerifierNode(router))
     workflow.add_node("safety", SafetyNode(router))
 
@@ -105,7 +107,8 @@ def build_agentic_graph(
     )
 
     workflow.add_edge("synthesis", "tutor")
-    workflow.add_edge("tutor", "claim_verifier")
+    workflow.add_edge("tutor", "hallucination")
+    workflow.add_edge("hallucination", "claim_verifier")
 
     workflow.add_conditional_edges(
         "claim_verifier",
@@ -264,6 +267,7 @@ def build_unified_graph(
     workflow.add_node("evidence_graph", EvidenceGraphNode(db_session_factory=None))
     workflow.add_node("sufficient_context", SufficientContextNode())
     workflow.add_node("synthesis", SynthesisNode(router))
+    workflow.add_node("hallucination", HallucinationNode())
     workflow.add_node("claim_verifier", ClaimVerifierNode(router))
 
     workflow.set_entry_point("orchestrator")
@@ -297,8 +301,9 @@ def build_unified_graph(
     # Evidence synthesis before tutor
     workflow.add_edge("synthesis", "tutor")
 
-    # Claim verification
-    workflow.add_edge("tutor", "claim_verifier")
+    # Hallucination detection then claim verification
+    workflow.add_edge("tutor", "hallucination")
+    workflow.add_edge("hallucination", "claim_verifier")
 
     workflow.add_conditional_edges(
         "claim_verifier",

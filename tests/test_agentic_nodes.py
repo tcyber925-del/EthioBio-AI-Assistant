@@ -630,3 +630,64 @@ class TestTutorNodePRD008:
         result = await node(state)
         assert result.draft == "Legacy response"
         assert result.teaching_strategy == ""
+
+
+class TestHallucinationNode:
+    @pytest.mark.asyncio
+    async def test_hallucination_node_sets_report(self):
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from src.graph.nodes.hallucination import HallucinationNode
+        from src.graph.state import AgentState
+
+        node = HallucinationNode()
+        state = AgentState(
+            user_message="test",
+            citation_map=[
+                {
+                    "response_segment": "test",
+                    "evidence_ids": ["bio_1"],
+                    "source_names": ["curriculum"],
+                },
+            ],
+            evidence_items=[
+                {
+                    "id": "bio_1",
+                    "content": "test",
+                    "source_name": "curriculum",
+                    "confidence": 0.9,
+                },
+            ],
+        )
+
+        with patch.object(node, "detector") as mock_detector:
+            mock_detector.analyze = AsyncMock(return_value=MagicMock(
+                supported_claims=1,
+                unsupported_claims=0,
+                hallucination_rate=0.0,
+                grounding_score=1.0,
+                claim_assessments=[],
+                detection_mode="structural",
+                model_dump=lambda: {
+                    "supported_claims": 1,
+                    "hallucination_rate": 0.0,
+                },
+            ))
+            result = await node(state)
+
+        assert result.hallucination_rate == 0.0
+        assert result.hallucination_report is not None
+
+    @pytest.mark.asyncio
+    async def test_hallucination_node_empty_citation_map(self):
+        from src.graph.nodes.hallucination import HallucinationNode
+        from src.graph.state import AgentState
+
+        node = HallucinationNode()
+        state = AgentState(
+            user_message="test",
+            citation_map=[],
+            evidence_items=[],
+        )
+        result = await node(state)
+        assert result.hallucination_rate == 0.0
