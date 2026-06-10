@@ -54,8 +54,9 @@ class RegressionDetector:
 
         return issues
 
+    @staticmethod
     def generate_baseline(
-        self, _scenario_id: str, metrics: dict, tolerance: float = DEFAULT_TOLERANCE,
+        metrics: dict, tolerance: float = DEFAULT_TOLERANCE,
     ) -> dict:
         groundedness = metrics.get("groundedness_score")
         hallucination = metrics.get("hallucination_rate")

@@ -31,7 +31,6 @@ class BenchmarkRunner:
             logger.warning("scenarios_dir not found: %s", self.scenarios_dir)
             return
 
-        self.scenarios = []
         for f in sorted(scenarios_path.glob("*.yaml")):
             with open(f) as fh:
                 data = yaml.safe_load(fh)
@@ -65,11 +64,10 @@ class BenchmarkRunner:
             scenarios_by_group.setdefault(tag, []).append(r)
 
         for group, group_results in scenarios_by_group.items():
-            detector = RegressionDetector({})
             group_baselines = {}
             for r in group_results:
-                group_baselines[r.scenario_id] = detector.generate_baseline(
-                    r.scenario_id, r.metrics, self.regression_tolerance,
+                group_baselines[r.scenario_id] = RegressionDetector.generate_baseline(
+                    r.metrics, self.regression_tolerance,
                 )
             filepath = baselines_path / f"{group}.json"
             with open(filepath, "w") as f:
