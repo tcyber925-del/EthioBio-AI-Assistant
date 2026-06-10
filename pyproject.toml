@@ -13,6 +13,9 @@ ethiobio-bot = "src.telegram.bot:main"
 asyncio_mode = "auto"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+markers = [
+    "smoke: quick smoke-test scenarios",
+]
 
 [tool.ruff]
 line-length = 100
