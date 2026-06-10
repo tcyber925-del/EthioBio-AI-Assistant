@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.agents.tutor import TutorAgent
+from src.agents.tutor_agent import TutorAgent
 from src.api.gamification import XP_SOURCES, award_xp, check_achievements, update_streak
 from src.core.learning_intelligence.tutor.tutor_context_adapter import TutorContextAdapter
 from src.core.memory.context_assembler import ContextAssembler

@@ -14,7 +14,7 @@ from telegram.ext import (
 
 from src.agents.lesson_planner import LessonPlannerAgent
 from src.agents.quiz import QuizAgent
-from src.agents.tutor import TutorAgent
+from src.agents.tutor_agent import TutorAgent
 from src.api.gamification import award_xp, check_achievements, update_streak
 from src.config import settings
 from src.core.learning_intelligence.tutor.tutor_context_adapter import TutorContextAdapter
