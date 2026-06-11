@@ -12,8 +12,10 @@ from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.graph.nodes.query_rewriter import QueryRewriterNode
 from src.graph.nodes.search_fanout import SearchFanoutNode
 from src.graph.state import AgentState
+from src.llm.router import ModelRouter
 from src.retrieval.adapter import VectorStoreAdapter
 
 logger = logging.getLogger(__name__)
@@ -34,16 +36,24 @@ class PlanExecutor:
     def __init__(
         self,
         adapter: VectorStoreAdapter,
+        router: Optional[ModelRouter] = None,
         db_session_factory: Optional[Callable[[], AsyncSession]] = None,
     ):
         """Initialize with a VectorStoreAdapter for retrieval.
 
         Args:
             adapter: VectorStoreAdapter instance for curriculum retrieval.
+            router: Optional ModelRouter for LLM-powered query rewriting.
             db_session_factory: Optional factory for real async DB sessions.
         """
         self.adapter = adapter
+        self.router = router
+        self.query_rewriter = QueryRewriterNode(router)
         self.search_fanout = SearchFanoutNode(adapter, db_session_factory=db_session_factory)
+
+    async def __call__(self, state: AgentState) -> AgentState:
+        """LangGraph node interface — delegates to execute_plan."""
+        return await self.execute_plan(state)
 
     async def execute_plan(self, state: AgentState) -> AgentState:
         """Execute all subtasks in the plan sequentially.
@@ -97,10 +107,11 @@ class PlanExecutor:
         subtask: dict,
         index: int,
     ) -> None:
-        """Execute a single subtask using SearchFanout for parallel retrieval.
+        """Execute a single subtask using QueryRewriter + SearchFanout.
 
-        Phase 0: Uses simplified retrieval directly from the adapter.
-        Phase 1: Delegates to SearchFanout for parallel multi-index retrieval.
+        Each subtask goes through:
+        1. Query rewriting (LLM or heuristic) for source-aware expansion
+        2. Parallel multi-index retrieval via SearchFanout
         """
         objective = subtask.get("objective", state.user_message)
         query = objective if objective else state.user_message
@@ -111,14 +122,21 @@ class PlanExecutor:
             feedback_prefix = "; ".join(state.retrieval_feedback[:2])
             query = f"{query} — {feedback_prefix}"
 
-        # Use SearchFanout for parallel retrieval across multiple indices
-        state.retrieval_queries = [query]
-        state.retrieval_indices = ["curriculum"]  # Expand based on subtask type
+        # Step 1: Rewrite query for this subtask via QueryRewriterNode
+        # This populates state.query_groups with source-aware query variants.
+        # Save and restore user_message to avoid corrupting downstream nodes.
+        original_message = state.user_message
+        state.user_message = query
+        await self.query_rewriter(state)
 
+        # Step 2: Use SearchFanout for parallel multi-index retrieval
+        # SearchFanoutNode reads from state.query_groups
         try:
             await self.search_fanout(state)
         except Exception as e:
             logger.warning("subtask_retrieval_failed: %s", str(e))
+        finally:
+            state.user_message = original_message
 
 
 def route_after_plan_execution(state: AgentState) -> str:

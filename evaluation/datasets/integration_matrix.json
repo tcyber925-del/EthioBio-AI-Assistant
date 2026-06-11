@@ -1,0 +1,71 @@
+{
+  "description": "Integration matrix mapping each agentic RAG component to the platform systems it interfaces with",
+  "components": {
+    "planner": {
+      "interfaces_with": ["memory", "learner_profile", "knowledge_base"],
+      "description": "Planner uses learner snapshot for personalization, memory for context, KB for curriculum awareness"
+    },
+    "query_rewriter": {
+      "interfaces_with": ["retrieval", "knowledge_base"],
+      "description": "Query rewriter dispatches to retrieval sources including curriculum KB"
+    },
+    "search_fanout": {
+      "interfaces_with": ["knowledge_base", "learner_profile", "memory"],
+      "description": "Fanout routes queries to curriculum, memory, learner profile, and recommendations"
+    },
+    "evidence_graph": {
+      "interfaces_with": ["memory", "analytics", "knowledge_base"],
+      "description": "Evidence graph persists evidence and supports analytics queries"
+    },
+    "sufficient_context": {
+      "interfaces_with": ["evidence_graph", "learner_profile"],
+      "description": "Context agent evaluates evidence coverage and decides whether to continue retrieval"
+    },
+    "tutor": {
+      "interfaces_with": ["recommendations", "progress_tracking", "gamification", "diagram_generation", "assessments"],
+      "description": "Tutor generates responses with recommendations, tracks progress, awards XP, triggers diagrams, and feeds assessments"
+    }
+  },
+  "system_interfaces": {
+    "memory": {
+      "components_using": ["planner", "search_fanout", "evidence_graph"],
+      "risk": "critical"
+    },
+    "learner_profile": {
+      "components_using": ["planner", "search_fanout", "sufficient_context"],
+      "risk": "critical"
+    },
+    "knowledge_base": {
+      "components_using": ["planner", "query_rewriter", "search_fanout", "evidence_graph"],
+      "risk": "critical"
+    },
+    "retrieval": {
+      "components_using": ["query_rewriter"],
+      "risk": "high"
+    },
+    "recommendations": {
+      "components_using": ["tutor"],
+      "risk": "high"
+    },
+    "progress_tracking": {
+      "components_using": ["tutor"],
+      "risk": "high"
+    },
+    "gamification": {
+      "components_using": ["tutor"],
+      "risk": "medium"
+    },
+    "diagram_generation": {
+      "components_using": ["tutor"],
+      "risk": "medium"
+    },
+    "assessments": {
+      "components_using": ["tutor"],
+      "risk": "medium"
+    },
+    "analytics": {
+      "components_using": ["evidence_graph"],
+      "risk": "low"
+    }
+  }
+}

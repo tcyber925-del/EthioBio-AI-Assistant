@@ -1,0 +1,74 @@
+[
+  {
+    "id": "misc-001", "category": "misconceptions", "subject": "photosynthesis", "grade_level": 8,
+    "question": "Plants get their food from the soil, right?",
+    "expected_topics": ["photosynthesis", "plant nutrition", "soil"],
+    "required_agents": ["planner", "search_fanout", "evidence_graph", "tutor"],
+    "expected_answer_traits": ["misconception_correcting", "accurate", "curriculum_aligned"],
+    "expected_learning_outcome": "student corrected: plants produce food via photosynthesis, not from soil",
+    "difficulty": "easy"
+  },
+  {
+    "id": "misc-002", "category": "misconceptions", "subject": "mitosis", "grade_level": 8,
+    "question": "Mitosis produces four daughter cells, right?",
+    "expected_topics": ["mitosis", "cell division", "daughter cells"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["misconception_correcting", "accurate", "curriculum_aligned"],
+    "expected_learning_outcome": "student corrected: mitosis produces two identical daughter cells",
+    "difficulty": "easy"
+  },
+  {
+    "id": "misc-003", "category": "misconceptions", "subject": "evolution", "grade_level": 10,
+    "question": "Evolution means humans evolved from monkeys, right?",
+    "expected_topics": ["evolution", "common ancestor", "natural selection"],
+    "required_agents": ["planner", "query_rewriter", "search_fanout", "evidence_graph", "tutor"],
+    "expected_answer_traits": ["misconception_correcting", "accurate", "curriculum_aligned", "sensitive"],
+    "expected_learning_outcome": "student corrected: humans and monkeys share a common ancestor",
+    "difficulty": "medium"
+  },
+  {
+    "id": "misc-004", "category": "misconceptions", "subject": "thermoregulation", "grade_level": 10,
+    "question": "We only use 10% of our brain.",
+    "expected_topics": ["brain", "neuroscience", "human biology"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["misconception_correcting", "accurate", "curriculum_aligned"],
+    "expected_learning_outcome": "student corrected: we use all parts of our brain",
+    "difficulty": "easy"
+  },
+  {
+    "id": "misc-005", "category": "misconceptions", "subject": "genetics", "grade_level": 10,
+    "question": "If both parents have brown eyes, can their child have blue eyes?",
+    "expected_topics": ["genetics", "recessive alleles", "eye color", "inheritance"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["misconception_correcting", "accurate", "curriculum_aligned", "clear"],
+    "expected_learning_outcome": "student understands recessive allele inheritance patterns",
+    "difficulty": "medium"
+  },
+  {
+    "id": "misc-006", "category": "misconceptions", "subject": "ecology", "grade_level": 8,
+    "question": "If I kill all the snakes, the mice will go away and the crops will be safe.",
+    "expected_topics": ["food web", "predator-prey", "ecology", "ecosystem balance"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["misconception_correcting", "accurate", "curriculum_aligned"],
+    "expected_learning_outcome": "student understands trophic cascades and ecosystem interconnections",
+    "difficulty": "medium"
+  },
+  {
+    "id": "misc-007", "category": "misconceptions", "subject": "vaccines", "grade_level": 10,
+    "question": "Vaccines cause the disease they're supposed to prevent.",
+    "expected_topics": ["vaccines", "immune system", "antigens", "antibodies"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["misconception_correcting", "accurate", "sensitive", "curriculum_aligned"],
+    "expected_learning_outcome": "student corrected: vaccines use weakened/inactive antigens, not live disease",
+    "difficulty": "medium"
+  },
+  {
+    "id": "misc-008", "category": "misconceptions", "subject": "respiration", "grade_level": 8,
+    "question": "Plants don't respire, they only photosynthesize.",
+    "expected_topics": ["respiration", "photosynthesis", "plant metabolism"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["misconception_correcting", "accurate", "curriculum_aligned"],
+    "expected_learning_outcome": "student corrected: plants respire 24/7, photosynthesis only during daylight",
+    "difficulty": "easy"
+  }
+]

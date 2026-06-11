@@ -14,7 +14,7 @@ SAFETY_PROMPT = """You are EthioBio Safety Agent. Review the following biology c
 6. Language quality (proper {language})
 
 Respond with ONLY a JSON object:
-{"safe": true/false, "issues": ["issue1"], "score": 0.0-1.0, "suggestions": ["suggestion"]}"""
+{{"safe": true/false, "issues": ["issue1"], "score": 0.0-1.0, "suggestions": ["suggestion"]}}"""
 
 
 class SafetyNode:

@@ -17,8 +17,8 @@ SAFETY_SYSTEM_PROMPT = """You are EthioBio Safety Agent, responsible for reviewi
 6. Language quality (proper {language})
 
 Analyze the content and respond with a JSON object:
-{"safe": true/false, "issues": ["issue1", "issue2"],
- "score": 0.0-1.0, "suggestions": ["suggestion"]}
+{{"safe": true/false, "issues": ["issue1", "issue2"],
+ "score": 0.0-1.0, "suggestions": ["suggestion"]}}
 """
 
 

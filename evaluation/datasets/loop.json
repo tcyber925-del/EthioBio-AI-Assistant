@@ -1,0 +1,52 @@
+[
+  {
+    "id": "loop-001",
+    "description": "First iteration, no evidence yet: should continue",
+    "input_iterations": 0,
+    "input_coverage_gain": 0.0,
+    "input_evidence_count": 0,
+    "input_previous_evidence_count": 0,
+    "expected_should_continue": true,
+    "expected_stop_reason": "max_iterations"
+  },
+  {
+    "id": "loop-002",
+    "description": "Iteration 1, improving coverage: should continue",
+    "input_iterations": 1,
+    "input_coverage_gain": 0.3,
+    "input_evidence_count": 3,
+    "input_previous_evidence_count": 0,
+    "expected_should_continue": true,
+    "expected_stop_reason": ""
+  },
+  {
+    "id": "loop-003",
+    "description": "Iteration 3, no coverage gain (stuck): should stop",
+    "input_iterations": 3,
+    "input_coverage_gain": 0.01,
+    "input_evidence_count": 5,
+    "input_previous_evidence_count": 5,
+    "expected_should_continue": false,
+    "expected_stop_reason": "no_progress"
+  },
+  {
+    "id": "loop-004",
+    "description": "Iteration 5, max reached: should stop",
+    "input_iterations": 5,
+    "input_coverage_gain": 0.1,
+    "input_evidence_count": 8,
+    "input_previous_evidence_count": 6,
+    "expected_should_continue": false,
+    "expected_stop_reason": "max_iterations"
+  },
+  {
+    "id": "loop-005",
+    "description": "Iteration 2, good coverage gain: should continue",
+    "input_iterations": 2,
+    "input_coverage_gain": 0.25,
+    "input_evidence_count": 4,
+    "input_previous_evidence_count": 2,
+    "expected_should_continue": true,
+    "expected_stop_reason": ""
+  }
+]

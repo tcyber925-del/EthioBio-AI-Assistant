@@ -5,6 +5,7 @@ from typing import Optional
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.diagram import DiagramAgent, validate_labels
@@ -96,8 +97,16 @@ async def validate_diagram(
         completed_at=datetime.now(timezone.utc),
     )
     session.add(attempt)
-    await session.commit()
-    await session.refresh(attempt)
+    try:
+        await session.commit()
+        await session.refresh(attempt)
+    except IntegrityError as e:
+        await session.rollback()
+        logger.warning("diagram_validate_integrity_error", error=str(e))
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid user_id or database constraint violation",
+        )
 
     return DiagramValidateResponse(
         score=score,

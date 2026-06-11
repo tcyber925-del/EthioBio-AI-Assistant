@@ -1,0 +1,225 @@
+[
+  {
+    "id": "tutor-001",
+    "description": "Photosynthesis explanation with evidence",
+    "input_query": "Can you explain how photosynthesis works?",
+    "input_evidence_items": [
+      {"id": "e1", "content": "Photosynthesis uses sunlight, water, and CO2 to produce glucose and oxygen", "source": "curriculum"},
+      {"id": "e2", "content": "The process occurs in chloroplasts which contain chlorophyll", "source": "curriculum"},
+      {"id": "e3", "content": "The light-dependent reactions produce ATP and NADPH", "source": "curriculum"}
+    ],
+    "input_grade_level": 8,
+    "input_language": "en",
+    "expected_citations": ["e1", "e2"],
+    "expected_grounding_min": 0.8,
+    "expected_no_hallucination": true
+  },
+  {
+    "id": "tutor-002",
+    "description": "Mitosis vs meiosis comparison with evidence",
+    "input_query": "Compare mitosis and meiosis",
+    "input_evidence_items": [
+      {"id": "e1", "content": "Mitosis produces two identical diploid daughter cells", "source": "curriculum"},
+      {"id": "e2", "content": "Meiosis produces four genetically different haploid gametes", "source": "curriculum"},
+      {"id": "e3", "content": "Mitosis is for growth and repair, meiosis is for sexual reproduction", "source": "curriculum"}
+    ],
+    "input_grade_level": 10,
+    "input_language": "en",
+    "expected_citations": ["e1", "e2", "e3"],
+    "expected_grounding_min": 0.8,
+    "expected_no_hallucination": true
+  },
+  {
+    "id": "tutor-003",
+    "description": "Heart valve function with evidence",
+    "input_query": "Why does the heart need valves?",
+    "input_evidence_items": [
+      {"id": "e1", "content": "Heart valves prevent backflow of blood between chambers", "source": "curriculum"},
+      {"id": "e2", "content": "The heart has four valves: tricuspid, pulmonary, mitral, and aortic", "source": "curriculum"}
+    ],
+    "input_grade_level": 8,
+    "input_language": "en",
+    "expected_citations": ["e1"],
+    "expected_grounding_min": 0.8,
+    "expected_no_hallucination": true
+  },
+  {
+    "id": "tutor-004",
+    "description": "Cell transport clarification for struggling student",
+    "input_query": "I don't get the difference between diffusion and osmosis",
+    "input_evidence_items": [
+      {"id": "e1", "content": "Diffusion is the movement of molecules from high to low concentration", "source": "curriculum"},
+      {"id": "e2", "content": "Osmosis is the diffusion of water across a semipermeable membrane", "source": "curriculum"}
+    ],
+    "input_grade_level": 8,
+    "input_language": "en",
+    "expected_citations": ["e1", "e2"],
+    "expected_grounding_min": 0.8,
+    "expected_no_hallucination": true
+  },
+  {
+    "id": "tutor-005",
+    "description": "HIV immune system explanation",
+    "input_query": "How does HIV attack the immune system?",
+    "input_evidence_items": [
+      {"id": "e1", "content": "HIV specifically targets and destroys CD4+ T-helper cells", "source": "curriculum"},
+      {"id": "e2", "content": "Without T-helper cells, the immune system cannot coordinate responses to infections", "source": "curriculum"},
+      {"id": "e3", "content": "HIV is transmitted through bodily fluids including blood and semen", "source": "curriculum"}
+    ],
+    "input_grade_level": 11,
+    "input_language": "en",
+    "expected_citations": ["e1", "e2"],
+    "expected_grounding_min": 0.8,
+    "expected_no_hallucination": true
+  },
+  {
+    "id": "tutor-006",
+    "description": "Genetics punnet square, simplified for grade 8",
+    "input_query": "How do I use a Punnett square?",
+    "input_evidence_items": [
+      {"id": "e1", "content": "A Punnett square shows possible genotypes of offspring from two parents", "source": "curriculum"},
+      {"id": "e2", "content": "Each parent contributes one allele for each gene to their offspring", "source": "curriculum"},
+      {"id": "e3", "content": "Dominant alleles mask recessive alleles in heterozygous pairs", "source": "curriculum"}
+    ],
+    "input_grade_level": 8,
+    "input_language": "en",
+    "expected_citations": ["e1", "e2"],
+    "expected_grounding_min": 0.8,
+    "expected_no_hallucination": true
+  },
+  {
+    "id": "tutor-007",
+    "description": "Personalized explanation for weak student on food webs",
+    "input_query": "Can you explain trophic levels again? I got them wrong on the quiz.",
+    "input_evidence_items": [
+      {"id": "e1", "content": "Trophic levels describe an organism's position in a food chain", "source": "curriculum"},
+      {"id": "e2", "content": "Producers (plants) are at trophic level 1, primary consumers at level 2", "source": "curriculum"},
+      {"id": "e3", "content": "Energy decreases by about 90% at each trophic level", "source": "curriculum"}
+    ],
+    "input_grade_level": 8,
+    "input_language": "en",
+    "expected_citations": ["e1", "e2", "e3"],
+    "expected_grounding_min": 0.8,
+    "expected_no_hallucination": true
+  },
+  {
+    "id": "tutor-008",
+    "description": "Ethiopian endemic species with Amharic result expected",
+    "input_query": "Tell me about Ethiopian wolves in the Bale Mountains",
+    "input_evidence_items": [
+      {"id": "e1", "content": "The Ethiopian wolf is a critically endangered canid found only in Ethiopia", "source": "curriculum"},
+      {"id": "e2", "content": "Bale Mountains National Park is the primary habitat for Ethiopian wolves", "source": "curriculum"},
+      {"id": "e3", "content": "Ethiopian wolves primarily feed on giant mole rats and other small mammals", "source": "curriculum"}
+    ],
+    "input_grade_level": 8,
+    "input_language": "en",
+    "expected_citations": ["e1", "e2"],
+    "expected_grounding_min": 0.8,
+    "expected_no_hallucination": true
+  },
+  {
+    "id": "tutor-009",
+    "description": "Nitrogen cycle step explanation",
+    "input_query": "Walk me through the nitrogen cycle",
+    "input_evidence_items": [
+      {"id": "e1", "content": "Nitrogen fixation converts atmospheric N2 to ammonia by bacteria", "source": "curriculum"},
+      {"id": "e2", "content": "Nitrification converts ammonia to nitrites then nitrates for plant use", "source": "curriculum"},
+      {"id": "e3", "content": "Denitrification returns nitrogen gas to the atmosphere completing the cycle", "source": "curriculum"}
+    ],
+    "input_grade_level": 10,
+    "input_language": "en",
+    "expected_citations": ["e1", "e2", "e3"],
+    "expected_grounding_min": 0.8,
+    "expected_no_hallucination": true
+  },
+  {
+    "id": "tutor-010",
+    "description": "Arteries vs veins comparison",
+    "input_query": "How are arteries different from veins?",
+    "input_evidence_items": [
+      {"id": "e1", "content": "Arteries carry blood away from the heart under high pressure", "source": "curriculum"},
+      {"id": "e2", "content": "Veins carry blood toward the heart under low pressure with valves", "source": "curriculum"},
+      {"id": "e3", "content": "Arteries have thick muscular walls, veins have thinner walls", "source": "curriculum"}
+    ],
+    "input_grade_level": 8,
+    "input_language": "en",
+    "expected_citations": ["e1", "e2", "e3"],
+    "expected_grounding_min": 0.8,
+    "expected_no_hallucination": true
+  },
+  {
+    "id": "tutor-011",
+    "description": "Evolution question requiring personalization",
+    "input_query": "Explain natural selection using animals I know from Ethiopia",
+    "input_evidence_items": [
+      {"id": "e1", "content": "Natural selection favors organisms better adapted to their environment", "source": "curriculum"},
+      {"id": "e2", "content": "The Ethiopian wolf adapted to high-altitude habitats in the Bale Mountains", "source": "curriculum"},
+      {"id": "e3", "content": "Gelada baboons developed social structures adapted to Ethiopian highland grasslands", "source": "curriculum"}
+    ],
+    "input_grade_level": 10,
+    "input_language": "en",
+    "expected_citations": ["e1", "e2"],
+    "expected_grounding_min": 0.8,
+    "expected_no_hallucination": true
+  },
+  {
+    "id": "tutor-012",
+    "description": "Plant reproduction explanation",
+    "input_query": "How do flowers reproduce?",
+    "input_evidence_items": [
+      {"id": "e1", "content": "Flowers contain male stamens and female pistils for reproduction", "source": "curriculum"},
+      {"id": "e2", "content": "Pollination transfers pollen from stamen to pistil for fertilization", "source": "curriculum"},
+      {"id": "e3", "content": "After fertilization, ovules develop into seeds and the ovary becomes fruit", "source": "curriculum"}
+    ],
+    "input_grade_level": 8,
+    "input_language": "en",
+    "expected_citations": ["e1", "e2"],
+    "expected_grounding_min": 0.8,
+    "expected_no_hallucination": true
+  },
+  {
+    "id": "tutor-013",
+    "description": "Immune system overview with vaccination context",
+    "input_query": "How do vaccines work?",
+    "input_evidence_items": [
+      {"id": "e1", "content": "Vaccines expose the immune system to harmless antigens to build immunity", "source": "curriculum"},
+      {"id": "e2", "content": "Memory B cells remember the antigen for faster future response", "source": "curriculum"},
+      {"id": "e3", "content": "Herd immunity protects vulnerable populations when enough people are vaccinated", "source": "curriculum"}
+    ],
+    "input_grade_level": 10,
+    "input_language": "en",
+    "expected_citations": ["e1", "e2"],
+    "expected_grounding_min": 0.8,
+    "expected_no_hallucination": true
+  },
+  {
+    "id": "tutor-014",
+    "description": "DNA replication explanation for advanced student",
+    "input_query": "Explain the process of DNA replication in detail",
+    "input_evidence_items": [
+      {"id": "e1", "content": "DNA replication occurs during the S phase of the cell cycle", "source": "curriculum"},
+      {"id": "e2", "content": "DNA helicase unwinds the double helix by breaking hydrogen bonds", "source": "curriculum"},
+      {"id": "e3", "content": "DNA polymerase adds complementary nucleotides to each template strand", "source": "curriculum"}
+    ],
+    "input_grade_level": 11,
+    "input_language": "en",
+    "expected_citations": ["e1", "e2", "e3"],
+    "expected_grounding_min": 0.8,
+    "expected_no_hallucination": true
+  },
+  {
+    "id": "tutor-015",
+    "description": "Endocrine system for grade-level explanation",
+    "input_query": "How does the endocrine system control body functions?",
+    "input_evidence_items": [
+      {"id": "e1", "content": "The endocrine system uses hormones as chemical messengers via the bloodstream", "source": "curriculum"},
+      {"id": "e2", "content": "Glands like the pituitary, thyroid, and adrenal produce specific hormones", "source": "curriculum"},
+      {"id": "e3", "content": "Hormones bind to target cell receptors to trigger specific responses", "source": "curriculum"}
+    ],
+    "input_grade_level": 10,
+    "input_language": "en",
+    "expected_citations": ["e1", "e2"],
+    "expected_grounding_min": 0.8,
+    "expected_no_hallucination": true
+  }
+]

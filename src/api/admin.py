@@ -1,4 +1,5 @@
 
+from datetime import datetime, timezone
 from uuid import UUID
 
 import structlog
@@ -10,6 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from src.api.auth import get_current_user
 from src.database.models import (
+    AgentTrace,
     LessonPlan,
     ModelRoutingLog,
     ParentChild,
@@ -428,3 +430,136 @@ async def list_admin_schools(
         }
         for s in schools
     ]
+
+
+class ReviewListResponse(BaseModel):
+    traces: list[dict]
+    total: int
+    limit: int
+    offset: int
+
+
+class ReviewActionRequest(BaseModel):
+    action: str = "resolve"
+    review_notes: str = ""
+
+
+class ReviewActionResponse(BaseModel):
+    trace_id: str
+    status: str
+    reviewed_at: str
+
+
+@router.get("/review", response_model=ReviewListResponse)
+async def list_review_items(
+    status: str = "pending",
+    limit: int = 50,
+    offset: int = 0,
+    session: AsyncSession = Depends(get_session),
+    _: User = Depends(require_admin),
+):
+    try:
+        query = select(AgentTrace).where(
+            AgentTrace.event_metadata["requires_teacher_review"].as_string() == "true"
+        )
+        count_query = select(func.count(AgentTrace.trace_id)).where(
+            AgentTrace.event_metadata["requires_teacher_review"].as_string() == "true"
+        )
+
+        if status == "resolved":
+            query = query.where(
+                AgentTrace.event_metadata["reviewed"].as_string() == "true"
+            )
+            count_query = count_query.where(
+                AgentTrace.event_metadata["reviewed"].as_string() == "true"
+            )
+        else:
+            query = query.where(
+                (AgentTrace.event_metadata["reviewed"].as_string() == "false")
+                | (AgentTrace.event_metadata["reviewed"].is_(None))
+            )
+            count_query = count_query.where(
+                (AgentTrace.event_metadata["reviewed"].as_string() == "false")
+                | (AgentTrace.event_metadata["reviewed"].is_(None))
+            )
+
+        count_result = await session.execute(count_query)
+        total = count_result.scalar() or 0
+
+        query = query.order_by(AgentTrace.start_time.desc())
+        query = query.offset(offset).limit(limit)
+
+        result = await session.execute(query)
+        traces = result.scalars().all()
+
+        items = []
+        for t in traces:
+            md = t.event_metadata or {}
+            items.append({
+                "trace_id": t.trace_id,
+                "user_message": t.user_message,
+                "response": t.response,
+                "intent": t.intent,
+                "grade_level": t.grade_level,
+                "language": t.language,
+                "safety_issues": md.get("safety_issues", []),
+                "safety_action": md.get("safety_action", ""),
+                "groundedness_score": md.get("groundedness_score", 0.0),
+                "hallucination_rate": md.get("hallucination_rate", 0.0),
+                "requires_teacher_review": md.get("requires_teacher_review", False),
+                "reviewed": md.get("reviewed", False),
+                "review_notes": md.get("review_notes"),
+                "reviewed_at": md.get("reviewed_at"),
+                "created_at": t.start_time.isoformat() if t.start_time else None,
+            })
+
+        return ReviewListResponse(traces=items, total=total, limit=limit, offset=offset)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("list_review_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.patch("/review/{trace_id}", response_model=ReviewActionResponse)
+async def resolve_review_item(
+    trace_id: str,
+    body: ReviewActionRequest,
+    session: AsyncSession = Depends(get_session),
+    _: User = Depends(require_admin),
+):
+    try:
+        result = await session.execute(
+            select(AgentTrace).where(AgentTrace.trace_id == trace_id)
+        )
+        trace = result.scalar_one_or_none()
+        if trace is None:
+            raise HTTPException(status_code=404, detail="Trace not found")
+
+        md = dict(trace.event_metadata or {})
+        if not md.get("requires_teacher_review"):
+            raise HTTPException(
+                status_code=400,
+                detail="Trace does not require teacher review",
+            )
+
+        now = datetime.now(timezone.utc).isoformat()
+        md["reviewed"] = True
+        md["reviewed_at"] = now
+        md["review_notes"] = body.review_notes
+        trace.event_metadata = md
+
+        await session.flush()
+        await session.commit()
+
+        return ReviewActionResponse(
+            trace_id=trace_id,
+            status="resolved",
+            reviewed_at=now,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        logger.error("resolve_review_error", trace_id=trace_id, error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))

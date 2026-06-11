@@ -1,0 +1,92 @@
+[
+  {
+    "id": "rewriter-001",
+    "description": "Simple query expansion for photosynthesis",
+    "input_query": "What is photosynthesis?",
+    "input_subtasks": ["Retrieve general curriculum content on photosynthesis"],
+    "expected_min_queries": 2,
+    "expected_max_redundancy": 0.3,
+    "expected_diverse_sources": true
+  },
+  {
+    "id": "rewriter-002",
+    "description": "Comparison query expansion",
+    "input_query": "Compare mitosis and meiosis",
+    "input_subtasks": ["retrieve_mitosis", "retrieve_meiosis", "compare"],
+    "expected_min_queries": 3,
+    "expected_max_redundancy": 0.2,
+    "expected_diverse_sources": true
+  },
+  {
+    "id": "rewriter-003",
+    "description": "Multi-hop heart question",
+    "input_query": "Why does the heart have valves and what happens if they fail?",
+    "input_subtasks": ["Retrieve heart anatomy", "Retrieve valve function"],
+    "expected_min_queries": 2,
+    "expected_max_redundancy": 0.3,
+    "expected_diverse_sources": true
+  },
+  {
+    "id": "rewriter-004",
+    "description": "Personalized remediation query",
+    "input_query": "I don't understand how chromosomes separate during anaphase",
+    "input_subtasks": ["Retrieve cell division curriculum", "Retrieve learner profile"],
+    "expected_min_queries": 2,
+    "expected_max_redundancy": 0.3,
+    "expected_diverse_sources": true
+  },
+  {
+    "id": "rewriter-005",
+    "description": "Simple ecosystem definition",
+    "input_query": "What is an ecosystem?",
+    "input_subtasks": ["Retrieve ecology curriculum"],
+    "expected_min_queries": 2,
+    "expected_max_redundancy": 0.3,
+    "expected_diverse_sources": true
+  },
+  {
+    "id": "rewriter-006",
+    "description": "Genetics inheritance question",
+    "input_query": "How do traits get passed from parents to children?",
+    "input_subtasks": ["Retrieve genetics curriculum", "Retrieve learner understanding level"],
+    "expected_min_queries": 2,
+    "expected_max_redundancy": 0.3,
+    "expected_diverse_sources": true
+  },
+  {
+    "id": "rewriter-007",
+    "description": "Endemic species query",
+    "input_query": "What endemic species are found in Ethiopia's Bale Mountains?",
+    "input_subtasks": ["Retrieve Ethiopian ecology content"],
+    "expected_min_queries": 2,
+    "expected_max_redundancy": 0.3,
+    "expected_diverse_sources": true
+  },
+  {
+    "id": "rewriter-008",
+    "description": "Nitrogen cycle walkthrough",
+    "input_query": "Walk me through the nitrogen cycle step by step",
+    "input_subtasks": ["Retrieve nitrogen cycle content"],
+    "expected_min_queries": 2,
+    "expected_max_redundancy": 0.3,
+    "expected_diverse_sources": true
+  },
+  {
+    "id": "rewriter-009",
+    "description": "HIV immune system question",
+    "input_query": "How does HIV weaken the immune system?",
+    "input_subtasks": ["Retrieve immune system content", "Retrieve HIV mechanism"],
+    "expected_min_queries": 2,
+    "expected_max_redundancy": 0.3,
+    "expected_diverse_sources": true
+  },
+  {
+    "id": "rewriter-010",
+    "description": "Evolution with local examples",
+    "input_query": "Explain how natural selection leads to evolution, with Ethiopian examples",
+    "input_subtasks": ["Retrieve evolution content", "Retrieve biodiversity examples"],
+    "expected_min_queries": 3,
+    "expected_max_redundancy": 0.2,
+    "expected_diverse_sources": true
+  }
+]

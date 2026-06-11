@@ -1,0 +1,74 @@
+[
+  {
+    "id": "mhop-001", "category": "multihop", "subject": "evolution_ecology", "grade_level": 10,
+    "question": "How does natural selection explain both antibiotic resistance in bacteria and the long neck of giraffes?",
+    "expected_topics": ["natural selection", "antibiotic resistance", "evolution", "adaptation"],
+    "required_agents": ["planner", "query_rewriter", "search_fanout", "evidence_graph", "tutor"],
+    "expected_answer_traits": ["accurate", "multi_subject", "reasoned", "curriculum_aligned"],
+    "expected_learning_outcome": "student applies natural selection across different contexts",
+    "difficulty": "hard"
+  },
+  {
+    "id": "mhop-002", "category": "multihop", "subject": "cell_biology_chemistry", "grade_level": 11,
+    "question": "How do the structures of DNA and proteins relate to their functions?",
+    "expected_topics": ["DNA structure", "protein structure", "central dogma", "transcription", "translation"],
+    "required_agents": ["planner", "query_rewriter", "search_fanout", "evidence_graph", "tutor"],
+    "expected_answer_traits": ["accurate", "cross_disciplinary", "curriculum_aligned"],
+    "expected_learning_outcome": "student connects DNA structure to protein function",
+    "difficulty": "hard"
+  },
+  {
+    "id": "mhop-003", "category": "multihop", "subject": "ecology_human_biology", "grade_level": 10,
+    "question": "How does deforestation in the Amazon affect the global climate?",
+    "expected_topics": ["deforestation", "climate change", "carbon cycle", "photosynthesis", "ecology"],
+    "required_agents": ["planner", "query_rewriter", "search_fanout", "evidence_graph", "tutor"],
+    "expected_answer_traits": ["accurate", "multi_step", "reasoned", "curriculum_aligned"],
+    "expected_learning_outcome": "student traces deforestation impact through carbon cycle to climate",
+    "difficulty": "hard"
+  },
+  {
+    "id": "mhop-004", "category": "multihop", "subject": "genetics_evolution", "grade_level": 11,
+    "question": "How does a mutation in DNA lead to a new trait that can spread through a population?",
+    "expected_topics": ["mutation", "DNA", "natural selection", "population genetics", "evolution"],
+    "required_agents": ["planner", "query_rewriter", "search_fanout", "evidence_graph", "tutor"],
+    "expected_answer_traits": ["accurate", "multi_step", "sequential", "curriculum_aligned"],
+    "expected_learning_outcome": "student traces mutation to population-level evolutionary change",
+    "difficulty": "hard"
+  },
+  {
+    "id": "mhop-005", "category": "multihop", "subject": "human_biology_chemistry", "grade_level": 11,
+    "question": "How do the digestive system and circulatory system work together to deliver nutrients to cells?",
+    "expected_topics": ["digestive system", "circulatory system", "nutrient absorption", "cellular respiration"],
+    "required_agents": ["planner", "query_rewriter", "search_fanout", "evidence_graph", "tutor"],
+    "expected_answer_traits": ["accurate", "cross_system", "curriculum_aligned"],
+    "expected_learning_outcome": "student connects digestive and circulatory systems",
+    "difficulty": "medium"
+  },
+  {
+    "id": "mhop-006", "category": "multihop", "subject": "cell_reproduction_genetics", "grade_level": 10,
+    "question": "How does a mistake during DNA replication in meiosis lead to genetic disorders like Down syndrome?",
+    "expected_topics": ["DNA replication", "meiosis", "nondisjunction", "genetic disorders", "Down syndrome"],
+    "required_agents": ["planner", "query_rewriter", "search_fanout", "evidence_graph", "tutor"],
+    "expected_answer_traits": ["accurate", "multi_step", "curriculum_aligned"],
+    "expected_learning_outcome": "student traces replication error to chromosomal disorder",
+    "difficulty": "hard"
+  },
+  {
+    "id": "mhop-007", "category": "multihop", "subject": "ecology_evolution", "grade_level": 10,
+    "question": "Why do the Galapagos finches have different beak shapes?",
+    "expected_topics": ["Galapagos finches", "adaptation", "natural selection", "evolution", "ecology"],
+    "required_agents": ["planner", "query_rewriter", "search_fanout", "evidence_graph", "tutor"],
+    "expected_answer_traits": ["accurate", "reasoned", "curriculum_aligned"],
+    "expected_learning_outcome": "student explains adaptive radiation using Darwin's finches",
+    "difficulty": "medium"
+  },
+  {
+    "id": "mhop-008", "category": "multihop", "subject": "biochemistry_cell_biology", "grade_level": 11,
+    "question": "How does the structure of the cell membrane relate to its function in active transport?",
+    "expected_topics": ["cell membrane", "phospholipid bilayer", "active transport", "protein pumps", "ATP"],
+    "required_agents": ["planner", "query_rewriter", "search_fanout", "evidence_graph", "tutor"],
+    "expected_answer_traits": ["accurate", "structure_function", "curriculum_aligned"],
+    "expected_learning_outcome": "student connects membrane structure to active transport mechanism",
+    "difficulty": "hard"
+  }
+]

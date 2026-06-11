@@ -9,7 +9,7 @@ from src.agents.quiz import QuizAgent
 from src.agents.safety import SafetyAgent
 from src.agents.student_progress import StudentProgressAgent
 from src.agents.translator import TranslatorAgent
-from src.agents.tutor import TutorAgent
+from src.agents.tutor_agent import TutorAgent
 from src.llm.router import ModelRouter
 
 
@@ -61,8 +61,10 @@ async def test_tutor_agent_normal_mode(mock_router, mock_retriever):
 
 
 @pytest.mark.asyncio
-async def test_quiz_generation(mock_router):
-    agent = QuizAgent(llm_router=mock_router)
+async def test_quiz_generation(mock_router, mock_retriever):
+    mock_retriever.search = AsyncMock(return_value=[])
+    mock_retriever.format_context.return_value = "Test curriculum context"
+    agent = QuizAgent(llm_router=mock_router, adapter=mock_retriever)
     agent._call_llm = AsyncMock()
     agent._call_llm.return_value = {
         "content": '{"title": "Biology Quiz", "questions": [{"question_type": "multiple_choice", "question_text": "What is DNA?", "correct_answer": "Deoxyribonucleic acid", "difficulty": "easy"}], "answer_key": "1. Deoxyribonucleic acid"}',
@@ -276,7 +278,7 @@ async def test_tutor_agent_misconception_fields_socratic(mock_router, mock_retri
 
 @pytest.mark.asyncio
 async def test_tutor_agent_normal_prompt_has_misconception_directive():
-    from src.agents.tutor import TUTOR_SYSTEM_PROMPT
+    from src.agents.tutor_agent import TUTOR_SYSTEM_PROMPT
     assert "conceptual error" in TUTOR_SYSTEM_PROMPT
     assert "gently point it out" in TUTOR_SYSTEM_PROMPT
     assert "never condescending" in TUTOR_SYSTEM_PROMPT
@@ -284,7 +286,7 @@ async def test_tutor_agent_normal_prompt_has_misconception_directive():
 
 @pytest.mark.asyncio
 async def test_tutor_agent_socratic_prompt_has_misconception_directive():
-    from src.agents.tutor import SOCRATIC_SYSTEM_PROMPT
+    from src.agents.tutor_agent import SOCRATIC_SYSTEM_PROMPT
     assert "conceptual error" in SOCRATIC_SYSTEM_PROMPT
     assert "gently correct" in SOCRATIC_SYSTEM_PROMPT
     assert "never condescending" in SOCRATIC_SYSTEM_PROMPT
@@ -314,7 +316,7 @@ def test_schema_misconception_fields():
 
 @pytest.mark.asyncio
 async def test_detect_misconception_detects_correction():
-    from src.agents.tutor import detect_misconception
+    from src.agents.tutor_agent import detect_misconception
     response = (
         "That's not quite right. Mitochondria are not involved in photosynthesis."
         " They are the powerhouse of the cell."
@@ -326,7 +328,7 @@ async def test_detect_misconception_detects_correction():
 
 @pytest.mark.asyncio
 async def test_detect_misconception_no_false_positive():
-    from src.agents.tutor import detect_misconception
+    from src.agents.tutor_agent import detect_misconception
     response = (
         "Great question! Photosynthesis occurs in the chloroplasts"
         " of plant cells."
@@ -337,7 +339,7 @@ async def test_detect_misconception_no_false_positive():
 
 @pytest.mark.asyncio
 async def test_detect_misconception_common_misconception():
-    from src.agents.tutor import detect_misconception
+    from src.agents.tutor_agent import detect_misconception
     response = (
         "That's a common misconception. Evolution is not about individuals adapting,"
         " but about populations changing over generations through natural selection."
@@ -349,7 +351,7 @@ async def test_detect_misconception_common_misconception():
 
 @pytest.mark.asyncio
 async def test_detect_misconception_youre_confusing():
-    from src.agents.tutor import detect_misconception
+    from src.agents.tutor_agent import detect_misconception
     response = (
         "I think you're confusing mitosis with meiosis."
         " Mitosis produces identical daughter cells, while meiosis produces gametes."

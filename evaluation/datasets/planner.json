@@ -1,0 +1,122 @@
+[
+  {
+    "id": "planner-001",
+    "description": "Single fact lookup: photosynthesis definition",
+    "input_query": "What is photosynthesis?",
+    "expected_tasks": ["Retrieve general curriculum content on photosynthesis"],
+    "expected_complexity_low": true,
+    "expected_retrieval_domains": ["curriculum"]
+  },
+  {
+    "id": "planner-002",
+    "description": "Comparison: mitosis vs meiosis",
+    "input_query": "Compare mitosis and meiosis",
+    "expected_tasks": ["retrieve_mitosis", "retrieve_meiosis", "compare"],
+    "expected_complexity_low": false,
+    "expected_retrieval_domains": ["curriculum"]
+  },
+  {
+    "id": "planner-003",
+    "description": "Multi-hop: why does the heart have valves",
+    "input_query": "Why does the heart have valves and what happens if they fail?",
+    "expected_tasks": ["Retrieve heart anatomy content", "Retrieve valve function content", "Retrieve circulatory system disorders"],
+    "expected_complexity_low": false,
+    "expected_retrieval_domains": ["curriculum"]
+  },
+  {
+    "id": "planner-004",
+    "description": "Personalized remediation: student struggling with cell division",
+    "input_query": "I don't understand how chromosomes separate during anaphase",
+    "expected_tasks": ["Retrieve cell division curriculum", "Retrieve learner profile for remediation", "Retrieve misconceptions on mitosis"],
+    "expected_complexity_low": false,
+    "expected_retrieval_domains": ["curriculum", "learner_profile", "misconceptions"]
+  },
+  {
+    "id": "planner-005",
+    "description": "Single fact: define ecosystem",
+    "input_query": "What is an ecosystem?",
+    "expected_tasks": ["Retrieve general curriculum content on ecosystems"],
+    "expected_complexity_low": true,
+    "expected_retrieval_domains": ["curriculum"]
+  },
+  {
+    "id": "planner-006",
+    "description": "Socratic exploration: genetics and inheritance",
+    "input_query": "How do traits get passed from parents to children?",
+    "expected_tasks": ["Retrieve genetics curriculum content", "Retrieve inheritance patterns", "Retrieve learner understanding level"],
+    "expected_complexity_low": false,
+    "expected_retrieval_domains": ["curriculum", "learner_profile"]
+  },
+  {
+    "id": "planner-007",
+    "description": "Remediation: repeated quiz failure on cell transport",
+    "input_query": "I keep getting questions about diffusion and osmosis wrong. Can you explain?",
+    "expected_tasks": ["Retrieve cell transport curriculum", "Retrieve learner misconceptions", "Retrieve weak topic analysis"],
+    "expected_complexity_low": false,
+    "expected_retrieval_domains": ["curriculum", "misconceptions", "learner_profile"]
+  },
+  {
+    "id": "planner-008",
+    "description": "Fact lookup: Ethiopian endemic species",
+    "input_query": "What endemic species are found in Ethiopia's Bale Mountains?",
+    "expected_tasks": ["Retrieve Ethiopian ecology content"],
+    "expected_complexity_low": true,
+    "expected_retrieval_domains": ["curriculum"]
+  },
+  {
+    "id": "planner-009",
+    "description": "Complex process: describe the full nitrogen cycle",
+    "input_query": "Walk me through the nitrogen cycle step by step",
+    "expected_tasks": ["Retrieve nitrogen cycle curriculum", "Retrieve biogeochemical cycles details"],
+    "expected_complexity_low": false,
+    "expected_retrieval_domains": ["curriculum"]
+  },
+  {
+    "id": "planner-010",
+    "description": "Comparison: arteries vs veins",
+    "input_query": "How are arteries different from veins?",
+    "expected_tasks": ["retrieve_arteries", "retrieve_veins", "compare"],
+    "expected_complexity_low": false,
+    "expected_retrieval_domains": ["curriculum"]
+  },
+  {
+    "id": "planner-011",
+    "description": "Memory recall: what we learned last session",
+    "input_query": "Can you remind me what we discussed about DNA replication?",
+    "expected_tasks": ["Retrieve educational memory", "Retrieve curriculum on DNA replication"],
+    "expected_complexity_low": true,
+    "expected_retrieval_domains": ["memory", "curriculum"]
+  },
+  {
+    "id": "planner-012",
+    "description": "Multi-hop: how HIV attacks the immune system",
+    "input_query": "How does HIV weaken the immune system and why is that dangerous?",
+    "expected_tasks": ["Retrieve immune system curriculum", "Retrieve HIV mechanism content", "Retrieve disease progression content"],
+    "expected_complexity_low": false,
+    "expected_retrieval_domains": ["curriculum"]
+  },
+  {
+    "id": "planner-013",
+    "description": "Simple label/definition task",
+    "input_query": "Label the parts of a flower",
+    "expected_tasks": ["Retrieve plant anatomy curriculum"],
+    "expected_complexity_low": true,
+    "expected_retrieval_domains": ["curriculum"]
+  },
+  {
+    "id": "planner-014",
+    "description": "Personalized remediation: struggling with food webs",
+    "input_query": "My teacher said I got the food web question wrong. Can you help me understand trophic levels?",
+    "expected_tasks": ["Retrieve ecology curriculum on food webs", "Retrieve learner quiz history", "Retrieve misconceptions on trophic levels"],
+    "expected_complexity_low": false,
+    "expected_retrieval_domains": ["curriculum", "learner_profile", "misconceptions"]
+  },
+  {
+    "id": "planner-015",
+    "description": "Complex multi-domain: evolution and natural selection",
+    "input_query": "Explain how natural selection leads to evolution, with Ethiopian examples",
+    "expected_tasks": ["Retrieve evolution curriculum", "Retrieve natural selection content", "Retrieve Ethiopian biodiversity examples"],
+    "expected_complexity_low": false,
+    "expected_retrieval_domains": ["curriculum"]
+  }
+]

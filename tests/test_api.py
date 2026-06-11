@@ -72,7 +72,7 @@ async def test_diagram_validate_endpoint():
                 "difficulty": "beginner",
             },
         )
-        assert response.status_code in (200, 500)
+        assert response.status_code in (200, 400, 500)
 
 
 @pytest.mark.asyncio

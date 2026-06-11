@@ -1,0 +1,12 @@
+{
+  "generated_at": "2026-06-11T00:00:00",
+  "components": {
+    "planner": {"score": 0.85},
+    "rewriter": {"score": 0.85},
+    "fanout": {"score": 0.9},
+    "evidence_graph": {"score": 0.85},
+    "context": {"score": 0.85},
+    "loop": {"score": 0.95},
+    "tutor": {"score": 0.85}
+  }
+}

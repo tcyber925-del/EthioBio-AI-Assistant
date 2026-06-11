@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from src.graph.nodes.claim_verifier import (
+    Claim,
     ClaimVerifierNode,
     calculate_groundedness,
     extract_claims_simple,
@@ -464,7 +465,7 @@ class TestClaimExtraction:
         text = "Mitosis has four stages. Meiosis has two divisions."
         claims = extract_claims_simple(text)
         assert len(claims) >= 2
-        assert any("mitosis" in c.lower() for c in claims)
+        assert any("mitosis" in c.text.lower() for c in claims)
 
     def test_extract_claims_empty(self):
         assert extract_claims_simple("") == []
@@ -475,20 +476,20 @@ class TestGroundedness:
     """Tests for groundedness scoring."""
 
     def test_calculate_groundedness_full_support(self):
-        claims = ["Mitosis has prophase"]
-        evidence = "Prophase is the first stage of mitosis"
-        score = calculate_groundedness(claims, evidence)
+        claims = [Claim(text="Mitosis has prophase", claim_type="fact", is_grounded=True)]
+        score = calculate_groundedness(claims)
         assert score > 0.5
 
     def test_calculate_groundedness_no_evidence(self):
-        claims = ["Photosynthesis happens on Mars"]
-        evidence = "Plants need sunlight for photosynthesis"
-        score = calculate_groundedness(claims, evidence)
-        assert score < 0.1
+        claims = [
+            Claim(text="Photosynthesis happens on Mars", claim_type="fact", is_grounded=False),
+        ]
+        score = calculate_groundedness(claims)
+        assert score < 0.5
 
     def test_calculate_groundedness_empty_claims(self):
-        score = calculate_groundedness([], "some evidence")
-        assert score == 1.0
+        score = calculate_groundedness([])
+        assert score == 0.0
 
 
 class TestClaimVerifierNode:
@@ -496,10 +497,11 @@ class TestClaimVerifierNode:
 
     @pytest.mark.asyncio
     async def test_node_verifies_claims(self):
-        node = ClaimVerifierNode()
+        node = ClaimVerifierNode(router=AsyncMock())
         state = AgentState(
             user_message="test",
             draft="Mitosis has four stages: prophase, metaphase, anaphase, telophase.",
+            evidence_ids=["ev_001"],
         )
         state.context = (
             "The four stages of mitosis are prophase, metaphase, anaphase, and telophase."
@@ -512,17 +514,18 @@ class TestClaimVerifierNode:
 
     @pytest.mark.asyncio
     async def test_node_low_groundedness(self):
-        node = ClaimVerifierNode()
+        node = ClaimVerifierNode(router=AsyncMock())
         state = AgentState(
             user_message="test",
             draft="Mitosis happens on the Moon.",
+            evidence_ids=[],
         )
         state.context = "Mitosis is cell division in Earth organisms."
 
         result = await node(state)
 
         assert result.groundedness_score < 0.5
-        assert result.safety_action == "revise"
+        assert result.safety_action == "reject"
 
     def test_route_after_verification_finalize(self):
         state = AgentState(user_message="test")

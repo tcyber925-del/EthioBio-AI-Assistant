@@ -8,6 +8,7 @@ import { getToken } from '@/lib/auth'
 
 const NAV_ITEMS = [
   { href: '/admin', label: 'Dashboard', icon: '📊' },
+  { href: '/admin/review', label: 'Review Queue', icon: '🚩' },
   { href: '/admin/content', label: 'Content Review', icon: '📝' },
   { href: '/admin/schools', label: 'Schools', icon: '🏫' },
   { href: '/admin/users', label: 'Users', icon: '👥' },

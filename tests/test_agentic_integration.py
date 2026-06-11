@@ -11,6 +11,20 @@ import pytest
 from src.graph.orchestrator import run_graph
 
 
+_ROUTE_RESPONSE = {
+    "content": '{"intent": "tutor", "confidence": 0.95}',
+    "model": "ollama/test",
+    "usage": {"total_tokens": 50},
+}
+
+
+def _setup_mock_router():
+    mock_router = AsyncMock()
+    mock_router.route.return_value = _ROUTE_RESPONSE
+    mock_router.close = AsyncMock()
+    return mock_router
+
+
 @pytest.mark.integration
 class TestAgenticRAGIntegration:
     """Integration tests for the Agentic RAG pipeline."""
@@ -20,11 +34,13 @@ class TestAgenticRAGIntegration:
         """Simple queries should route to legacy pipeline."""
         with patch("src.graph.orchestrator.ModelRouter") as mock_router_cls:
             with patch("src.graph.orchestrator.VectorStoreAdapter") as mock_adapter_cls:
-                mock_router = AsyncMock()
+                mock_router = _setup_mock_router()
                 mock_router_cls.return_value = mock_router
-                mock_router.close = AsyncMock()
 
                 mock_adapter = MagicMock()
+                mock_adapter.search = AsyncMock(return_value=[])
+                mock_adapter.retrieve.return_value = []
+                mock_adapter.format_context.return_value = "Context"
                 mock_adapter_cls.return_value = mock_adapter
 
                 result = await run_graph(
@@ -42,11 +58,13 @@ class TestAgenticRAGIntegration:
         """Complex queries should route to agentic pipeline."""
         with patch("src.graph.orchestrator.ModelRouter") as mock_router_cls:
             with patch("src.graph.orchestrator.VectorStoreAdapter") as mock_adapter_cls:
-                mock_router = AsyncMock()
+                mock_router = _setup_mock_router()
                 mock_router_cls.return_value = mock_router
-                mock_router.close = AsyncMock()
 
                 mock_adapter = MagicMock()
+                mock_adapter.search = AsyncMock(return_value=[])
+                mock_adapter.retrieve.return_value = []
+                mock_adapter.format_context.return_value = "Context"
                 mock_adapter_cls.return_value = mock_adapter
 
                 result = await run_graph(
@@ -68,15 +86,17 @@ class TestAgenticRAGIntegration:
         """Amharic queries should work with the pipeline."""
         with patch("src.graph.orchestrator.ModelRouter") as mock_router_cls:
             with patch("src.graph.orchestrator.VectorStoreAdapter") as mock_adapter_cls:
-                mock_router = AsyncMock()
+                mock_router = _setup_mock_router()
                 mock_router_cls.return_value = mock_router
-                mock_router.close = AsyncMock()
 
                 mock_adapter = MagicMock()
+                mock_adapter.search = AsyncMock(return_value=[])
+                mock_adapter.retrieve.return_value = []
+                mock_adapter.format_context.return_value = "Context"
                 mock_adapter_cls.return_value = mock_adapter
 
                 result = await run_graph(
-                    user_message="ፎቶሲንቴ시스 ምንድን ነው?",
+                    user_message="ፎቶሲንቴሲስ ምንድን ነው?",
                     grade_level=9,
                     topic="Biology",
                     language="am",
@@ -151,7 +171,7 @@ class TestEvidenceGraphIntegration:
             retrieved_by="search_fanout",
         )
 
-        evidence_id = await graph.add(evidence)
+        evidence_id = await graph.add(evidence, internal_session_id="00000000-0000-0000-0000-000000000001")
 
         assert evidence_id is not None
         mock_session.add.assert_called_once()

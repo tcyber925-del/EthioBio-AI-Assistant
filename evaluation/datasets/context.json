@@ -1,0 +1,92 @@
+[
+  {
+    "id": "context-001",
+    "description": "Plenty of evidence, high coverage: sufficient",
+    "input_evidence_count": 5,
+    "input_coverage_score": 0.85,
+    "input_previous_evidence_count": 0,
+    "expected_sufficient": true,
+    "expected_continue": false
+  },
+  {
+    "id": "context-002",
+    "description": "No evidence, zero coverage: insufficient",
+    "input_evidence_count": 0,
+    "input_coverage_score": 0.0,
+    "input_previous_evidence_count": 0,
+    "expected_sufficient": false,
+    "expected_continue": true
+  },
+  {
+    "id": "context-003",
+    "description": "Some evidence but low coverage: insufficient",
+    "input_evidence_count": 2,
+    "input_coverage_score": 0.35,
+    "input_previous_evidence_count": 0,
+    "expected_sufficient": false,
+    "expected_continue": true
+  },
+  {
+    "id": "context-004",
+    "description": "Barely sufficient coverage",
+    "input_evidence_count": 3,
+    "input_coverage_score": 0.6,
+    "input_previous_evidence_count": 0,
+    "expected_sufficient": true,
+    "expected_continue": false
+  },
+  {
+    "id": "context-005",
+    "description": "Good evidence but previous pass was same count (no progress)",
+    "input_evidence_count": 4,
+    "input_coverage_score": 0.75,
+    "input_previous_evidence_count": 4,
+    "expected_sufficient": true,
+    "expected_continue": false
+  },
+  {
+    "id": "context-006",
+    "description": "Low evidence but improving from 0 to 2",
+    "input_evidence_count": 2,
+    "input_coverage_score": 0.4,
+    "input_previous_evidence_count": 0,
+    "expected_sufficient": false,
+    "expected_continue": true
+  },
+  {
+    "id": "context-007",
+    "description": "Single chunk, very low coverage: insufficient",
+    "input_evidence_count": 1,
+    "input_coverage_score": 0.15,
+    "input_previous_evidence_count": 0,
+    "expected_sufficient": false,
+    "expected_continue": true
+  },
+  {
+    "id": "context-008",
+    "description": "Maximum evidence, full coverage: sufficient",
+    "input_evidence_count": 8,
+    "input_coverage_score": 0.95,
+    "input_previous_evidence_count": 3,
+    "expected_sufficient": true,
+    "expected_continue": false
+  },
+  {
+    "id": "context-009",
+    "description": "Moderate but stable evidence with no progress",
+    "input_evidence_count": 3,
+    "input_coverage_score": 0.55,
+    "input_previous_evidence_count": 3,
+    "expected_sufficient": true,
+    "expected_continue": false
+  },
+  {
+    "id": "context-010",
+    "description": "Very high coverage with new evidence: sufficient",
+    "input_evidence_count": 6,
+    "input_coverage_score": 0.9,
+    "input_previous_evidence_count": 2,
+    "expected_sufficient": true,
+    "expected_continue": false
+  }
+]

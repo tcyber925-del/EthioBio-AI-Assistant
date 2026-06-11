@@ -14,8 +14,8 @@ from telegram.ext import (
 
 from src.agents.lesson_planner import LessonPlannerAgent
 from src.agents.quiz import QuizAgent
-from src.agents.tutor_agent import TutorAgent
 from src.api.gamification import award_xp, check_achievements, update_streak
+from src.graph.orchestrator import run_graph
 from src.config import settings
 from src.core.learning_intelligence.tutor.tutor_context_adapter import TutorContextAdapter
 from src.core.memory.context_assembler import ContextAssembler
@@ -503,10 +503,8 @@ async def reveal_command(update: Update, context):
                 _mem_db,
             ) if telegram_id else (None, None, "", [])
 
-            router_llm = ModelRouter()
-            agent = TutorAgent(llm_router=router_llm, retriever=None)
-            result = await agent.answer(
-                question=question, user_id=memory_user_id, use_rag=True,
+            result = await run_graph(
+                user_message=question, user_id=memory_user_id,
                 grade_level=context.user_data.get("grade_level"),
                 language=context.user_data.get("language", "en"),
                 socratic_mode=False,
@@ -514,8 +512,8 @@ async def reveal_command(update: Update, context):
                 reveal_answer=True,
                 memory_context=memory_context,
                 messages=conversation_messages,
+                db_session_factory=async_session_factory,
             )
-            await router_llm.close()
 
         if memory_user_id and memory_session_id:
             try:
@@ -595,14 +593,12 @@ async def hint_command(update: Update, context):
                 _mem_db,
             ) if telegram_id else (None, None, "", [])
 
-            router_llm = ModelRouter()
-            agent = TutorAgent(llm_router=router_llm, retriever=None)
             learner_profile_block = (
                 await _build_learner_profile(memory_user_id, _mem_db)
                 if memory_user_id else ""
             )
-            result = await agent.answer(
-                question=question, user_id=memory_user_id, use_rag=True,
+            result = await run_graph(
+                user_message=question, user_id=memory_user_id,
                 grade_level=context.user_data.get("grade_level"),
                 language=context.user_data.get("language", "en"),
                 socratic_mode=False,
@@ -611,8 +607,8 @@ async def hint_command(update: Update, context):
                 memory_context=memory_context,
                 learner_profile_block=learner_profile_block,
                 messages=conversation_messages,
+                db_session_factory=async_session_factory,
             )
-            await router_llm.close()
 
         if memory_user_id and memory_session_id:
             try:
@@ -621,7 +617,7 @@ async def hint_command(update: Update, context):
                 )).scalar_one_or_none()
                 if mem_session:
                     conversation_messages.append({"role": "user", "content": question})
-                    conversation_messages.append({"role": "assistant", "content": result["answer"]})
+                    conversation_messages.append({"role": "assistant", "content": result.answer})
                     SessionManager().set_messages(mem_session, conversation_messages[-20:])
                     await CrossSessionRecall().record_turns(
                         user_id=memory_user_id,
@@ -634,8 +630,8 @@ async def hint_command(update: Update, context):
             except Exception as e:
                 logger.warning("memory_turns_save_error", error=str(e))
 
-        response = result["answer"]
-        if result.get("misconception_detected"):
+        response = result.answer
+        if result.misconception_detected:
             response += t("tutor.misconception", _lang(context))
         await _reply_long(
             update.message, response,
@@ -666,23 +662,22 @@ async def ask_command(update: Update, context):
                     _mem_db,
                 ) if telegram_id else (None, None, "", [])
 
-                router_llm = ModelRouter()
-                agent = TutorAgent(llm_router=router_llm, retriever=None)
                 socratic = context.user_data.get("socratic_mode", False)
                 learner_profile_block = (
                     await _build_learner_profile(memory_user_id, _mem_db)
                     if memory_user_id else ""
                 )
-                result = await agent.answer(
-                    question=question, user_id=memory_user_id, use_rag=True,
+                result = await run_graph(
+                    user_message=question, user_id=memory_user_id,
                     grade_level=context.user_data.get("grade_level"),
                     language=context.user_data.get("language", "en"),
                     socratic_mode=socratic,
                     memory_context=memory_context,
                     learner_profile_block=learner_profile_block,
                     messages=conversation_messages,
+                    db_session_factory=async_session_factory,
                 )
-                response = result["answer"]
+                response = result.answer
 
                 if memory_user_id and memory_session_id:
                     try:
@@ -691,7 +686,7 @@ async def ask_command(update: Update, context):
                         )).scalar_one_or_none()
                         if mem_session:
                             conversation_messages.append({"role": "user", "content": question})
-                            conversation_messages.append({"role": "assistant", "content": result["answer"]})
+                            conversation_messages.append({"role": "assistant", "content": result.answer})
                             SessionManager().set_messages(mem_session, conversation_messages[-20:])
                             await CrossSessionRecall().record_turns(
                                 user_id=memory_user_id,
@@ -704,11 +699,10 @@ async def ask_command(update: Update, context):
                     except Exception as e:
                         logger.warning("memory_turns_save_error", error=str(e))
 
-                await router_llm.close()
-            if result.get("misconception_detected"):
+            if result.misconception_detected:
                 response += t("tutor.misconception", _lang(context))
-            if result.get("sources"):
-                response += t("tutor.sources", _lang(context), sources=", ".join(result["sources"][:3]))
+            if result.sources:
+                response += t("tutor.sources", _lang(context), sources=", ".join(result.sources[:3]))
             if telegram_id:
                 await _save_tutor_rewards(telegram_id, context)
                 xp_awarded = context.user_data.get("last_xp_awarded", 0)
@@ -890,8 +884,6 @@ async def handle_question(update: Update, context):
             else:
                 conversation_messages = []
 
-            router_llm = ModelRouter()
-            agent = TutorAgent(llm_router=router_llm, retriever=None)
             socratic = context.user_data.get("socratic_mode", False)
             hint_level = context.user_data.get("hint_level", 0)
             reveal = context.user_data.get("reveal_answer", False)
@@ -899,8 +891,8 @@ async def handle_question(update: Update, context):
                 await _build_learner_profile(memory_user_id, _mem_db)
                 if memory_user_id else ""
             )
-            result = await agent.answer(
-                question=question, user_id=memory_user_id, use_rag=True,
+            result = await run_graph(
+                user_message=question, user_id=memory_user_id,
                 grade_level=context.user_data.pop("tutor_grade", None) or context.user_data.get("grade_level"),
                 topic=str(context.user_data.get("tutor_grade") or context.user_data.get("grade_level") or ""),
                 language=context.user_data.get("language", "en"),
@@ -910,8 +902,9 @@ async def handle_question(update: Update, context):
                 memory_context=memory_context,
                 learner_profile_block=learner_profile_block,
                 messages=conversation_messages,
+                db_session_factory=async_session_factory,
             )
-            response = result["answer"]
+            response = result.answer
 
             if memory_user_id and memory_session_id:
                 try:
@@ -920,7 +913,7 @@ async def handle_question(update: Update, context):
                     )).scalar_one_or_none()
                     if mem_session:
                         conversation_messages.append({"role": "user", "content": question})
-                        conversation_messages.append({"role": "assistant", "content": result["answer"]})
+                        conversation_messages.append({"role": "assistant", "content": result.answer})
                         SessionManager().set_messages(mem_session, conversation_messages[-20:])
                         await CrossSessionRecall().record_turns(
                             user_id=memory_user_id,
@@ -933,10 +926,10 @@ async def handle_question(update: Update, context):
                 except Exception as e:
                     logger.warning("memory_turns_save_error", error=str(e))
 
-        if result.get("misconception_detected"):
+        if result.misconception_detected:
             response += t("tutor.misconception", _lang(context))
-        if result.get("sources"):
-            response += t("tutor.sources", _lang(context), sources=", ".join(result["sources"][:3]))
+        if result.sources:
+            response += t("tutor.sources", _lang(context), sources=", ".join(result.sources[:3]))
         telegram_id = update.effective_user.id if update.effective_user else None
         if telegram_id:
             await _save_tutor_rewards(telegram_id, context)
@@ -952,7 +945,6 @@ async def handle_question(update: Update, context):
                 response += "\n\n" + "\n".join(notifications)
         reply_markup = hint_keyboard(hint_level, reveal, language=_lang(context)) if socratic else main_menu_keyboard(socratic, language=_lang(context))
         await _reply_long(thinking_msg, response, reply_markup=reply_markup, parse_mode="HTML")
-        await router_llm.close()
     except Exception as e:
         logger.error("tutor_error", error=str(e))
         try:
@@ -970,7 +962,7 @@ async def handle_question(update: Update, context):
         async with factory() as session:
             session.add(MessageThread(
                 user_id=None, channel="telegram",
-                messages=[{"role": "user", "content": question}, {"role": "assistant", "content": result["answer"]}],
+                messages=[{"role": "user", "content": question}, {"role": "assistant", "content": result.answer}],
                 topic="biology_question",
             ))
             await session.commit()
@@ -1662,10 +1654,8 @@ async def handle_hint(update: Update, context):
                 _mem_db,
             ) if telegram_id else (None, None, "", [])
 
-            router_llm = ModelRouter()
-            agent = TutorAgent(llm_router=router_llm, retriever=None)
-            result = await agent.answer(
-                question=question, user_id=memory_user_id, use_rag=True,
+            result = await run_graph(
+                user_message=question, user_id=memory_user_id,
                 grade_level=context.user_data.get("grade_level"),
                 language=context.user_data.get("language", "en"),
                 socratic_mode=context.user_data.get("socratic_mode", True),
@@ -1673,8 +1663,8 @@ async def handle_hint(update: Update, context):
                 reveal_answer=False,
                 memory_context=memory_context,
                 messages=conversation_messages,
+                db_session_factory=async_session_factory,
             )
-            await router_llm.close()
 
         if memory_user_id and memory_session_id:
             try:
@@ -1683,7 +1673,7 @@ async def handle_hint(update: Update, context):
                 )).scalar_one_or_none()
                 if mem_session:
                     conversation_messages.append({"role": "user", "content": question})
-                    conversation_messages.append({"role": "assistant", "content": result["answer"]})
+                    conversation_messages.append({"role": "assistant", "content": result.answer})
                     SessionManager().set_messages(mem_session, conversation_messages[-20:])
                     await CrossSessionRecall().record_turns(
                         user_id=memory_user_id,
@@ -1696,8 +1686,8 @@ async def handle_hint(update: Update, context):
             except Exception as e:
                 logger.warning("memory_turns_save_error", error=str(e))
 
-        response = result["answer"]
-        if result.get("misconception_detected"):
+        response = result.answer
+        if result.misconception_detected:
             response += t("tutor.misconception", _lang(context))
         await _reply_long(
             hint_msg, response,
@@ -1738,10 +1728,8 @@ async def handle_reveal_answer(update: Update, context):
                 _mem_db,
             ) if telegram_id else (None, None, "", [])
 
-            router_llm = ModelRouter()
-            agent = TutorAgent(llm_router=router_llm, retriever=None)
-            result = await agent.answer(
-                question=question, user_id=memory_user_id, use_rag=True,
+            result = await run_graph(
+                user_message=question, user_id=memory_user_id,
                 grade_level=context.user_data.get("grade_level"),
                 language=context.user_data.get("language", "en"),
                 socratic_mode=False,
@@ -1749,8 +1737,8 @@ async def handle_reveal_answer(update: Update, context):
                 reveal_answer=True,
                 memory_context=memory_context,
                 messages=conversation_messages,
+                db_session_factory=async_session_factory,
             )
-            await router_llm.close()
 
         if memory_user_id and memory_session_id:
             try:

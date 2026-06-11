@@ -15,6 +15,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 markers = [
     "smoke: quick smoke-test scenarios",
+    "integration: integration and journey tests",
 ]
 
 [tool.ruff]

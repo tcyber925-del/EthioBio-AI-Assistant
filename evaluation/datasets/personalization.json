@@ -1,0 +1,92 @@
+[
+  {
+    "id": "pers-001", "category": "personalization", "subject": "difficulty_adaptation", "grade_level": 8,
+    "question": "What is photosynthesis?",
+    "expected_topics": ["photosynthesis", "plants"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["personalized", "grade_appropriate", "curriculum_aligned"],
+    "expected_learning_outcome": "student receives grade-appropriate photosynthesis explanation",
+    "difficulty": "easy"
+  },
+  {
+    "id": "pers-002", "category": "personalization", "subject": "difficulty_adaptation", "grade_level": 11,
+    "question": "What is photosynthesis?",
+    "expected_topics": ["photosynthesis", "light reactions", "Calvin cycle", "chloroplast"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["personalized", "grade_appropriate", "detailed", "curriculum_aligned"],
+    "expected_learning_outcome": "student receives advanced photosynthesis explanation",
+    "difficulty": "hard"
+  },
+  {
+    "id": "pers-003", "category": "personalization", "subject": "knowledge_level_adaptation", "grade_level": 10,
+    "question": "Explain mitosis again, I'm still confused about the stages.",
+    "expected_topics": ["mitosis", "cell division", "prophase", "metaphase", "anaphase", "telophase"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["personalized", "remedial", "patient", "curriculum_aligned"],
+    "expected_learning_outcome": "struggling student receives simplified mitosis explanation",
+    "difficulty": "medium"
+  },
+  {
+    "id": "pers-004", "category": "personalization", "subject": "knowledge_level_adaptation", "grade_level": 10,
+    "question": "Explain the stages of mitosis.",
+    "expected_topics": ["mitosis", "cell division", "stages"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["personalized", "concise", "curriculum_aligned"],
+    "expected_learning_outcome": "proficient student receives concise mitosis summary",
+    "difficulty": "medium"
+  },
+  {
+    "id": "pers-005", "category": "personalization", "subject": "grade_adaptation", "grade_level": 7,
+    "question": "How does the heart work?",
+    "expected_topics": ["heart", "circulatory system", "blood"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["personalized", "simple", "analogy_based", "curriculum_aligned"],
+    "expected_learning_outcome": "younger student receives simple heart explanation with analogies",
+    "difficulty": "easy"
+  },
+  {
+    "id": "pers-006", "category": "personalization", "subject": "grade_adaptation", "grade_level": 12,
+    "question": "How does the heart work?",
+    "expected_topics": ["heart", "cardiac cycle", "electrical conduction", "SA node", "AV node"],
+    "required_agents": ["planner", "query_rewriter", "tutor"],
+    "expected_answer_traits": ["personalized", "detailed", "technical", "curriculum_aligned"],
+    "expected_learning_outcome": "advanced student receives detailed cardiac physiology explanation",
+    "difficulty": "hard"
+  },
+  {
+    "id": "pers-007", "category": "personalization", "subject": "learning_style_adaptation", "grade_level": 8,
+    "question": "I learn better with diagrams. Can you explain the water cycle?",
+    "expected_topics": ["water cycle", "evaporation", "condensation", "precipitation"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["personalized", "visual", "curriculum_aligned"],
+    "expected_learning_outcome": "student receives diagram-oriented water cycle explanation",
+    "difficulty": "easy"
+  },
+  {
+    "id": "pers-008", "category": "personalization", "subject": "remediation", "grade_level": 9,
+    "question": "I keep getting questions about cell transport wrong. I don't understand osmosis.",
+    "expected_topics": ["osmosis", "diffusion", "cell transport", "semipermeable membrane"],
+    "required_agents": ["planner", "query_rewriter", "search_fanout", "evidence_graph", "tutor"],
+    "expected_answer_traits": ["personalized", "remedial", "patient", "misconception_addressing"],
+    "expected_learning_outcome": "student's misconception about osmosis is corrected",
+    "difficulty": "medium"
+  },
+  {
+    "id": "pers-009", "category": "personalization", "subject": "remediation", "grade_level": 10,
+    "question": "My teacher says I got the food web question wrong. Can you help me understand trophic levels?",
+    "expected_topics": ["food web", "trophic levels", "producers", "consumers", "energy flow"],
+    "required_agents": ["planner", "query_rewriter", "search_fanout", "evidence_graph", "tutor"],
+    "expected_answer_traits": ["personalized", "remedial", "curriculum_aligned"],
+    "expected_learning_outcome": "student's weak area in ecology is addressed",
+    "difficulty": "medium"
+  },
+  {
+    "id": "pers-010", "category": "personalization", "subject": "remediation", "grade_level": 8,
+    "question": "Can you explain Punnett squares again? I didn't understand the lesson in class.",
+    "expected_topics": ["Punnett square", "genetics", "inheritance", "genotype", "phenotype"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["personalized", "remedial", "step_by_step", "curriculum_aligned"],
+    "expected_learning_outcome": "student understands Punnett square construction after remediation",
+    "difficulty": "easy"
+  }
+]

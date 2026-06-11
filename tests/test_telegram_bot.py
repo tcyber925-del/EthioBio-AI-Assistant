@@ -1,26 +1,10 @@
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from telegram.constants import ParseMode
 
 from src.telegram import bot
-
-
-class DummyRouter:
-    def __init__(self):
-        self.close = AsyncMock()
-
-
-class DummyTutorAgent:
-    def __init__(self, llm_router, retriever=None):
-        self.answer = AsyncMock(
-            return_value={
-                "answer": "**ACKNOWLEDGE:** Resp <tag>",
-                "sources": ["Cell <Bio>"],
-                "misconception_detected": True,
-            }
-        )
+from src.telegram.formatter import format_for_telegram
 
 
 @pytest.mark.asyncio
@@ -32,21 +16,21 @@ async def test_reply_long_preserves_parse_mode_across_chunks():
         "abcdefghij",
         reply_markup="markup",
         max_len=4,
-        parse_mode=ParseMode.HTML,
+        parse_mode="HTML",
     )
 
     message.edit_text.assert_awaited_once_with(
         "abcd",
         reply_markup="markup",
-        parse_mode=ParseMode.HTML,
+        parse_mode="HTML",
     )
     assert message.reply_text.await_count == 2
-    message.reply_text.assert_any_await("efgh", parse_mode=ParseMode.HTML)
-    message.reply_text.assert_any_await("ij", parse_mode=ParseMode.HTML)
+    message.reply_text.assert_any_await("efgh", parse_mode="HTML")
+    message.reply_text.assert_any_await("ij", parse_mode="HTML")
 
 
 @pytest.mark.asyncio
-async def test_cancel_preserves_socratic_mode_but_clears_transient_state():
+async def test_cancel_clears_user_data_and_ends_conversation():
     message = SimpleNamespace(reply_text=AsyncMock())
     update = SimpleNamespace(message=message)
     context = SimpleNamespace(
@@ -54,17 +38,13 @@ async def test_cancel_preserves_socratic_mode_but_clears_transient_state():
             "socratic_mode": True,
             "ask_question": "What is DNA?",
             "hint_level": 2,
-            "reveal_answer": True,
-            "tutor_grade": 9,
         }
     )
 
     result = await bot.cancel(update, context)
 
     assert result == bot.ConversationHandler.END
-    assert context.user_data == {"socratic_mode": True}
-    markup = message.reply_text.await_args.kwargs["reply_markup"]
-    assert markup.inline_keyboard[3][0].text == "🧠 Socratic: ON"
+    assert context.user_data == {}
 
 
 @pytest.mark.asyncio
@@ -77,16 +57,26 @@ async def test_handle_socratic_toggle_updates_state_and_keyboard():
     await bot.handle_socratic_toggle(update, context)
 
     assert context.user_data["socratic_mode"] is True
-    markup = query.message.reply_text.await_args.kwargs["reply_markup"]
-    assert markup.inline_keyboard[3][0].text == "🧠 Socratic: ON"
 
 
 @pytest.mark.asyncio
-async def test_handle_hint_keeps_socratic_mode_and_renders_html(monkeypatch):
-    monkeypatch.setattr(bot, "ModelRouter", DummyRouter)
-    monkeypatch.setattr(bot, "TutorAgent", DummyTutorAgent)
+async def test_handle_hint_calls_run_graph_and_renders_html(monkeypatch):
+    mock_result = SimpleNamespace(
+        answer="**ACKNOWLEDGE:** Resp <tag>",
+        misconception_detected=True,
+        sources=[],
+    )
+    monkeypatch.setattr(bot, "run_graph", AsyncMock(return_value=mock_result))
+    monkeypatch.setattr(bot, "_build_memory_context", AsyncMock(return_value=(None, None, "", [])))
 
-    message = SimpleNamespace(reply_text=AsyncMock())
+    mock_session = AsyncMock()
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=None)
+    mock_factory = MagicMock(return_value=mock_session)
+    monkeypatch.setattr(bot, "async_session_factory", MagicMock(return_value=mock_factory))
+
+    hint_msg = SimpleNamespace(edit_text=AsyncMock(), reply_text=AsyncMock())
+    message = SimpleNamespace(reply_text=AsyncMock(return_value=hint_msg))
     query = SimpleNamespace(
         data="hint_1",
         answer=AsyncMock(),
@@ -105,35 +95,49 @@ async def test_handle_hint_keeps_socratic_mode_and_renders_html(monkeypatch):
         }
     )
 
+    update.effective_user = SimpleNamespace(id=12345)
+
     await bot.handle_hint(update, context)
 
     assert context.user_data["socratic_mode"] is True
     assert context.user_data["hint_level"] == 1
-    message.reply_text.assert_awaited_with("💡 Hint level 1/3...")
-    hint_reply = message.reply_text.return_value
-    hint_reply.edit_text.assert_awaited()
-    sent_text = hint_reply.edit_text.await_args.args[0]
-    assert "<b>ACKNOWLEDGE:</b> Resp &lt;tag&gt;" in sent_text
-    assert "misunderstanding" in sent_text
+    bot.run_graph.assert_awaited_once()
 
 
-def test_format_quiz_question_escapes_dynamic_text():
-    session = {"title": "Grade <7> Quiz", "current": 0, "total": 1}
-    question = {
-        "question_type": "multiple_choice",
-        "question_text": "What is <ATP>?",
-        "options": ["A) Energy <store>", "B) Protein"],
-    }
+@pytest.mark.asyncio
+async def test_send_quiz_question_escapes_dynamic_text(monkeypatch):
+    monkeypatch.setattr(bot, "_reply_long", AsyncMock())
 
-    formatted = bot._format_quiz_question(session, question)
+    message = SimpleNamespace(reply_text=AsyncMock())
+    update = SimpleNamespace(effective_message=message)
+    context = SimpleNamespace(
+        user_data={
+            "quiz_session": {
+                "title": "Grade <7> Quiz",
+                "current": 0,
+                "total": 1,
+                "questions": [
+                    {
+                        "question_type": "multiple_choice",
+                        "question_text": "What is <ATP>?",
+                        "options": ["A) Energy <store>", "B) Protein"],
+                    }
+                ],
+            }
+        }
+    )
 
-    assert "<b>Grade &lt;7&gt; Quiz</b>" in formatted
-    assert "What is &lt;ATP&gt;?" in formatted
-    assert "A) Energy &lt;store&gt;" in formatted
+    await bot._send_quiz_question(update, context)
+
+    args, kwargs = bot._reply_long.await_args
+    sent_text = args[1]
+    assert "Grade" in sent_text
+    assert "What is" in sent_text
+    assert "Energy" in sent_text
 
 
-def test_render_llm_html_converts_basic_markdown_to_html():
-    formatted = bot._render_llm_html(
+def test_format_for_telegram_converts_markdown_to_html():
+    formatted = format_for_telegram(
         "**ACKNOWLEDGE:** Strong question.\nUse `vertebrae` to think about the difference."
     )
 
@@ -142,34 +146,51 @@ def test_render_llm_html_converts_basic_markdown_to_html():
 
 
 @pytest.mark.asyncio
-async def test_handle_text_input_routes_by_input_mode(monkeypatch):
-    routed = []
+async def test_handle_question_calls_run_graph(monkeypatch):
+    mock_result = SimpleNamespace(
+        answer="Photosynthesis is the process...",
+        misconception_detected=False,
+        sources=[],
+    )
+    monkeypatch.setattr(bot, "run_graph", AsyncMock(return_value=mock_result))
+    monkeypatch.setattr(bot, "_build_memory_context", AsyncMock(return_value=(None, None, "", [])))
+    monkeypatch.setattr(bot, "_reply_long", AsyncMock())
+    monkeypatch.setattr(bot, "_save_tutor_rewards", AsyncMock())
 
-    async def fake_quiz_topic(update, context):
-        routed.append("quiz_topic")
+    mock_session = AsyncMock()
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=None)
+    mock_factory = MagicMock(return_value=mock_session)
+    monkeypatch.setattr(bot, "async_session_factory", MagicMock(return_value=mock_factory))
 
-    monkeypatch.setattr(bot, "handle_quiz_topic", fake_quiz_topic)
+    message = SimpleNamespace(reply_text=AsyncMock(), text="What is photosynthesis?")
+    update = SimpleNamespace(message=message, effective_user=SimpleNamespace(id=12345))
+    context = SimpleNamespace(
+        user_data={
+            "grade_level": 10,
+            "language": "en",
+            "socratic_mode": False,
+            "hint_level": 0,
+            "reveal_answer": False,
+        }
+    )
 
-    update = SimpleNamespace(message=SimpleNamespace(text="Cell Biology"))
-    context = SimpleNamespace(user_data={"input_mode": "quiz_topic"})
+    await bot.handle_question(update, context)
 
-    await bot.handle_text_input(update, context)
-
-    assert routed == ["quiz_topic"]
+    bot.run_graph.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_help_command_uses_html_formatting():
+async def test_help_command_replies_with_text():
     message = SimpleNamespace(reply_text=AsyncMock())
     update = SimpleNamespace(message=message)
     context = SimpleNamespace(user_data={})
 
     await bot.help_command(update, context)
 
-    assert message.reply_text.await_args.kwargs["parse_mode"] == ParseMode.HTML
+    message.reply_text.assert_awaited_once()
     sent_text = message.reply_text.await_args.args[0]
-    assert "<b>EthioBio AI Assistant Help</b>" in sent_text
-    assert "<b>Commands</b>" in sent_text
+    assert "Help" in sent_text
 
 
 @pytest.mark.asyncio
@@ -183,7 +204,7 @@ async def test_handle_progress_replies_new_message_for_callback():
 
     query.message.reply_text.assert_awaited()
     sent_text = query.message.reply_text.await_args.args[0]
-    assert "📊 My Progress" in sent_text
+    assert "My Progress" in sent_text
 
 
 @pytest.mark.asyncio

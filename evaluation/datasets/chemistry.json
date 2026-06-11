@@ -1,0 +1,92 @@
+[
+  {
+    "id": "chem-001", "category": "chemistry", "subject": "atomic_structure", "grade_level": 8,
+    "question": "What are the three main subatomic particles and their charges?",
+    "expected_topics": ["proton", "neutron", "electron", "atomic structure"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "curriculum_aligned", "clear"],
+    "expected_learning_outcome": "student identifies subatomic particles and charges",
+    "difficulty": "easy"
+  },
+  {
+    "id": "chem-002", "category": "chemistry", "subject": "atomic_structure", "grade_level": 9,
+    "question": "How do electrons arrange in energy levels around the nucleus?",
+    "expected_topics": ["electron configuration", "energy levels", "shells", "atomic structure"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "curriculum_aligned", "clear"],
+    "expected_learning_outcome": "student describes electron arrangement in shells",
+    "difficulty": "medium"
+  },
+  {
+    "id": "chem-003", "category": "chemistry", "subject": "chemical_reactions", "grade_level": 8,
+    "question": "What is a chemical reaction and how can you tell one has occurred?",
+    "expected_topics": ["chemical reaction", "reactants", "products", "indicators of reaction"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "curriculum_aligned", "clear"],
+    "expected_learning_outcome": "student defines chemical reaction and identifies signs",
+    "difficulty": "easy"
+  },
+  {
+    "id": "chem-004", "category": "chemistry", "subject": "chemical_reactions", "grade_level": 10,
+    "question": "Balance the following equation: H2 + O2 → H2O",
+    "expected_topics": ["balancing equations", "stoichiometry", "chemical reactions"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "curriculum_aligned", "procedural"],
+    "expected_learning_outcome": "student balances simple chemical equations",
+    "difficulty": "medium"
+  },
+  {
+    "id": "chem-005", "category": "chemistry", "subject": "acids_and_bases", "grade_level": 10,
+    "question": "What is the difference between an acid and a base?",
+    "expected_topics": ["acid", "base", "pH", "neutralization"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "comparison", "curriculum_aligned"],
+    "expected_learning_outcome": "student distinguishes acids from bases",
+    "difficulty": "medium"
+  },
+  {
+    "id": "chem-006", "category": "chemistry", "subject": "organic_chemistry", "grade_level": 11,
+    "question": "What are the main functional groups in organic chemistry?",
+    "expected_topics": ["functional groups", "organic chemistry", "hydrocarbons", "alcohols"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "curriculum_aligned", "comprehensive"],
+    "expected_learning_outcome": "student identifies major organic functional groups",
+    "difficulty": "hard"
+  },
+  {
+    "id": "chem-007", "category": "chemistry", "subject": "thermodynamics", "grade_level": 11,
+    "question": "Explain the difference between exothermic and endothermic reactions.",
+    "expected_topics": ["exothermic", "endothermic", "enthalpy", "thermodynamics", "energy"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "comparison", "curriculum_aligned"],
+    "expected_learning_outcome": "student distinguishes exothermic from endothermic reactions",
+    "difficulty": "medium"
+  },
+  {
+    "id": "chem-008", "category": "chemistry", "subject": "stoichiometry", "grade_level": 10,
+    "question": "How do you calculate the number of moles from a given mass?",
+    "expected_topics": ["moles", "molar mass", "stoichiometry", "calculations"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "procedural", "curriculum_aligned"],
+    "expected_learning_outcome": "student calculates moles using molar mass",
+    "difficulty": "hard"
+  },
+  {
+    "id": "chem-009", "category": "chemistry", "subject": "atomic_structure", "grade_level": 10,
+    "question": "How is the periodic table organized?",
+    "expected_topics": ["periodic table", "groups", "periods", "elements"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "curriculum_aligned"],
+    "expected_learning_outcome": "student explains periodic table organization",
+    "difficulty": "easy"
+  },
+  {
+    "id": "chem-010", "category": "chemistry", "subject": "chemical_reactions", "grade_level": 10,
+    "question": "What factors affect the rate of a chemical reaction?",
+    "expected_topics": ["reaction rate", "temperature", "concentration", "catalyst", "surface area"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "curriculum_aligned", "comprehensive"],
+    "expected_learning_outcome": "student identifies factors affecting reaction rate",
+    "difficulty": "medium"
+  }
+]

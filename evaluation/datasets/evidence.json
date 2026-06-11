@@ -1,0 +1,58 @@
+[
+  {
+    "id": "evidence-001",
+    "description": "Two identical chunks should be deduped to one",
+    "input_chunks": [
+      {"id": "chunk_1", "content": "Photosynthesis converts light energy to chemical energy", "source": "curriculum"},
+      {"id": "chunk_2", "content": "Photosynthesis converts light energy to chemical energy", "source": "curriculum"}
+    ],
+    "expected_deduped_count": 1,
+    "expected_coverage_min": 0.5,
+    "expected_missing_topics": []
+  },
+  {
+    "id": "evidence-002",
+    "description": "Three unique chunks about cell division",
+    "input_chunks": [
+      {"id": "chunk_1", "content": "Mitosis produces two identical daughter cells", "source": "curriculum"},
+      {"id": "chunk_2", "content": "Meiosis produces four genetically different gametes", "source": "curriculum"},
+      {"id": "chunk_3", "content": "DNA replication occurs during S phase of interphase", "source": "curriculum"}
+    ],
+    "expected_deduped_count": 3,
+    "expected_coverage_min": 0.7,
+    "expected_missing_topics": []
+  },
+  {
+    "id": "evidence-003",
+    "description": "Two chunks with partial overlap in content",
+    "input_chunks": [
+      {"id": "chunk_1", "content": "The heart pumps blood through the circulatory system. The heart has four chambers.", "source": "curriculum"},
+      {"id": "chunk_2", "content": "The heart has four chambers: two atria and two ventricles. Blood flows through valves.", "source": "curriculum"}
+    ],
+    "expected_deduped_count": 2,
+    "expected_coverage_min": 0.6,
+    "expected_missing_topics": ["valve_function", "blood_flow_pathway"]
+  },
+  {
+    "id": "evidence-004",
+    "description": "Single chunk, no dedup needed",
+    "input_chunks": [
+      {"id": "chunk_1", "content": "Ethiopia has several endemic species found only in the Bale Mountains.", "source": "curriculum"}
+    ],
+    "expected_deduped_count": 1,
+    "expected_coverage_min": 0.3,
+    "expected_missing_topics": []
+  },
+  {
+    "id": "evidence-005",
+    "description": "Three chunks about nitrogen cycle, all unique",
+    "input_chunks": [
+      {"id": "chunk_1", "content": "Nitrogen fixation converts N2 gas to ammonia via bacteria", "source": "curriculum"},
+      {"id": "chunk_2", "content": "Nitrification converts ammonia to nitrates for plant uptake", "source": "curriculum"},
+      {"id": "chunk_3", "content": "Denitrification returns nitrogen to the atmosphere", "source": "curriculum"}
+    ],
+    "expected_deduped_count": 3,
+    "expected_coverage_min": 0.8,
+    "expected_missing_topics": ["ammonification"]
+  }
+]

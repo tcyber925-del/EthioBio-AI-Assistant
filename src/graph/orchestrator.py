@@ -79,7 +79,7 @@ def build_agentic_graph(
 
     workflow.add_node("orchestrator", OrchestratorNode(router))
     workflow.add_node("planner", PlannerNode(router))
-    workflow.add_node("plan_executor", PlanExecutor(adapter, db_session_factory=db_session_factory))
+    workflow.add_node("plan_executor", PlanExecutor(adapter, router=router, db_session_factory=db_session_factory))
     workflow.add_node("evidence_graph", EvidenceGraphNode(db_session_factory=None))
     workflow.add_node("sufficient_context", SufficientContextNode())
     workflow.add_node("synthesis", SynthesisNode(router))
@@ -269,7 +269,7 @@ def build_unified_graph(
 
     # Agentic pipeline nodes
     workflow.add_node("planner", PlannerNode(router))
-    workflow.add_node("plan_executor", PlanExecutor(adapter, db_session_factory=db_session_factory))
+    workflow.add_node("plan_executor", PlanExecutor(adapter, router=router, db_session_factory=db_session_factory))
     workflow.add_node("evidence_graph", EvidenceGraphNode(db_session_factory=None))
     workflow.add_node("sufficient_context", SufficientContextNode())
     workflow.add_node("synthesis", SynthesisNode(router))

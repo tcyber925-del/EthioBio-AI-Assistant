@@ -1,0 +1,227 @@
+[
+  {
+    "id": "bio-001", "category": "biology", "subject": "cell_biology", "grade_level": 8,
+    "question": "What is the function of the cell membrane?",
+    "expected_topics": ["cell membrane", "cell structure", "cell transport"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "curriculum_aligned"],
+    "expected_learning_outcome": "student understands cell membrane as selective barrier",
+    "difficulty": "easy"
+  },
+  {
+    "id": "bio-002", "category": "biology", "subject": "cell_biology", "grade_level": 9,
+    "question": "Explain the difference between prokaryotic and eukaryotic cells.",
+    "expected_topics": ["prokaryotic", "eukaryotic", "cell structure"],
+    "required_agents": ["planner", "query_rewriter", "tutor"],
+    "expected_answer_traits": ["accurate", "comparison", "curriculum_aligned"],
+    "expected_learning_outcome": "student distinguishes prokaryotes from eukaryotes",
+    "difficulty": "medium"
+  },
+  {
+    "id": "bio-003", "category": "biology", "subject": "cell_biology", "grade_level": 10,
+    "question": "Describe the stages of mitosis in order.",
+    "expected_topics": ["mitosis", "cell division", "prophase", "metaphase", "anaphase", "telophase"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "sequential", "curriculum_aligned"],
+    "expected_learning_outcome": "student can sequence mitotic stages",
+    "difficulty": "medium"
+  },
+  {
+    "id": "bio-004", "category": "biology", "subject": "genetics", "grade_level": 10,
+    "question": "How do dominant and recessive alleles determine traits?",
+    "expected_topics": ["dominant allele", "recessive allele", "genetics", "inheritance"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "curriculum_aligned", "clear"],
+    "expected_learning_outcome": "student understands dominant/recessive inheritance patterns",
+    "difficulty": "medium"
+  },
+  {
+    "id": "bio-005", "category": "biology", "subject": "genetics", "grade_level": 8,
+    "question": "What is DNA and where is it found?",
+    "expected_topics": ["DNA", "nucleus", "chromosomes", "genetics"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "simple", "curriculum_aligned"],
+    "expected_learning_outcome": "student identifies DNA as genetic material in nucleus",
+    "difficulty": "easy"
+  },
+  {
+    "id": "bio-006", "category": "biology", "subject": "genetics", "grade_level": 11,
+    "question": "Explain the process of protein synthesis including transcription and translation.",
+    "expected_topics": ["protein synthesis", "transcription", "translation", "mRNA", "ribosomes"],
+    "required_agents": ["planner", "query_rewriter", "search_fanout", "evidence_graph", "tutor"],
+    "expected_answer_traits": ["accurate", "comprehensive", "sequential", "curriculum_aligned"],
+    "expected_learning_outcome": "student can explain central dogma of molecular biology",
+    "difficulty": "hard"
+  },
+  {
+    "id": "bio-007", "category": "biology", "subject": "evolution", "grade_level": 10,
+    "question": "How does natural selection lead to evolution?",
+    "expected_topics": ["natural selection", "evolution", "adaptation", "variation"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "curriculum_aligned", "reasoned"],
+    "expected_learning_outcome": "student explains natural selection mechanism",
+    "difficulty": "medium"
+  },
+  {
+    "id": "bio-008", "category": "biology", "subject": "evolution", "grade_level": 8,
+    "question": "Give an example of an endemic species in Ethiopia and explain why it is unique.",
+    "expected_topics": ["endemic species", "Ethiopian biodiversity", "Bale Mountains", "evolution"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "local_context", "curriculum_aligned"],
+    "expected_learning_outcome": "student understands endemism using Ethiopian examples",
+    "difficulty": "easy"
+  },
+  {
+    "id": "bio-009", "category": "biology", "subject": "ecology", "grade_level": 8,
+    "question": "What is an ecosystem and what are its main components?",
+    "expected_topics": ["ecosystem", "biotic", "abiotic", "ecology"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "curriculum_aligned", "clear"],
+    "expected_learning_outcome": "student defines ecosystem with biotic and abiotic factors",
+    "difficulty": "easy"
+  },
+  {
+    "id": "bio-010", "category": "biology", "subject": "ecology", "grade_level": 9,
+    "question": "Explain how energy flows through a food chain.",
+    "expected_topics": ["food chain", "energy flow", "trophic levels", "producers", "consumers"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "sequential", "curriculum_aligned"],
+    "expected_learning_outcome": "student traces energy flow through trophic levels",
+    "difficulty": "medium"
+  },
+  {
+    "id": "bio-011", "category": "biology", "subject": "human_biology", "grade_level": 8,
+    "question": "How does the heart pump blood through the body?",
+    "expected_topics": ["heart", "circulatory system", "blood flow", "chambers"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "curriculum_aligned"],
+    "expected_learning_outcome": "student describes heart function in circulation",
+    "difficulty": "medium"
+  },
+  {
+    "id": "bio-012", "category": "biology", "subject": "human_biology", "grade_level": 10,
+    "question": "Describe the structure and function of the human respiratory system.",
+    "expected_topics": ["respiratory system", "lungs", "trachea", "alveoli", "gas exchange"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "curriculum_aligned", "clear"],
+    "expected_learning_outcome": "student explains respiratory system structures and function",
+    "difficulty": "medium"
+  },
+  {
+    "id": "bio-013", "category": "biology", "subject": "human_biology", "grade_level": 11,
+    "question": "How does the immune system respond to a viral infection like HIV?",
+    "expected_topics": ["immune system", "HIV", "T-cells", "antibodies", "viral infection"],
+    "required_agents": ["planner", "query_rewriter", "search_fanout", "evidence_graph", "tutor"],
+    "expected_answer_traits": ["accurate", "curriculum_aligned", "comprehensive", "sensitive"],
+    "expected_learning_outcome": "student explains immune response to viral infection",
+    "difficulty": "hard"
+  },
+  {
+    "id": "bio-014", "category": "biology", "subject": "plant_biology", "grade_level": 8,
+    "question": "Label and describe the main parts of a flower.",
+    "expected_topics": ["flower structure", "stamen", "pistil", "petal", "sepal", "plant reproduction"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "clear", "curriculum_aligned"],
+    "expected_learning_outcome": "student identifies flower parts and their functions",
+    "difficulty": "easy"
+  },
+  {
+    "id": "bio-015", "category": "biology", "subject": "plant_biology", "grade_level": 10,
+    "question": "Explain the process of photosynthesis including the light-dependent and light-independent reactions.",
+    "expected_topics": ["photosynthesis", "light reactions", "Calvin cycle", "chloroplast", "chlorophyll"],
+    "required_agents": ["planner", "query_rewriter", "evidence_graph", "tutor"],
+    "expected_answer_traits": ["accurate", "comprehensive", "sequential", "curriculum_aligned"],
+    "expected_learning_outcome": "student explains both phases of photosynthesis",
+    "difficulty": "hard"
+  },
+  {
+    "id": "bio-016", "category": "biology", "subject": "microbiology", "grade_level": 10,
+    "question": "How do bacteria reproduce and what are the main types?",
+    "expected_topics": ["bacteria", "binary fission", "prokaryotes", "microbiology"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "curriculum_aligned", "clear"],
+    "expected_learning_outcome": "student explains binary fission in bacteria",
+    "difficulty": "medium"
+  },
+  {
+    "id": "bio-017", "category": "biology", "subject": "microbiology", "grade_level": 11,
+    "question": "Compare the structure of viruses to bacteria.",
+    "expected_topics": ["viruses", "bacteria", "comparison", "microbiology", "cell structure"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "comparison", "curriculum_aligned"],
+    "expected_learning_outcome": "student distinguishes viruses from bacteria",
+    "difficulty": "medium"
+  },
+  {
+    "id": "bio-018", "category": "biology", "subject": "biochemistry", "grade_level": 11,
+    "question": "What are enzymes and how do they catalyze biochemical reactions?",
+    "expected_topics": ["enzymes", "catalysis", "active site", "substrate", "biochemistry"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "curriculum_aligned", "clear"],
+    "expected_learning_outcome": "student explains enzyme function and catalysis",
+    "difficulty": "hard"
+  },
+  {
+    "id": "bio-019", "category": "biology", "subject": "human_biology", "grade_level": 8,
+    "question": "How do vaccines work to protect the body from disease?",
+    "expected_topics": ["vaccines", "immune system", "antibodies", "immunity"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "curriculum_aligned", "clear"],
+    "expected_learning_outcome": "student explains vaccine mechanism for immunity",
+    "difficulty": "medium"
+  },
+  {
+    "id": "bio-020", "category": "biology", "subject": "ecology", "grade_level": 10,
+    "question": "Explain the nitrogen cycle and its importance to living organisms.",
+    "expected_topics": ["nitrogen cycle", "nitrogen fixation", "nitrification", "denitrification", "ecology"],
+    "required_agents": ["planner", "query_rewriter", "tutor"],
+    "expected_answer_traits": ["accurate", "sequential", "curriculum_aligned"],
+    "expected_learning_outcome": "student explains nitrogen cycle steps and importance",
+    "difficulty": "medium"
+  },
+  {
+    "id": "bio-021", "category": "biology", "subject": "genetics", "grade_level": 10,
+    "question": "How do you use a Punnett square to predict offspring genotypes?",
+    "expected_topics": ["Punnett square", "genotype", "phenotype", "inheritance", "dominant", "recessive"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "curriculum_aligned", "step_by_step"],
+    "expected_learning_outcome": "student can construct and interpret a Punnett square",
+    "difficulty": "medium"
+  },
+  {
+    "id": "bio-022", "category": "biology", "subject": "cell_biology", "grade_level": 8,
+    "question": "Compare diffusion and osmosis.",
+    "expected_topics": ["diffusion", "osmosis", "cell transport", "concentration gradient"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "comparison", "curriculum_aligned"],
+    "expected_learning_outcome": "student distinguishes diffusion from osmosis",
+    "difficulty": "medium"
+  },
+  {
+    "id": "bio-023", "category": "biology", "subject": "evolution", "grade_level": 8,
+    "question": "What is adaptation and how does it help organisms survive?",
+    "expected_topics": ["adaptation", "survival", "natural selection", "evolution"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "curriculum_aligned", "clear"],
+    "expected_learning_outcome": "student explains adaptation as survival mechanism",
+    "difficulty": "easy"
+  },
+  {
+    "id": "bio-024", "category": "biology", "subject": "human_biology", "grade_level": 10,
+    "question": "Compare arteries, veins, and capillaries.",
+    "expected_topics": ["arteries", "veins", "capillaries", "circulatory system", "blood vessels"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "comparison", "curriculum_aligned"],
+    "expected_learning_outcome": "student distinguishes three blood vessel types",
+    "difficulty": "medium"
+  },
+  {
+    "id": "bio-025", "category": "biology", "subject": "biochemistry", "grade_level": 11,
+    "question": "Explain the structure of DNA and how it stores genetic information.",
+    "expected_topics": ["DNA structure", "double helix", "nucleotides", "base pairing", "genetics"],
+    "required_agents": ["planner", "tutor"],
+    "expected_answer_traits": ["accurate", "curriculum_aligned", "clear"],
+    "expected_learning_outcome": "student explains DNA structure and information storage",
+    "difficulty": "hard"
+  }
+]

@@ -3,16 +3,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.agents.tutor_agent import TutorAgent
 from src.api.gamification import XP_SOURCES, award_xp, check_achievements, update_streak
 from src.core.learning_intelligence.tutor.tutor_context_adapter import TutorContextAdapter
 from src.core.memory.context_assembler import ContextAssembler
 from src.core.memory.cross_session_recall import CrossSessionRecall
 from src.core.memory.session_manager import SessionManager
 from src.database.models import User
-from src.database.session import get_session
-from src.llm.router import ModelRouter
-from src.rag.retriever import Retriever
+from src.database.session import async_session_factory, get_session
+from src.graph.orchestrator import run_graph
 from src.schemas.chat import TutorRequest, TutorResponse
 from src.schemas.common import LanguageEnum
 
@@ -26,10 +24,6 @@ context_adapter = TutorContextAdapter()
 
 @router.post("", response_model=TutorResponse)
 async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_session)):
-    router_llm = ModelRouter()
-    retriever = Retriever()
-    agent = TutorAgent(llm_router=router_llm, retriever=retriever)
-
     effective_language = request.language
     if request.user_id and effective_language == LanguageEnum.EN:
         result = await session.execute(
@@ -72,26 +66,27 @@ async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_
             except Exception:
                 logger.warning("tutor_context_build_failed", user_id=str(request.user_id))
 
-        result = await agent.answer(
-            question=request.question,
+        result = await run_graph(
+            user_message=request.question,
             user_id=request.user_id,
             grade_level=request.grade_level,
             topic=request.topic,
             language=effective_language,
-            use_rag=request.use_rag,
-            session=session,
+            preferred_model=request.model,
             socratic_mode=request.socratic_mode,
             hint_level=request.hint_level,
             reveal_answer=request.reveal_answer,
+            session_id=str(mem_session.session_id) if mem_session else None,
             memory_context=memory_context,
             learner_profile_block=learner_profile_block,
             messages=conversation_messages,
+            db_session_factory=async_session_factory,
         )
 
         if mem_session:
             conversation_messages.append({"role": "user", "content": request.question})
-            if result["answer"]:
-                conversation_messages.append({"role": "assistant", "content": result["answer"]})
+            if result.answer:
+                conversation_messages.append({"role": "assistant", "content": result.answer})
             session_manager.set_messages(mem_session, conversation_messages[-20:])
             await CrossSessionRecall().record_turns(
                 user_id=request.user_id,
@@ -115,16 +110,16 @@ async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_
             new_level = gam.level if level_up else 0
             await check_achievements(request.user_id, gam, session)
         return TutorResponse(
-            answer=result["answer"],
-            language=result.get("language", request.language),
-            sources=result.get("sources", []),
-            model_used=result.get("model_used", ""),
-            confidence=result.get("confidence", 0.0),
-            socratic_mode=result.get("socratic_mode", False),
-            hint_level=result.get("hint_level", 0),
-            reveal_answer=result.get("reveal_answer", False),
-            misconception_detected=result.get("misconception_detected", False),
-            misconception_correction=result.get("misconception_correction", ""),
+            answer=result.answer,
+            language=effective_language.value if hasattr(effective_language, 'value') else str(effective_language),
+            sources=result.sources,
+            model_used=result.model_used,
+            confidence=result.confidence,
+            socratic_mode=result.socratic_mode,
+            hint_level=result.hint_level,
+            reveal_answer=result.reveal_answer,
+            misconception_detected=result.misconception_detected,
+            misconception_correction=result.misconception_correction,
             xp_awarded=xp_awarded,
             level_up=level_up,
             new_level=new_level,

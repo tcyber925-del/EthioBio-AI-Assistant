@@ -1,0 +1,97 @@
+[
+  {
+    "id": "fanout-001",
+    "description": "Single source: curriculum-only query",
+    "input_query_groups": {"curriculum": ["What is photosynthesis?"]},
+    "expected_source_count": 1,
+    "expected_correct_routes": ["curriculum"]
+  },
+  {
+    "id": "fanout-002",
+    "description": "Two sources: curriculum + learner profile",
+    "input_query_groups": {
+      "curriculum": ["Explain cell division"],
+      "learner_profile": ["Student mastery on mitosis"]
+    },
+    "expected_source_count": 2,
+    "expected_correct_routes": ["curriculum", "learner_profile"]
+  },
+  {
+    "id": "fanout-003",
+    "description": "Three sources: full remediation scenario",
+    "input_query_groups": {
+      "curriculum": ["Cell transport mechanisms"],
+      "learner_profile": ["Student weak areas"],
+      "misconceptions": ["Common errors on osmosis"]
+    },
+    "expected_source_count": 3,
+    "expected_correct_routes": ["curriculum", "learner_profile", "misconceptions"]
+  },
+  {
+    "id": "fanout-004",
+    "description": "Memory + curriculum",
+    "input_query_groups": {
+      "memory": ["What was discussed about DNA replication"],
+      "curriculum": ["DNA replication process"]
+    },
+    "expected_source_count": 2,
+    "expected_correct_routes": ["memory", "curriculum"]
+  },
+  {
+    "id": "fanout-005",
+    "description": "Curriculum only: simple fact lookup",
+    "input_query_groups": {"curriculum": ["Label parts of a flower"]},
+    "expected_source_count": 1,
+    "expected_correct_routes": ["curriculum"]
+  },
+  {
+    "id": "fanout-006",
+    "description": "Four sources: complex remediation",
+    "input_query_groups": {
+      "curriculum": ["Food webs and trophic levels"],
+      "learner_profile": ["Student quiz history"],
+      "misconceptions": ["Food web misconceptions"],
+      "recommendations": ["Next study actions"]
+    },
+    "expected_source_count": 4,
+    "expected_correct_routes": ["curriculum", "learner_profile", "misconceptions", "recommendations"]
+  },
+  {
+    "id": "fanout-007",
+    "description": "Curriculum + memory comparison",
+    "input_query_groups": {
+      "curriculum": ["Arteries vs veins structure"],
+      "memory": ["Previous discussion on circulatory system"]
+    },
+    "expected_source_count": 2,
+    "expected_correct_routes": ["curriculum", "memory"]
+  },
+  {
+    "id": "fanout-008",
+    "description": "Curriculum + learner for personalization",
+    "input_query_groups": {
+      "curriculum": ["Natural selection concepts"],
+      "learner_profile": ["Student grade level and mastery"]
+    },
+    "expected_source_count": 2,
+    "expected_correct_routes": ["curriculum", "learner_profile"]
+  },
+  {
+    "id": "fanout-009",
+    "description": "Single source: misconceptions lookup",
+    "input_query_groups": {"misconceptions": ["Evolution misconceptions"]},
+    "expected_source_count": 1,
+    "expected_correct_routes": ["misconceptions"]
+  },
+  {
+    "id": "fanout-010",
+    "description": "Three sources: HIV immune response",
+    "input_query_groups": {
+      "curriculum": ["Immune system and HIV"],
+      "learner_profile": ["Student prior knowledge on diseases"],
+      "recommendations": ["Related topics to review"]
+    },
+    "expected_source_count": 3,
+    "expected_correct_routes": ["curriculum", "learner_profile", "recommendations"]
+  }
+]
