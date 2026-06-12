@@ -1,17 +1,17 @@
 """
-EthioBio AI Assistant — Curriculum Ingestion Script (Docling + OCR)
+EthioBio AI Assistant — Curriculum Ingestion Script (PyMuPDF + OCR)
 
 Scans data/textbooks/ for PDF files organized by grade,
-extracts text with Docling (full-page OCR to bypass font encoding issues),
+extracts text with PyMuPDF (best quality for Ethiopian curriculum PDFs),
 chunks using HybridChunker for token-aware RAG-optimized chunks,
 embeds them, and stores in ChromaDB for retrieval.
 
 Usage:
-    python scripts/ingest_curriculum.py                          # Ingest all files with Docling OCR
-    python scripts/ingest_curriculum.py --stats                  # Show store stats
-    python scripts/ingest_curriculum.py --query "What is cell?"  # Test retrieval
-    python scripts/ingest_curriculum.py --clear                  # Clear all vectors
-    python scripts/ingest_curriculum.py --use-pymupdf            # Use PyMuPDF instead of Docling
+    python scripts/ingest_curriculum.py                               # Ingest all files with PyMuPDF
+    python scripts/ingest_curriculum.py --stats                       # Show store stats
+    python scripts/ingest_curriculum.py --query "What is cell?"       # Test retrieval
+    python scripts/ingest_curriculum.py --clear                       # Clear all vectors
+    python scripts/ingest_curriculum.py --use-docling                 # Use Docling instead of PyMuPDF
 """
 
 import argparse
@@ -30,15 +30,15 @@ TEXTBOOKS_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "textbooks
 SUPPORTED_EXTENSIONS = (".pdf", ".docx", ".txt")
 
 
-def extract_text_from_pdf(filepath: str, use_docling: bool = True) -> list[dict]:
+def extract_text_from_pdf(filepath: str, use_pymupdf: bool = True) -> list[dict]:
     """Extract text from a PDF file.
 
-    Uses Docling with full-page OCR by default to bypass font encoding issues.
-    Falls back to PyMuPDF if use_docling=False.
+    Uses PyMuPDF by default (best quality for Ethiopian curriculum PDFs).
+    Falls back to Docling+OCR if use_pymupdf=False.
     """
-    if use_docling:
-        return _extract_with_docling(filepath)
-    return _extract_with_pymupdf(filepath)
+    if use_pymupdf:
+        return _extract_with_pymupdf(filepath)
+    return _extract_with_docling(filepath)
 
 
 def _extract_with_docling(filepath: str) -> list[dict]:
@@ -86,6 +86,25 @@ def _is_garbled(text: str, alpha_threshold: float = 0.40) -> bool:
         return False
     alpha = sum(1 for c in text if c.isalpha())
     return (alpha / len(text)) < alpha_threshold
+
+
+def _contains_control_chars(text: str) -> bool:
+    """Detect binary control characters (non-printable, non-whitespace) in text.
+
+    Returns True if the text contains characters likely from PDF encoding issues.
+    """
+    for c in text:
+        cp = ord(c)
+        if cp < 0x20 and cp not in (0x09, 0x0A, 0x0C, 0x0D):
+            return True
+        if 0x7F <= cp <= 0x9F:
+            return True
+    return False
+
+
+def _strip_control_chars(text: str) -> str:
+    """Remove binary control characters from text."""
+    return "".join(c for c in text if c.isprintable() or c in "\n\t\r")
 
 
 def _extract_with_ocr(filepath: str, page_numbers: list[int] | None = None) -> list[dict]:
@@ -165,21 +184,28 @@ def detect_grade_from_path(filepath: str) -> int:
 
 
 def _extract_unit(text: str) -> str:
-    """Extract unit name from text (e.g. 'Unit 3: Biochemical Molecules')."""
-    # Match unit header at start of line or after newline
-    # Unit name ends at newline, tab, or after ~60 chars
-    match = re.search(r"(?:^|\n)\s*Unit\s+(\d+):\s*([A-Z][^\n\t]{3,60})", text)
+    """Extract unit name from text (e.g. 'Unit 3: Biochemical Molecules' or 'UNIT FOUR GENETICS')."""
+    # Match "Unit N: Title" (standard form)
+    match = re.search(r"(?:^|\n)\s*Unit\s+(\d+):\s*([A-Z][^\n\t]{3,60})", text, re.IGNORECASE)
     if match:
         name = match.group(2).strip()
-        # Reject TOC entries: contain section refs like '1.1', '1.2', or page numbers
         if re.search(r'\d+\.\d+', name):
             return ""
         if re.search(r'\b\d{2,}\b', name):
             return ""
-        # Clean up: remove trailing whitespace/garbage
         name = re.split(r'\s{2,}|\t|•', name)[0].strip()
         if len(name) < 80 and len(name) > 3:
             return f"Unit {match.group(1)}: {name}"
+    # Match "UNIT N WORD" (uppercase word form, e.g. "UNIT FOUR GENETICS")
+    match = re.search(r"(?:^|\n)\s*UNIT\s+([A-Z]+)\s+([A-Z][A-Z\s]{3,60})(?:\n|$)", text)
+    if match:
+        num_word = match.group(1)
+        name = match.group(2).strip()
+        if name and not re.search(r'\d+\.\d+', name):
+            num_map = {"ONE": 1, "TWO": 2, "THREE": 3, "FOUR": 4, "FIVE": 5,
+                       "SIX": 6, "SEVEN": 7, "EIGHT": 8, "NINE": 9, "TEN": 10}
+            num = num_map.get(num_word.upper(), 0)
+            return f"Unit {num}: {name.title()}" if num else ""
     return ""
 
 
@@ -197,6 +223,26 @@ def _extract_topic(text: str) -> str:
     return ""
 
 
+_SECTION_RE = re.compile(r"(?:^|\n)\s*(\d+\.\d+)(?!\.\d)\s+([A-Z][^\n]{3,80})")
+_SUBTOPIC_RE = re.compile(r"(?:^|\n)\s*(\d+\.\d+\.\d+)\s+([A-Z][^\n]{3,80})")
+
+
+def _extract_heading_info(text: str) -> tuple[str, str]:
+    """Extract (section, subtopic) from text.
+
+    Section examples: '3.1 Carbohydrates'
+    Subtopic examples: '3.1.1 Monosaccharides'
+    Returns (heading, '') for sections, ('', heading) for subtopics.
+    """
+    m = _SUBTOPIC_RE.search(text)
+    if m:
+        return "", f"{m.group(1)} {m.group(2).strip()}"
+    m = _SECTION_RE.search(text)
+    if m:
+        return f"{m.group(1)} {m.group(2).strip()}", ""
+    return "", ""
+
+
 def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
     """Split text into curriculum-aligned chunks at natural boundaries.
 
@@ -211,7 +257,7 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
 
     header_patterns = [
         r"(?=(?:^|\n)\s*(?:Chapter|Unit|Module)\s+\d+[\.\s:])",
-        r"(?=(?:^|\n)\s*\d+\.\d+\s+[A-Z])",
+        r"(?=(?:^|\n)\s*\d+(?:\.\d+)+\s+[A-Z])",
         r"(?=(?:^|\n)\s*[A-Z][A-Z\s]{5,}(?:\n|$))",
         r"(?=(?:^|\n)\s*Lesson\s+\d+)",
         r"(?=(?:^|\n)\s*Topic\s+\d+)",
@@ -227,6 +273,8 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
         paragraphs = re.split(r"\n\s*\n", text)
         current_chunk = ""
         current_unit = ""
+        current_section = ""
+        current_subtopic = ""
         current_page = 0
         for para in paragraphs:
             para = para.strip()
@@ -238,6 +286,15 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
                 name = unit_match.group(2).strip()
                 if not re.search(r'\d+\.\d+', name) and not re.search(r'\b\d{2,}\b', name):
                     current_unit = f"Unit {unit_match.group(1)}: {name}"
+                    current_section = ""
+                    current_subtopic = ""
+
+            sec, sub = _extract_heading_info(para)
+            if sec:
+                current_section = sec
+                current_subtopic = ""
+            if sub:
+                current_subtopic = sub
 
             page_match = re.search(r"\[PAGE\s+(\d+)\]", para)
             if page_match:
@@ -252,6 +309,8 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
                     "text": current_chunk.strip(),
                     "heading": _extract_heading(current_chunk),
                     "unit": current_unit,
+                    "section": current_section,
+                    "subtopic": current_subtopic,
                     "topic": _extract_topic(current_chunk),
                     "page_number": current_page,
                 })
@@ -264,12 +323,16 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
                 "text": current_chunk.strip(),
                 "heading": _extract_heading(current_chunk),
                 "unit": current_unit,
+                "section": current_section,
+                "subtopic": current_subtopic,
                 "topic": _extract_topic(current_chunk),
                 "page_number": current_page,
             })
     else:
         sections = re.split(combined_pattern, text)
         current_unit = ""
+        current_section = ""
+        current_subtopic = ""
         current_page = 0
 
         for section in sections:
@@ -281,7 +344,8 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
             unit_match = re.search(r"(?:^|\n)\s*Unit\s+(\d+):\s*([A-Z][^\n\t]{3,60})", section)
             if unit_match:
                 name = unit_match.group(2).strip()
-                # Reject TOC entries: contain section refs, page numbers, or are followed by mostly whitespace/numbers
+                # Reject TOC entries: contain section refs, page numbers, or
+                # are followed by mostly whitespace/numbers
                 if not re.search(r'\d+\.\d+', name) and not re.search(r'\b\d{2,}\b', name):
                     # Check if the section after the unit header has real content (not just TOC)
                     after_unit = section[unit_match.end():unit_match.end()+100].strip()
@@ -290,6 +354,16 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
                         name = re.split(r'\s{2,}|\t|•', name)[0].strip()
                         if len(name) < 80 and len(name) > 3:
                             current_unit = f"Unit {unit_match.group(1)}: {name}"
+                            current_section = ""
+                            current_subtopic = ""
+
+            # Extract section/subtopic from this section's header
+            sec, sub = _extract_heading_info(section)
+            if sec:
+                current_section = sec
+                current_subtopic = ""
+            if sub:
+                current_subtopic = sub
 
             # Extract page number from marker or text
             page_match = re.search(r"\[PAGE\s+(\d+)\]", section)
@@ -321,6 +395,8 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
                             "text": current.strip(),
                             "heading": _extract_heading(current),
                             "unit": current_unit,
+                            "section": current_section,
+                            "subtopic": current_subtopic,
                             "topic": _extract_topic(current),
                             "page_number": current_page,
                         })
@@ -332,6 +408,8 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
                         "text": current.strip(),
                         "heading": _extract_heading(current),
                         "unit": current_unit,
+                        "section": current_section,
+                        "subtopic": current_subtopic,
                         "topic": _extract_topic(current),
                         "page_number": current_page,
                     })
@@ -343,6 +421,8 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
                     "text": section,
                     "heading": _extract_heading(section),
                     "unit": section_unit,
+                    "section": current_section,
+                    "subtopic": current_subtopic,
                     "topic": _extract_topic(section),
                     "page_number": current_page,
                 })
@@ -385,7 +465,7 @@ async def process_file(
     file_info: dict,
     embedder: Embedder,
     store: VectorStore,
-    use_docling: bool = True,
+    use_pymupdf: bool = True,
 ) -> int:
     """Process a single curriculum file: extract, chunk, embed, store."""
     filepath = file_info["filepath"]
@@ -393,12 +473,12 @@ async def process_file(
     source_type = file_info["source_type"]
     filename = file_info["filename"]
 
-    extractor = "Docling+OCR" if use_docling and filepath.endswith(".pdf") else "PyMuPDF"
+    extractor = "PyMuPDF" if use_pymupdf and filepath.endswith(".pdf") else "Docling+OCR"
     print(f"  Processing: Grade {grade}/{filename} ({source_type}) [{extractor}]")
 
     try:
         if filepath.endswith(".pdf"):
-            pages = extract_text_from_pdf(filepath, use_docling=use_docling)
+            pages = extract_text_from_pdf(filepath, use_pymupdf=use_pymupdf)
         elif filepath.endswith(".docx"):
             pages = extract_text_from_docx(filepath)
         elif filepath.endswith(".txt"):
@@ -417,7 +497,8 @@ async def process_file(
     # Chunk per-page to preserve page numbers, then sub-chunk if needed
     all_chunks = []
     for p in pages:
-        page_chunks = chunk_text(p["text"], source_type)
+        cleaned_text = _strip_control_chars(p["text"])
+        page_chunks = chunk_text(cleaned_text, source_type)
         for c in page_chunks:
             c["page_number"] = p["page_number"]
             all_chunks.append(c)
@@ -427,7 +508,34 @@ async def process_file(
         print("    ⚠️  No chunks created")
         return 0
 
-    print(f"    Extracted {len(pages)} pages -> {len(chunks)} chunks")
+    # Filter out garbled chunks: too short, control chars, or low alpha ratio
+    before = len(chunks)
+    filtered_chunks = []
+    for c in chunks:
+        text = c["text"]
+        if len(text) < 80:
+            continue
+        if _is_garbled(text, alpha_threshold=0.50):
+            continue
+        if _contains_control_chars(text):
+            continue
+        filtered_chunks.append(c)
+    chunks = filtered_chunks
+    if before != len(chunks):
+        print(f"    Filtered out {before - len(chunks)} garbled chunks")
+
+    if not chunks:
+        print("    ⚠️  All chunks garbled, skipping file")
+        return 0
+
+    print(f"    Extracted {len(pages)} pages -> {len(chunks)} quality chunks")
+
+    # Post-chunk metadata extraction fallback: extract unit from chunk body
+    for chunk in chunks:
+        if not chunk.get("unit"):
+            chunk["unit"] = _extract_unit(chunk["text"])
+        if not chunk.get("heading"):
+            chunk["heading"] = _extract_heading(chunk["text"])
 
     chunk_texts = [c["text"] for c in chunks]
     metadatas = []
@@ -440,6 +548,8 @@ async def process_file(
             "source_type": source_type,
             "source_file": filename,
             "unit": chunk.get("unit", "") or "",
+            "section": chunk.get("section", "") or "",
+            "subtopic": chunk.get("subtopic", "") or "",
             "topic": chunk.get("topic", "") or "",
             "heading": chunk.get("heading", "") or chunk["text"][:80],
             "page_number": chunk.get("page_number", 0) or 0,
@@ -463,14 +573,25 @@ async def process_file(
 
 
 async def main():
-    parser = argparse.ArgumentParser(description="Ingest curriculum materials into RAG vector store")
-    parser.add_argument("--textbooks-dir", default=TEXTBOOKS_DIR, help="Path to textbooks directory")
+    parser = argparse.ArgumentParser(
+        description="Ingest curriculum materials into RAG vector store"
+    )
+    parser.add_argument(
+        "--textbooks-dir", default=TEXTBOOKS_DIR,
+        help="Path to textbooks directory"
+    )
     parser.add_argument("--clear", action="store_true", help="Clear all vectors before ingestion")
     parser.add_argument("--stats", action="store_true", help="Show store statistics")
     parser.add_argument("--query", type=str, help="Test retrieval with a query string")
     parser.add_argument("--grade", type=int, help="Filter query by grade level")
-    parser.add_argument("--use-pymupdf", action="store_true", help="Use PyMuPDF instead of Docling+OCR")
-    parser.add_argument("--ollama-embed", action="store_true", help="Use Ollama for embeddings instead of local model")
+    parser.add_argument(
+        "--use-docling", action="store_true",
+        help="Use Docling+OCR instead of PyMuPDF"
+    )
+    parser.add_argument(
+        "--ollama-embed", action="store_true",
+        help="Use Ollama for embeddings instead of local model"
+    )
 
     args = parser.parse_args()
 
@@ -507,7 +628,8 @@ async def main():
         print(f"   Retrieved {len(results)} results")
         for i, r in enumerate(results, 1):
             meta = r.get("metadata", {})
-            print(f"\n   [{i}] Grade {meta.get('grade_level', '?')} - {meta.get('source_file', '?')}")
+            src = meta.get('source_file', '?')
+            print(f"\n   [{i}] Grade {meta.get('grade_level', '?')} - {src}")
             print(f"       {r['content'][:150]}...")
             print(f"       Score: {r.get('score', 0.0):.3f}")
         return
@@ -522,11 +644,12 @@ async def main():
         print(f"     {args.textbooks_dir}/Grade9/biology_teachers_guide.docx")
         sys.exit(0)
 
-    use_docling = not args.use_pymupdf
-    print(f"Found {len(files)} files to process (extractor: {'Docling+OCR' if use_docling else 'PyMuPDF'})\n")
+    use_pymupdf = not args.use_docling
+    extractor = 'PyMuPDF' if use_pymupdf else 'Docling+OCR'
+    print(f"Found {len(files)} files to process (extractor: {extractor})\n")
     total_chunks = 0
     for f in files:
-        chunks = await process_file(f, embedder, store, use_docling=use_docling)
+        chunks = await process_file(f, embedder, store, use_pymupdf=use_pymupdf)
         total_chunks += chunks
 
     # Rebuild BM25 index for hybrid search

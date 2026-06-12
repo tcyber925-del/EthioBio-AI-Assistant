@@ -515,28 +515,28 @@ async def reveal_command(update: Update, context):
                 db_session_factory=async_session_factory,
             )
 
-        if memory_user_id and memory_session_id:
-            try:
-                mem_session = (await _mem_db.execute(
-                    select(MemorySession).where(MemorySession.session_id == memory_session_id)
-                )).scalar_one_or_none()
-                if mem_session:
-                    conversation_messages.append({"role": "user", "content": question})
-                    conversation_messages.append({"role": "assistant", "content": result["answer"]})
-                    SessionManager().set_messages(mem_session, conversation_messages[-20:])
-                    await CrossSessionRecall().record_turns(
-                        user_id=memory_user_id,
-                        session_id=mem_session.session_id,
-                        turns=conversation_messages[-2:],
-                        topic=mem_session.active_topic,
-                        db=_mem_db,
-                    )
-                    await _mem_db.commit()
-            except Exception as e:
-                logger.warning("memory_turns_save_error", error=str(e))
+            if memory_user_id and memory_session_id:
+                try:
+                    mem_session = (await _mem_db.execute(
+                        select(MemorySession).where(MemorySession.session_id == memory_session_id)
+                    )).scalar_one_or_none()
+                    if mem_session:
+                        conversation_messages.append({"role": "user", "content": question})
+                        conversation_messages.append({"role": "assistant", "content": result.answer})
+                        SessionManager().set_messages(mem_session, conversation_messages[-20:])
+                        await CrossSessionRecall().record_turns(
+                            user_id=memory_user_id,
+                            session_id=mem_session.session_id,
+                            turns=conversation_messages[-2:],
+                            topic=mem_session.active_topic,
+                            db=_mem_db,
+                        )
+                        await _mem_db.commit()
+                except Exception as e:
+                    logger.warning("memory_turns_save_error", error=str(e))
 
         attempt_msg = t("tutor.hint_usage", _lang(context), count=hint_level) if hint_level > 0 else ""
-        response = result["answer"] + attempt_msg
+        response = result.answer + attempt_msg
         await _reply_long(
             update.message, response,
             reply_markup=hint_keyboard(hint_level, True, language=_lang(context)),
@@ -603,7 +603,7 @@ async def hint_command(update: Update, context):
                 language=context.user_data.get("language", "en"),
                 socratic_mode=False,
                 hint_level=hint_level,
-                reveal_answer=True,
+                reveal_answer=False,
                 memory_context=memory_context,
                 learner_profile_block=learner_profile_block,
                 messages=conversation_messages,
@@ -894,7 +894,6 @@ async def handle_question(update: Update, context):
             result = await run_graph(
                 user_message=question, user_id=memory_user_id,
                 grade_level=context.user_data.pop("tutor_grade", None) or context.user_data.get("grade_level"),
-                topic=str(context.user_data.get("tutor_grade") or context.user_data.get("grade_level") or ""),
                 language=context.user_data.get("language", "en"),
                 socratic_mode=socratic,
                 hint_level=hint_level,
@@ -1658,7 +1657,7 @@ async def handle_hint(update: Update, context):
                 user_message=question, user_id=memory_user_id,
                 grade_level=context.user_data.get("grade_level"),
                 language=context.user_data.get("language", "en"),
-                socratic_mode=context.user_data.get("socratic_mode", True),
+                socratic_mode=context.user_data.get("socratic_mode", False),
                 hint_level=hint_level,
                 reveal_answer=False,
                 memory_context=memory_context,
@@ -1740,28 +1739,28 @@ async def handle_reveal_answer(update: Update, context):
                 db_session_factory=async_session_factory,
             )
 
-        if memory_user_id and memory_session_id:
-            try:
-                mem_session = (await _mem_db.execute(
-                    select(MemorySession).where(MemorySession.session_id == memory_session_id)
-                )).scalar_one_or_none()
-                if mem_session:
-                    conversation_messages.append({"role": "user", "content": question})
-                    conversation_messages.append({"role": "assistant", "content": result["answer"]})
-                    SessionManager().set_messages(mem_session, conversation_messages[-20:])
-                    await CrossSessionRecall().record_turns(
-                        user_id=memory_user_id,
-                        session_id=mem_session.session_id,
-                        turns=conversation_messages[-2:],
-                        topic=mem_session.active_topic,
-                        db=_mem_db,
-                    )
-                    await _mem_db.commit()
-            except Exception as e:
-                logger.warning("memory_turns_save_error", error=str(e))
+            if memory_user_id and memory_session_id:
+                try:
+                    mem_session = (await _mem_db.execute(
+                        select(MemorySession).where(MemorySession.session_id == memory_session_id)
+                    )).scalar_one_or_none()
+                    if mem_session:
+                        conversation_messages.append({"role": "user", "content": question})
+                        conversation_messages.append({"role": "assistant", "content": result.answer})
+                        SessionManager().set_messages(mem_session, conversation_messages[-20:])
+                        await CrossSessionRecall().record_turns(
+                            user_id=memory_user_id,
+                            session_id=mem_session.session_id,
+                            turns=conversation_messages[-2:],
+                            topic=mem_session.active_topic,
+                            db=_mem_db,
+                        )
+                        await _mem_db.commit()
+                except Exception as e:
+                    logger.warning("memory_turns_save_error", error=str(e))
 
         attempt_msg = t("tutor.hint_usage", _lang(context), count=hint_level) if hint_level > 0 else ""
-        response = result["answer"] + attempt_msg
+        response = result.answer + attempt_msg
         await _reply_long(
             reveal_msg, response,
             reply_markup=hint_keyboard(hint_level, True, language=_lang(context)),

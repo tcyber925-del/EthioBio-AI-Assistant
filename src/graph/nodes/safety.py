@@ -1,6 +1,7 @@
 """Safety node — runs self-check on generated content."""
 
 import json
+import re
 
 from src.graph.state import AgentState
 from src.llm.router import ModelRouter
@@ -15,6 +16,82 @@ SAFETY_PROMPT = """You are EthioBio Safety Agent. Review the following biology c
 
 Respond with ONLY a JSON object:
 {{"safe": true/false, "issues": ["issue1"], "score": 0.0-1.0, "suggestions": ["suggestion"]}}"""
+
+# Citation pattern: (Grade X, Unit Y: Title, Section N.N: Name, p. Z)
+CITATION_RE = re.compile(
+    r"\(Grade\s+(\d+).*?Unit\s+(\d+).*?(?:Section\s+([\d.]+))?.*?p\.?\s*(\d+)\)",
+    re.IGNORECASE,
+)
+
+# Quote extraction pattern: "quoted text" (min 10 chars)
+QUOTE_RE = re.compile(r'"([^"]{10,})"')
+
+
+def _normalize(text: str) -> str:
+    """Normalize whitespace and case for quote matching."""
+    return " ".join(text.lower().replace("\n", " ").split())
+
+
+def _collect_source_text(state: AgentState) -> str:
+    """Concatenate all available source text for quote verification."""
+    parts = []
+    if state.context:
+        parts.append(state.context)
+    if state.retrieved_chunks:
+        for chunk in state.retrieved_chunks:
+            content = chunk.get("content", "")
+            if content:
+                parts.append(content)
+    if state.evidence_synthesis:
+        parts.append(state.evidence_synthesis)
+    return "\n".join(parts)
+
+
+def _verify_citations(text: str, grade_level: int | None = None) -> list[str]:
+    """Verify that citations in the response are plausible. Returns list of issues found."""
+    issues = []
+    citations = CITATION_RE.findall(text)
+    for cited_grade, cited_unit, cited_section, cited_page in citations:
+        cited_grade_num = int(cited_grade)
+        if cited_grade_num < 7 or cited_grade_num > 12:
+            issues.append(f"Hallucinated citation: Grade {cited_grade_num} is outside 7-12 range")
+        if grade_level and cited_grade_num != grade_level:
+            issues.append(
+                f"Citation grade mismatch: response cites Grade {cited_grade_num}"
+                f" but student is Grade {grade_level}"
+            )
+        unit_num = int(cited_unit)
+        if unit_num < 1 or unit_num > 20:
+            issues.append(f"Suspicious unit number in citation: Unit {cited_unit}")
+        if cited_section:
+            parts = cited_section.split(".")
+            if len(parts) >= 2:
+                section_unit = parts[0]
+                if section_unit != cited_unit:
+                    issues.append(
+                        f"Section {cited_section} does not belong to Unit {cited_unit}"
+                    )
+    return issues
+
+
+def _verify_verbatim_quotes(response: str, state: AgentState) -> list[str]:
+    """Extract quoted text from response and verify verbatim match in source chunks.
+
+    Normalizes whitespace and case before comparing.
+    Returns list of issues for quotes not found in any source text.
+    """
+    source_text = _collect_source_text(state)
+    if not source_text:
+        return []
+
+    normalized_sources = _normalize(source_text)
+    quotes = QUOTE_RE.findall(response)
+    issues = []
+    for q in quotes:
+        if _normalize(q) not in normalized_sources:
+            truncated = q[:100] + "..." if len(q) > 100 else q
+            issues.append(f"Quote not found in curriculum: \"{truncated}\"")
+    return issues
 
 
 class SafetyNode:
@@ -55,6 +132,22 @@ class SafetyNode:
             state.safe = True
             state.safety_issues = []
             state.safety_score = 1.0
+
+        # Citation verification — catch hallucinated textbook references
+        citation_issues = _verify_citations(state.draft, state.grade_level)
+        if citation_issues:
+            state.safety_issues.extend(citation_issues)
+            state.safety_score = max(0.0, state.safety_score - 0.15 * len(citation_issues))
+            if state.safety_score < 0.6:
+                state.safe = False
+
+        # Verbatim quote verification — catch fabricated quotes
+        quote_issues = _verify_verbatim_quotes(state.draft, state)
+        if quote_issues:
+            state.safety_issues.extend(quote_issues)
+            state.safety_score = max(0.0, state.safety_score - 0.2 * len(quote_issues))
+            if state.safety_score < 0.6:
+                state.safe = False
 
         if not state.safe or state.safety_score < 0.6:
             state.requires_teacher_review = True

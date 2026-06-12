@@ -113,7 +113,7 @@ def build_agentic_graph(
     workflow.add_conditional_edges(
         "claim_verifier",
         route_after_verification,
-        {"finalize": "safety", "revise": "tutor", "reject": "safety"},
+        {"finalize": "safety", "revise": "safety", "reject": "safety"},
     )
 
     workflow.add_edge("safety", END)
@@ -314,7 +314,7 @@ def build_unified_graph(
     workflow.add_conditional_edges(
         "claim_verifier",
         route_after_verification,
-        {"finalize": "safety", "revise": "tutor", "reject": "safety"},
+        {"finalize": "safety", "revise": "safety", "reject": "safety"},
     )
 
     # Safety

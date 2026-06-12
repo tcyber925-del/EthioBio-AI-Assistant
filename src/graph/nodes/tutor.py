@@ -51,16 +51,25 @@ SYSTEM_PROMPT = """You are EthioBio Tutor, an AI biology tutor for Ethiopian mid
 The curriculum is in English. Follow language instructions provided in the user message.
 
 Rules:
-1. Answer biology questions based on the Ethiopian curriculum.
+1. ONLY use the curriculum context provided below. Do NOT use external knowledge.
 2. Adapt explanations to the student's grade level.
-3. When provided with curriculum context, ALWAYS ground your answer in it.
+3. Ground EVERY claim in the provided context. If no supporting context exists for a claim, do NOT make it.
 4. Keep explanations clear, simple, and focused.
 5. If you're unsure, say so clearly rather than guessing.
-6. CITE SOURCES: When using curriculum content, cite the source at the end of each key point using this exact format:
-   (Grade X, Unit Y: Title, p. Z)
-   Example: (Grade 10, Unit 3: Biochemical Molecules, p. 77)
-7. If the curriculum context does not contain enough information to fully answer the question, say what is missing.
-8. If the student's question or reasoning contains a conceptual error, gently point it out and explain why it is incorrect before providing the correct information. Be supportive — never condescending."""
+6. VERBATIM QUOTES: For EVERY key claim, include a DIRECT QUOTE from the curriculum
+   context that supports it. Format:
+   → "verbatim quote from textbook" (Grade X, Unit Y: Title, Section N.N: Name, p. Z)
+   Example: "Carbohydrates are made of carbon, hydrogen, and oxygen" (Grade 10,
+   Unit 3: Biochemical Molecules, Section 3.1: Carbohydrates, p. 77)
+7. NEGATIVE RULE: If you cannot find a direct quote supporting a claim in the provided
+   context, do NOT make that claim. For specific factual claims without supporting
+   quotes, say: "The curriculum does not provide enough information on this topic."
+   For conceptual explanations, you may offer general suggestions framed as such.
+8. If the curriculum context does not contain enough information to fully answer the
+   question, say: "The curriculum does not provide enough information on this topic."
+9. If the student's question or reasoning contains a conceptual error, gently point it
+   out and explain why it is incorrect before providing the correct information.
+   Be supportive — never condescending."""
 
 SOCRATIC_SYSTEM_PROMPT = """You are EthioBio Tutor in Socratic Mode, an AI biology tutor for Ethiopian middle and high school students (Grades 7-12).
 The curriculum is in English. Follow language instructions provided in the user message.
@@ -74,12 +83,17 @@ When a student asks a biology question, your response MUST contain at least one 
 Rules:
 1. DO NOT give direct answers. Ask guiding questions that help the student discover the answer themselves.
 2. Adapt questions to the student's grade level.
-3. When provided with curriculum context, use it to formulate better guiding questions.
+3. ONLY use the curriculum context provided below. Do NOT use external knowledge.
 4. Keep responses brief and focused on the next guiding question.
 5. Praise correct reasoning and gently redirect incorrect assumptions.
-6. If the student is stuck after several exchanges, you may provide a hint to keep them moving.
-7. Always encourage the student to think step by step.
-8. If the student's response contains a conceptual error, gently correct them by explaining why their reasoning is incorrect, then continue with a guiding question. Be supportive — never condescending."""
+6. If you must state a factual claim in your guiding question, support it with a
+   DIRECT QUOTE from the curriculum. Format:
+   "verbatim quote" (Grade X, Unit Y: Title, Section N.N: Name, p. Z)
+7. NEGATIVE RULE: If you cannot find a direct quote supporting a claim, do NOT make
+   that claim. Rephrase as a question instead.
+8. If the student is stuck after several exchanges, you may provide a hint to keep them moving.
+9. Always encourage the student to think step by step.
+10. If the student's response contains a conceptual error, gently correct them by explaining why their reasoning is incorrect, then continue with a guiding question. Be supportive — never condescending."""
 
 HINT_PROMPTS = {
     1: "\n\nThe student has requested a HINT (Level 1). Give a BROAD, general hint that points them in the right direction without giving away the answer. Frame it as a guiding thought or a nudge toward the correct concept.",
@@ -87,7 +101,7 @@ HINT_PROMPTS = {
     3: "\n\nThe student has requested a HINT (Level 3). Give a VERY SPECIFIC hint that leads almost directly to the answer. You may describe the key mechanism or cite the relevant curriculum section, but let the student articulate the final conclusion.",
 }
 
-REVEAL_PROMPT = "\n\nThe student has requested the final answer. Provide the complete correct answer with a full explanation. Cite curriculum sources when available."
+REVEAL_PROMPT = "\n\nThe student has requested the final answer. Provide the complete correct answer with a full explanation. Include verbatim quotes from the [Source X] blocks. Only cite sources from the [Source X] blocks provided above — NEVER invent citations."
 
 
 class TutorNode:
@@ -115,7 +129,12 @@ class TutorNode:
         else:
             lang_context = "Answer in English."
 
-        system = SOCRATIC_SYSTEM_PROMPT if state.socratic_mode else SYSTEM_PROMPT
+        if state.reveal_answer:
+            system = SYSTEM_PROMPT
+        elif state.socratic_mode:
+            system = SOCRATIC_SYSTEM_PROMPT
+        else:
+            system = SYSTEM_PROMPT
 
         if state.learner_profile_block and state.use_learner_awareness:
             system += "\n\n" + state.learner_profile_block
@@ -141,9 +160,35 @@ class TutorNode:
         elif state.hint_level > 0 and state.hint_level in HINT_PROMPTS:
             system += HINT_PROMPTS[state.hint_level]
         if state.evidence_synthesis:
-            system += f"\n\n## Evidence Synthesis\n{state.evidence_synthesis}\n\nUse the above evidence synthesis to ground your answer."
-        elif state.context:
-            system += f"\n\n## Curriculum Context\n{state.context}\n\nUse the above context to ground your answer."
+            system += f"\n\n## Evidence Synthesis\n{state.evidence_synthesis}\n\nUse the above evidence synthesis to ground your answer. "
+            system += "Include verbatim quotes from the [Source X] headers. Cite as (Grade X, Unit Y: Title, Section N.N: Name, p. Z)."
+        if state.context:
+            system += f"\n\n## Curriculum Context\n{state.context}\n\nUse the above context to ground your answer. "
+            system += "Include verbatim quotes from the [Source X] blocks. Cite as (Grade X, Unit Y: Title, Section N.N: Name, p. Z)."
+        elif state.retrieved_chunks:
+            ctx_lines = []
+            for i, chunk in enumerate(state.retrieved_chunks):
+                meta = chunk.get("metadata", {})
+                grade = meta.get("grade_level", "")
+                unit = meta.get("unit", "")
+                section = meta.get("section", "")
+                subtopic = meta.get("subtopic", "")
+                page = meta.get("page_number", 0)
+                hdr = f"[Source {i}]"
+                if grade:
+                    hdr += f" Grade {grade} Biology"
+                if unit:
+                    hdr += f" | {unit}"
+                if section:
+                    hdr += f" | {section}"
+                if subtopic:
+                    hdr += f" | {subtopic}"
+                if page:
+                    hdr += f" | p.{page}"
+                ctx_lines.append(f"{hdr}\n{chunk.get('content', '')}")
+            ctx_str = "\n\n".join(ctx_lines)
+            system += f"\n\n## Curriculum Context\n{ctx_str}\n\nUse the above context to ground your answer. "
+            system += "Include verbatim quotes from the [Source N] blocks. Cite as (Grade X, Unit Y: Title, Section N.N: Name, p. Z)."
 
         user_message = f"[Grade{grade_context}] {lang_context}\n\nStudent question: {state.user_message}"
 

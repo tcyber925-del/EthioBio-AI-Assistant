@@ -28,6 +28,7 @@ from src.graph.nodes.sufficient_context import (
     route_after_sufficiency,
 )
 from src.graph.state import AgentState
+from src.retrieval.adapter import RetrievalResult
 
 # ─── QueryRewriterNode Tests ──────────────────────────────────────────
 
@@ -103,12 +104,10 @@ class TestChunkDeduplication:
     async def test_deduplicate_removes_duplicates(self):
         """Should remove duplicate chunks."""
         mock_adapter = MagicMock()
-        mock_adapter.search.return_value = {
-            "documents": [
-                {"content": "same content", "metadata": {"id": "id1"}, "score": 0.8},
-                {"content": "same content", "metadata": {"id": "id2"}, "score": 0.9},
-            ]
-        }
+        mock_adapter.search = AsyncMock(return_value=[
+            RetrievalResult("same content", {"id": "id1"}, 0.8, source_id=""),
+            RetrievalResult("same content", {"id": "id2"}, 0.9, source_id=""),
+        ])
 
         node = SearchFanoutNode(mock_adapter)
         state = AgentState(
@@ -126,13 +125,11 @@ class TestChunkDeduplication:
     async def test_rank_chunks(self):
         """Should rank chunks by score."""
         mock_adapter = MagicMock()
-        mock_adapter.search.return_value = {
-            "documents": [
-                {"content": "low", "metadata": {"id": "id1"}, "score": 0.3},
-                {"content": "high", "metadata": {"id": "id2"}, "score": 0.9},
-                {"content": "medium", "metadata": {"id": "id3"}, "score": 0.6},
-            ]
-        }
+        mock_adapter.search = AsyncMock(return_value=[
+            RetrievalResult("low", {"id": "id1"}, 0.3, source_id=""),
+            RetrievalResult("high", {"id": "id2"}, 0.9, source_id=""),
+            RetrievalResult("medium", {"id": "id3"}, 0.6, source_id=""),
+        ])
 
         node = SearchFanoutNode(mock_adapter)
         state = AgentState(
@@ -155,11 +152,9 @@ class TestSearchFanoutNode:
     async def test_node_retrieves_chunks(self):
         """Should retrieve and rank chunks via curriculum retriever."""
         mock_adapter = MagicMock()
-        mock_adapter.search.return_value = {
-            "documents": [
-                {"content": "test content", "metadata": {"id": "id1"}, "score": 0.8}
-            ]
-        }
+        mock_adapter.search = AsyncMock(return_value=[
+            RetrievalResult("test content", {"id": "id1"}, 0.8, source_id=""),
+        ])
 
         node = SearchFanoutNode(mock_adapter)
         state = AgentState(user_message="test")
@@ -175,7 +170,7 @@ class TestSearchFanoutNode:
     async def test_node_sets_strategy_and_tasks(self):
         """Should populate retrieval_strategy and retrieval_tasks."""
         mock_adapter = MagicMock()
-        mock_adapter.search.return_value = {"documents": []}
+        mock_adapter.search = AsyncMock(return_value=[])
 
         node = SearchFanoutNode(mock_adapter)
         state = AgentState(
@@ -193,7 +188,7 @@ class TestSearchFanoutNode:
     async def test_node_handles_source_failure_gracefully(self):
         """Should continue when one source fails."""
         mock_adapter = MagicMock()
-        mock_adapter.search.side_effect = Exception("DB down")
+        mock_adapter.search = AsyncMock(side_effect=Exception("DB down"))
 
         node = SearchFanoutNode(mock_adapter)
         state = AgentState(
@@ -500,11 +495,11 @@ class TestClaimVerifierNode:
         node = ClaimVerifierNode(router=AsyncMock())
         state = AgentState(
             user_message="test",
-            draft="Mitosis has four stages: prophase, metaphase, anaphase, telophase.",
+            draft='Mitosis has four stages: "prophase, metaphase, anaphase, and telophase" (Grade 10, Unit 2: Cells, p. 25).',
             evidence_ids=["ev_001"],
         )
         state.context = (
-            "The four stages of mitosis are prophase, metaphase, anaphase, and telophase."
+            "prophase, metaphase, anaphase, and telophase are the four stages of mitosis."
         )
 
         result = await node(state)

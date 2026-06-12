@@ -191,7 +191,11 @@ class VectorStoreAdapter:
             retrieved.append({
                 "content": results["documents"][i],
                 "metadata": results["metadatas"][i] if i < len(results["metadatas"]) else {},
-                "dense_score": 1.0 - results["distances"][i] if i < len(results["distances"]) else 0.0,
+                "dense_score": (
+                    1.0 - results["distances"][i]
+                    if i < len(results["distances"])
+                    else 0.0
+                ),
                 "doc_id": results["ids"][i] if i < len(results["ids"]) else "",
             })
         return retrieved
@@ -271,6 +275,8 @@ class VectorStoreAdapter:
         for i, r in enumerate(results, 1):
             grade = r.metadata.get("grade_level", "")
             unit = r.metadata.get("unit", "")
+            section = r.metadata.get("section", "")
+            subtopic = r.metadata.get("subtopic", "")
             topic = r.metadata.get("topic", "")
             page = r.metadata.get("page_number", 0)
             source_type = r.metadata.get("source_type", "")
@@ -280,6 +286,10 @@ class VectorStoreAdapter:
                 header += f" Grade {grade} Biology"
             if unit:
                 header += f" | {unit}"
+            if section:
+                header += f" | {section}"
+            if subtopic:
+                header += f" | {subtopic}"
             if topic:
                 header += f" | {topic}"
             if page:
@@ -298,9 +308,11 @@ class VectorStoreAdapter:
             char_count += len(entry)
 
         citation_instruction = (
-            "IMPORTANT: When answering, cite the source for each key point using this exact format:\n"
-            "(Grade X, Unit Y: Title, p. Z)\n"
-            "Example: (Grade 10, Unit 3: Biochemical Molecules, p. 77)\n\n"
+            "IMPORTANT: When answering, cite the source for each key point "
+            "using this exact format:\n"
+            "(Grade X, Unit Y: Title, Section N.N: Name, p. Z)\n"
+            "Example: (Grade 10, Unit 3: Biochemical Molecules, "
+            "Section 3.1: Carbohydrates, p. 77)\n\n"
         )
 
         return citation_instruction + "\n\n".join(sections)

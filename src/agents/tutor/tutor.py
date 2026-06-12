@@ -17,7 +17,7 @@ HINT_PROMPTS = {
     3: "\n\nThe student has requested a HINT (Level 3). Give a VERY SPECIFIC hint that leads almost directly to the answer.",
 }
 
-REVEAL_PROMPT = "\n\nThe student has requested the final answer. Provide the complete correct answer with a full explanation. Cite curriculum sources when available."
+REVEAL_PROMPT = "\n\nThe student has requested the final answer. Provide the complete correct answer with a full explanation. Include verbatim quotes from the evidence. Cite curriculum sources when available."
 
 
 class TutorSynthesisAgent:
@@ -61,13 +61,13 @@ class TutorSynthesisAgent:
             system += "\n\n" + personalization
 
         if evidence_synthesis:
-            system += f"\n\n## Evidence Synthesis\n{evidence_synthesis}\n\nUse the above evidence to ground your answer. Cite evidence IDs using [id:<evidence_id>]."
+            system += f"\n\n## Evidence Synthesis\n{evidence_synthesis}\n\nUse the above evidence to ground your answer. Include verbatim quotes from the evidence. Cite evidence IDs using [id:<evidence_id>]."
         elif evidence_items:
             items_text = "\n".join(
                 f"- [{e.get('id', '?')}] {e.get('content', '')[:200]}"
                 for e in evidence_items
             )
-            system += f"\n\n## Evidence Items\n{items_text}\n\nUse the above evidence to ground your answer. Cite evidence IDs using [id:<evidence_id>]."
+            system += f"\n\n## Evidence Items\n{items_text}\n\nUse the above evidence to ground your answer. Include verbatim quotes from the evidence. Cite evidence IDs using [id:<evidence_id>]."
 
         if reveal_answer:
             system += REVEAL_PROMPT

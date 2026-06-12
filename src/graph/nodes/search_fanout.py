@@ -17,7 +17,7 @@ from src.core.learning_intelligence.recommendation.services.service import (
     RecommendationService,
 )
 from src.graph.state import AgentState
-from src.retrieval.adapter import VectorStoreAdapter
+from src.retrieval.adapter import RetrievalFilter, RetrievalResult, VectorStoreAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -42,19 +42,20 @@ class SearchFanoutNode:
         self.agent = SearchFanoutAgent(max_queries=max_queries)
         self.db_session_factory = db_session_factory
 
-    async def _search_curriculum(self, query: str, n_results: int = 5) -> list[dict]:
-        """Search curriculum index via VectorStoreAdapter."""
+    async def _search_curriculum(
+        self, query: str, n_results: int = 8, grade_level: int | None = None
+    ) -> list[dict]:
+        """Search curriculum index via VectorStoreAdapter with grade-level filter."""
         try:
-            results = self.adapter.search(
-                query, n_results=n_results, collection_name="curriculum"
-            )
+            filter_obj = RetrievalFilter(grade_level=grade_level) if grade_level else None
+            results = await self.adapter.search(query, n_results=n_results, filter_obj=filter_obj)
             chunks = []
-            for doc in results.get("documents", []):
+            for doc in results:
                 chunks.append(
                     {
-                        "content": doc.get("content", ""),
-                        "metadata": doc.get("metadata", {}),
-                        "score": doc.get("score", 0.0),
+                        "content": doc.content,
+                        "metadata": doc.metadata,
+                        "score": doc.score,
                         "source": "curriculum",
                     }
                 )
@@ -252,12 +253,12 @@ class SearchFanoutNode:
         return chunks
 
     async def _safe_search(
-        self, source: str, query: str, user_id: Optional[str] = None
+        self, source: str, query: str, user_id: Optional[str] = None, grade_level: int | None = None
     ) -> tuple[str, list[dict]]:
         """Execute a single source search, catching exceptions."""
         try:
             if source == "curriculum":
-                result = await self._search_curriculum(query)
+                result = await self._search_curriculum(query, grade_level=grade_level)
             elif source == "memory":
                 result = await self._search_memory(query, user_id=user_id)
             elif source == "learner":
@@ -282,6 +283,7 @@ class SearchFanoutNode:
 
         # Execute: gather unique (source, query) pairs in parallel
         user_id = str(state.user_id) if state.user_id else None
+        grade_level = state.grade_level
         seen = set()
         search_coros = []
         for task in tasks:
@@ -289,7 +291,10 @@ class SearchFanoutNode:
             if key not in seen:
                 seen.add(key)
                 search_coros.append(
-                    self._safe_search(task.target_source, task.query, user_id=user_id)
+                    self._safe_search(
+                        task.target_source, task.query,
+                        user_id=user_id, grade_level=grade_level
+                    )
                 )
 
         raw_results = await asyncio.gather(*search_coros, return_exceptions=True)
@@ -317,6 +322,29 @@ class SearchFanoutNode:
                 seen_content.add(content)
                 deduplicated.append(chunk)
 
+        # Filter out garbled chunks
+        quality_filtered = []
+        for chunk in deduplicated:
+            text = chunk.get("content", "")
+            if not text or len(text) < 30:
+                continue
+            alpha = sum(1 for c in text if c.isalpha())
+            if (alpha / len(text)) < 0.40:
+                continue
+            has_control = False
+            for c in text:
+                cp = ord(c)
+                if cp < 0x20 and cp not in (0x09, 0x0A, 0x0C, 0x0D):
+                    has_control = True
+                    break
+                if 0x7F <= cp <= 0x9F:
+                    has_control = True
+                    break
+            if has_control:
+                continue
+            quality_filtered.append(chunk)
+        deduplicated = quality_filtered or deduplicated[:2]
+
         # Rank by score
         ranked = sorted(
             deduplicated, key=lambda x: x.get("score", 0), reverse=True
@@ -327,6 +355,31 @@ class SearchFanoutNode:
         state.retrieval_tasks = [t.model_dump() for t in tasks]
         state.retrieval_strategy = strategy.model_dump()
         state.retrieval_source_results = source_results
+
+        # Also set formatted context string for tutor
+        curriculum_chunks = [c for c in ranked if c.get("source") == "curriculum"]
+        if curriculum_chunks:
+            results = [
+                RetrievalResult(
+                    content=c["content"],
+                    metadata=c.get("metadata", {}),
+                    score=c.get("score", 0),
+                    source_id=c.get("source_id", "curriculum"),
+                )
+                for c in curriculum_chunks
+            ]
+            state.context = self.adapter.format_context(results)
+        elif ranked:
+            results = [
+                RetrievalResult(
+                    content=c["content"],
+                    metadata=c.get("metadata", {}),
+                    score=c.get("score", 0),
+                    source_id=c.get("source_id", c.get("source", "unknown")),
+                )
+                for c in ranked
+            ]
+            state.context = self.adapter.format_context(results)
 
         # Coverage score
         if ranked:

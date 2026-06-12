@@ -5,6 +5,7 @@ Routes to revise/reject/finalize based on groundedness score.
 """
 
 import logging
+import re
 from dataclasses import dataclass
 
 from src.graph.state import AgentState
@@ -19,6 +20,9 @@ VERIFICATION_THRESHOLDS = {
     "partial_threshold": 0.6,
 }
 
+QUOTE_RE = re.compile(r'"([^"]{10,})"')
+CITATION_ID_RE = re.compile(r'\[id:([^\]]+)\]')
+
 
 @dataclass
 class Claim:
@@ -31,11 +35,27 @@ class Claim:
     confidence: float = 0.0
 
 
-def extract_claims_simple(response: str) -> list[Claim]:
-    """Extract claims from response using simple heuristics.
+def _normalize(text: str) -> str:
+    return " ".join(text.lower().replace("\n", " ").split())
 
-    Phase 1+: Use LLM for claim extraction.
-    """
+
+def _collect_source_text(state: AgentState) -> str:
+    """Concatenate all available source text for quote verification."""
+    parts = []
+    if state.context:
+        parts.append(state.context)
+    if state.retrieved_chunks:
+        for chunk in state.retrieved_chunks:
+            content = chunk.get("content", "")
+            if content:
+                parts.append(content)
+    if state.evidence_synthesis:
+        parts.append(state.evidence_synthesis)
+    return "\n".join(parts)
+
+
+def extract_claims_simple(response: str) -> list[Claim]:
+    """Extract claims from response using simple heuristics."""
     claims = []
 
     # Simple claim extraction based on sentence structure
@@ -63,20 +83,47 @@ def extract_claims_simple(response: str) -> list[Claim]:
     return claims
 
 
-def verify_claims_against_evidence(claims: list[Claim], evidence_ids: list[str]) -> list[Claim]:
-    """Verify claims against evidence IDs.
+def verify_claims_against_evidence(
+    claims: list[Claim],
+    evidence_ids: list[str],
+    source_text: str,
+) -> list[Claim]:
+    """Verify claims against evidence using verbatim quotes and citation IDs.
 
-    Phase 1+: Use semantic similarity for verification.
+    A claim is grounded if:
+    1. It contains a verbatim quote found in the source text, OR
+    2. It contains a [id:...] citation whose ID exists in evidence_ids
     """
-    if not evidence_ids:
+    if not evidence_ids and not source_text:
         return claims
+
+    normalized_sources = _normalize(source_text) if source_text else ""
 
     verified_count = 0
     for claim in claims:
-        if evidence_ids:
+        grounded = False
+        found_id = None
+
+        # Check 1: verbatim quote in source text
+        quotes = QUOTE_RE.findall(claim.text)
+        for q in quotes:
+            if _normalize(q) in normalized_sources:
+                grounded = True
+                break
+
+        # Check 2: citation ID in evidence_ids
+        if not grounded:
+            cited_ids = CITATION_ID_RE.findall(claim.text)
+            for cid in cited_ids:
+                if cid in evidence_ids:
+                    grounded = True
+                    found_id = cid
+                    break
+
+        if grounded:
             claim.is_grounded = True
-            claim.evidence_id = evidence_ids[0]
-            claim.confidence = 0.8
+            claim.evidence_id = found_id or (evidence_ids[0] if evidence_ids else None)
+            claim.confidence = 0.85
             verified_count += 1
 
     logger.info("claims_verified", total=len(claims), grounded=verified_count)
@@ -95,8 +142,8 @@ def calculate_groundedness(claims: list[Claim]) -> float:
 class ClaimVerifierNode:
     """Verifies claims in the tutor's draft response against evidence.
 
-    Phase 0: Always finalize.
-    Phase 1: Extract claims, verify against evidence, route based on groundedness.
+    Extract claims, verify verbatim quotes against source chunks and citation
+    IDs against evidence_ids, then route based on groundedness score.
     """
 
     def __init__(self, router: ModelRouter):
@@ -121,8 +168,11 @@ class ClaimVerifierNode:
         # Extract claims
         claims = extract_claims_simple(draft)
 
+        # Collect source text for quote verification
+        source_text = _collect_source_text(state)
+
         # Verify against evidence
-        verified_claims = verify_claims_against_evidence(claims, state.evidence_ids)
+        verified_claims = verify_claims_against_evidence(claims, state.evidence_ids, source_text)
 
         # Calculate groundedness
         groundedness = calculate_groundedness(verified_claims)
