@@ -3,10 +3,20 @@
 import re
 
 from src.graph.state import AgentState
-from src.retrieval.adapter import RetrievalFilter, VectorStoreAdapter
+from src.retrieval.adapter import RetrievalFilter, RetrievalResult, VectorStoreAdapter
 
 
 N_RESULTS = 8
+
+# Front-matter offset: PDF page number - textbook page number per grade
+# Each textbook PDF has N front-matter pages (cover, copyright, TOC) before
+# the printed textbook page 1 begins. Subtract this offset when displaying.
+PAGE_OFFSET = {9: 7, 10: 6, 11: 10, 12: 5}
+
+
+def _correct_page(page_number: int, grade_level: int) -> int:
+    offset = PAGE_OFFSET.get(grade_level, 0)
+    return max(1, page_number - offset)
 
 
 def _is_quality_content(text: str) -> bool:
@@ -90,11 +100,25 @@ class RetrievalNode:
         # Sort by relevance score so best content fits in format_context's 4000-char budget
         quality_results.sort(key=lambda r: r.score, reverse=True)
 
+        # Correct page numbers for front-matter offset and build final output
+        corrected_results = []
+        for r in quality_results:
+            meta = dict(r.metadata)
+            grade = meta.get("grade_level", 0)
+            if "page_number" in meta:
+                meta["page_number"] = _correct_page(meta["page_number"], grade)
+            corrected_results.append(
+                RetrievalResult(
+                    content=r.content, metadata=meta,
+                    score=r.score, source_id=r.source_id,
+                )
+            )
+
         state.retrieved_chunks = [
             {"content": r.content, "metadata": r.metadata, "score": r.score, "source_id": r.source_id}
-            for r in quality_results
+            for r in corrected_results
         ]
-        state.context = self.adapter.format_context(quality_results)
+        state.context = self.adapter.format_context(corrected_results)
 
         return state
 
