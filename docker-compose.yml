@@ -41,6 +41,8 @@ services:
       DATABASE_URL: postgresql+asyncpg://ethiobio:ethiobio_pass@postgres:5432/ethiobio
       REDIS_URL: redis://redis:6379/0
       OLLAMA_BASE_URL: http://ollama:11434
+    volumes:
+      - ./data:/app/data
     command: python -m src.telegram.bot
 
   postgres:

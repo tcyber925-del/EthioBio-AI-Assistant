@@ -123,7 +123,7 @@ class VectorStoreAdapter:
         grade_level = filter_obj.grade_level if filter_obj else None
         source_type = filter_obj.source_type if filter_obj else None
 
-        fetch_k = max(n_results * 5, 20)
+        fetch_k = max(n_results * 2, 10)
 
         dense_results = await self._dense_search_raw(query, fetch_k, filter_obj)
         bm25_results = self._bm25_search_raw(query, fetch_k, grade_level, source_type)

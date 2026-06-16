@@ -57,9 +57,9 @@ class RetrievalNode:
         r1 = await self.adapter.search(query, n_results=N_RESULTS, filter_obj=filter_obj)
         search_rounds.append((r1, "exact"))
 
-        # Round 2: neighboring grades (always, when grade is set)
+        # Round 2: nearest neighboring grades only (±1, not ±2)
         if state.grade_level:
-            for offset in [1, -1, 2, -2]:
+            for offset in [1, -1]:
                 adj_grade = state.grade_level + offset
                 if adj_grade < 7 or adj_grade > 12:
                     continue

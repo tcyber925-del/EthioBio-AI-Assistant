@@ -37,7 +37,6 @@ SIMPLE_PATTERNS = [
 
 # Patterns that suggest the query is complex (planning likely needed)
 COMPLEX_PATTERNS = [
-    r"\bcompare\b.*\band\b",
     r"\bwhy do i\b",
     r"\bwhy did i\b",
     r"\bwhy do i keep\b",
@@ -98,16 +97,12 @@ def detect_requires_multi_hop(user_message: str) -> bool:
     """Check if the query requires multi-hop reasoning."""
     msg_lower = user_message.lower()
     multi_hop_signals = [
-        r"\bcompare\b",
         r"\brelate\b",
         r"\bhow does.*affect\b",
         r"\bhow does.*relate\b",
         r"\bconnect\b",
         r"\bexplain why\b",
         r"\banalyze\b",
-        r"\bsimilarities\b",
-        r"\bdifferences\b",
-        r"\bcontrasting\b",
     ]
     return any(re.search(p, msg_lower) for p in multi_hop_signals)
 

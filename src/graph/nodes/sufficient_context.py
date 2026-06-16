@@ -142,10 +142,11 @@ class SufficientContextNode:
 def route_after_sufficiency(state: AgentState) -> str:
     """Route after sufficiency evaluation.
 
-    When controller says STOP (any termination reason), route to synthesis.
-    Otherwise route based on gap severity.
-    - Minor gap -> rewrite (back to plan_executor)
-    - Major gap -> replan (back to planner)
+    Priority:
+    1. Controller says STOP (max iterations, no progress, no new evidence) → synthesis
+    2. Sufficiency score >= threshold → synthesis (evidence is good enough)
+    3. Minor gap → rewrite (back to plan_executor)
+    4. Major gap → replan (back to planner)
 
     Returns:
         "synthesis" if stopped or sufficient,
@@ -153,6 +154,9 @@ def route_after_sufficiency(state: AgentState) -> str:
         "replan" for major gaps.
     """
     if not state.requires_iteration:
+        return "synthesis"
+
+    if state.sufficiency_score >= SUFFICIENCY_THRESHOLD:
         return "synthesis"
 
     if len(state.missing_information) < REPLAN_MISSING_THRESHOLD:

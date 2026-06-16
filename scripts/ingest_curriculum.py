@@ -12,6 +12,7 @@ Usage:
     python scripts/ingest_curriculum.py --query "What is cell?"       # Test retrieval
     python scripts/ingest_curriculum.py --clear                       # Clear all vectors
     python scripts/ingest_curriculum.py --use-docling                 # Use Docling instead of PyMuPDF
+    python scripts/ingest_curriculum.py --use-easyocr                 # Use EasyOCR (English only, best for garbled PDFs)
 """
 
 import argparse
@@ -30,12 +31,23 @@ TEXTBOOKS_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "textbooks
 SUPPORTED_EXTENSIONS = (".pdf", ".docx", ".txt")
 
 
-def extract_text_from_pdf(filepath: str, use_pymupdf: bool = True) -> list[dict]:
+def extract_text_from_pdf(
+    filepath: str,
+    use_pymupdf: bool = True,
+    use_tesseract: bool = False,
+    use_easyocr: bool = False,
+) -> list[dict]:
     """Extract text from a PDF file.
 
     Uses PyMuPDF by default (best quality for Ethiopian curriculum PDFs).
     Falls back to Docling+OCR if use_pymupdf=False.
+    Uses Tesseract with English+Ethiopic if use_tesseract=True.
+    Uses EasyOCR (English only) if use_easyocr=True.
     """
+    if use_easyocr:
+        return _extract_with_easyocr(filepath)
+    if use_tesseract:
+        return _extract_with_tesseract(filepath)
     if use_pymupdf:
         return _extract_with_pymupdf(filepath)
     return _extract_with_docling(filepath)
@@ -153,6 +165,89 @@ def _extract_with_pymupdf(filepath: str) -> list[dict]:
     return pages
 
 
+def _extract_with_easyocr(filepath: str, dpi: int = 100) -> list[dict]:
+    """Extract text using EasyOCR (English only, no Amharic model available).
+
+    Renders each page at 100 DPI by default (balance of speed vs quality),
+    converts to numpy array, and runs EasyOCR readtext with paragraph mode.
+    Times on CPU: ~63s/page at 100 DPI, ~135s at 150 DPI.
+
+    EasyOCR 1.7.2 has no Amharic recognition model (character file exists
+    but no trained .pth). English-only extraction is high quality.
+    """
+    import numpy as np
+    from PIL import Image
+    import fitz
+
+    import easyocr
+    reader = easyocr.Reader(["en"], gpu=False, verbose=False)
+
+    doc = fitz.open(filepath)
+    total = len(doc)
+    results = []
+
+    for i in range(total):
+        print(f"    Page {i+1}/{total}...", end=" ", flush=True)
+        pix = doc[i].get_pixmap(dpi=dpi)
+        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+        img_np = np.array(img)
+
+        text_blocks = reader.readtext(img_np, paragraph=True, detail=0)
+        text = " ".join(text_blocks).strip()
+        if text:
+            results.append({"text": text, "page_number": i + 1})
+            print(f"{len(text)} chars", flush=True)
+        else:
+            print("(empty)", flush=True)
+
+    doc.close()
+    return results
+
+
+def _preprocess_for_tesseract(image):
+    """Preprocess a PIL image for better Tesseract accuracy."""
+    from PIL import Image, ImageEnhance, ImageFilter
+
+    img = image.convert("L")
+    img = ImageEnhance.Contrast(img).enhance(1.5)
+    img = img.filter(ImageFilter.SHARPEN)
+    img = img.point(lambda x: 0 if x < 128 else 255, "1")
+    return img
+
+
+def _extract_with_tesseract(filepath: str) -> list[dict]:
+    """Extract text using Tesseract with English+Ethiopic language support.
+
+    Renders each page at 300 DPI, preprocesses the image, and runs
+    Tesseract with LSTM+Legacy engine and English+Ethiopic script.
+    Supports mixed English and Amharic text content.
+    """
+    import pypdfium2 as pdfium
+    import pytesseract
+    from PIL import Image
+
+    tess_config = "--oem 3 --psm 3 -l eng+script/Ethiopic"
+    doc = pdfium.PdfDocument(filepath)
+    results = []
+
+    print(f"    Tesseract OCR: {len(doc)} pages at 300 DPI...")
+    for i in range(len(doc)):
+        page = doc[i]
+        bitmap = page.render(scale=300 / 72)
+        pil_image = bitmap.to_pil()
+
+        processed = _preprocess_for_tesseract(pil_image)
+        text = pytesseract.image_to_string(processed, config=tess_config).strip()
+
+        if text:
+            results.append({"text": text, "page_number": i + 1})
+
+    doc.close()
+    print(f"    Tesseract complete: {len(results)} pages with text")
+    return results
+    return pages
+
+
 def extract_text_from_docx(filepath: str) -> list[dict]:
     """Extract text from a DOCX file using python-docx."""
     from docx import Document
@@ -183,22 +278,25 @@ def detect_grade_from_path(filepath: str) -> int:
     return 0
 
 
+_ROMAN_MAP = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5,
+              "VI": 6, "VII": 7, "VIII": 8, "IX": 9, "X": 10}
+
 def _extract_unit(text: str) -> str:
-    """Extract unit name from text (e.g. 'Unit 3: Biochemical Molecules' or 'UNIT FOUR GENETICS')."""
-    # Match "Unit N: Title" (standard form)
-    match = re.search(r"(?:^|\n)\s*Unit\s+(\d+):\s*([A-Z][^\n\t]{3,60})", text, re.IGNORECASE)
-    if match:
+    """Extract unit name from text (e.g. 'Unit 3: Biochemical Molecules', 'Unit I: Sub-fields of Biology')."""
+    # Match "Unit N: Title" — capture capitalized title words, allowing hyphens and short prepositions
+    match = re.search(r"\bUnit\s+(\d+|[IVXLCDM]+):\s*([A-Z][A-Za-z\-]*(?:\s+(?:[A-Z][A-Za-z\-]*|[a-z]{2,4})){0,8})", text, re.IGNORECASE)
+    if match and match.start() < 200:
+        num_str = match.group(1)
         name = match.group(2).strip()
-        if re.search(r'\d+\.\d+', name):
+        if re.search(r'\d+\.\d+', name) or re.search(r'\b\d{2,}\b', name):
             return ""
-        if re.search(r'\b\d{2,}\b', name):
-            return ""
-        name = re.split(r'\s{2,}|\t|•', name)[0].strip()
-        if len(name) < 80 and len(name) > 3:
-            return f"Unit {match.group(1)}: {name}"
+        name = re.sub(r'\s+', ' ', name).strip()
+        if 4 < len(name) < 80:
+            num = _roman_to_int(num_str.upper()) if num_str.isalpha() else int(num_str)
+            return f"Unit {num}: {name}" if num else ""
     # Match "UNIT N WORD" (uppercase word form, e.g. "UNIT FOUR GENETICS")
-    match = re.search(r"(?:^|\n)\s*UNIT\s+([A-Z]+)\s+([A-Z][A-Z\s]{3,60})(?:\n|$)", text)
-    if match:
+    match = re.search(r"\bUNIT\s+([A-Z]+)\s+([A-Z][A-Z\s]{3,60})", text)
+    if match and match.start() < 200:
         num_word = match.group(1)
         name = match.group(2).strip()
         if name and not re.search(r'\d+\.\d+', name):
@@ -207,6 +305,21 @@ def _extract_unit(text: str) -> str:
             num = num_map.get(num_word.upper(), 0)
             return f"Unit {num}: {name.title()}" if num else ""
     return ""
+
+
+def _roman_to_int(s: str) -> int:
+    """Convert Roman numeral string to integer. Returns 0 on invalid input."""
+    values = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100, "D": 500, "M": 1000}
+    total = 0
+    prev = 0
+    for c in reversed(s):
+        val = values.get(c, 0)
+        if val < prev:
+            total -= val
+        else:
+            total += val
+        prev = val
+    return total
 
 
 def _extract_topic(text: str) -> str:
@@ -281,7 +394,7 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
             if not para:
                 continue
 
-            unit_match = re.search(r"Unit\s+(\d+):\s*([A-Z][^\n]{3,60})", para)
+            unit_match = re.search(r"Unit\s+(\d+|[IVXLCDM]+):\s*([A-Z][^\n]{3,60})", para)
             if unit_match:
                 name = unit_match.group(2).strip()
                 if not re.search(r'\d+\.\d+', name) and not re.search(r'\b\d{2,}\b', name):
@@ -341,7 +454,7 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
                 continue
 
             # Extract unit from this section's header
-            unit_match = re.search(r"(?:^|\n)\s*Unit\s+(\d+):\s*([A-Z][^\n\t]{3,60})", section)
+            unit_match = re.search(r"(?:^|\n)\s*Unit\s+(\d+|[IVXLCDM]+):\s*([A-Z][^\n\t]{3,60})", section)
             if unit_match:
                 name = unit_match.group(2).strip()
                 # Reject TOC entries: contain section refs, page numbers, or
@@ -466,6 +579,8 @@ async def process_file(
     embedder: Embedder,
     store: VectorStore,
     use_pymupdf: bool = True,
+    use_tesseract: bool = False,
+    use_easyocr: bool = False,
 ) -> int:
     """Process a single curriculum file: extract, chunk, embed, store."""
     filepath = file_info["filepath"]
@@ -473,12 +588,19 @@ async def process_file(
     source_type = file_info["source_type"]
     filename = file_info["filename"]
 
-    extractor = "PyMuPDF" if use_pymupdf and filepath.endswith(".pdf") else "Docling+OCR"
+    if use_easyocr:
+        extractor = "EasyOCR"
+    elif use_tesseract:
+        extractor = "Tesseract+Ethiopic"
+    elif use_pymupdf and filepath.endswith(".pdf"):
+        extractor = "PyMuPDF"
+    else:
+        extractor = "Docling+OCR"
     print(f"  Processing: Grade {grade}/{filename} ({source_type}) [{extractor}]")
 
     try:
         if filepath.endswith(".pdf"):
-            pages = extract_text_from_pdf(filepath, use_pymupdf=use_pymupdf)
+            pages = extract_text_from_pdf(filepath, use_pymupdf=use_pymupdf, use_tesseract=use_tesseract, use_easyocr=use_easyocr)
         elif filepath.endswith(".docx"):
             pages = extract_text_from_docx(filepath)
         elif filepath.endswith(".txt"):
@@ -589,6 +711,14 @@ async def main():
         help="Use Docling+OCR instead of PyMuPDF"
     )
     parser.add_argument(
+        "--use-tesseract", action="store_true",
+        help="Use Tesseract OCR with English+Ethiopic support (best for mixed Amharic/English PDFs)"
+    )
+    parser.add_argument(
+        "--use-easyocr", action="store_true",
+        help="Use EasyOCR (English only, no Amharic model). Best for garbled English PDFs."
+    )
+    parser.add_argument(
         "--ollama-embed", action="store_true",
         help="Use Ollama for embeddings instead of local model"
     )
@@ -604,9 +734,15 @@ async def main():
     store = VectorStore()
 
     if args.clear:
-        print("Clearing existing vectors...")
-        await store.delete_collection()
-        print("   Cleared.")
+        if args.grade:
+            print(f"Clearing vectors for Grade {args.grade} only...")
+            coll = store._get_collection()
+            coll.delete(where={"grade_level": args.grade})
+            print("   Cleared.")
+        else:
+            print("Clearing all existing vectors...")
+            await store.delete_collection()
+            print("   Cleared.")
 
     if args.stats:
         count = store.count()
@@ -636,6 +772,10 @@ async def main():
 
     files = scan_files(args.textbooks_dir)
 
+    if args.grade:
+        files = [f for f in files if f["grade_level"] == args.grade]
+        print(f"Filtered to Grade {args.grade} only")
+
     if not files:
         print(f"No supported files found in {args.textbooks_dir}")
         print(f"   Supported: {', '.join(SUPPORTED_EXTENSIONS)}")
@@ -644,12 +784,21 @@ async def main():
         print(f"     {args.textbooks_dir}/Grade9/biology_teachers_guide.docx")
         sys.exit(0)
 
-    use_pymupdf = not args.use_docling
-    extractor = 'PyMuPDF' if use_pymupdf else 'Docling+OCR'
-    print(f"Found {len(files)} files to process (extractor: {extractor})\n")
+    use_pymupdf = not (args.use_docling or args.use_tesseract or args.use_easyocr)
+    use_tesseract = args.use_tesseract
+    use_easyocr = args.use_easyocr
+    if use_easyocr:
+        label = "EasyOCR"
+    elif use_tesseract:
+        label = "Tesseract+Ethiopic"
+    elif use_pymupdf:
+        label = "PyMuPDF"
+    else:
+        label = "Docling+OCR"
+    print(f"Found {len(files)} files to process (extractor: {label})\n")
     total_chunks = 0
     for f in files:
-        chunks = await process_file(f, embedder, store, use_pymupdf=use_pymupdf)
+        chunks = await process_file(f, embedder, store, use_pymupdf=use_pymupdf, use_tesseract=use_tesseract, use_easyocr=use_easyocr)
         total_chunks += chunks
 
     # Rebuild BM25 index for hybrid search

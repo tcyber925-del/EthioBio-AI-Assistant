@@ -69,10 +69,20 @@ async def _save_trace_from_pipeline(trace, repo):
         logger.exception("trace_persist_failed", trace_id=trace.trace_id)
 
 
+def _preload_models():
+    """Preload sentence-transformer models at startup."""
+    from src.rag.embedder import _get_or_create_sentence_transformer
+    from src.retrieval.reranker import _get_or_create_cross_encoder
+    _get_or_create_sentence_transformer()
+    _get_or_create_cross_encoder()
+    logger.info("embedding_models_preloaded")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("app_starting", name=settings.app_name)
     await init_db()
+    _preload_models()
     repo = TraceRepository(async_session_factory)
     pipeline_monitor.set_on_complete(
         lambda trace: asyncio.create_task(

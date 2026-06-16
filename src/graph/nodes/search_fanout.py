@@ -388,10 +388,10 @@ class SearchFanoutNode:
         else:
             state.coverage_score = 0.0
 
-        # Track evidence IDs
+        # Track evidence IDs from top-level chunk fields (doc_id or source_id)
         evidence_ids = []
         for chunk in ranked:
-            chunk_id = chunk.get("metadata", {}).get("id")
+            chunk_id = chunk.get("doc_id") or chunk.get("source_id") or ""
             if chunk_id:
                 evidence_ids.append(chunk_id)
         state.evidence_ids = evidence_ids

@@ -11,25 +11,31 @@ logger = structlog.get_logger()
 
 DEFAULT_RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
+_cross_encoder_model = None
+
+
+def _get_or_create_cross_encoder(model_name: str = DEFAULT_RERANKER_MODEL):
+    global _cross_encoder_model
+    if _cross_encoder_model is None:
+        try:
+            from sentence_transformers import CrossEncoder
+            _cross_encoder_model = CrossEncoder(model_name)
+            logger.info("reranker_model_loaded", model=model_name)
+        except ImportError:
+            logger.warning("sentence_transformers not available, reranker disabled")
+        except Exception as e:
+            logger.error("reranker_model_load_error", error=str(e))
+    return _cross_encoder_model
+
 
 class Reranker:
     """Cross-encoder reranker for passage re-scoring."""
 
     def __init__(self, model_name: str = DEFAULT_RERANKER_MODEL):
         self.model_name = model_name
-        self._model = None
 
     def _get_model(self):
-        if self._model is None:
-            try:
-                from sentence_transformers import CrossEncoder
-                self._model = CrossEncoder(self.model_name)
-                logger.info("reranker_model_loaded", model=self.model_name)
-            except ImportError:
-                logger.warning("sentence_transformers not available, reranker disabled")
-            except Exception as e:
-                logger.error("reranker_model_load_error", error=str(e))
-        return self._model
+        return _get_or_create_cross_encoder(self.model_name)
 
     def rerank(
         self,

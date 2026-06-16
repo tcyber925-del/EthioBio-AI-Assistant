@@ -4,23 +4,29 @@ from src.llm.router import ModelRouter
 
 logger = structlog.get_logger()
 
+_sentence_transformer_model = None
+
+
+def _get_or_create_sentence_transformer():
+    global _sentence_transformer_model
+    if _sentence_transformer_model is None:
+        try:
+            from sentence_transformers import SentenceTransformer
+            _sentence_transformer_model = SentenceTransformer("all-MiniLM-L6-v2")
+            logger.info("sentence_transformer_loaded")
+        except ImportError:
+            logger.warning("sentence_transformers not available, will use Ollama for embeddings")
+    return _sentence_transformer_model
+
 
 class Embedder:
     def __init__(self, router: ModelRouter = None, force_ollama: bool = False):
         self.router = router or ModelRouter()
-        self._sentence_transformer = None
         self._force_ollama = force_ollama
         self._local_dim = 384
 
     def _get_local_model(self):
-        if self._sentence_transformer is None:
-            try:
-                from sentence_transformers import SentenceTransformer
-                self._sentence_transformer = SentenceTransformer("all-MiniLM-L6-v2")
-                logger.info("sentence_transformer_loaded")
-            except ImportError:
-                logger.warning("sentence_transformers not available, will use Ollama for embeddings")
-        return self._sentence_transformer
+        return _get_or_create_sentence_transformer()
 
     async def embed_text(self, text: str, use_ollama: bool = False) -> list[float]:
         if use_ollama or self._force_ollama:
