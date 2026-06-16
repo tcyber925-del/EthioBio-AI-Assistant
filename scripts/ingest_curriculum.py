@@ -376,25 +376,26 @@ def _extract_page_number(page_text: str, pdf_page_num: int, grade: int) -> int:
     falls back to PDF index - 3 (covers cover/TOC pages before content).
     """
     lines = page_text.strip().split('\n')
-    footer_region = '\n'.join(lines[-3:]).strip()
 
-    # Pattern: "Grade X Biology N" (number after grade/subject)
-    m = re.search(rf'Grade\s*{grade}\s*Biology[^A-Za-z]*(\d+)', footer_region)
-    if m:
-        return int(m.group(1))
-
-    # Pattern: "N Grade X Biology" or "N | Grade X Biology" (number before grade/subject)
-    m = re.search(rf'(\d+)\s*[|\u2013\u2014\-]?\s*Grade\s*{grade}\s*Biology', footer_region)
-    if m:
-        return int(m.group(1))
-
-    # Pattern: standalone number on last line
+    # Pattern 1: standalone number in the last few lines — most reliable
     for line in reversed(lines[-3:]):
         line = line.strip()
         if re.match(r'^\d{1,3}$', line):
             n = int(line)
             if 1 <= n <= 600:
                 return n
+
+    footer_region = '\n'.join(lines[-3:]).strip()
+
+    # Pattern 2: "Grade X Biology N" (number after grade/subject)
+    m = re.search(rf'Grade\s*{grade}\s*Biology[^A-Za-z0-9]*(\d+)', footer_region)
+    if m:
+        return int(m.group(1))
+
+    # Pattern 3: "N Grade X Biology" or "N | Grade X Biology" (number before grade/subject)
+    m = re.search(rf'(\d+)\s*[|\u2013\u2014\-]?\s*Grade\s*{grade}\s*Biology', footer_region)
+    if m:
+        return int(m.group(1))
 
     return max(1, pdf_page_num - 3)
 
