@@ -294,6 +294,19 @@ def _extract_unit(text: str) -> str:
         if 4 < len(name) < 80:
             num = _roman_to_int(num_str.upper()) if num_str.isalpha() else int(num_str)
             return f"Unit {num}: {name}" if num else ""
+    # Match "Unit Two: Plants" (title-case word number with colon)
+    match = re.search(r"\bUnit\s+(One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten)\s*:\s*([A-Z][A-Za-z\-]*(?:\s+(?:[A-Z][A-Za-z\-]*|[a-z]{2,4})){0,8})", text)
+    if match and match.start() < 200:
+        num_word = match.group(1)
+        name = match.group(2).strip()
+        if re.search(r'\d+\.\d+', name) or re.search(r'\b\d{2,}\b', name):
+            return ""
+        name = re.sub(r'\s+', ' ', name).strip()
+        if 4 < len(name) < 80:
+            num_map = {"ONE": 1, "TWO": 2, "THREE": 3, "FOUR": 4, "FIVE": 5,
+                       "SIX": 6, "SEVEN": 7, "EIGHT": 8, "NINE": 9, "TEN": 10}
+            num = num_map.get(num_word.upper(), 0)
+            return f"Unit {num}: {name}" if num else ""
     # Match "UNIT N WORD" (uppercase word form, e.g. "UNIT FOUR GENETICS")
     match = re.search(r"\bUNIT\s+([A-Z]+)\s+([A-Z][A-Z\s]{3,60})", text)
     if match and match.start() < 200:
@@ -356,6 +369,36 @@ def _extract_heading_info(text: str) -> tuple[str, str]:
     return "", ""
 
 
+def _extract_page_number(page_text: str, pdf_page_num: int, grade: int) -> int:
+    """Extract the printed textbook page number from page footer or estimate from PDF index.
+
+    Tries common Ethiopian textbook footer patterns first;
+    falls back to PDF index - 3 (covers cover/TOC pages before content).
+    """
+    lines = page_text.strip().split('\n')
+    footer_region = '\n'.join(lines[-3:]).strip()
+
+    # Pattern: "Grade X Biology N" (number after grade/subject)
+    m = re.search(rf'Grade\s*{grade}\s*Biology[^A-Za-z]*(\d+)', footer_region)
+    if m:
+        return int(m.group(1))
+
+    # Pattern: "N Grade X Biology" or "N | Grade X Biology" (number before grade/subject)
+    m = re.search(rf'(\d+)\s*[|\u2013\u2014\-]?\s*Grade\s*{grade}\s*Biology', footer_region)
+    if m:
+        return int(m.group(1))
+
+    # Pattern: standalone number on last line
+    for line in reversed(lines[-3:]):
+        line = line.strip()
+        if re.match(r'^\d{1,3}$', line):
+            n = int(line)
+            if 1 <= n <= 600:
+                return n
+
+    return max(1, pdf_page_num - 3)
+
+
 def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
     """Split text into curriculum-aligned chunks at natural boundaries.
 
@@ -369,7 +412,7 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
     # (they contain section refs like "1.1" which fail the clean name check)
 
     header_patterns = [
-        r"(?=(?:^|\n)\s*(?:Chapter|Unit|Module)\s+\d+[\.\s:])",
+        r"(?=(?:^|\n)\s*(?:Chapter|Unit|Module)\s+\w+[\.\s:])",
         r"(?=(?:^|\n)\s*\d+(?:\.\d+)+\s+[A-Z])",
         r"(?=(?:^|\n)\s*[A-Z][A-Z\s]{5,}(?:\n|$))",
         r"(?=(?:^|\n)\s*Lesson\s+\d+)",
@@ -454,7 +497,7 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
                 continue
 
             # Extract unit from this section's header
-            unit_match = re.search(r"(?:^|\n)\s*Unit\s+(\d+|[IVXLCDM]+):\s*([A-Z][^\n\t]{3,60})", section)
+            unit_match = re.search(r"(?:^|\n)\s*Unit\s+(\d+|[IVXLCDM]+|One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten):\s*([A-Z][^\n\t]{3,60})", section)
             if unit_match:
                 name = unit_match.group(2).strip()
                 # Reject TOC entries: contain section refs, page numbers, or
@@ -466,7 +509,16 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
                     if after_unit and not re.match(r'^[\s\d\t]+$', after_unit[:50]):
                         name = re.split(r'\s{2,}|\t|•', name)[0].strip()
                         if len(name) < 80 and len(name) > 3:
-                            current_unit = f"Unit {unit_match.group(1)}: {name}"
+                            raw = unit_match.group(1)
+                            _word_to_num = {"One": 1, "Two": 2, "Three": 3, "Four": 4, "Five": 5,
+                                            "Six": 6, "Seven": 7, "Eight": 8, "Nine": 9, "Ten": 10}
+                            if raw.isdigit():
+                                unit_num = int(raw)
+                            elif raw in _word_to_num:
+                                unit_num = _word_to_num[raw]
+                            else:
+                                unit_num = _roman_to_int(raw.upper()) if raw.isalpha() else 0
+                            current_unit = f"Unit {unit_num}: {name}"
                             current_section = ""
                             current_subtopic = ""
 
@@ -622,7 +674,7 @@ async def process_file(
         cleaned_text = _strip_control_chars(p["text"])
         page_chunks = chunk_text(cleaned_text, source_type)
         for c in page_chunks:
-            c["page_number"] = p["page_number"]
+            c["page_number"] = _extract_page_number(p["text"], p["page_number"], grade)
             all_chunks.append(c)
     chunks = all_chunks
 
@@ -653,9 +705,25 @@ async def process_file(
     print(f"    Extracted {len(pages)} pages -> {len(chunks)} quality chunks")
 
     # Post-chunk metadata extraction fallback: extract unit from chunk body
+    _SECTION_UNIT_MAP = {
+        "1": "Unit 1: Sub-Fields of Biology",
+        "2": "Unit 2: Plants",
+        "3": "Unit 3: Biochemical Molecules",
+        "4": "Unit 4: Cell Cycle",
+        "5": "Unit 5: Human Biology",
+        "6": "Unit 6: Ecological Interactions",
+    }
     for chunk in chunks:
         if not chunk.get("unit"):
             chunk["unit"] = _extract_unit(chunk["text"])
+        if not chunk.get("unit") and chunk.get("section"):
+            sec_match = re.match(r"^(\d+)", chunk["section"])
+            if sec_match and sec_match.group(1) in _SECTION_UNIT_MAP:
+                chunk["unit"] = _SECTION_UNIT_MAP[sec_match.group(1)]
+        if not chunk.get("unit"):
+            sec_match = re.search(r"(?:^|\n)\s*(\d+)\.\d", chunk["text"])
+            if sec_match and sec_match.group(1) in _SECTION_UNIT_MAP:
+                chunk["unit"] = _SECTION_UNIT_MAP[sec_match.group(1)]
         if not chunk.get("heading"):
             chunk["heading"] = _extract_heading(chunk["text"])
 
