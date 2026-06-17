@@ -72,6 +72,7 @@ class AgentState:
     safety_action: str = ""
     safety_reason: str = ""
     ungrounded_claims: list[str] = field(default_factory=list)
+    revision_count: int = 0
 
     messages: list[dict] = field(default_factory=list)
 

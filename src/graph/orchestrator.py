@@ -19,43 +19,13 @@ from src.graph.nodes.orchestrator import OrchestratorNode, needs_retrieval
 from src.graph.nodes.plan_executor import PlanExecutor
 from src.graph.nodes.planner import PlannerNode
 from src.graph.nodes.retrieval import RetrievalNode, SkipRetrievalNode
-from src.graph.nodes.safety import SafetyNode, should_revise
+from src.graph.nodes.safety import SafetyNode
 from src.graph.nodes.sufficient_context import SufficientContextNode, route_after_sufficiency
 from src.graph.nodes.synthesis import SynthesisNode
 from src.graph.nodes.tutor import TutorNode
 from src.graph.state import AgentState, GraphOutput
 from src.llm.router import ModelRouter
 from src.retrieval.adapter import VectorStoreAdapter
-
-
-def build_graph(router: ModelRouter, adapter: VectorStoreAdapter) -> StateGraph:
-    workflow = StateGraph(AgentState)
-
-    workflow.add_node("orchestrator", OrchestratorNode(router))
-    workflow.add_node("retrieve", RetrievalNode(adapter))
-    workflow.add_node("skip_retrieval", SkipRetrievalNode(adapter))
-    workflow.add_node("tutor", TutorNode(router))
-    workflow.add_node("safety", SafetyNode(router))
-
-    workflow.set_entry_point("orchestrator")
-
-    workflow.add_conditional_edges(
-        "orchestrator",
-        needs_retrieval,
-        {"retrieve": "retrieve", "skip_retrieval": "skip_retrieval"},
-    )
-
-    workflow.add_edge("retrieve", "tutor")
-    workflow.add_edge("skip_retrieval", "tutor")
-    workflow.add_edge("tutor", "safety")
-
-    workflow.add_conditional_edges(
-        "safety",
-        should_revise,
-        {"revise": "tutor", "reject": "tutor", "finalize": END},
-    )
-
-    return workflow.compile()
 
 
 def build_agentic_graph(
@@ -65,12 +35,13 @@ def build_agentic_graph(
 ) -> StateGraph:
     """Build the Agentic RAG graph for complex queries.
 
-    Graph topology:
-        orchestrator -> planner -> plan_executor -> sufficient_context
-            -> synthesis -> tutor -> hallucination -> claim_verifier -> safety
+    DEPRECATED: Use build_unified_graph() for production. This function
+    is retained only for test coverage of the agentic sub-graph.
 
-    The orchestrator classifies complexity and routes to this graph
-    when requires_planning=True.
+    Graph topology:
+        orchestrator -> planner -> plan_executor -> evidence_graph
+            -> sufficient_context -> synthesis -> tutor -> hallucination
+            -> claim_verifier -> safety
 
     Iterative loop: If context is insufficient, routes back to plan_executor
     for retrieval iteration (max 2 iterations).
@@ -79,8 +50,10 @@ def build_agentic_graph(
 
     workflow.add_node("orchestrator", OrchestratorNode(router))
     workflow.add_node("planner", PlannerNode(router))
-    workflow.add_node("plan_executor", PlanExecutor(adapter, router=router, db_session_factory=db_session_factory))
-    workflow.add_node("evidence_graph", EvidenceGraphNode(db_session_factory=None))
+    workflow.add_node("plan_executor", PlanExecutor(
+        adapter, router=router, db_session_factory=db_session_factory,
+    ))
+    workflow.add_node("evidence_graph", EvidenceGraphNode(db_session_factory=db_session_factory))
     workflow.add_node("sufficient_context", SufficientContextNode())
     workflow.add_node("synthesis", SynthesisNode(router))
     workflow.add_node("tutor", TutorNode(router))
@@ -93,7 +66,7 @@ def build_agentic_graph(
     workflow.add_conditional_edges(
         "orchestrator",
         needs_retrieval,
-        {"retrieve": "planner", "skip_retrieval": "skip_retrieval"},
+        {"retrieve": "planner", "skip_retrieval": "safety"},
     )
 
     workflow.add_edge("planner", "plan_executor")
@@ -113,7 +86,7 @@ def build_agentic_graph(
     workflow.add_conditional_edges(
         "claim_verifier",
         route_after_verification,
-        {"finalize": "safety", "revise": "safety", "reject": "safety"},
+        {"finalize": "safety", "revise": "tutor", "reject": "safety"},
     )
 
     workflow.add_edge("safety", END)
@@ -156,6 +129,12 @@ async def run_graph(
     router = ModelRouter(preferred_model=preferred_model)
     adapter = VectorStoreAdapter()
 
+    # Resolve factory: callers pass src.database.session.async_session_factory
+    # (a function returning async_sessionmaker). Call once to get the maker,
+    # which is itself Callable[[], AsyncSession] — matching EvidenceGraphNode's
+    # expected signature.
+    session_maker = db_session_factory() if db_session_factory else None
+
     initial_state = AgentState(
         user_message=user_message,
         user_id=user_id,
@@ -177,7 +156,7 @@ async def run_graph(
         messages=messages or [],
     )
 
-    graph = build_unified_graph(router, adapter, db_session_factory=db_session_factory)
+    graph = build_unified_graph(router, adapter, db_session_factory=session_maker)
     config = {"configurable": {"thread_id": f"ethiobio-{session_id or 'default'}"}}
 
     try:
@@ -269,8 +248,10 @@ def build_unified_graph(
 
     # Agentic pipeline nodes
     workflow.add_node("planner", PlannerNode(router))
-    workflow.add_node("plan_executor", PlanExecutor(adapter, router=router, db_session_factory=db_session_factory))
-    workflow.add_node("evidence_graph", EvidenceGraphNode(db_session_factory=None))
+    workflow.add_node("plan_executor", PlanExecutor(
+        adapter, router=router, db_session_factory=db_session_factory,
+    ))
+    workflow.add_node("evidence_graph", EvidenceGraphNode(db_session_factory=db_session_factory))
     workflow.add_node("sufficient_context", SufficientContextNode())
     workflow.add_node("synthesis", SynthesisNode(router))
     workflow.add_node("hallucination", HallucinationNode())
@@ -314,7 +295,7 @@ def build_unified_graph(
     workflow.add_conditional_edges(
         "claim_verifier",
         route_after_verification,
-        {"finalize": "safety", "revise": "safety", "reject": "safety"},
+        {"finalize": "safety", "revise": "tutor", "reject": "safety"},
     )
 
     # Safety

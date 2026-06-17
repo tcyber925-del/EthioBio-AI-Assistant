@@ -17,12 +17,14 @@ For straightforward questions like "What is photosynthesis?", the system uses th
 For multi-part questions like "Compare and contrast cellular respiration and photosynthesis, explain how they are connected, and discuss the role of mitochondria and chloroplasts", the system uses the agentic pipeline:
 1. **Orchestrator** detects high complexity and routes to agentic pipeline
 2. **Planner** breaks down the question into subtasks
-3. **Query Rewriter** expands queries for better retrieval
-4. **Search Fanout** retrieves evidence from multiple sources
-5. **Sufficient Context** checks if enough evidence was found
-6. **Tutor** generates a comprehensive answer
-7. **Claim Verifier** verifies factual accuracy
-8. **Safety** performs final review
+3. **PlanExecutor** iterates each subtask, calling Query Rewriter + Search Fanout per step
+4. **Evidence Graph** persists and scores retrieved evidence
+5. **Sufficient Context** checks if coverage is adequate
+6. **Synthesis** summarizes evidence into structured findings
+7. **Tutor** generates a comprehensive answer (agentic path with citation maps)
+8. **Hallucination** analyzes response against evidence
+9. **Claim Verifier** verifies factual accuracy, routes to finalize/revise/reject
+10. **Safety** performs final review
 
 ## Features
 
@@ -52,9 +54,9 @@ If initial evidence is insufficient, the system:
 
 ### Claim Verification
 Factual claims in tutor responses are verified against evidence:
-- **High confidence** (≥60% grounded) → Response finalized
-- **Medium confidence** (40-60%) → Response revised
-- **Low confidence** (<40%) → Response rejected and regenerated
+- **Finalize** (≥60% grounded) → Response passes safely to output
+- **Revise** (30-60% grounded, max 2 attempts) → Tutor regenerates with ungrounded claims feedback
+- **Reject** (<30% grounded or max revisions exhausted) → Fails to safety check
 
 ### Performance Monitoring
 Every request is traced with:

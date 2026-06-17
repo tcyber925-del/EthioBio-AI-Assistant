@@ -39,6 +39,7 @@ class TutorSynthesisAgent:
         intent: str,
         misconception_detected: bool,
         student_misconceptions: list[str],
+        ungrounded_claims: list[str] | None = None,
     ) -> TutorResponse:
         strategy = select_teaching_strategy(
             user_message=user_message,
@@ -73,6 +74,15 @@ class TutorSynthesisAgent:
             system += REVEAL_PROMPT
         elif hint_level > 0 and hint_level in HINT_PROMPTS:
             system += HINT_PROMPTS[hint_level]
+
+        if ungrounded_claims:
+            system += "\n\n## Revision Feedback\n"
+            system += "Your previous response contained claims that could not be verified against the provided evidence. "
+            system += "Please revise the response to fix the following ungrounded claims:\n"
+            for i, claim in enumerate(ungrounded_claims, 1):
+                system += f"\n{i}. \"{claim}\""
+            system += "\n\nEnsure EVERY claim in your response is directly supported by the provided evidence. "
+            system += "Remove or rephrase any claim you cannot support with a verbatim quote from the evidence."
 
         grade_context = f" (Grade {grade_level})" if grade_level else ""
         if language == "am":

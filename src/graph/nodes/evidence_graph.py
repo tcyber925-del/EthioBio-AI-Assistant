@@ -128,6 +128,9 @@ class EvidenceGraphNode:
         ]
         state.evidence_items = evidence_items
 
+        # Commit the session to persist all evidence records
+        await session.commit()
+
         # 5. Analyze coverage
         evidence_dicts: list[dict[str, Any]] = [
             {

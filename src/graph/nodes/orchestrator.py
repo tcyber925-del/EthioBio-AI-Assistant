@@ -1,7 +1,8 @@
 """Orchestrator node — classifies intent and routes to the right agent.
 
-Phase 0: Adds hybrid routing (heuristic + LLM) with requires_planning signal.
-requires_planning is always False in Phase 0 — routing unchanged.
+Hybrid routing: LLM intent classification + heuristic complexity scoring.
+requires_planning is derived from complexity score (>=0.7), memory signals,
+multi-hop signals, and cross-session signals.
 """
 
 import json

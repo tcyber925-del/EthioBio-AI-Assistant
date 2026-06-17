@@ -46,9 +46,9 @@ requires_planning = (
 )
 ```
 
-### Phase 0 Override
+### Phase 1 Activation
 
-`requires_planning` is always `False` in Phase 0. The classification logic is in place but routing still goes to the existing pipeline. The override is removed in Phase 1 when the Agentic pipeline is wired.
+`requires_planning` is actively computed for every query. The hybrid router sends complex queries (heuristic score ≥0.7, requires_memory, requires_multi_hop, or requires_cross_session) to the agentic pipeline and routes simple queries to the legacy pipeline.
 
 ## Consequences
 

@@ -4,12 +4,24 @@ This is an Obsidian PARA vault. The project codebase is at `1-Projects/p000-Acti
 
 ## Architecture
 
-LangGraph pipeline: **Orchestrator → (Retrieve | SkipRetrieval) → Tutor → Safety → (finalize | revise→Tutor)**
+Unified LangGraph pipeline combining legacy and agentic RAG:
 
 ```
-entry → orchestrator → needs_retrieval? → retrieve ─┐
-                  │                       skip_retr. ─┤
-                  └──────────────────────────────────→ tutor → safety → END / revise
+orchestrator → _route_after_orchestrator
+    │
+    ├── "planner" → plan_executor → evidence_graph → sufficient_context
+    │       └── route_after_sufficiency:
+    │           ├── "synthesis" → synthesis → tutor
+    │           ├── "rewrite" → plan_executor
+    │           └── "replan" → planner
+    │
+    ├── "retrieve" → tutor
+    └── "skip_retrieval" → tutor
+
+tutor → hallucination → claim_verifier → route_after_verification
+    ├── "finalize" → safety → END
+    ├── "revise" → tutor (max 2 revisions)
+    └── "reject" → safety → END
 ```
 
 Key abstractions:
@@ -181,50 +193,58 @@ The EthioBio AI Assistant includes a Google-style Multi-Agent Agentic RAG platfo
 ### Architecture
 
 ```
-orchestrator → planner → plan_executor → query_rewriter → search_fanout
-                  │                        │                   │
-                  │                   (per subtask)        (parallel)
-                  │                                           │
-                  └─────────────────────────────────────────→ sufficient_context
-                                                                      │
-                                                              (gap? rewrite/replan)
-                                                                      │
-                                                              tutor → claim_verifier → safety
-                                                                      │
-                                                              (revise/finalize/reject)
+orchestrator → planner → plan_executor → evidence_graph → sufficient_context
+                  │                                              │
+                  │                                         (gap?)
+                  │                                     ┌──────┼──────┐
+                  │                                  rewrite replan synthesis
+                  │                                     │       │       │
+                  └─────────────────────────────────────┘       │       │
+                                                                │       │
+                                                          plan_executor │
+                                                                        │
+                                                                   synthesis → tutor → hallucination → claim_verifier
+                                                                                                         │
+                                                                                                   (verdict)
+                                                                                                ┌────┼────┐
+                                                                                            finalize revise reject
+                                                                                                │       │      │
+                                                                                             safety ←─────┘      │
+                                                                                                │               │
+                                                                                                └────←──────────┘
+                                                                                                        (max 2)
 ```
 
 ### Key Components
 
 | Component | Location | Purpose |
 |-----------|----------|---------|
-| `AgentState` | `src/graph/state.py:73` | 60 fields with safe defaults, backward-compatible |
+| `AgentState` | `src/graph/state.py:20` | 70+ fields with safe defaults, backward-compatible |
 | `PlannerAgent` | `src/agents/planner/planner.py` | Generates execution plans via LLM |
-| `PlanExecutor` | `src/graph/nodes/plan_executor.py` | Iterates subtasks, manages execution |
-| `QueryRewriter` | `src/graph/nodes/query_rewriter.py` | LLM-based query expansion with heuristic fallback |
-| `SearchFanout` | `src/graph/nodes/search_fanout.py` | Parallel retrieval via `asyncio.gather()` |
-| `SufficientContextNode` | `src/graph/nodes/sufficient_context.py` | Heuristic coverage evaluation |
-| `ClaimVerifierNode` | `src/graph/nodes/claim_verifier.py` | Claim extraction and verification |
+| `PlanExecutor` | `src/graph/nodes/plan_executor.py` | Iterates subtasks, calls QueryRewriter + SearchFanout per subtask |
+| `QueryRewriter` | `src/graph/nodes/query_rewriter.py` | LLM-based query expansion with heuristic fallback (called inside PlanExecutor) |
+| `SearchFanout` | `src/graph/nodes/search_fanout.py` | Parallel retrieval via `asyncio.gather()` (called inside PlanExecutor) |
+| `EvidenceGraphNode` | `src/graph/nodes/evidence_graph.py` | Persists, selects, and scores evidence records |
+| `SufficientContextNode` | `src/graph/nodes/sufficient_context.py` | Heuristic coverage evaluation, routes to rewrite/replan/synthesis |
+| `SynthesisNode` | `src/graph/nodes/synthesis.py` | LLM-based evidence synthesis into structured summary |
+| `TutorNode` | `src/graph/nodes/tutor.py` | Dual-mode tutor (legacy prompt or agentic synthesis) |
+| `HallucinationNode` | `src/graph/nodes/hallucination.py` | Analyzes response against citation map |
+| `ClaimVerifierNode` | `src/graph/nodes/claim_verifier.py` | Claim extraction and verification, routes to finalize/revise/reject |
+| `SafetyNode` | `src/graph/nodes/safety.py` | LLM safety check + citation/quote verification |
 | `EvidenceGraph` | `src/core/evidence/graph.py` | PostgreSQL CRUD, session-scoped |
 | `EvidenceSelector` | `src/core/evidence/selector.py` | Selects evidence for Tutor |
 | `ConfidenceScore` | `src/core/evidence/scoring.py` | Weighted confidence calculation |
 | `CoverageAnalysis` | `src/core/evidence/scoring.py` | Coverage gap detection |
 | `EvidenceSummary` | `src/core/evidence/summarizer.py` | Evidence summarization |
-| `AgentResult` | `src/graph/nodes/agent_result.py` | Standardized agent results |
 | `PipelineMonitor` | `src/core/monitoring.py` | Trace-level observability |
 
 ### Entry Points
 
 ```python
-from src.graph.orchestrator import build_unified_graph, build_graph
+from src.graph.orchestrator import run_graph
 
 # Production (with monitoring)
-graph = build_unified_graph(retriever, router)
-result = await graph.ainvoke(state)
-
-# Legacy (simple pipeline)
-graph = build_graph(retriever, router)
-result = await graph.ainvoke(state)
+result = await run_graph(user_message="What is mitosis?", grade_level=10)
 ```
 
 ### Tests

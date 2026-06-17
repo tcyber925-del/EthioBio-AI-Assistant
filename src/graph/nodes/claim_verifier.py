@@ -20,6 +20,8 @@ VERIFICATION_THRESHOLDS = {
     "partial_threshold": 0.6,
 }
 
+MAX_REVISIONS = 2
+
 QUOTE_RE = re.compile(r'"([^"]{10,})"')
 CITATION_ID_RE = re.compile(r'\[id:([^\]]+)\]')
 
@@ -190,7 +192,11 @@ class ClaimVerifierNode:
             state.safety_action = "finalize"
             state.safety_reason = f"Claims sufficiently grounded: {groundedness:.2f}"
         elif groundedness >= VERIFICATION_THRESHOLDS["ungrounded_threshold"]:
-            state.safety_action = "revise"
+            if state.revision_count < MAX_REVISIONS:
+                state.safety_action = "revise"
+                state.revision_count += 1
+            else:
+                state.safety_action = "finalize"
             state.safety_reason = f"Claims partially grounded: {groundedness:.2f}"
         else:
             state.safety_action = "reject"

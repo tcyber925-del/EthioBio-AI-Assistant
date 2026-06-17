@@ -190,6 +190,15 @@ class TutorNode:
             system += f"\n\n## Curriculum Context\n{ctx_str}\n\nUse the above context to ground your answer. "
             system += "Include verbatim quotes from the [Source N] blocks. Cite as (Grade X, Unit Y: Title, Section N.N: Name, p. Z)."
 
+        if state.ungrounded_claims:
+            system += "\n\n## Revision Feedback\n"
+            system += "Your previous response contained claims that could not be verified against the provided evidence. "
+            system += "Please revise the response to fix the following ungrounded claims:\n"
+            for i, claim in enumerate(state.ungrounded_claims, 1):
+                system += f"\n{i}. \"{claim}\""
+            system += "\n\nEnsure EVERY claim in your response is directly supported by the provided evidence. "
+            system += "Remove or rephrase any claim you cannot support with a verbatim quote from the curriculum context."
+
         user_message = f"[Grade{grade_context}] {lang_context}\n\nStudent question: {state.user_message}"
 
         history = truncate_messages(state.messages, budget=3000)
@@ -231,6 +240,7 @@ class TutorNode:
             intent=state.intent,
             misconception_detected=state.misconception_detected,
             student_misconceptions=student_misconceptions,
+            ungrounded_claims=state.ungrounded_claims,
         )
 
         state.draft = response.content
