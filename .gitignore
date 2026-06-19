@@ -44,6 +44,18 @@ logs/
 # Docker
 .docker/
 
+# Generated diagram data
+chromadb_data/
+diagram_output/
+data/icons/
+data/diagrams/
+
+# Patch files
+*.patch
+
+# Agent lock files
+skills-lock.json
+
 # Superpowers brainstorming artifacts
 .superpowers/
 session-ses_*.md

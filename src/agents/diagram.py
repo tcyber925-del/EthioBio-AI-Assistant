@@ -1,4 +1,5 @@
 import json
+import re
 from typing import Optional
 
 import structlog
@@ -7,8 +8,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.agents.base import BaseAgent
 from src.llm.router import ModelRouter
 from src.retrieval.adapter import RetrievalFilter, VectorStoreAdapter
+from src.schemas.diagram import DiagramPanel
 
 logger = structlog.get_logger()
+
+PANEL_CONNECTIVES = re.compile(
+    r"\b(and|vs|versus|compared with|comparison|external and internal|"
+    r"difference between|similarities and differences)\b",
+    re.IGNORECASE,
+)
 
 DIAGRAM_SYSTEM_PROMPT = """You are EthioBio Diagram Generator, creating
 visual biology diagrams for Ethiopian students (Grades 7-12).
@@ -65,6 +73,91 @@ class DiagramAgent(BaseAgent):
             self._adapter = VectorStoreAdapter()
         return self._adapter
 
+    @staticmethod
+    def detect_panel_count(prompt: str) -> int:
+        """Heuristic: detect whether a prompt needs 1 or 2 panels.
+
+        Returns 2 if the prompt contains comparison connectives
+        (and, vs, versus, external and internal, comparison, etc.),
+        otherwise 1.
+        """
+        if PANEL_CONNECTIVES.search(prompt):
+            return 2
+        return 1
+
+    async def generate_panel(
+        self,
+        sub_prompt: str,
+        panel_index: int,
+        topic: str,
+        difficulty: str,
+        grade: int,
+        session: Optional[AsyncSession] = None,
+        preferred_model: str | None = None,
+    ) -> DiagramPanel:
+        """Generate a single panel diagram. Returns a DiagramPanel instance."""
+        caption = sub_prompt[:80] if len(sub_prompt) > 80 else sub_prompt
+        user_message = (
+            f"Panel {panel_index + 1} for topic: {topic}.\n"
+            f"Focus on: {sub_prompt}\n"
+            f"Difficulty: {difficulty}\n"
+            f"Grade level: {grade}\n\n"
+            "Respond with valid JSON only."
+        )
+
+        result = await self._call_llm(
+            system_prompt=DIAGRAM_SYSTEM_PROMPT,
+            user_message=user_message,
+            session=session,
+            temperature=0.7,
+            max_tokens=4096,
+            request_type="diagram_generation",
+            preferred_model=preferred_model,
+        )
+
+        content = result["content"]
+        try:
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0].strip()
+            parsed = json.loads(content)
+        except (json.JSONDecodeError, KeyError):
+            parsed = None
+
+        if parsed:
+            return DiagramPanel(
+                id=f"panel_{panel_index}",
+                caption=caption,
+                svg=parsed.get("diagram_svg", ""),
+                labels=parsed.get("labels", []),
+            )
+        return DiagramPanel(
+            id=f"panel_{panel_index}",
+            caption=caption,
+            svg=content,
+            labels=[],
+        )
+
+    async def _split_prompt(self, prompt: str) -> list[str]:
+        """Split a comparison prompt into two sub-prompts.
+
+        Tries common delimiters: ' vs ', 'versus', ' and ' (for comparisons),
+        'external and internal'.
+        """
+        lower = prompt.lower()
+        if "external and internal" in lower:
+            parts = re.split(r"external and internal", prompt, flags=re.IGNORECASE)
+            return [f"External {parts[0].strip()}", f"Internal {parts[0].strip()}"]
+        for delim in [" vs ", " versus "]:
+            if delim in lower:
+                parts = prompt.split(delim)
+                return [p.strip() for p in parts if p.strip()]
+        # Fallback: first half / second half
+        words = prompt.split()
+        mid = len(words) // 2
+        return [" ".join(words[:mid]), " ".join(words[mid:])]
+
     async def generate(
         self,
         prompt: str,
@@ -75,6 +168,34 @@ class DiagramAgent(BaseAgent):
         grade: int = 10,
     ) -> dict:
         textbook_references = []
+
+        panel_count = self.detect_panel_count(prompt)
+        if panel_count > 1:
+            sub_prompts = await self._split_prompt(prompt)
+            panels = []
+            for i, sub in enumerate(sub_prompts):
+                panel = await self.generate_panel(
+                    sub_prompt=sub,
+                    panel_index=i,
+                    topic=topic,
+                    difficulty=difficulty,
+                    grade=grade,
+                    session=session,
+                    preferred_model=preferred_model,
+                )
+                panels.append(panel.model_dump())
+
+            return {
+                "title": prompt[:80] if len(prompt) > 80 else prompt,
+                "diagram_svg": panels[0]["svg"],
+                "labels": panels[0]["labels"],
+                "topic": topic,
+                "difficulty": difficulty,
+                "model_used": "",
+                "textbook_references": textbook_references,
+                "panels": panels,
+            }
+
         system_prompt = DIAGRAM_SYSTEM_PROMPT
         try:
             filter_obj = RetrievalFilter(grade_level=grade, source_type="textbook_diagram")

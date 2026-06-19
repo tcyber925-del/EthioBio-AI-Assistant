@@ -26,7 +26,8 @@ services:
       retries: 3
 
   telegram-bot:
-    build: .
+    build:
+      dockerfile: Dockerfile.bot
     container_name: ethiobio-bot
     restart: unless-stopped
     depends_on:

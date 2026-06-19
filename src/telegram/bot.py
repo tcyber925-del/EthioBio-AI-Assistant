@@ -12,10 +12,10 @@ from telegram.ext import (
     filters,
 )
 
+from src.agents.diagram import DiagramAgent
 from src.agents.lesson_planner import LessonPlannerAgent
 from src.agents.quiz import QuizAgent
 from src.api.gamification import award_xp, check_achievements, update_streak
-from src.graph.orchestrator import run_graph
 from src.config import settings
 from src.core.learning_intelligence.tutor.tutor_context_adapter import TutorContextAdapter
 from src.core.memory.context_assembler import ContextAssembler
@@ -34,6 +34,7 @@ from src.database.models import (
     UserRole,
 )
 from src.database.session import async_session_factory
+from src.graph.orchestrator import run_graph
 from src.llm.router import ModelRouter
 from src.redis_client import get_redis
 from src.telegram.formatter import format_for_telegram, sanitize_for_telegram, strip_markdown
@@ -53,13 +54,14 @@ from src.telegram.keyboards import (
     teacher_tools_keyboard,
     tf_keyboard,
 )
+from src.utils.svg_render import render_svg_to_png
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 
 logger = structlog.get_logger()
 
 from datetime import datetime, timedelta, timezone
 
-TUTOR, QUIZ_TYPE, QUIZ_GRADE, QUIZ_TOPIC, QUIZ_ANSWERING, LESSON_GRADE, LESSON_TOPIC, TUTOR_GRADE = range(8)
+TUTOR, QUIZ_TYPE, QUIZ_GRADE, QUIZ_TOPIC, QUIZ_ANSWERING, LESSON_GRADE, LESSON_TOPIC, TUTOR_GRADE, DIAGRAM_GRADE, DIAGRAM_TOPIC = range(10)
 
 
 async def _db_try(action, fallback=None):
@@ -944,6 +946,35 @@ async def handle_question(update: Update, context):
                 response += "\n\n" + "\n".join(notifications)
         reply_markup = hint_keyboard(hint_level, reveal, language=_lang(context)) if socratic else main_menu_keyboard(socratic, language=_lang(context))
         await _reply_long(thinking_msg, response, reply_markup=reply_markup, parse_mode="HTML")
+
+        diagram_keywords = frozenset([
+            "diagram", "draw", "label", "structure", "parts", "organ",
+            "cell", "heart", "flower", "photosynthesis", "mitosis",
+            "meiosis", "dna", "chromosome", "neuron", "eye", "ear",
+            "leaf", "flower",
+        ])
+        if any(kw in question.lower() for kw in diagram_keywords):
+            try:
+                from src.agents.diagram_tutor_integration import (
+                    generate_tutor_diagram,
+                )
+                from src.utils.svg_render import render_svg_to_png
+                from telegram import InputFile
+                tutor_grade = context.user_data.get("tutor_grade") or context.user_data.get("grade_level")
+                diagram_data = await generate_tutor_diagram(
+                    question=question,
+                    topic=question,
+                    grade_level=tutor_grade,
+                    db_session=None,
+                )
+                if diagram_data.get("diagram_svg"):
+                    png_bytes = render_svg_to_png(diagram_data["diagram_svg"], 800, 600)
+                    await update.message.reply_photo(
+                        photo=InputFile(png_bytes, filename="diagram.png"),
+                        caption=f"📐 {diagram_data.get('diagram_title', diagram_data.get('title', ''))}",
+                    )
+            except Exception as e:
+                logger.warning("tutor_diagram_bot_failed", error=str(e)[:200])
     except Exception as e:
         logger.error("tutor_error", error=str(e))
         try:
@@ -1435,6 +1466,121 @@ async def handle_lesson_topic(update: Update, context):
         await update.message.reply_text(t("lesson.error", _lang(context)), reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
 
     return ConversationHandler.END
+
+
+async def diagram_command(update: Update, context):
+    await update.message.reply_text(
+        t("diagram.grade_prompt", _lang(context)),
+        reply_markup=grade_keyboard("diagram_grade", language=_lang(context)),
+    )
+    return DIAGRAM_GRADE
+
+
+async def handle_diagram_grade(update: Update, context):
+    query = update.callback_query
+    await query.answer()
+    grade = int(query.data.split("_")[-1])
+    context.user_data["diagram_grade"] = grade
+    await query.edit_message_text(
+        t("diagram.topic_prompt", _lang(context), grade=grade),
+        reply_markup=back_keyboard(language=_lang(context)),
+    )
+    return DIAGRAM_TOPIC
+
+
+async def handle_diagram_topic(update: Update, context):
+    try:
+        topic = update.message.text
+    except AttributeError:
+        topic = ""
+    grade = context.user_data.get("diagram_grade", 10)
+    lang = _lang(context)
+    try:
+        await update.message.reply_text(t("diagram.generating", lang))
+        router_llm = ModelRouter()
+        agent = DiagramAgent(llm_router=router_llm)
+        result = await agent.generate(prompt=topic, topic=topic, difficulty="beginner", grade=grade)
+
+        svg = result.get("diagram_svg", "")
+        labels = result.get("labels", [])
+        title = result.get("title", topic)
+
+        png_bytes = render_svg_to_png(svg, width=800, height=600)
+
+        label_lines = "\n".join(
+            f"{i + 1}. {label['text']}" for i, label in enumerate(labels)
+        ) if labels else t("diagram.no_labels", lang)
+
+        caption = (
+            f"📐 {title}\n"
+            f"{t('diagram.grade_label', lang)}: {grade}\n"
+            f"{t('diagram.labels_count', lang, count=len(labels))}: {len(labels)}\n\n"
+            f"{label_lines}"
+        )
+
+        from telegram import InputFile
+
+        telegram_id = update.effective_user.id if update.effective_user else None
+        if telegram_id:
+            try:
+                await _save_diagram_rewards(telegram_id, context)
+            except Exception:
+                pass
+
+        xp_text = ""
+        xp_awarded = context.user_data.get("last_xp_awarded")
+        level_up = context.user_data.pop("last_level_up", False)
+        if xp_awarded:
+            xp_text += f"\n\n⭐ +{xp_awarded} XP"
+        if level_up:
+            new_level = context.user_data.get("last_new_level", 1)
+            xp_text += f"\n🎉 LEVEL UP! Now Level {new_level}!"
+
+        await update.message.reply_photo(
+            photo=InputFile(png_bytes, filename="diagram.png"),
+            caption=(caption + xp_text)[:1024],
+            reply_markup=main_menu_keyboard(
+                context.user_data.get("socratic_mode", False),
+                language=lang,
+            ),
+        )
+        await router_llm.close()
+    except Exception as e:
+        logger.error("diagram_error", error=str(e), topic=topic)
+        await update.message.reply_text(
+            t("diagram.error", lang),
+            reply_markup=main_menu_keyboard(
+                context.user_data.get("socratic_mode", False),
+                language=lang,
+            ),
+        )
+
+    return ConversationHandler.END
+
+
+async def _save_diagram_rewards(telegram_id, context):
+    from sqlalchemy import select
+
+    from src.api.gamification import XP_SOURCES
+    async def _save():
+        factory = async_session_factory()
+        async with factory() as session:
+            result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+            user = result.scalar_one_or_none()
+            if not user:
+                return
+            xp_amount = XP_SOURCES.get("diagram_completion", 10)
+            meta = {"source": "telegram_bot"}
+            gam_result, _, level_up = await award_xp(
+                user.id, "diagram_completion", xp_amount, meta, session,
+            )
+            await update_streak(user.id, session)
+            await check_achievements(user.id, gam_result, session)
+            await session.commit()
+            context.user_data["last_xp_awarded"] = xp_amount
+            context.user_data["last_level_up"] = level_up
+            context.user_data["last_new_level"] = gam_result.level
+    await _db_try(_save)
 
 
 async def handle_progress(update: Update, context):
@@ -2206,6 +2352,27 @@ def build_app() -> Application:
     )
     app.add_handler(lesson_handler)
 
+    diagram_handler = ConversationHandler(
+        entry_points=[CommandHandler("diagram", diagram_command)],
+        states={
+            DIAGRAM_GRADE: [
+                CallbackQueryHandler(handle_diagram_grade, pattern="^diagram_grade_"),
+                CallbackQueryHandler(end_conversation, pattern="^menu$"),
+            ],
+            DIAGRAM_TOPIC: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_diagram_topic),
+                CallbackQueryHandler(end_conversation, pattern="^menu$"),
+            ],
+        },
+        fallbacks=[
+            CommandHandler("cancel", cancel),
+            CommandHandler("menu", menu),
+            CallbackQueryHandler(end_conversation, pattern="^menu$"),
+        ],
+        per_user=True,
+    )
+    app.add_handler(diagram_handler)
+
     conv_handler = ConversationHandler(
         entry_points=[
             CallbackQueryHandler(handle_tutor, pattern="^tutor$"),
@@ -2270,6 +2437,7 @@ async def main():
         BotCommand("socratic", "Toggle Socratic mode"),
         BotCommand("hint", "Get a hint"),
         BotCommand("reveal", "Reveal the answer"),
+        BotCommand("diagram", "Generate a biology diagram"),
         BotCommand("recovery", "View recovery plans"),
         BotCommand("progress", "View your progress"),
         BotCommand("settings", "Notification settings"),

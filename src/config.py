@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     dashboard_url: str = "http://localhost:3000"
     api_base_url: str = "http://localhost:8000"
 
+    cloudflare_account_id: str = ""
+    cloudflare_api_token: str = ""
+    cloudflare_image_model: str = "@cf/black-forest-labs/flux-1-schnell"
+
     email_host: str = ""
     email_port: int = 587
     email_user: str = ""

@@ -26,7 +26,7 @@ pytesseract==0.3.13
 gtts==2.5.4
 speechrecognition==3.11.0
 pydub==0.25.1
-numpy==1.26.4
+numpy>=1.26.4,<2.0.0
 pytest==8.3.3
 pytest-asyncio==0.24.0
 langgraph>=1.0.0
@@ -39,3 +39,6 @@ fpdf2==2.8.1
 Pillow>=10.0.0
 bcrypt>=4.0.0
 python-jose[cryptography]>=3.3.0
+cairosvg>=2.7.0
+defusedxml>=0.7.1
+opencv-python-headless>=4.9.0.80

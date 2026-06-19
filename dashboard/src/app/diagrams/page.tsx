@@ -1,11 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { Image, Send, Loader2, AlertTriangle, CheckCircle2, XCircle, RefreshCw } from 'lucide-react'
+import { Image, Send, Loader2, AlertTriangle, CheckCircle2, XCircle, RefreshCw, Edit3, Layers, Sparkles, Upload } from 'lucide-react'
+import DOMPurify from 'dompurify'
 import { fetchWithTimeout } from '@/lib/fetch'
-import { isAuthenticated } from '@/lib/auth'
+import { getUserId } from '@/lib/auth'
+import SvgEditor from '@/components/svg-editor/SvgEditor'
+import IconPalette from '@/components/icon-palette/IconPalette'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,29 +43,16 @@ interface ValidateResponse {
   attempt_id: string
 }
 
-interface ModelOption {
-  id: string
-  name: string
-  provider: string
-  available: boolean
-  is_default: boolean
-}
-
-const TOPICS = ['cells', 'organ systems', 'genetics', 'anatomy']
+const GRADES = [9, 10, 11, 12]
 const DIFFICULTIES = ['beginner', 'intermediate', 'advanced']
 const PLACEHOLDER_USER_ID = '00000000-0000-0000-0000-000000000001'
 
 export default function DiagramsPage() {
-  const router = useRouter()
   const td = useTranslations('diagrams')
   const tc = useTranslations('common')
-  const [models, setModels] = useState<ModelOption[]>([])
-  const [modelsLoading, setModelsLoading] = useState(true)
   const [prompt, setPrompt] = useState('')
-  const [topic, setTopic] = useState('cells')
+  const [grade, setGrade] = useState(10)
   const [difficulty, setDifficulty] = useState('beginner')
-  const [selectedProvider, setSelectedProvider] = useState('')
-  const [selectedModel, setSelectedModel] = useState('')
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -73,27 +62,15 @@ export default function DiagramsPage() {
   const [confirmedCorrectIds, setConfirmedCorrectIds] = useState<Set<string>>(new Set())
   const [labelInputs, setLabelInputs] = useState<Record<string, string>>({})
   const [hoveredLabel, setHoveredLabel] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!isAuthenticated()) { router.push('/login'); return }
-  }, [router])
-
-  useEffect(() => {
-    fetchWithTimeout('/models', { method: 'GET' })
-      .then((data: ModelOption[]) => {
-        setModels(data)
-        const defaultModel = data.find((m: ModelOption) => m.is_default)
-        if (defaultModel) {
-          setSelectedProvider(defaultModel.provider)
-          setSelectedModel(defaultModel.id)
-        } else if (data.length > 0) {
-          setSelectedProvider(data[0].provider)
-          setSelectedModel(data[0].id)
-        }
-        setModelsLoading(false)
-      })
-      .catch(() => setModelsLoading(false))
-  }, [])
+  const [activeTab, setActiveTab] = useState<'labels' | 'icons' | 'editor' | 'style' | 'sketch'>('labels')
+  const [styleTransferResult, setStyleTransferResult] = useState<string | null>(null)
+  const [styleTransferLoading, setStyleTransferLoading] = useState(false)
+  const [sketchResult, setSketchResult] = useState<string | null>(null)
+  const [sketchLoading, setSketchLoading] = useState(false)
+  const [sketchError, setSketchError] = useState<string | null>(null)
+  const [editorLabels, setEditorLabels] = useState<DiagramLabel[]>([])
+  const [composedSvg, setComposedSvg] = useState<string | null>(null)
+  const [composedTitle, setComposedTitle] = useState('')
 
   const generateDiagram = async () => {
     if (!prompt.trim()) return
@@ -110,12 +87,13 @@ export default function DiagramsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: prompt.trim(),
-          topic,
+          topic: 'biology',
           difficulty,
-          model: selectedModel || undefined,
+          grade,
         }),
       }, 120000)
       setResult(data)
+      setEditorLabels([...data.labels])
       const inputs: Record<string, string> = {}
       data.labels.forEach((l: DiagramLabel) => { inputs[l.id] = '' })
       setLabelInputs(inputs)
@@ -143,7 +121,7 @@ export default function DiagramsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: PLACEHOLDER_USER_ID,
+          user_id: getUserId() || PLACEHOLDER_USER_ID,
           correct_labels: result.labels,
           submitted_labels: submittedLabels,
           topic: result.topic,
@@ -182,6 +160,45 @@ export default function DiagramsPage() {
     }
   }
 
+  const applyStyleTransfer = async () => {
+    if (!result) return
+    setStyleTransferLoading(true)
+    setStyleTransferResult(null)
+    try {
+      const data = await fetchWithTimeout('/diagram/style-transfer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ svg: result.diagram_svg, style: 'diagram' }),
+      }, 120000)
+      setStyleTransferResult(data.image_b64 || data.image)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setStyleTransferLoading(false)
+    }
+  }
+
+  const handleSketchUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setSketchLoading(true)
+    setSketchResult(null)
+    setSketchError(null)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const data = await fetchWithTimeout('/diagram/sketch', {
+        method: 'POST',
+        body: formData,
+      }, 120000)
+      setSketchResult(data.image_b64 || data.image)
+    } catch (err: any) {
+      setSketchError(err.message)
+    } finally {
+      setSketchLoading(false)
+    }
+  }
+
   const getViewBox = (svg: string) => {
     const match = svg.match(/viewBox=["']([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)["']/)
     if (match) return { width: parseFloat(match[3]), height: parseFloat(match[4]) }
@@ -198,12 +215,12 @@ export default function DiagramsPage() {
       </div>
 
       <div className="bg-card rounded-xl border border-border p-5 mb-6">
-        <div className="grid grid-cols-6 gap-3 mb-4">
+        <div className="grid grid-cols-4 gap-3 mb-4">
           <div>
-            <label className="text-xs text-foreground-muted block mb-1.5">{td('topic')}</label>
-            <select value={topic} onChange={e => setTopic(e.target.value)}
+            <label className="text-xs text-foreground-muted block mb-1.5">{td('grade_label') || 'Grade'}</label>
+            <select value={grade} onChange={e => setGrade(Number(e.target.value))}
               className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
-              {TOPICS.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+              {GRADES.map(g => <option key={g} value={g}>Grade {g}</option>)}
             </select>
           </div>
           <div>
@@ -213,36 +230,7 @@ export default function DiagramsPage() {
               {DIFFICULTIES.map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}
             </select>
           </div>
-          <div>
-            <label className="text-xs text-foreground-muted block mb-1.5">{td('provider')}</label>
-            <select value={selectedProvider} onChange={e => {
-              const provider = e.target.value
-              setSelectedProvider(provider)
-              const first = models.find(m => m.provider === provider)
-              setSelectedModel(first ? first.id : '')
-            }}
-              className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-              disabled={modelsLoading}>
-              {Array.from(new Set(models.map(m => m.provider))).map(p =>
-                <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
-              )}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs text-foreground-muted block mb-1.5">{tc('model_label')}</label>
-            <select value={selectedModel} onChange={e => setSelectedModel(e.target.value)}
-              className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-              disabled={modelsLoading || !selectedProvider}>
-              {models
-                .filter(m => m.provider === selectedProvider)
-                .map(m => (
-                  <option key={m.id} value={m.id} disabled={!m.available}>
-                    {m.name}{m.is_default ? ' ★' : ''}{!m.available ? ` (${td('not_configured')})` : ''}
-                  </option>
-                ))}
-            </select>
-          </div>
-          <div className="col-span-3">
+          <div className="col-span-2">
             <label className="text-xs text-foreground-muted block mb-1.5">{td('prompt')}</label>
             <div className="flex gap-3">
               <input
@@ -250,7 +238,7 @@ export default function DiagramsPage() {
                 value={prompt}
                 onChange={e => setPrompt(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && generateDiagram()}
-                placeholder={td('prompt_placeholder')}
+                placeholder={'Describe the biology diagram you want...'}
                 className="flex-1 px-4 py-2 border border-border rounded-lg text-sm bg-background text-foreground placeholder:text-foreground-muted/50 focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <button
@@ -272,7 +260,7 @@ export default function DiagramsPage() {
             <div className="h-4 bg-border rounded w-1/2 mx-auto" />
             <div className="h-4 bg-border rounded w-2/3 mx-auto" />
           </div>
-          <p className="text-sm text-foreground-muted mt-4">{td('generating_topic', { topic })}</p>
+          <p className="text-sm text-foreground-muted mt-4">Generating diagram for &ldquo;{prompt.substring(0, 40)}&rdquo; &hellip;</p>
         </div>
       )}
 
@@ -299,46 +287,206 @@ export default function DiagramsPage() {
               </div>
             </div>
 
-            <div className="relative w-full overflow-hidden rounded-lg">
-              <div
-                className="w-full [&_svg]:w-full [&_svg]:h-auto"
-                dangerouslySetInnerHTML={{ __html: result.diagram_svg }}
-              />
-              {result.labels.length > 0 && (
-                <div className="absolute inset-0 pointer-events-none">
-                  {result.labels.map((label, i) => {
-                    const vb = getViewBox(result.diagram_svg)
-                    if (!vb) return null
-                    const pctX = (label.x / vb.width) * 100
-                    const pctY = (label.y / vb.height) * 100
-                    return (
-                      <div
-                        key={label.id}
-                        className="absolute pointer-events-auto"
-                        style={{ left: `${pctX}%`, top: `${pctY}%`, transform: 'translate(-50%, -50%)' }}
-                        onMouseEnter={() => setHoveredLabel(label.id)}
-                        onMouseLeave={() => setHoveredLabel(null)}
-                      >
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all cursor-pointer ${
-                          hoveredLabel === label.id
-                            ? 'bg-primary text-white scale-125 shadow-lg shadow-primary/40'
-                            : 'bg-primary/80 text-white shadow-md'
-                        }`}>
-                          {i + 1}
-                        </div>
-                        {hoveredLabel === label.id && !validationResult && (
-                          <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-background-secondary text-foreground text-xs px-2.5 py-1.5 rounded-lg border border-border whitespace-nowrap shadow-xl z-10 pointer-events-none">
-                            {label.text}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setActiveTab('labels')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  activeTab === 'labels'
+                    ? 'bg-primary text-white'
+                    : 'border border-border text-foreground hover:bg-background-secondary'
+                }`}
+              >
+                Label Exercise
+              </button>
+              <button
+                onClick={() => setActiveTab('icons')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                  activeTab === 'icons'
+                    ? 'bg-primary text-white'
+                    : 'border border-border text-foreground hover:bg-background-secondary'
+                }`}
+              >
+                <Layers className="w-4 h-4" /> Icon Library
+              </button>
+              <button
+                onClick={() => setActiveTab('editor')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                  activeTab === 'editor'
+                    ? 'bg-primary text-white'
+                    : 'border border-border text-foreground hover:bg-background-secondary'
+                }`}
+              >
+                <Edit3 className="w-4 h-4" /> Edit Diagram
+              </button>
+              <button
+                onClick={() => setActiveTab('style')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                  activeTab === 'style'
+                    ? 'bg-primary text-white'
+                    : 'border border-border text-foreground hover:bg-background-secondary'
+                }`}
+              >
+                <Sparkles className="w-4 h-4" /> Style Transfer
+              </button>
+              <button
+                onClick={() => setActiveTab('sketch')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                  activeTab === 'sketch'
+                    ? 'bg-primary text-white'
+                    : 'border border-border text-foreground hover:bg-background-secondary'
+                }`}
+              >
+                <Upload className="w-4 h-4" /> Sketch
+              </button>
             </div>
+
+            {activeTab === 'labels' && (
+              <>
+                <div className="relative w-full overflow-hidden rounded-lg">
+                  <div
+                    className="w-full [&_svg]:w-full [&_svg]:h-auto"
+                    dangerouslySetInnerHTML={{
+                      __html: DOMPurify.sanitize(result.diagram_svg, {
+                        ADD_TAGS: ['use', 'svg', 'g', 'path', 'circle', 'rect', 'line', 'polygon', 'polyline', 'text', 'tspan', 'defs', 'clipPath', 'mask', 'linearGradient', 'radialGradient', 'stop', 'marker', 'image', 'filter', 'feGaussianBlur', 'feOffset', 'feMerge', 'feMergeNode', 'feColorMatrix', 'animate', 'animateTransform', 'set'],
+                        ADD_ATTR: ['viewBox', 'xmlns', 'd', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'width', 'height', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'transform', 'clip-path', 'mask', 'fill-opacity', 'stroke-opacity', 'opacity', 'font-family', 'font-size', 'font-weight', 'text-anchor', 'dominant-baseline', 'dx', 'dy', 'href', 'target', 'id', 'class', 'style', 'points', 'filter', 'stop-color', 'stop-opacity', 'offset', 'marker-end', 'marker-start', 'marker-mid', 'refX', 'refY', 'markerWidth', 'markerHeight', 'orient'],
+                      })
+                    }}
+                  />
+                  {result.labels.length > 0 && (
+                    <div className="absolute inset-0 pointer-events-none">
+                      {result.labels.map((label, i) => {
+                        const vb = getViewBox(result.diagram_svg)
+                        if (!vb) return null
+                        const pctX = (label.x / vb.width) * 100
+                        const pctY = (label.y / vb.height) * 100
+                        return (
+                          <div
+                            key={label.id}
+                            className="absolute pointer-events-auto"
+                            style={{ left: `${pctX}%`, top: `${pctY}%`, transform: 'translate(-50%, -50%)' }}
+                            onMouseEnter={() => setHoveredLabel(label.id)}
+                            onMouseLeave={() => setHoveredLabel(null)}
+                          >
+                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all cursor-pointer ${
+                              hoveredLabel === label.id
+                                ? 'bg-primary text-white scale-125 shadow-lg shadow-primary/40'
+                                : 'bg-primary/80 text-white shadow-md'
+                            }`}>
+                              {i + 1}
+                            </div>
+                            {hoveredLabel === label.id && !validationResult && (
+                              <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-background-secondary text-foreground text-xs px-2.5 py-1.5 rounded-lg border border-border whitespace-nowrap shadow-xl z-10 pointer-events-none">
+                                {label.text}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {activeTab === 'icons' && (
+              <div className="space-y-4">
+                <IconPalette
+                  onComposedSvg={(svg, title) => {
+                    setComposedSvg(svg)
+                    setComposedTitle(title)
+                  }}
+                />
+                {composedSvg && (
+                  <div className="mt-4 p-4 bg-background rounded-lg border border-border">
+                    <h4 className="text-sm font-medium text-foreground mb-2">
+                      {composedTitle || 'Composed Diagram'}
+                    </h4>
+                    <div
+                      className="w-full [&_svg]:w-full [&_svg]:h-auto"
+                      dangerouslySetInnerHTML={{
+                        __html: DOMPurify.sanitize(composedSvg, {
+                          ADD_TAGS: ['use', 'svg', 'g', 'path', 'circle', 'rect', 'line', 'polygon', 'polyline', 'text', 'tspan', 'defs', 'clipPath', 'mask', 'linearGradient', 'radialGradient', 'stop', 'marker', 'image', 'filter', 'feGaussianBlur', 'feOffset', 'feMerge', 'feMergeNode', 'feColorMatrix', 'animate', 'animateTransform', 'set'],
+                          ADD_ATTR: ['viewBox', 'xmlns', 'd', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'width', 'height', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'transform', 'clip-path', 'mask', 'fill-opacity', 'stroke-opacity', 'opacity', 'font-family', 'font-size', 'font-weight', 'text-anchor', 'dominant-baseline', 'dx', 'dy', 'href', 'target', 'id', 'class', 'style', 'points', 'filter', 'stop-color', 'stop-opacity', 'offset', 'marker-end', 'marker-start', 'marker-mid', 'refX', 'refY', 'markerWidth', 'markerHeight', 'orient'],
+                        }),
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+            {activeTab === 'editor' && (
+              <SvgEditor
+                svg={composedSvg || result.diagram_svg}
+                labels={editorLabels}
+                viewBox={getViewBox(composedSvg || result.diagram_svg)}
+                onLabelsChange={setEditorLabels}
+              />
+            )}
+            {activeTab === 'style' && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={applyStyleTransfer}
+                    disabled={styleTransferLoading}
+                    className="px-6 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+                  >
+                    {styleTransferLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Applying...</> : <><Sparkles className="w-4 h-4" /> Apply Style Transfer</>}
+                  </button>
+                </div>
+                {styleTransferResult && (
+                  <div className="p-4 bg-background rounded-lg border border-border">
+                    <h4 className="text-sm font-medium text-foreground mb-2">Styled Result</h4>
+                    <img
+                      src={`data:image/png;base64,${styleTransferResult}`}
+                      alt="Style transferred diagram"
+                      className="max-w-full h-auto rounded-lg"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+            {activeTab === 'sketch' && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <label className="px-6 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover cursor-pointer flex items-center gap-2 transition-colors">
+                    <Upload className="w-4 h-4" />
+                    {sketchLoading ? <>Processing...</> : <>Upload Sketch</>}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleSketchUpload}
+                      disabled={sketchLoading}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                {sketchLoading && (
+                  <div className="p-8 text-center">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary mx-auto" />
+                    <p className="text-sm text-foreground-muted mt-2">Enhancing sketch...</p>
+                  </div>
+                )}
+                {sketchError && (
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5" />
+                    <p className="text-sm text-red-400/80">{sketchError}</p>
+                  </div>
+                )}
+                {sketchResult && (
+                  <div className="p-4 bg-background rounded-lg border border-border">
+                    <h4 className="text-sm font-medium text-foreground mb-2">Enhanced Diagram</h4>
+                    <img
+                      src={`data:image/png;base64,${sketchResult}`}
+                      alt="Enhanced sketch diagram"
+                      className="max-w-full h-auto rounded-lg"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
+          {activeTab === 'labels' && (
           <div className="bg-card rounded-xl border border-border p-6">
             <h3 className="text-lg font-semibold text-foreground mb-4">{td('label_diagram')}</h3>
             <p className="text-sm text-foreground-muted mb-4">
@@ -450,6 +598,7 @@ export default function DiagramsPage() {
               </button>
             )}
           </div>
+          )}
         </div>
       )}
 

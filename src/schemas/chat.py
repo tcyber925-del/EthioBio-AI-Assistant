@@ -1,6 +1,8 @@
 from typing import Optional
 from uuid import UUID
 
+from pydantic import Field
+
 from src.schemas.base import SchemaModel
 from src.schemas.common import LanguageEnum
 
@@ -34,3 +36,7 @@ class TutorResponse(SchemaModel):
     xp_awarded: int = 0
     level_up: bool = False
     new_level: int = 0
+    diagram_svg: str = ""
+    diagram_labels: list[dict] = Field(default_factory=list)
+    diagram_title: str = ""
+    diagram_textbook_ref: str = ""

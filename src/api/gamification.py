@@ -25,6 +25,7 @@ XP_SOURCES = {
     "quiz_high_score_bonus": 10,
     "quiz_perfect_score_bonus": 15,
     "tutor_interaction": 5,
+    "diagram_completion": 10,
     "daily_streak_bonus": 20,
     "achievement_unlock": 50,
     "recovery_task_completion": 40,

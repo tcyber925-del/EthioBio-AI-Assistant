@@ -96,6 +96,21 @@ async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_
                 db=session,
             )
 
+        diagram_data: dict = {}
+        if request.topic and request.grade_level:
+            try:
+                from src.agents.diagram_tutor_integration import (
+                    generate_tutor_diagram,
+                )
+                diagram_data = await generate_tutor_diagram(
+                    question=request.question,
+                    topic=request.topic,
+                    grade_level=request.grade_level,
+                    db_session=session,
+                )
+            except Exception:
+                logger.warning("tutor_diagram_generate_failed")
+
         xp_awarded = 0
         level_up = False
         new_level = 0
@@ -123,6 +138,10 @@ async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_
             xp_awarded=xp_awarded,
             level_up=level_up,
             new_level=new_level,
+            diagram_svg=diagram_data.get("diagram_svg", ""),
+            diagram_labels=diagram_data.get("labels", []),
+            diagram_title=diagram_data.get("title", ""),
+            diagram_textbook_ref=diagram_data.get("textbook_ref", ""),
         )
     except Exception as e:
         logger.error("chat_error", error=str(e))

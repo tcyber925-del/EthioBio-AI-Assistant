@@ -63,6 +63,15 @@
     "score": "⭐ XP earned this quiz: {xp}",
     "cancelled": "Quiz cancelled."
   },
+  "diagram": {
+    "grade_prompt": "Select your grade level for the diagram:",
+    "topic_prompt": "Grade {grade} selected. Describe the biology diagram you want:\n(e.g., Draw a plant cell, Show the heart structure, Compare mitosis and meiosis)",
+    "generating": "Generating your diagram...",
+    "grade_label": "Grade",
+    "labels_count": "Labels",
+    "no_labels": "No labels on this diagram",
+    "error": "Error generating diagram."
+  },
   "lesson": {
     "grade_prompt": "Select grade level:",
     "generating": "Creating lesson plan...",
