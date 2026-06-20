@@ -43,11 +43,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
-          <h2 className="text-xl font-bold text-red-600 mb-2">Access Denied</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <Link href="/" className="text-blue-600 hover:underline">
+          <h2 className="text-xl font-bold text-red-400 mb-2">Access Denied</h2>
+          <p className="text-foreground-muted mb-4">{error}</p>
+          <Link href="/" className="text-primary hover:underline text-subhead">
             Back to Dashboard
           </Link>
         </div>
@@ -57,27 +57,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (authorized === null) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-500">Verifying access...</p>
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-foreground-muted text-body">Verifying access...</p>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <aside className="w-56 bg-gray-900 text-white flex flex-col">
-        <div className="p-4 border-b border-gray-700">
-          <h1 className="text-lg font-bold">Admin Panel</h1>
+    <div className="flex min-h-screen bg-background">
+      <aside className="w-56 bg-card border-r border-border flex flex-col">
+        <div className="p-4 border-b border-border">
+          <h1 className="font-display font-bold text-lg text-foreground">Admin Panel</h1>
         </div>
         <nav className="flex-1 p-2 space-y-1">
           {NAV_ITEMS.map(item => (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-2 px-3 py-2 rounded text-sm ${
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-subhead transition-colors ${
                 pathname === item.href
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-300 hover:bg-gray-800'
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-foreground-muted hover:bg-background-secondary hover:text-foreground'
               }`}
             >
               <span>{item.icon}</span>
@@ -85,8 +85,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Link>
           ))}
         </nav>
-        <div className="p-3 border-t border-gray-700">
-          <Link href="/" className="flex items-center gap-2 text-sm text-gray-400 hover:text-white">
+        <div className="p-3 border-t border-border">
+          <Link href="/" className="flex items-center gap-2 text-small text-foreground-muted hover:text-foreground transition-colors">
             <span>←</span>
             <span>Back to Dashboard</span>
           </Link>

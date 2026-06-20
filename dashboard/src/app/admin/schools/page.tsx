@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
+import Card from '@/components/ui/Card'
+import Button from '@/components/ui/Button'
 
 export const dynamic = 'force-dynamic'
 
@@ -54,32 +56,40 @@ export default function AdminSchoolsPage() {
     }
   }
 
-  if (error) return <p className="text-red-600">{tc('error')}: {error}</p>
-  if (loading) return <p className="text-gray-500">{tc('loading')}</p>
+  if (error) return <p className="text-red-400">{tc('error')}: {error}</p>
+  if (loading) return <p className="text-foreground-muted text-body">{tc('loading')}</p>
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">{ts('title')}</h1>
-        <button onClick={() => setShowForm(true)} className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">
+        <h1 className="text-heading text-foreground">{ts('title')}</h1>
+        <Button variant="primary" size="sm" onClick={() => setShowForm(true)}>
           + {ts('add_school')}
-        </button>
+        </Button>
       </div>
       {showForm && (
-        <div className="mb-4 flex gap-2">
-          <input value={name} onChange={e => setName(e.target.value)} placeholder={ts('school_name_placeholder')} className="border rounded px-3 py-2 flex-1" autoFocus />
-          <button onClick={create} className="bg-green-600 text-white px-4 py-2 rounded text-sm">{tc('save')}</button>
-          <button onClick={() => setShowForm(false)} className="text-gray-500 px-4 py-2 text-sm">{tc('cancel')}</button>
-        </div>
+        <Card className="mb-4">
+          <div className="flex gap-2">
+            <input
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder={ts('school_name_placeholder')}
+              className="flex-1 px-4 py-2 border border-border rounded-lg text-body bg-background text-foreground placeholder:text-foreground-muted/50 focus:outline-none focus:ring-2 focus:ring-primary"
+              autoFocus
+            />
+            <Button variant="primary" size="md" onClick={create}>{tc('save')}</Button>
+            <Button variant="secondary" size="md" onClick={() => setShowForm(false)}>{tc('cancel')}</Button>
+          </div>
+        </Card>
       )}
       <div className="grid gap-4">
         {schools.map((s: SchoolData) => (
-          <div key={s.id} className="border rounded p-4 bg-white">
-            <h3 className="font-semibold">{s.name}</h3>
-            <p className="text-sm text-gray-500 mt-1">
+          <Card key={s.id}>
+            <h3 className="text-subhead text-foreground">{s.name}</h3>
+            <p className="text-small text-foreground-muted mt-1">
               {ts('school_info', { teachers: s.teacher_count ?? '?', students: s.student_count ?? '?', grade: s.grade_range ?? 'N/A' })}
             </p>
-          </div>
+          </Card>
         ))}
       </div>
     </div>

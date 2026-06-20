@@ -15,6 +15,10 @@ import {
 import { CardSkeleton } from '@/components/Skeleton'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
+import PageHeader from '@/components/ui/PageHeader'
+import Card from '@/components/ui/Card'
+import Badge from '@/components/ui/Badge'
+import Button from '@/components/ui/Button'
 
 export const dynamic = 'force-dynamic'
 
@@ -112,25 +116,23 @@ export default function SchoolDashboardPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <School className="w-6 h-6" />
-            {ts('school_intelligence')}
-          </h1>
-          <p className="text-foreground-muted text-sm mt-1">{ts('school_intelligence_subtitle')}</p>
-        </div>
-        <select
-          value={selectedId}
-          onChange={e => setSelectedId(e.target.value)}
-          className="bg-card border border-border rounded-lg px-3 py-2 text-sm text-foreground"
-        >
+      <PageHeader
+        icon={<School className="w-6 h-6" />}
+        title={ts('school_intelligence')}
+        description={ts('school_intelligence_subtitle')}
+        actions={
+          <select
+            value={selectedId}
+            onChange={e => setSelectedId(e.target.value)}
+            className="bg-background border border-border rounded-lg px-3 py-2 text-body text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          >
           <option value="">{ts('select_school')}</option>
           {schools.map(s => (
             <option key={s.id} value={s.id}>{s.name}</option>
           ))}
         </select>
-      </div>
+        }
+      />
 
       {error && (
         <div className="text-center py-8">
