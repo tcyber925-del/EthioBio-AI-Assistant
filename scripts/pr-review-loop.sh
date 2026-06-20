@@ -63,25 +63,21 @@ cmd_read() {
   fi
 
   header "INLINE REVIEW COMMENTS"
+  local owner="${REPO%/*}" repo="${REPO#*/}"
   local comments
-  comments=$(gh api "/repos/$REPO/pulls/$PR_NUMBER/comments" --paginate 2>/dev/null)
-  local thread_starts
-  thread_starts=$(echo "$comments" | python3 -c "
-import json,sys
-try:
-    data = json.load(sys.stdin)
-except:
-    data = []
-threads = [c for c in data if not c.get('in_reply_to_id')]
-threads.sort(key=lambda c: (c['path'], c.get('line', 0) or 0))
-for c in threads:
-    sev = '🔴' if 'Critical' in str(c.get('body','')) else '🟠' if 'Major' in str(c.get('body','')) else '🟡'
-    print(f'  {sev} {c[\"path\"]}:{c.get(\"line\", c.get(\"original_line\", \"?\"))}  |  {c[\"body\"][:120]}...')
-" 2>/dev/null)
-  if [[ -z "$thread_starts" ]]; then
-    echo "  No inline review comments."
+  comments=$(gh api graphql -f query='
+    query($o:String!,$r:String!,$p:Int!) {
+      repository(owner:$o,name:$r) { pullRequest(number:$p) { reviewThreads(first:50) { nodes { isResolved comments(first:5) { nodes { path body } } } } } }
+    }' -F o="$owner" -F r="$repo" -F p="$PR_NUMBER" --jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false) | .comments.nodes[0] | "\(.path) | \(.body[:120])"] | .[]' 2>/dev/null)
+  if [[ -z "$comments" ]]; then
+    echo "  No unresolved inline review comments."
   else
-    echo "$thread_starts"
+    while IFS= read -r line; do
+      sev="🟡"
+      echo "$line" | grep -qi "critical" && sev="🔴"
+      echo "$line" | grep -qi "major" && sev="🟠"
+      echo "  $sev $line"
+    done <<< "$comments"
   fi
 
   header "PR COMMENTS"
@@ -133,16 +129,12 @@ cmd_verify() {
   local decision
   decision=$(gh pr view "$PR_NUMBER" --json reviewDecision -q .reviewDecision 2>/dev/null || echo "")
 
+  local owner="${REPO%/*}" repo="${REPO#*/}"
   local unresolved_threads
-  unresolved_threads=$(gh api "/repos/$REPO/pulls/$PR_NUMBER/comments" --paginate 2>/dev/null | python3 -c "
-import json,sys
-try:
-    data = json.load(sys.stdin)
-except:
-    data = []
-threads = [c for c in data if not c.get('in_reply_to_id')]
-print(len(threads))
-")
+  unresolved_threads=$(gh api graphql -f query='
+    query($o:String!,$r:String!,$p:Int!) {
+      repository(owner:$o,name:$r) { pullRequest(number:$p) { reviewThreads(first:50) { nodes { isResolved } } } }
+    }' -F o="$owner" -F r="$repo" -F p="$PR_NUMBER" --jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length' 2>/dev/null || echo "0")
 
   header "VERIFICATION"
   echo -e "  Review decision:  $(case "$decision" in

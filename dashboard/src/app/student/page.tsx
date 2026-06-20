@@ -141,7 +141,7 @@ export default function StudentDashboardPage() {
         icon={<User className="w-6 h-6" />}
         title={t('title')}
         description={data.user.grade_level
-          ? `Grade ${data.user.grade_level} · ${t('welcome_back')}`
+          ? `${t('grade_with_level', { grade: data.user.grade_level })} · ${t('welcome_back')}`
           : t('welcome_back')
         }
         actions={
