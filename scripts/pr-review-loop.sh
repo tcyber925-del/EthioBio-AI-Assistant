@@ -126,8 +126,17 @@ cmd_verify() {
   detect_pr
   local just_pushed="${1:-}"
 
-  local decision
+  local state decision
+  state=$(gh pr view "$PR_NUMBER" --json state -q .state 2>/dev/null || echo "")
   decision=$(gh pr view "$PR_NUMBER" --json reviewDecision -q .reviewDecision 2>/dev/null || echo "")
+
+  if [[ "$state" == "MERGED" ]]; then
+    header "VERIFICATION"
+    echo -e "  ${GREEN}${BOLD}✓ PR #$PR_NUMBER has been MERGED.${NC}"
+    echo -e "  PR: https://github.com/$REPO/pull/$PR_NUMBER"
+    echo -e "\n  ${GREEN}${BOLD}✓ Loop complete.${NC}"
+    exit 0
+  fi
 
   local owner="${REPO%/*}" repo="${REPO#*/}"
   local unresolved_threads
