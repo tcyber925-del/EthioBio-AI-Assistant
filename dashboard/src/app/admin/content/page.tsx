@@ -91,7 +91,7 @@ export default function AdminContentPage() {
             <option value="all">{tc('all_status')}</option>
             <option value="draft">{tc('draft')}</option>
             <option value="published">{tc('published')}</option>
-            <option value="archived">Archived</option>
+            <option value="archived">{tc('archived')}</option>
           </select>
         </div>
       </Card>

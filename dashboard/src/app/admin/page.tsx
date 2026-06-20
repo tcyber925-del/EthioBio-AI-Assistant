@@ -92,7 +92,7 @@ export default function AdminDashboardPage() {
                   <td className="p-3 text-foreground">{log.request_type}</td>
                   <td className="p-3 text-mono text-foreground-muted">{log.model_used}</td>
                   <td className="p-3">{log.success ? <span className="text-green-400">✓</span> : <span className="text-red-400">✗</span>}</td>
-                  <td className="p-3 text-foreground-muted">{log.latency_ms ? `${(log.latency_ms / 1000).toFixed(1)}s` : '-'}</td>
+                  <td className="p-3 text-foreground-muted">{log.latency_ms != null ? `${(log.latency_ms / 1000).toFixed(1)}s` : '-'}</td>
                 </tr>
               ))}
             </tbody>

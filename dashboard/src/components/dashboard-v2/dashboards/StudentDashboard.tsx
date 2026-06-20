@@ -206,9 +206,11 @@ export function StudentDashboard() {
             </div>
           )}
 
-          <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6 shadow-[0_1px_2px_rgba(0,0,0,.04),0_12px_32px_rgba(0,0,0,.06)]">
-            <ActivityTimeline items={recent_activity} />
-          </div>
+          {recent_activity.length > 0 && (
+            <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6 shadow-[0_1px_2px_rgba(0,0,0,.04),0_12px_32px_rgba(0,0,0,.06)]">
+              <ActivityTimeline items={recent_activity} />
+            </div>
+          )}
         </div>
 
         <div className="space-y-6">

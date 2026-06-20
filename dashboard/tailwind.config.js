@@ -15,6 +15,7 @@ module.exports = {
         card: 'var(--card)',
         'card-hover': 'var(--card-hover)',
         primary: {
+          DEFAULT: '#10b981',
           50: '#ecfdf5',
           100: '#d1fae5',
           200: '#a7f3d0',
@@ -25,6 +26,7 @@ module.exports = {
           700: '#047857',
           800: '#065f46',
           900: '#064e3b',
+          hover: '#059669',
         },
         accent: {
           gold: '#f59e0b',

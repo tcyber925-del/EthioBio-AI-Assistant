@@ -49,12 +49,12 @@ html {
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 /* --- Typography scale --- */
 .text-display {
-  font-family: 'Spectral', Georgia, serif;
+  font-family: Spectral, Georgia, serif;
   font-size: 2rem;
   line-height: 2.5rem;
   font-weight: 700;

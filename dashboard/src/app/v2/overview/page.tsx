@@ -24,7 +24,8 @@ export default function V2OverviewPage() {
       case 'parent': return <ParentDashboard />
       case 'admin': return <AdminDashboard />
       case 'teacher': return <TeacherDashboard />
-      default: return <TeacherDashboard />
+      case 'school': return <SchoolDashboard />
+      default: return null
     }
   }
 

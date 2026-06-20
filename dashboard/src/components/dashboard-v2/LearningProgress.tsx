@@ -15,6 +15,7 @@ interface LearningProgressProps {
 }
 
 export function LearningProgress({ title, percent, milestones }: LearningProgressProps) {
+  const safePercent = Math.min(100, Math.max(0, percent))
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -28,14 +29,14 @@ export function LearningProgress({ title, percent, milestones }: LearningProgres
         </div>
         <div>
           <h2 className="text-lg font-semibold text-v2-text-primary">{title}</h2>
-          <p className="text-xs text-v2-text-secondary">{percent}% complete</p>
+          <p className="text-xs text-v2-text-secondary">{safePercent}% complete</p>
         </div>
       </div>
 
       <div className="h-2 bg-v2-border rounded-full overflow-hidden mb-5">
         <motion.div
           initial={{ width: 0 }}
-          animate={{ width: `${percent}%` }}
+            animate={{ width: `${safePercent}%` }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           className="h-full rounded-full bg-v2-accent"
         />

@@ -33,7 +33,7 @@ const NAV_STRUCTURE: NavSection[] = [
   {
     section: null,
     items: [
-      { label: 'Overview', href: '/v2/overview', icon: LayoutDashboard, roles: ['admin', 'teacher', 'student', 'parent'] },
+      { label: 'Overview', href: '/v2/overview', icon: LayoutDashboard, roles: ['admin', 'teacher', 'student', 'parent', 'school'] },
     ],
   },
 ]

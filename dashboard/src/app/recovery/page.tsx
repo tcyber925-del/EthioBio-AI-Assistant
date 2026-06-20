@@ -312,6 +312,7 @@ export default function RecoveryPage() {
               {students.slice(0, 10).map(s => (
                 <button
                   key={s.id}
+                  type="button"
                   onClick={() => { setUserId(s.id); fetchDashboard(s.id) }}
                   className="px-3 py-1.5 border border-border rounded-lg text-small text-foreground-muted hover:text-foreground hover:bg-background-secondary transition-colors"
                 >

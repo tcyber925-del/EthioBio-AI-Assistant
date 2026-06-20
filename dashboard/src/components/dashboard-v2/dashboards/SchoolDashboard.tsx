@@ -23,16 +23,16 @@ interface TrendPoint {
 function deriveSchoolInsights(profile: SchoolProfile, trends: TrendPoint[]): string[] {
   const insights: string[] = []
   const riskTotal = profile.at_risk_classrooms.reduce((s, c) => s + c.risk_student_count, 0)
-  if (riskTotal > 0) insights.push(`**${riskTotal} student${riskTotal > 1 ? 's' : ''}** across ${profile.at_risk_classrooms.length} classroom${profile.at_risk_classrooms.length > 1 ? 's' : ''} need intervention.`)
+  if (riskTotal > 0) insights.push(`${riskTotal} student${riskTotal > 1 ? 's' : ''} across ${profile.at_risk_classrooms.length} classroom${profile.at_risk_classrooms.length > 1 ? 's' : ''} need intervention.`)
   if (trends.length >= 2) {
     const latest = trends[trends.length - 1]
     const prev = trends[trends.length - 2]
     const diff = latest.avg_health - prev.avg_health
-    if (diff > 0) insights.push(`School health **increased by ${diff.toFixed(1)} points** since last snapshot.`)
-    else if (diff < 0) insights.push(`School health **decreased by ${Math.abs(diff).toFixed(1)} points**. Review at-risk classrooms.`)
+    if (diff > 0) insights.push(`School health increased by ${diff.toFixed(1)} points since last snapshot.`)
+    else if (diff < 0) insights.push(`School health decreased by ${Math.abs(diff).toFixed(1)} points. Review at-risk classrooms.`)
   }
   const critical = profile.health_distribution['Critical'] || 0
-  if (critical > 0) insights.push(`**${critical} student${critical > 1 ? 's' : ''}** in critical readiness band. Immediate intervention recommended.`)
+  if (critical > 0) insights.push(`${critical} student${critical > 1 ? 's' : ''} in critical readiness band. Immediate intervention recommended.`)
   return insights
 }
 
@@ -48,21 +48,24 @@ export function SchoolDashboard() {
     setLoading(true); setError(null)
     try {
       const d = await fetchWithTimeout('/teacher/schools')
-      setSchools(d.schools || d || [])
-      if (d[0]?.id) setSelectedId(d[0].id)
+      const schoolsList = d.schools || d || []
+      setSchools(schoolsList)
+      if (schoolsList[0]?.id) setSelectedId(schoolsList[0].id)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err))
     } finally { setLoading(false) }
   }
 
   const fetchSchoolData = async (schoolId: string) => {
+    setProfile(null)
+    setTrends([])
     try {
-      const [p, t] = await Promise.all([
+      const [p, t] = await Promise.allSettled([
         fetchWithTimeout(`/teacher/schools/${schoolId}/overview`),
         fetchWithTimeout(`/teacher/schools/${schoolId}/trends?days=30`),
       ])
-      setProfile(p)
-      setTrends(t.trends || t || [])
+      if (p.status === 'fulfilled') setProfile(p.value)
+      if (t.status === 'fulfilled') setTrends(t.value.trends || t.value || [])
     } catch {
       // partial data ok
     }

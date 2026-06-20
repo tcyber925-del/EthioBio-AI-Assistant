@@ -26,10 +26,10 @@ function deriveParentInsights(progress: ChildProgress, summary: WeeklySummary | 
   const topics = Object.entries(progress.mastery_heatmap)
   const weak = topics.filter(([, s]) => s < 50)
   const strong = topics.filter(([, s]) => s >= 80)
-  if (weak.length > 0) insights.push(`**${weak.length} area${weak.length > 1 ? 's' : ''}** need${weak.length === 1 ? 's' : ''} attention: ${weak.map(([t]) => t).join(', ')}.`)
-  if (strong.length > 0) insights.push(`**${strong.length} strength${strong.length > 1 ? 's' : ''}**: ${strong.map(([t]) => t).join(', ')}. Keep up the good work!`)
-  if (summary?.is_low_performance_warning) insights.push(`⚠️ **Low performance warning** for this period. Consider scheduling additional support.`)
-  if (progress.streak >= 3) insights.push(`**${progress.streak}-day streak!** Consistency is building.`)
+  if (weak.length > 0) insights.push(`${weak.length} area${weak.length > 1 ? 's' : ''} need${weak.length === 1 ? 's' : ''} attention: ${weak.map(([t]) => t).join(', ')}.`)
+  if (strong.length > 0) insights.push(`${strong.length} strength${strong.length > 1 ? 's' : ''}: ${strong.map(([t]) => t).join(', ')}. Keep up the good work!`)
+  if (summary?.is_low_performance_warning) insights.push(`⚠️ Low performance warning for this period. Consider scheduling additional support.`)
+  if (progress.streak >= 3) insights.push(`${progress.streak}-day streak! Consistency is building.`)
   return insights
 }
 
@@ -57,15 +57,15 @@ export function ParentDashboard() {
 
   const fetchProgress = async (studentId: string) => {
     setProgressLoading(true)
+    setProgress(null)
+    setSummary(null)
     try {
-      const [p, s] = await Promise.all([
+      const [p, s] = await Promise.allSettled([
         fetchWithAuth(`/api/parent/children/${studentId}/progress`),
         fetchWithAuth(`/api/parent/children/${studentId}/weekly-summary`),
       ])
-      setProgress(p)
-      setSummary(s)
-    } catch {
-      // partial data is OK
+      if (p.status === 'fulfilled') setProgress(p.value)
+      if (s.status === 'fulfilled') setSummary(s.value)
     } finally { setProgressLoading(false) }
   }
 
@@ -169,8 +169,8 @@ export function ParentDashboard() {
                           <p className="text-sm text-v2-text-primary">{new Date(q.created_at).toLocaleDateString()}</p>
                           <p className="text-xs text-v2-text-secondary">{q.score}/{q.total} questions</p>
                         </div>
-                        <span className={`text-sm font-mono ${(q.score / q.total) >= 0.7 ? 'text-v2-success' : (q.score / q.total) >= 0.4 ? 'text-v2-warning' : 'text-v2-error'}`}>
-                          {((q.score / q.total) * 100).toFixed(0)}%
+                        <span className={`text-sm font-mono ${q.total > 0 ? ((q.score / q.total) >= 0.7 ? 'text-v2-success' : (q.score / q.total) >= 0.4 ? 'text-v2-warning' : 'text-v2-error') : 'text-v2-text-secondary'}`}>
+                          {q.total > 0 ? ((q.score / q.total) * 100).toFixed(0) : '0'}%
                         </span>
                       </div>
                     ))}

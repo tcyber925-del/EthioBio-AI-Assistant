@@ -17,15 +17,15 @@ interface DashboardData {
 
 function deriveAdminInsights(data: DashboardData): string[] {
   const insights: string[] = []
-  const totalActive = data.users + data.teachers + data.students
-  insights.push(`**${totalActive.toLocaleString()}** total users on the platform. Student-to-teacher ratio: **${data.students > 0 ? (data.students / Math.max(data.teachers, 1)).toFixed(1) : 'N/A'}**:1.`)
-  if (data.quiz_attempts > 0) insights.push(`**${data.quiz_attempts.toLocaleString()}** quiz attempts logged. Assessment engagement is ${data.quiz_attempts > 500 ? 'strong' : 'growing'}.`)
+  const totalActive = data.users
+  insights.push(`${totalActive.toLocaleString()} total users on the platform. Student-to-teacher ratio: ${data.students > 0 ? (data.students / Math.max(data.teachers, 1)).toFixed(1) : 'N/A'}:1.`)
+  if (data.quiz_attempts > 0) insights.push(`${data.quiz_attempts.toLocaleString()} quiz attempts logged. Assessment engagement is ${data.quiz_attempts > 500 ? 'strong' : 'growing'}.`)
   if (data.recent_logs.length > 0) {
     const failed = data.recent_logs.filter(l => !l.success).length
-    if (failed > 3) insights.push(`⚠️ **${failed} failed requests** in recent logs. AI infrastructure may need attention.`)
+    if (failed > 3) insights.push(`⚠️ ${failed} failed requests in recent logs. AI infrastructure may need attention.`)
   }
   const recentUserCount = data.recent_users.length
-  if (recentUserCount > 0) insights.push(`**${recentUserCount} new user${recentUserCount > 1 ? 's' : ''}** registered recently. Platform adoption is ${recentUserCount > 5 ? 'accelerating' : 'steady'}.`)
+  if (recentUserCount > 0) insights.push(`${recentUserCount} new user${recentUserCount > 1 ? 's' : ''} registered recently. Platform adoption is ${recentUserCount > 5 ? 'accelerating' : 'steady'}.`)
   return insights
 }
 
@@ -137,7 +137,7 @@ export function AdminDashboard() {
                       <p className="text-xs text-v2-text-secondary">{log.model_used}</p>
                     </div>
                     <span className="text-xs font-mono text-v2-text-secondary">
-                      {log.latency_ms ? `${(log.latency_ms / 1000).toFixed(1)}s` : '-'}
+                      {log.latency_ms != null ? `${(log.latency_ms / 1000).toFixed(1)}s` : '-'}
                     </span>
                   </div>
                 ))}
