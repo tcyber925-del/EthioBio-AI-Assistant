@@ -113,7 +113,6 @@ cmd_push() {
   if git diff --quiet && git diff --cached --quiet; then
     warn "No changes to commit."
     warn "Run 'pr-review-loop read' first to see what needs fixing."
-    # Still check approval — maybe nothing needed changing
     cmd_verify
     return
   fi
@@ -124,11 +123,12 @@ cmd_push() {
   git push origin "$(git rev-parse --abbrev-ref HEAD)"
 
   info "Checking approval status..."
-  cmd_verify
+  cmd_verify pushed
 }
 
 cmd_verify() {
   detect_pr
+  local just_pushed="${1:-}"
 
   local decision
   decision=$(gh pr view "$PR_NUMBER" --json reviewDecision -q .reviewDecision 2>/dev/null || echo "")
@@ -159,13 +159,17 @@ print(len(threads))
   elif [[ "$decision" == "APPROVED" ]]; then
     echo -e "\n  ${YELLOW}Approved but $unresolved_threads thread(s) remain. Resolve them manually.${NC}"
     exit 1
-  elif git diff --quiet HEAD 2>/dev/null; then
-    echo -e "\n  ${RED}No changes this round but PR is not approved.${NC}"
-    echo -e "  ${YELLOW}Human judgment needed — something beyond code is blocking.${NC}"
-    exit 2
-  else
+  elif [[ -n "$just_pushed" ]]; then
     echo -e "\n  ${YELLOW}Changes pushed. PR is not yet approved. Run again after next review.${NC}"
     echo -e "  Run: ${BOLD}pr-review-loop${NC}"
+    exit 1
+  elif git diff --quiet HEAD 2>/dev/null; then
+    echo -e "\n  ${RED}No changes found but PR is not approved.${NC}"
+    echo -e "  ${YELLOW}Either fix the issues first with 'pr-review-loop read', or the next review cycle is needed.${NC}"
+    exit 2
+  else
+    echo -e "\n  ${YELLOW}Uncommitted changes detected. Commit and push with:${NC}"
+    echo -e "    ${BOLD}pr-review-loop push \"fix: address PR review feedback\"${NC}"
     exit 1
   fi
 }
