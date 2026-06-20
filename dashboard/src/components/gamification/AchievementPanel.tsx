@@ -39,8 +39,8 @@ export default function AchievementPanel({ achievements }: AchievementPanelProps
           <Medal className="w-5 h-5" />
         </div>
         <div>
-          <p className="text-sm text-foreground-muted">{tg('achievements')}</p>
-          <p className="text-lg font-bold text-foreground">{tg('unlocked_count', { unlocked: unlocked.length, total: achievements.length })}</p>
+          <p className="text-small text-foreground-muted">{tg('achievements')}</p>
+          <p className="text-heading text-foreground">{tg('unlocked_count', { unlocked: unlocked.length, total: achievements.length })}</p>
         </div>
       </div>
 
@@ -53,9 +53,9 @@ export default function AchievementPanel({ achievements }: AchievementPanelProps
           return (
             <div
               key={a.id}
-              className={`relative flex flex-col items-center p-3 rounded-lg text-center transition-colors ${
+              className={`relative flex flex-col items-center p-3 rounded-lg text-center transition-all duration-200 ${
                 isUnlocked
-                  ? 'bg-purple-500/10 border border-purple-500/20'
+                  ? 'bg-purple-500/10 border border-purple-500/20 shadow-sm shadow-purple-500/5'
                   : 'bg-background-secondary/50 border border-border/50 opacity-50'
               }`}
             >
@@ -64,7 +64,7 @@ export default function AchievementPanel({ achievements }: AchievementPanelProps
               ) : (
                 <Lock className="w-6 h-6 text-foreground-muted mb-1.5" />
               )}
-              <p className="text-xs font-medium text-foreground">{title}</p>
+              <p className="text-small font-medium text-foreground">{title}</p>
               <p className="text-[10px] text-foreground-muted mt-0.5 leading-tight">{desc}</p>
             </div>
           )

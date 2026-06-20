@@ -5,6 +5,8 @@ import { useTranslations } from 'next-intl'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { fetchWithTimeout } from '@/lib/fetch'
 import { CardSkeleton } from '@/components/Skeleton'
+import Card from '@/components/ui/Card'
+import Button from '@/components/ui/Button'
 import XpCard from './XpCard'
 import StreakWidget from './StreakWidget'
 import MasteryProgressBar from './MasteryProgressBar'
@@ -94,13 +96,14 @@ export default function GamificationProfile({ userId }: { userId: string }) {
 
   if (error) {
     return (
-      <div className="bg-card rounded-xl border border-border p-5 text-center">
+      <Card className="text-center">
         <AlertTriangle className="w-8 h-8 text-red-400 mx-auto mb-2" />
-        <p className="text-sm text-red-400 mb-2">{error}</p>
-        <button onClick={fetchProfile} className="text-xs text-primary hover:underline flex items-center gap-1 mx-auto">
-          <RefreshCw className="w-3 h-3" /> {tc('retry')}
-        </button>
-      </div>
+        <p className="text-small text-red-400 mb-2">{error}</p>
+        <Button variant="ghost" size="sm" onClick={fetchProfile}>
+          <RefreshCw className="w-3 h-3" />
+          {tc('retry')}
+        </Button>
+      </Card>
     )
   }
 
@@ -115,7 +118,7 @@ export default function GamificationProfile({ userId }: { userId: string }) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+      <h2 className="text-heading text-foreground flex items-center gap-2">
         {tg('title')}
       </h2>
 

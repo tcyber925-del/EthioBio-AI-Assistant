@@ -3,6 +3,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import ReviewQueue from '@/components/governance/ReviewQueue'
+import Card from '@/components/ui/Card'
+import Badge from '@/components/ui/Badge'
+import Button from '@/components/ui/Button'
 
 interface ReviewItem {
   trace_id: string
@@ -73,42 +76,38 @@ export default function AdminReviewPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Review Queue</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-heading text-foreground">Review Queue</h1>
+          <p className="text-small text-foreground-muted mt-1">
             Pipeline responses flagged by the Safety Node for teacher review
           </p>
         </div>
       </div>
 
-      <div className="flex gap-2 mb-4">
-        <button
-          onClick={() => setFilter('pending')}
-          className={`px-4 py-2 text-sm rounded-lg ${
-            filter === 'pending'
-              ? 'bg-yellow-100 text-yellow-800 font-medium'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          Pending ({filter === 'pending' ? total : '...'})
-        </button>
-        <button
-          onClick={() => setFilter('resolved')}
-          className={`px-4 py-2 text-sm rounded-lg ${
-            filter === 'resolved'
-              ? 'bg-green-100 text-green-800 font-medium'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          Resolved
-        </button>
-      </div>
+      <Card className="mb-6">
+        <div className="flex gap-2">
+          <Button
+            variant={filter === 'pending' ? 'primary' : 'secondary'}
+            size="sm"
+            onClick={() => setFilter('pending')}
+          >
+            Pending ({filter === 'pending' ? total : '...'})
+          </Button>
+          <Button
+            variant={filter === 'resolved' ? 'primary' : 'secondary'}
+            size="sm"
+            onClick={() => setFilter('resolved')}
+          >
+            Resolved
+          </Button>
+        </div>
+      </Card>
 
       {error && (
-        <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-4 text-sm">
+        <Card className="mb-4 flex items-center gap-2 text-red-400 bg-red-500/5 border-red-500/20">
           {error}
-        </div>
+        </Card>
       )}
 
       <ReviewQueue items={items} onResolve={handleResolve} loading={loading} />

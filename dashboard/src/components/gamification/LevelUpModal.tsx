@@ -35,15 +35,15 @@ export default function LevelUpModal({ level, onClose }: LevelUpModalProps) {
         </button>
 
         <div className="flex justify-center mb-4">
-          <div className="p-3 rounded-full bg-yellow-500/20 animate-bounce">
-            <TrendingUp className="w-10 h-10 text-yellow-400" />
+          <div className="p-3 rounded-full bg-accent-gold/20 animate-bounce">
+            <TrendingUp className="w-10 h-10 text-accent-gold" />
           </div>
         </div>
 
-        <h2 className="text-2xl font-bold text-foreground mb-2">Level Up!</h2>
-        <p className="text-foreground-muted mb-1">You&apos;ve reached</p>
-        <p className="text-5xl font-extrabold text-yellow-400 mb-2">Level {level}</p>
-        <p className="text-sm text-foreground-muted">Keep learning to unlock more rewards!</p>
+        <h2 className="text-display text-foreground mb-2">Level Up!</h2>
+        <p className="text-foreground-muted text-body mb-1">You&apos;ve reached</p>
+        <p className="text-5xl font-bold text-accent-gold font-display mb-2">Level {level}</p>
+        <p className="text-small text-foreground-muted">Keep learning to unlock more rewards!</p>
       </div>
     </div>
   )

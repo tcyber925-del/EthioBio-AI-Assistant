@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
+import Card from '@/components/ui/Card'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,31 +26,33 @@ export default function AdminMonitoringPage() {
       .catch(err => setError(err instanceof Error ? err.message : String(err)))
   }, [])
 
-  if (error) return <p className="text-red-600">{tc('error')}: {error}</p>
-  if (!data) return <p className="text-gray-500">{tc('loading')}</p>
+  if (error) return <p className="text-red-400">{tc('error')}: {error}</p>
+  if (!data) return <p className="text-foreground-muted text-body">{tc('loading')}</p>
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">{tm('title')}</h1>
-      <p className="text-sm text-foreground-muted mb-4">{tm('monitoring_subtitle')}</p>
+      <h1 className="text-heading text-foreground mb-2">{tm('title')}</h1>
+      <p className="text-small text-foreground-muted mb-6">{tm('monitoring_subtitle')}</p>
       <div className="grid grid-cols-3 gap-4">
-        <div className="p-4 rounded-lg bg-blue-50">
-          <div className="text-2xl font-bold text-blue-700">{data.total_requests}</div>
-          <div className="text-sm text-blue-600">{tm('total_requests')}</div>
-        </div>
-        <div className="p-4 rounded-lg bg-red-50">
-          <div className="text-2xl font-bold text-red-700">{data.failed_requests}</div>
-          <div className="text-sm text-red-600">{tm('failed_label')}</div>
-        </div>
-        <div className="p-4 rounded-lg bg-amber-50">
-          <div className="text-2xl font-bold text-amber-700">{data.fallback_rate}%</div>
-          <div className="text-sm text-amber-600">{tm('fallback_rate')}</div>
-        </div>
+        <Card>
+          <p className="text-display text-blue-400">{data.total_requests}</p>
+          <p className="text-small text-foreground-muted">{tm('total_requests')}</p>
+        </Card>
+        <Card>
+          <p className="text-display text-red-400">{data.failed_requests}</p>
+          <p className="text-small text-foreground-muted">{tm('failed_label')}</p>
+        </Card>
+        <Card>
+          <p className="text-display text-yellow-400">{data.fallback_rate}%</p>
+          <p className="text-small text-foreground-muted">{tm('fallback_rate')}</p>
+        </Card>
       </div>
       {data.fallbacks > 0 && (
-        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm">
-          <strong>{tm('fallbacks_triggered')}</strong> {tm('times', { count: data.fallbacks })}
-        </div>
+        <Card className="mt-4 border-yellow-500/20 bg-yellow-500/5">
+          <p className="text-body text-yellow-400">
+            <strong>{tm('fallbacks_triggered')}</strong> {tm('times', { count: data.fallbacks })}
+          </p>
+        </Card>
       )}
     </div>
   )

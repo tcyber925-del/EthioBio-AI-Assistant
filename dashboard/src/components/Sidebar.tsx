@@ -7,6 +7,16 @@ import { useTranslations, useLocale } from 'next-intl'
 import { clearToken, getUserRole, getUserId, isAuthenticated } from '@/lib/auth'
 import { setCookie } from '@/lib/cookies'
 
+function CellAnimation() {
+  return (
+    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" className="shrink-0" aria-hidden="true">
+      <circle cx="18" cy="18" r="15" stroke="#34d399" strokeWidth="1.5" strokeDasharray="4 3" className="cell-membrane" fill="none" />
+      <circle cx="18" cy="18" r="6" fill="#34d399" opacity="0.25" className="cell-nucleus" />
+      <circle cx="18" cy="18" r="3" fill="#34d399" opacity="0.5" className="cell-nucleus" />
+    </svg>
+  )
+}
+
 export default function Sidebar() {
   const t = useTranslations('sidebar')
   const locale = useLocale()
@@ -72,18 +82,19 @@ export default function Sidebar() {
 
   if (!authenticated) return null
 
+  const isV2Route = pathname.startsWith('/v2/') || pathname === '/v2'
+  if (isV2Route) return null
+
   const links = allLinks.filter(l => !role || l.roles.includes(role))
 
   return (
     <aside className="w-64 bg-card border-r border-border h-screen overflow-y-auto flex flex-col flex-shrink-0">
       <div className="p-5 border-b border-border">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-            <GraduationCap className="w-5 h-5 text-primary" />
-          </div>
+          <CellAnimation />
           <div>
-            <h2 className="font-bold text-foreground text-sm">EthioBio</h2>
-            <p className="text-xs text-foreground-muted">{subtitleLabel()}</p>
+            <h2 className="text-heading text-foreground">EthioBio</h2>
+            <p className="text-small text-foreground-muted">{subtitleLabel()}</p>
           </div>
         </div>
       </div>
@@ -95,25 +106,25 @@ export default function Sidebar() {
             <Link
               key={link.href}
               href={link.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-subhead transition-all duration-150 ${
                 active
-                  ? 'bg-primary/10 text-primary'
+                  ? 'bg-primary/10 text-primary shadow-[inset_3px_0_0_var(--primary)]'
                   : 'text-foreground-muted hover:bg-background-secondary hover:text-foreground'
               }`}
             >
-              <Icon className="w-5 h-5" />
+              <Icon className="w-5 h-5 shrink-0" />
               {linkLabel(link.href)}
             </Link>
           )
         })}
       </nav>
       <div className="p-3 border-t border-border space-y-1">
-        <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-foreground-muted">
-          <Globe className="w-5 h-5 flex-shrink-0" />
+        <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-small text-foreground-muted">
+          <Globe className="w-5 h-5 shrink-0" />
           <select
             value={locale}
             onChange={handleLanguageChange}
-            className="bg-transparent text-foreground text-sm outline-none cursor-pointer w-full"
+            className="bg-transparent text-foreground text-small outline-none cursor-pointer w-full"
           >
             <option value="en">{t('english')}</option>
             <option value="am">{t('amharic')}</option>
@@ -121,13 +132,13 @@ export default function Sidebar() {
         </div>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-foreground-muted hover:text-red-400 hover:bg-red-500/10 w-full transition-colors"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-subhead text-foreground-muted hover:text-red-400 hover:bg-red-500/10 w-full transition-all duration-150"
         >
-          <LogOut className="w-5 h-5" />
+          <LogOut className="w-5 h-5 shrink-0" />
           {t('sign_out')}
         </button>
       </div>
-      <div className="p-4 border-t border-border text-xs text-foreground-muted">
+      <div className="p-4 border-t border-border text-small text-foreground-muted">
         <div className="flex items-center gap-2">
           <BookOpen className="w-4 h-4" />
           <span>{t('grade_curriculum')}</span>

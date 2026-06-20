@@ -3,22 +3,36 @@
 @tailwind utilities;
 
 :root {
-  --background: #0f172a;
-  --background-secondary: #1e293b;
-  --foreground: #f1f5f9;
-  --foreground-muted: #94a3b8;
-  --border: #334155;
-  --card: #1e293b;
-  --card-hover: #334155;
-  --primary: #22c55e;
-  --primary-hover: #16a34a;
-  --primary-muted: rgba(34, 197, 94, 0.1);
+  --background: #0a0e1a;
+  --background-secondary: #111827;
+  --foreground: #e8edf5;
+  --foreground-muted: #8896b8;
+  --border: #2a3454;
+  --border-light: #3d4a6b;
+  --card: #1a2035;
+  --card-hover: #232b45;
+  --primary: #34d399;
+  --primary-hover: #059669;
+  --primary-muted: rgba(52, 211, 153, 0.1);
   --danger: #ef4444;
   --danger-muted: rgba(239, 68, 68, 0.1);
   --warning: #f59e0b;
   --warning-muted: rgba(245, 158, 11, 0.1);
   --info: #3b82f6;
   --info-muted: rgba(59, 130, 246, 0.1);
+
+  /* DashboardV2 design tokens */
+  --v2-bg: #FAFAFA;
+  --v2-surface: #FFFFFF;
+  --v2-text-primary: #0F172A;
+  --v2-text-secondary: #64748B;
+  --v2-border: #E5E7EB;
+  --v2-accent: #14B8A6;
+  --v2-accent-hover: #0D9488;
+  --v2-accent-muted: rgba(20, 184, 166, 0.1);
+  --v2-success: #22C55E;
+  --v2-warning: #F59E0B;
+  --v2-error: #EF4444;
 }
 
 * {
@@ -35,10 +49,114 @@ html {
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* Scrollbar styling */
+/* --- Typography scale --- */
+.text-display {
+  font-family: Spectral, Georgia, serif;
+  font-size: 2rem;
+  line-height: 2.5rem;
+  font-weight: 700;
+}
+
+.text-heading {
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  font-weight: 700;
+}
+
+.text-subhead {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 600;
+}
+
+.text-body {
+  font-size: 0.875rem;
+  line-height: 1.375rem;
+  font-weight: 400;
+}
+
+.text-small {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 400;
+}
+
+.text-mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  line-height: 1.125rem;
+}
+
+/* --- Utility component classes --- */
+@layer components {
+  .card-default {
+    @apply bg-card rounded-xl border border-border p-5;
+  }
+
+  .card-elevated {
+    @apply bg-card rounded-xl border border-border p-5 shadow-lg shadow-black/20;
+  }
+
+  .card-accent {
+    @apply bg-card rounded-xl border border-border border-t-2 border-t-primary p-5;
+  }
+
+  .badge-green {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-400;
+  }
+
+  .badge-yellow {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-500/10 text-yellow-400;
+  }
+
+  .badge-red {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-400;
+  }
+
+  .badge-muted {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-border/50 text-foreground-muted;
+  }
+}
+
+/* --- Cell micro-animation for sidebar --- */
+@keyframes cell-membrane {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes cell-nucleus {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+@keyframes cell-organelle {
+  0% { transform: rotate(0deg) translateX(10px) rotate(0deg); }
+  100% { transform: rotate(360deg) translateX(10px) rotate(-360deg); }
+}
+
+.cell-membrane {
+  animation: cell-membrane 12s linear infinite;
+  transform-origin: center;
+}
+
+.cell-nucleus {
+  animation: cell-nucleus 4s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cell-membrane,
+  .cell-nucleus,
+  .cell-organelle {
+    animation: none;
+  }
+}
+
+/* --- Scrollbar --- */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -57,7 +175,7 @@ body {
   background: var(--foreground-muted);
 }
 
-/* Recharts tooltip override for dark mode */
+/* --- Recharts tooltip --- */
 .recharts-default-tooltip {
   background: var(--card) !important;
   border-color: var(--border) !important;
@@ -68,7 +186,7 @@ body {
   color: var(--foreground-muted) !important;
 }
 
-/* Markdown content styling */
+/* --- Markdown content --- */
 .prose h1, .prose h2, .prose h3, .prose h4 {
   color: var(--foreground);
   margin-top: 1rem;
