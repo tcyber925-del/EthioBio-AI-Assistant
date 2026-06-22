@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl'
 import { ArrowLeft, AlertTriangle, Check, X, Loader2, RefreshCw } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
-import { fetchWithTimeout } from '@/lib/fetch'
+import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
@@ -34,7 +34,7 @@ export default function LessonDetailPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchWithTimeout(`/api/admin/content/lesson/${params.id}`)
+      const data = await fetchWithAuth(`/api/admin/content/lesson/${params.id}`)
       setLesson(data)
     } catch (err: any) {
       setError(err.message)
@@ -46,7 +46,7 @@ export default function LessonDetailPage() {
   const updateStatus = async (newStatus: string) => {
     setUpdating(true)
     try {
-      await fetchWithTimeout(`/api/admin/content/lesson/${params.id}/status?status=${newStatus}`, { method: 'PATCH' })
+      await fetchWithAuth(`/api/admin/content/lesson/${params.id}/status?status=${newStatus}`, { method: 'PATCH' })
       setLesson(prev => prev ? { ...prev, status: newStatus } : prev)
     } catch (err: any) {
       setError(err.message)
