@@ -13,11 +13,15 @@ from src.api import (
     admin,
     auth,
     chat,
+    diagnostic,
     diagram,
+    ekg,
     export,
     gamification,
     intelligence,
+    intervention,
     lesson,
+    misconceptions,
     notifications,
     parent,
     progress,
@@ -25,6 +29,7 @@ from src.api import (
     recovery,
     student,
     teacher,
+    teacher_copilot,
     tracing,
     users,
 )
@@ -34,6 +39,8 @@ from src.api.intelligence.continue_learning_router import (
 )
 from src.api.models import router as models_router
 from src.config import settings
+from src.core.digital_twin.events import register_twin_subscribers
+from src.core.memory.event_logger import event_logger
 from src.core.memory.router import router as memory_router
 from src.core.monitoring import pipeline_monitor
 from src.core.tracing import TraceRepository
@@ -109,6 +116,7 @@ app.add_middleware(
 )
 
 app.include_router(chat.router)
+app.include_router(diagnostic.router)
 app.include_router(quiz.router)
 app.include_router(lesson.router)
 app.include_router(progress.router)
@@ -123,16 +131,23 @@ app.include_router(continue_learning_router)
 app.include_router(recovery.router)
 app.include_router(notifications.router)
 app.include_router(memory_router)
+app.include_router(misconceptions.router)
+app.include_router(intervention.router)
+app.include_router(ekg.router)
 app.include_router(activity.router)
 app.include_router(auth.router)
 
 app.include_router(parent.router)
 
 app.include_router(teacher.router)
+app.include_router(teacher_copilot.router)
 
 app.include_router(student.router)
 app.include_router(tracing.router)
 app.include_router(users.router)
+
+register_twin_subscribers(event_logger)
+
 diagram_static_dir = Path("data/diagrams")
 diagram_static_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/diagrams/static", StaticFiles(directory=str(diagram_static_dir)), name="diagrams")
