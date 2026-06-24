@@ -10,6 +10,13 @@ import {
   Search,
   LogOut,
   Globe,
+  Bot,
+  Brain,
+  ClipboardCheck,
+  Activity,
+  BarChart3,
+  GraduationCap,
+  UserCheck,
 } from 'lucide-react'
 import { DnaIcon } from './BioIcon'
 import { useTranslations } from 'next-intl'
@@ -34,6 +41,13 @@ const NAV_STRUCTURE: NavSection[] = [
     section: null,
     items: [
       { label: 'Overview', href: '/v2/overview', icon: LayoutDashboard, roles: ['admin', 'teacher', 'student', 'parent', 'school'] },
+      { label: 'Copilot', href: '/copilot', icon: Bot, roles: ['admin', 'teacher'] },
+      { label: 'Assessments', href: '/assessment-studio', icon: ClipboardCheck, roles: ['admin', 'teacher'] },
+      { label: 'Interventions', href: '/interventions', icon: Activity, roles: ['admin', 'teacher'] },
+      { label: 'Analytics',     href: '/intervention-analytics', icon: BarChart3,  roles: ['admin', 'teacher'] },
+      { label: 'Lesson Plans',  href: '/classroom-adaptations', icon: GraduationCap, roles: ['admin', 'teacher'] },
+      { label: 'Misconceptions', href: '/misconceptions',   icon: Brain,           roles: ['admin', 'teacher'] },
+      { label: 'Digital Twin', href: '/digital-twin', icon: UserCheck, roles: ['admin', 'teacher', 'student'] },
     ],
   },
 ]
