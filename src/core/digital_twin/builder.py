@@ -84,7 +84,7 @@ class TwinBuilder:
         active = [r for r in rows if not r.resolved]
         resolved = [r for r in rows if r.resolved]
 
-        topics = {}
+        topics: dict[str, list[dict]] = {}
         for row in active:
             topic = row.topic
             if topic not in topics:
@@ -226,13 +226,13 @@ class TwinBuilder:
             "readiness_state": await self.gather_readiness_state(user_id),
             "intervention_state": await self.gather_intervention_state(user_id),
         }
-        state["overall_health"] = self._compute_health(state)
-        state["confidence"] = self._compute_confidence(state)
+        state["overall_health"] = self._compute_health(state)  # type: ignore[assignment]
+        state["confidence"] = self._compute_confidence(state)  # type: ignore[assignment]
 
         existing = await self.session.get(StudentDigitalTwin, user_id)
         if existing:
             for key, val in state.items():
-                setattr(existing, key, val)
+                setattr(existing, key, val)  # type: ignore[assignment]
             existing.last_built_at = func.now()
         else:
             self.session.add(StudentDigitalTwin(
