@@ -73,11 +73,13 @@ class TwinBuilder:
                      health=overall_health, confidence=confidence)
         return twin
 
-    async def _build_knowledge(self, user_id: UUID) -> dict:
+    async def _build_knowledge(self, user_id: UUID) -> dict | None:
         result = await self.session.execute(
             select(StudentAbility).where(StudentAbility.user_id == user_id)
         )
         rows = result.scalars().all()
+        if not rows:
+            return None
         topics = {}
         total = 0.0
         for r in rows:
@@ -89,13 +91,15 @@ class TwinBuilder:
             "total_attempts": sum(r.attempt_count for r in rows),
         }
 
-    async def _build_mastery(self, user_id: UUID) -> dict:
+    async def _build_mastery(self, user_id: UUID) -> dict | None:
         result = await self.session.execute(
             select(TopicMasteryHistory)
             .where(TopicMasteryHistory.user_id == user_id)
             .order_by(TopicMasteryHistory.topic, TopicMasteryHistory.recorded_at.desc())
         )
         rows = result.scalars().all()
+        if not rows:
+            return None
         topics: dict[str, list[float]] = {}
         for r in rows:
             topics.setdefault(r.topic, []).append(r.average_score)
@@ -111,7 +115,7 @@ class TwinBuilder:
         ) if mastery else 0.0
         return {"overall": overall, "topics": mastery}
 
-    async def _build_misconceptions(self, user_id: UUID) -> dict:
+    async def _build_misconceptions(self, user_id: UUID) -> dict | None:
         result = await self.session.execute(
             select(MemoryEducationalSummary)
             .where(MemoryEducationalSummary.user_id == user_id)
@@ -128,19 +132,23 @@ class TwinBuilder:
                         mc.get("pattern", str(mc)) if isinstance(mc, dict) else str(mc)
                     )
                     total_misconceptions += 1
+        if not total_misconceptions:
+            return None
         return {
             "total_active": total_misconceptions,
             "total_resolved": 0,
             "topics": topic_misconceptions,
         }
 
-    async def _build_retention(self, user_id: UUID) -> dict:
+    async def _build_retention(self, user_id: UUID) -> dict | None:
         result = await self.session.execute(
             select(SpacedRepetitionSchedule).where(
                 SpacedRepetitionSchedule.user_id == user_id
             )
         )
         rows = result.scalars().all()
+        if not rows:
+            return None
         now = _now()
         topics: dict[str, dict[str, Any]] = {}
         high_risk = 0
@@ -179,13 +187,15 @@ class TwinBuilder:
             "high_risk_count": high_risk,
         }
 
-    async def _build_readiness(self, user_id: UUID, mastery: dict) -> dict:
+    async def _build_readiness(self, user_id: UUID, mastery: dict | None) -> dict | None:
         ability_result = await self.session.execute(
             select(StudentAbility).where(StudentAbility.user_id == user_id)
         )
         abilities = {r.topic: r.ability_score for r in ability_result.scalars().all()}
+        if not abilities:
+            return None
 
-        mastery_topics = mastery.get("topics", {})
+        mastery_topics = mastery.get("topics", {}) if mastery else {}
         topics = {}
         for topic, ability in abilities.items():
             m = mastery_topics.get(topic, {})
@@ -204,7 +214,7 @@ class TwinBuilder:
         ) if topics else 0.0
         return {"overall": overall, "topics": topics}
 
-    async def _build_intervention(self, user_id: UUID) -> dict:
+    async def _build_intervention(self, user_id: UUID) -> dict | None:
         result = await self.session.execute(
             select(MemoryEvent)
             .where(
@@ -214,6 +224,8 @@ class TwinBuilder:
             .order_by(MemoryEvent.created_at.desc())
         )
         rows = result.scalars().all()
+        if not rows:
+            return None
         completed = sum(1 for r in rows if r.event_metadata.get("status") == "completed")
         return {
             "active_count": len(rows) - completed,
@@ -222,9 +234,11 @@ class TwinBuilder:
         }
 
 
-def _compute_confidence(dimensions: list[dict]) -> float:
+def _compute_confidence(dimensions: list[dict | None]) -> float:
     populated = sum(
-        1 for d in dimensions if d and isinstance(d, dict) and len(d) > 1
+        1 for d in dimensions
+        if d and isinstance(d, dict)
+        and (d.get("topics") or d.get("total_attempts", 0) > 0 or d.get("total", 0) > 0)
     )
     total = len([d for d in dimensions if d is not None])
     return round(populated / total, 2) if total else 0.0

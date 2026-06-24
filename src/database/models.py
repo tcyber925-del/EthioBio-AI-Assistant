@@ -511,9 +511,9 @@ class MisconceptionKnowledgeEntry(Base):
     misconception: Mapped[str] = mapped_column(Text)
     explanation: Mapped[str] = mapped_column(Text)
     severity: Mapped[str] = mapped_column(String(50), default="misconception")
-    related_objectives: Mapped[dict] = mapped_column(JSON, default=list)
-    recommended_strategies: Mapped[dict] = mapped_column(JSON, default=list)
-    detection_patterns: Mapped[dict] = mapped_column(JSON, default=list)
+    related_objectives: Mapped[list] = mapped_column(JSON, default=list)
+    recommended_strategies: Mapped[list] = mapped_column(JSON, default=list)
+    detection_patterns: Mapped[list] = mapped_column(JSON, default=list)
     grade_level: Mapped[int] = mapped_column(Integer, default=0)
 
 
