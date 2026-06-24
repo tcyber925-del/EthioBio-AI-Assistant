@@ -15,6 +15,7 @@ from src.api import (
     auth,
     chat,
     diagram,
+    digital_twin,
     export,
     gamification,
     intelligence,
@@ -117,6 +118,7 @@ app.include_router(admin.router)
 app.include_router(graph_router)
 app.include_router(models_router)
 app.include_router(diagram.router)
+app.include_router(digital_twin.router)
 app.include_router(export.router)
 app.include_router(gamification.router)
 app.include_router(intelligence.router)
