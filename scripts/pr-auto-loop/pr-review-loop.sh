@@ -10,6 +10,7 @@
 #   pr-review-loop watch                 Continuously poll for new reviews
 #   pr-review-loop goal [--every N] [--stagnation N]
 #                                        Run until PR merged or blocked (polls on interval)
+#   pr-review-loop batch [--pattern P]  Process all open PRs with matching head branch
 #
 # Terminal states (Loop Library):
 #   0 — success:       PR merged or approved, loop complete
@@ -434,6 +435,26 @@ parse_duration() {
 }
 
 cmd_goal() {
+  local batch_mode=false
+  local branch_pattern="feat/"
+  local interval_secs=300
+  local stagnation_max=5
+
+  while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+      --every|-e) interval_secs=$(parse_duration "$2"); shift 2 ;;
+      --stagnation|-s) stagnation_max="$2"; shift 2 ;;
+      --batch|-b) batch_mode=true; shift ;;
+      --pattern|-p) branch_pattern="$2"; shift 2 ;;
+      *) shift ;;
+    esac
+  done
+
+  if $batch_mode; then
+    cmd_batch "$branch_pattern" "$interval_secs" "$stagnation_max"
+    return
+  fi
+
   detect_pr 2>/dev/null || true
   if [[ -z "${PR_NUMBER:-}" ]]; then
     info "No open PR — creating one..."
@@ -442,16 +463,6 @@ cmd_goal() {
     fi
     detect_pr
   fi
-  local interval_secs=300
-  local stagnation_max=5
-
-  while [[ "$#" -gt 0 ]]; do
-    case "$1" in
-      --every|-e) interval_secs=$(parse_duration "$2"); shift 2 ;;
-      --stagnation|-s) stagnation_max="$2"; shift 2 ;;
-      *) shift ;;
-    esac
-  done
 
   info "Goal: Get PR #$PR_NUMBER merged"
   info "Poll: every ${interval_secs}s | Stagnation limit: $stagnation_max cycles"
@@ -519,6 +530,137 @@ except:
   done
 }
 
+cmd_batch() {
+  local branch_pattern="$1"
+  local interval_secs="$2"
+  local stagnation_max="$3"
+
+  info "Batch mode: processing all open PRs with head branch matching '${branch_pattern}*'"
+
+  local pr_list
+  pr_list=$(gh pr list --state open --json number,headRefName,title 2>/dev/null)
+
+  if [[ -z "$pr_list" || "$pr_list" == "[]" ]]; then
+    terminal_state 0 "success" "No open PRs found."
+  fi
+
+  local total_count
+  total_count=$(echo "$pr_list" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "0")
+
+  # Filter by branch pattern and store in temp file
+  local pr_file
+  pr_file=$(mktemp)
+  echo "$pr_list" | python3 -c "
+import json, sys, fnmatch
+data = json.load(sys.stdin)
+pattern = '$branch_pattern'
+filtered = [p for p in data if p.get('headRefName','').startswith(pattern.strip('*'))]
+print(json.dumps(filtered))
+" 2>/dev/null > "$pr_file"
+
+  local filtered_count
+  filtered_count=$(python3 -c "import json; d=json.load(open('$pr_file')); print(len(d))" 2>/dev/null || echo "0")
+
+  info "Found $filtered_count PR(s) matching pattern (out of $total_count total open)"
+
+  if [[ "$filtered_count" -eq 0 ]]; then
+    rm -f "$pr_file"
+    terminal_state 0 "success" "No matching PRs found."
+  fi
+
+  # Save current branch to return to later
+  local original_branch
+  original_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+
+  local processed=0 merged=0 failed=0
+
+  while read -r pr_entry; do
+    local pr_num pr_branch pr_title
+    pr_num=$(echo "$pr_entry" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('number',''))" 2>/dev/null || echo "")
+    pr_branch=$(echo "$pr_entry" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('headRefName',''))" 2>/dev/null || echo "")
+    pr_title=$(echo "$pr_entry" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('title',''))" 2>/dev/null || echo "")
+
+    if [[ -z "$pr_num" || -z "$pr_branch" ]]; then
+      continue
+    fi
+
+    processed=$((processed + 1))
+    echo ""
+    header "BATCH PR $processed/$filtered_count: #$pr_num — $pr_title"
+    info "Branch: $pr_branch"
+
+    # Check if already merged
+    local state
+    state=$(gh pr view "$pr_num" --json state -q .state 2>/dev/null || echo "")
+    if [[ "$state" == "MERGED" ]]; then
+      info "PR #$pr_num already merged. Skipping."
+      merged=$((merged + 1))
+      continue
+    fi
+
+    # Stash any local changes
+    git stash push -m "batch-loop-auto-stash" 2>/dev/null || true
+
+    # Checkout the PR branch
+    if ! gh pr checkout "$pr_num" 2>/dev/null; then
+      warn "Failed to checkout PR #$pr_num branch. Skipping."
+      failed=$((failed + 1))
+      continue
+    fi
+
+    # Pull latest
+    git pull origin "$pr_branch" 2>/dev/null || true
+
+    # Run auto-fix
+    info "Running auto-fix on PR #$pr_num..."
+    local auto_exit=0
+    bash "$SCRIPT_DIR/pr-review-loop.sh" auto -n 999 2>&1 || auto_exit=$?
+
+    if [[ "$auto_exit" -eq 0 ]]; then
+      info "PR #$pr_num clean and merged!"
+      merged=$((merged + 1))
+    elif [[ "$auto_exit" -eq 2 ]]; then
+      warn "PR #$pr_num blocked (exit $auto_exit). Moving to next."
+      failed=$((failed + 1))
+    else
+      # Pending — try verify which may merge
+      info "Auto-fix pending. Running verify..."
+      local verify_exit=0
+      bash "$SCRIPT_DIR/pr-review-loop.sh" verify 2>&1 || verify_exit=$?
+      if [[ "$verify_exit" -eq 0 ]]; then
+        info "PR #$pr_num merged via verify!"
+        merged=$((merged + 1))
+      else
+        warn "PR #$pr_num still pending (exit $verify_exit). Moving to next."
+        failed=$((failed + 1))
+      fi
+    fi
+  done < <(python3 -c "
+import json
+data = json.load(open('$pr_file'))
+for entry in data:
+    print(json.dumps(entry))
+" 2>/dev/null)
+
+  rm -f "$pr_file"
+
+  # Restore original branch
+  if [[ -n "$original_branch" ]]; then
+    git checkout "$original_branch" 2>/dev/null || true
+    # Pop stash
+    git stash pop 2>/dev/null || true
+  fi
+
+  echo ""
+  header "BATCH COMPLETE"
+  info "Processed: $processed | Merged: $merged | Failed/Skipped: $failed"
+  if [[ "$failed" -eq 0 ]]; then
+    terminal_state 0 "success" "All matching PRs processed successfully."
+  else
+    terminal_state 1 "pending" "$merged merged, $failed failed. Review remaining PRs manually."
+  fi
+}
+
 main() {
   local cmd="${1:-}"
   shift 2>/dev/null || true
@@ -530,16 +672,19 @@ main() {
     verify) cmd_verify ;;
     watch)  cmd_watch ;;
     goal)   cmd_goal "$@" ;;
+    batch)  cmd_goal --batch "$@" ;;
     "")
       cmd_read
       echo ""
       info "Auto-fix: ${BOLD}pr-review-loop auto${NC}"
       info "Goal:     ${BOLD}pr-review-loop goal${NC}"
+      info "Batch:    ${BOLD}pr-review-loop batch${NC}"
       info "Manual:   ${BOLD}pr-review-loop push \"fix: ...\"${NC}"
       ;;
     *)
-      echo "Usage: pr-review-loop [read|auto|push|verify|watch|goal]"
+      echo "Usage: pr-review-loop [read|auto|push|verify|watch|goal|batch]"
       echo "  goal --every 5m --stagnation 5    Run until PR merged or blocked"
+      echo "  batch                             Process all feat/* PRs sequentially"
       exit 1
       ;;
   esac
