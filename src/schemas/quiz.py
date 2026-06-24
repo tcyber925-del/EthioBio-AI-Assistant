@@ -46,6 +46,16 @@ class QuizSubmitRequest(SchemaModel):
     answers: list[dict]
 
 
+class MisconceptionDetected(SchemaModel):
+    topic: str
+    pattern_description: str
+    severity: str
+    frequency: int
+    confidence: float
+    common_wrong_answer: Optional[str] = None
+    last_detected_at: Optional[str] = None
+
+
 class QuizSubmitResponse(SchemaModel):
     score: float
     total: int
@@ -53,6 +63,7 @@ class QuizSubmitResponse(SchemaModel):
     feedback: list[dict]
     xp_awarded: int = 0
     recommendations: Optional[list["QuizRecommendation"]] = None
+    misconceptions_detected: list[MisconceptionDetected] = []
 
 
 class QuizRecommendation(SchemaModel):

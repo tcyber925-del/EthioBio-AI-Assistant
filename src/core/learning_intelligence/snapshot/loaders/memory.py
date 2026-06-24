@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.learning_intelligence.models import EducationalMemorySummary
-from src.database.models import MemoryEducationalSummary
+from src.database.models import MemoryEducationalSummary, SemanticFact
 
 
 async def load_memory(session: AsyncSession, user_id: UUID) -> dict | None:
@@ -40,7 +40,20 @@ async def load_memory(session: AsyncSession, user_id: UUID) -> dict | None:
         recent_topics=recent_topics,
     )
 
+    semantic_result = await session.execute(
+        select(SemanticFact)
+        .where(SemanticFact.user_id == user_id, SemanticFact.is_active)
+        .order_by(SemanticFact.updated_at.desc())
+        .limit(10)
+    )
+    semantic_facts = semantic_result.scalars().all()
+    semantic_data = [
+        {"key": f.fact_key, "value": f.fact_value, "category": f.category}
+        for f in semantic_facts
+    ]
+
     return {
         "educational_memory": educational_memory,
         "learning_goals": all_goals.copy(),
+        "semantic_facts": semantic_data,
     }

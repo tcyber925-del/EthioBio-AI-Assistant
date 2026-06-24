@@ -63,6 +63,7 @@ class RecommendationService:
         recommendations = await self._engine.generate(
             snapshot, user_id,
             readiness_profile=readiness_profile,
+            session=session,
         )
 
         await self._cache.set(
