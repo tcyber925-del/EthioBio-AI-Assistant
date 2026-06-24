@@ -5,6 +5,8 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.memory.event_logger import EventLogger
+from src.core.misconception_intelligence import KnowledgeBaseService, SemanticDetector
 from src.database.models import (
     MisconceptionPattern,
     Question,
@@ -17,6 +19,7 @@ from src.database.models import (
 )
 
 logger = structlog.get_logger()
+event_logger = EventLogger()
 
 
 def calculate_severity(average_score: float) -> str:
@@ -195,6 +198,8 @@ async def _detect_misconceptions(user_id: Any, topic: str,
             wrong_group[key] = []
         wrong_group[key].append(detail["question_id"])
 
+    kb = KnowledgeBaseService()
+
     for (user_ans, correct_ans), question_ids in wrong_group.items():
         if len(question_ids) < 2:
             continue
@@ -209,6 +214,30 @@ async def _detect_misconceptions(user_id: Any, topic: str,
         )
         pattern = existing.scalar_one_or_none()
 
+        classification = await kb.classify(session, topic=topic, wrong_answer=user_ans)
+        matched_kb = classification is not None
+
+        if not matched_kb:
+            try:
+                sd = SemanticDetector()
+                semantic = await sd.analyze(
+                    topic=topic,
+                    wrong_answer=user_ans,
+                    correct_answer=correct_ans,
+                )
+                if semantic["has_misconception"] and semantic["confidence"] >= 0.5:
+                    classification = {
+                        "entry_id": None,
+                        "misconception": semantic.get("misconception") or "",
+                        "explanation": semantic.get("explanation", ""),
+                        "severity": semantic.get("misconception_type") or "misunderstanding",
+                        "recommended_strategies": [],
+                        "match_confidence": semantic["confidence"] * 0.8,
+                    }
+                    matched_kb = True
+            except Exception:
+                logger.warning("semantic_detection_fallback_failed", topic=topic)
+
         if pattern:
             pattern.frequency += 1
             existing_raw: Any = pattern.related_question_ids or []
@@ -219,17 +248,46 @@ async def _detect_misconceptions(user_id: Any, topic: str,
             existing_ids.update(question_ids)
             pattern.related_question_ids = list(existing_ids)  # type: ignore[assignment]
             pattern.last_detected_at = datetime.now(timezone.utc)
+            if classification:
+                pattern.severity = classification["severity"]
+            else:
+                pattern.severity = kb.compute_severity(pattern.frequency)
+            pattern.confidence = kb.compute_confidence(
+                pattern.frequency, matched_kb,
+                kb.get_severity(pattern.severity)["rank"],
+            )
         else:
+            initial_severity = classification["severity"] if classification else None
+            severity_key = kb.compute_severity(1, initial_severity=initial_severity)
             pattern = MisconceptionPattern(
                 user_id=user_id,
                 topic=topic,
                 pattern_type="wrong_answer",
-                pattern_description=f"Student answers '{user_ans}' instead of '{correct_ans}'",
+                pattern_description=(
+                    f"Student answers '{user_ans}' instead of '{correct_ans}'"
+                ),
+                severity=severity_key,
+                confidence=kb.compute_confidence(
+                    1, matched_kb, kb.get_severity(severity_key)["rank"],
+                ),
                 frequency=1,
                 common_wrong_answer=user_ans,
                 related_question_ids=question_ids,
             )
             session.add(pattern)
+
+        await session.flush()
+        await event_logger.log(
+            user_id=user_id,
+            event_type="misconception_detected",
+            topic=topic,
+            metadata={
+                "pattern_id": str(pattern.id),
+                "severity": pattern.severity,
+                "confidence": pattern.confidence,
+            },
+            db=session,
+        )
 
 
 async def _update_student_profile_weak_areas(user_id: Any, session: AsyncSession) -> None:
