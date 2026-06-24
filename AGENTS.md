@@ -58,6 +58,9 @@ curl -X POST http://localhost:8000/models/refresh      # refresh Ollama cache
 # Test (endpoint tests hit real Ollama — skip for unit-only)
 pytest tests/ -v -k "not test_chat_endpoint and not test_quiz_generate_endpoint"
 
+# New-module unit tests (fast, no DB/Ollama needed)
+pytest tests/test_intent_router.py tests/test_heuristic_detector.py tests/test_event_logger.py tests/test_evidence_engine.py -v
+
 # Lint & typecheck
 ruff check .
 mypy src/
