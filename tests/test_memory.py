@@ -204,6 +204,59 @@ class TestSessionManager:
         assert result == mock_session
         assert mock_session.last_active_at is not None
 
+    @pytest.mark.asyncio
+    async def test_lazy_close_expired_session(self):
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock()
+
+        expired_session = MagicMock()
+        expired_session.session_id = uuid4()
+
+        first_call = MagicMock()
+        first_call.scalar_one_or_none.return_value = None
+        second_call = MagicMock()
+        second_call.scalars.return_value.all.return_value = [expired_session]
+
+        mock_db.execute.side_effect = [first_call, second_call]
+
+        mgr = SessionManager()
+        closed = []
+        async def tracking_close(session_id, db):
+            closed.append(session_id)
+            return expired_session
+        mgr.close_session = tracking_close
+
+        session = await mgr.get_or_create_active_session(
+            user_id=uuid4(), topic="Biology", db=mock_db,
+        )
+        assert session is not None
+        assert len(closed) == 1
+        assert closed[0] == expired_session.session_id
+
+    @pytest.mark.asyncio
+    async def test_lazy_close_no_expired_session(self):
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock()
+
+        first_call = MagicMock()
+        first_call.scalar_one_or_none.return_value = None
+        second_call = MagicMock()
+        second_call.scalars.return_value.all.return_value = []
+
+        mock_db.execute.side_effect = [first_call, second_call]
+
+        mgr = SessionManager()
+        closed = []
+        async def tracking_close(session_id, db):
+            closed.append(session_id)
+        mgr.close_session = tracking_close
+
+        session = await mgr.get_or_create_active_session(
+            user_id=uuid4(), topic="Genetics", db=mock_db,
+        )
+        assert session is not None
+        assert len(closed) == 0
+
 
 class TestSocraticManager:
     @pytest.fixture

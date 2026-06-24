@@ -116,6 +116,53 @@ class SummaryListResponse(SchemaModel):
     total: int = 0
 
 
+class TimelineEntryResponse(SchemaModel):
+    entry_id: UUID
+    entry_type: str
+    summary: str
+    topic: str | None = None
+    metadata: dict = {}
+    timestamp: datetime
+
+
+class TimelineResponse(SchemaModel):
+    entries: list[TimelineEntryResponse] = []
+    total: int = 0
+
+
+class SemanticFactResponse(SchemaModel):
+    id: UUID
+    user_id: UUID
+    fact_key: str
+    fact_value: str
+    category: str | None = None
+    confidence: float = 0.7
+    source_event_id: UUID | None = None
+    is_active: bool = True
+    consolidated_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class SemanticFactListResponse(SchemaModel):
+    facts: list[SemanticFactResponse] = []
+    total: int = 0
+
+
+class SemanticFactCreateRequest(SchemaModel):
+    fact_key: str
+    fact_value: str
+    category: str | None = None
+    confidence: float = 0.7
+    source_event_id: UUID | None = None
+
+
+class SemanticFactUpdateRequest(SchemaModel):
+    fact_value: str | None = None
+    confidence: float | None = None
+    is_active: bool | None = None
+
+
 class MemorySearchRequest(SchemaModel):
     query: str
     topic: Optional[str] = None
