@@ -5,6 +5,7 @@ import { BookOpen, AlertTriangle, RefreshCw, Lock } from 'lucide-react'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserId } from '@/lib/auth'
 import { HeroSection, InsightCard, MetricStrip, ActivityTimeline, AIInsightPanel, LearningProgress } from '@/components/dashboard-v2'
+import { MisconceptionPanel } from '@/components/misconceptions/MisconceptionPanel'
 import { getBioIcon, BIO_ICON_IDS } from '@/components/dashboard-v2/BioIcon'
 
 interface StudentData {
@@ -101,6 +102,7 @@ export function StudentDashboard() {
 
   if (!data) return null
 
+  const userId = getUserId()
   const { gamification, readiness, weak_topics, recent_activity } = data
   const sortedTopics = Object.entries(readiness.topic_readiness).sort(([, a], [, b]) => b - a)
   const continueTopic = weak_topics[0]
@@ -240,6 +242,7 @@ export function StudentDashboard() {
               })}
             </div>
           </div>
+          {userId && <MisconceptionPanel userId={userId} />}
           <AIInsightPanel insights={insights} />
         </div>
       </div>
