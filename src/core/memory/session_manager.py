@@ -29,6 +29,8 @@ class SessionManager:
             await db.flush()
             return active
 
+        await self._close_expired_sessions(user_id, db)
+
         session = MemorySession(
             user_id=user_id,
             active_topic=topic,
@@ -41,6 +43,20 @@ class SessionManager:
         logger.info("memory_session_created",
                      user_id=str(user_id), session_id=str(session.session_id))
         return session
+
+    async def _close_expired_sessions(self, user_id: UUID, db: AsyncSession) -> None:
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=SESSION_INACTIVITY_TIMEOUT_MINUTES)
+        result = await db.execute(
+            select(MemorySession)
+            .where(
+                MemorySession.user_id == user_id,
+                MemorySession.last_active_at < cutoff,
+                MemorySession.summary.is_(None),
+            )
+        )
+        expired = result.scalars().all()
+        for session in expired:
+            await self.close_session(session.session_id, db)
 
     async def heartbeat(self, session_id: UUID, db: AsyncSession) -> MemorySession | None:
         session = await db.get(MemorySession, session_id)

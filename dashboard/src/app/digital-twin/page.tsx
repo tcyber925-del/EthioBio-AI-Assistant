@@ -1,10 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Activity, Brain, Clock, Target, AlertTriangle,
   Shield, RefreshCw, Loader2, TrendingUp,
+  TrendingDown, Minus, ChevronDown, ChevronRight,
+  FlaskConical, Plus, X,
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
@@ -34,6 +36,37 @@ interface DashboardData {
   last_built_at: string | null
 }
 
+interface ForecastData {
+  generated_at: string
+  mastery: {
+    topic: string
+    current: number
+    projected: number
+    trend: string
+    confidence: string
+    data_points: number
+  }[]
+  retention: {
+    topic: string
+    current: number
+    projected: number
+    retention_rate: string
+    confidence: string
+  }[]
+  readiness: {
+    overall: { current: number; projected: number }
+    topic: { topic: string; current: number; projected: number }[]
+  }
+  risk: {
+    topic: string
+    type: string
+    severity: string
+    current: number
+    projected: number
+    detail: string
+  }[]
+}
+
 const DIMENSION_ICONS: Record<string, typeof Activity> = {
   knowledge: Activity,
   mastery: TrendingUp,
@@ -49,19 +82,35 @@ const HEALTH_COLORS: Record<string, string> = {
   at_risk: 'bg-red-500/10 text-red-400 border-red-500/20',
 }
 
+function TrendIcon({ trend }: { trend: string }) {
+  if (trend === 'improving') return <TrendingUp className="w-3.5 h-3.5 text-green-400" />
+  if (trend === 'declining') return <TrendingDown className="w-3.5 h-3.5 text-red-400" />
+  return <Minus className="w-3.5 h-3.5 text-foreground-muted" />
+}
+
 export default function DigitalTwinPage() {
   const router = useRouter()
   const userId = getUserId()
   const [data, setData] = useState<DashboardData | null>(null)
+  const [forecast, setForecast] = useState<ForecastData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [forecastOpen, setForecastOpen] = useState(false)
   const [rebuilding, setRebuilding] = useState(false)
+  const [simOpen, setSimOpen] = useState(false)
+  const [simActions, setSimActions] = useState<{ type: string; topic: string; value: number }[]>([])
+  const [simResult, setSimResult] = useState<{ baseline: any; simulated: any } | null>(null)
+  const [simRunning, setSimRunning] = useState(false)
 
   const fetchTwin = async () => {
     if (!userId) return
     setLoading(true)
     try {
-      const result = await fetchWithAuth(`/digital-twin/${userId}/dashboard`)
-      setData(result)
+      const [twin, fc] = await Promise.all([
+        fetchWithAuth(`/digital-twin/${userId}/dashboard`),
+        fetchWithAuth(`/digital-twin/${userId}/forecast`).catch(() => null),
+      ])
+      setData(twin)
+      setForecast(fc)
     } catch {
       setData(null)
     } finally {
@@ -81,6 +130,22 @@ export default function DigitalTwinPage() {
       setRebuilding(false)
     }
   }
+
+  const runSimulation = useCallback(async () => {
+    if (!userId || simActions.length === 0) return
+    setSimRunning(true)
+    try {
+      const result = await fetchWithAuth(`/digital-twin/${userId}/simulate?weeks_ahead=4`, {
+        method: 'POST',
+        body: JSON.stringify(simActions),
+      })
+      setSimResult(result)
+    } catch {
+      setSimResult(null)
+    } finally {
+      setSimRunning(false)
+    }
+  }, [userId, simActions])
 
   useEffect(() => {
     if (!isAuthenticated()) { router.push('/login'); return }
@@ -201,6 +266,221 @@ export default function DigitalTwinPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {forecast && (
+              <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setForecastOpen(!forecastOpen)}
+                  className="w-full flex items-center justify-between p-4 hover:bg-background-secondary transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-foreground-muted" />
+                    <h2 className="text-sm font-semibold text-foreground">
+                      Forecast ({forecast.mastery.length} topics · {forecast.generated_at ? new Date(forecast.generated_at).toLocaleDateString() : ''})
+                    </h2>
+                  </div>
+                  {forecastOpen ? <ChevronDown className="w-4 h-4 text-foreground-muted" /> : <ChevronRight className="w-4 h-4 text-foreground-muted" />}
+                </button>
+                {forecastOpen && (
+                  <div className="px-4 pb-4 space-y-4">
+                    {forecast.mastery.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-foreground-muted mb-2 uppercase tracking-wider">Mastery Trend</p>
+                        <div className="space-y-1">
+                          {forecast.mastery.map((m) => (
+                            <div key={m.topic} className="flex items-center gap-3 p-2 rounded-lg bg-background-secondary">
+                              <TrendIcon trend={m.trend} />
+                              <span className="text-sm text-foreground flex-1">{m.topic}</span>
+                              <span className="text-xs text-foreground-muted">
+                                {Math.round(m.current * 100)}% → {Math.round(m.projected * 100)}%
+                              </span>
+                              <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                m.confidence === 'high' ? 'bg-green-500/10 text-green-400' :
+                                m.confidence === 'medium' ? 'bg-yellow-500/10 text-yellow-400' :
+                                'bg-foreground-muted/10 text-foreground-muted'
+                              }`}>{m.confidence}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {forecast.readiness.overall && (
+                      <div>
+                        <p className="text-xs font-medium text-foreground-muted mb-2 uppercase tracking-wider">Readiness</p>
+                        <div className="flex items-center gap-3 p-3 rounded-lg bg-background-secondary">
+                          <Target className="w-4 h-4 text-foreground-muted" />
+                          <span className="text-sm text-foreground">Overall</span>
+                          <span className="text-xs text-foreground-muted">
+                            {Math.round(forecast.readiness.overall.current * 100)}% → {Math.round(forecast.readiness.overall.projected * 100)}%
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {forecast.risk.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-foreground-muted mb-2 uppercase tracking-wider">Projected Risks</p>
+                        <div className="space-y-1">
+                          {forecast.risk.map((r, i) => (
+                            <div key={i} className="flex items-start gap-3 p-2 rounded-lg bg-background-secondary">
+                              <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                                r.severity === 'high' ? 'bg-red-400' : 'bg-yellow-400'
+                              }`} />
+                              <div>
+                                <p className="text-sm font-medium text-foreground capitalize">
+                                  {r.type.replace(/_/g, ' ')} · {r.topic}
+                                </p>
+                                <p className="text-xs text-foreground-muted">{r.detail}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {forecast.retention.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-foreground-muted mb-2 uppercase tracking-wider">Retention</p>
+                        <div className="space-y-1">
+                          {forecast.retention.map((r) => (
+                            <div key={r.topic} className="flex items-center gap-3 p-2 rounded-lg bg-background-secondary">
+                              <TrendIcon trend={r.retention_rate} />
+                              <span className="text-sm text-foreground flex-1">{r.topic}</span>
+                              <span className="text-xs text-foreground-muted">
+                                {Math.round(r.current * 100)}% → {Math.round(r.projected * 100)}%
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {forecast && forecast.mastery.length > 0 && (
+              <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setSimOpen(!simOpen)}
+                  className="w-full flex items-center justify-between p-4 hover:bg-background-secondary transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <FlaskConical className="w-4 h-4 text-foreground-muted" />
+                    <h2 className="text-sm font-semibold text-foreground">What If? — Simulate Interventions</h2>
+                  </div>
+                  {simOpen ? <ChevronDown className="w-4 h-4 text-foreground-muted" /> : <ChevronRight className="w-4 h-4 text-foreground-muted" />}
+                </button>
+                {simOpen && (
+                  <div className="px-4 pb-4 space-y-3">
+                    <p className="text-xs text-foreground-muted">Test how interventions would change projected outcomes</p>
+                    <div className="space-y-2">
+                      {simActions.map((a, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <select
+                            value={a.type}
+                            onChange={(e) => {
+                              const next = [...simActions]
+                              next[i] = { ...next[i], type: e.target.value }
+                              setSimActions(next)
+                            }}
+                            className="text-xs bg-background-secondary border border-border rounded px-2 py-1 text-foreground"
+                          >
+                            <option value="boost_mastery">Boost Mastery</option>
+                            <option value="add_reviews">Add Reviews</option>
+                            <option value="resolve_misconception">Resolve Misconception</option>
+                          </select>
+                          <select
+                            value={a.topic}
+                            onChange={(e) => {
+                              const next = [...simActions]
+                              next[i] = { ...next[i], topic: e.target.value }
+                              setSimActions(next)
+                            }}
+                            className="text-xs bg-background-secondary border border-border rounded px-2 py-1 text-foreground flex-1"
+                          >
+                            {forecast.mastery.map((m) => (
+                              <option key={m.topic} value={m.topic}>{m.topic}</option>
+                            ))}
+                          </select>
+                          {a.type !== 'resolve_misconception' && (
+                            <input
+                              type="number"
+                              min={0.05}
+                              max={0.5}
+                              step={0.05}
+                              value={a.value}
+                              onChange={(e) => {
+                                const next = [...simActions]
+                                next[i] = { ...next[i], value: parseFloat(e.target.value) || 0 }
+                                setSimActions(next)
+                              }}
+                              className="w-16 text-xs bg-background-secondary border border-border rounded px-2 py-1 text-foreground text-center"
+                            />
+                          )}
+                          <button
+                            onClick={() => setSimActions(simActions.filter((_, j) => j !== i))}
+                            className="p-1 hover:bg-background-secondary rounded"
+                          >
+                            <X className="w-3.5 h-3.5 text-foreground-muted" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setSimActions([...simActions, { type: 'boost_mastery', topic: forecast.mastery[0].topic, value: 0.1 }])}
+                        className="flex items-center gap-1 text-xs text-foreground-muted hover:text-foreground px-2 py-1 rounded border border-border"
+                      >
+                        <Plus className="w-3 h-3" /> Add Action
+                      </button>
+                      {simActions.length > 0 && (
+                        <button
+                          onClick={runSimulation}
+                          disabled={simRunning}
+                          className="flex items-center gap-1 text-xs px-3 py-1 bg-primary text-white rounded hover:bg-primary-hover disabled:opacity-50"
+                        >
+                          {simRunning ? <Loader2 className="w-3 h-3 animate-spin" /> : <FlaskConical className="w-3 h-3" />}
+                          Run
+                        </button>
+                      )}
+                      {simResult && (
+                        <button
+                          onClick={() => setSimResult(null)}
+                          className="text-xs text-foreground-muted hover:text-foreground px-2 py-1"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    {simResult && simResult.simulated && (
+                      <div className="space-y-2 pt-2 border-t border-border">
+                        <p className="text-xs font-medium text-foreground-muted">Baseline vs Simulated</p>
+                        {simResult.simulated.mastery.map((sm: any) => {
+                          const bm = simResult.baseline.mastery.find((bm: any) => bm.topic === sm.topic)
+                          if (!bm) return null
+                          return (
+                            <div key={sm.topic} className="flex items-center gap-3 p-2 rounded-lg bg-background-secondary">
+                              <span className="text-sm text-foreground flex-1">{sm.topic}</span>
+                              <span className="text-xs text-foreground-muted">
+                                {Math.round(bm.projected * 100)}% → <span className="text-green-400 font-medium">{Math.round(sm.projected * 100)}%</span>
+                              </span>
+                            </div>
+                          )
+                        })}
+                        {simResult.simulated.risk.length === 0 && simResult.baseline.risk.length > 0 && (
+                          <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10 text-green-400 text-xs">
+                            <TrendingUp className="w-3 h-3" />
+                            All projected risks resolved
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </>

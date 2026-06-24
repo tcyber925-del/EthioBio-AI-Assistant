@@ -25,3 +25,36 @@ class DigitalTwinDashboardResponse(SchemaModel):
     dimension_summary: dict = {}
     risk_indicators: list[dict] = []
     last_built_at: Optional[str] = None
+
+
+class ForecastResponse(SchemaModel):
+    user_id: str
+    weeks_ahead: int
+    generated_at: str
+    mastery: list[dict] = []
+    retention: list[dict] = []
+    readiness: dict = {}
+    risk: list[dict] = []
+
+
+class MasteryForecastResponse(SchemaModel):
+    topic: str
+    current: float = 0.0
+    projected: float = 0.0
+    trend: str = "unknown"
+    confidence: str = "low"
+    data_points: int = 0
+
+
+class SimulationAction(SchemaModel):
+    type: str
+    topic: str = ""
+    value: float = 0.0
+
+
+class SimulationResponse(SchemaModel):
+    user_id: str
+    weeks_ahead: int
+    baseline: dict = {}
+    simulated: Optional[dict] = None
+    actions: list[dict] = []

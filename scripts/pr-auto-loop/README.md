@@ -52,12 +52,65 @@ That's it. It creates the PR if missing, then loops until merged or blocked.
 ## Architecture
 
 ```
-goal ──→ poll ──→ auto ──→ apply diffs ──→ commit ──→ push ──→ resolve ──→ re-review
-  │                                                                              │
-  └────────────────────────── sleep & repeat ←── pending ─── verify ←────────────┘
+goal ──→ discover ──→ auto ──→ gates ──→ commit ──→ push ──→ resolve ──→ re-review
+  │        │         │        │                                        │
+  │    [draft] [ci/fail] [gates fail]                                  │
+  │        │         │        └──→ [blocked]                           │
+  │        │         └──→ skip if CI failing                           │
+  │        └──→ skip if draft                                          │
+  │                                                                     │
+  └───────────────────────── sleep & repeat ←── pending ─── verify ←───┘
                                   │
                              [success] or [blocked] ──→ exit
 ```
+
+## Safety gates
+
+| Gate | Phase | What it blocks |
+|------|-------|---------------|
+| **Review gate** | Pre-merge | Won't merge if 0 reviews exist (CodeRabbit or human hasn't looked yet) |
+| **Draft gate** | Pre-`auto` | Skips `auto` entirely if PR is in draft mode |
+| **Conflict gate** | Pre-`auto` | Exits `[blocked]` if PR has merge conflicts |
+| **CI gate** | Pre-`auto` | Reports failing CI (continues, but warns) |
+| **Verification gate** | Pre-commit | Runs `ruff check .` and `mypy src/` before allowing a commit. Skips commit if they fail and exits `[blocked]` |
+
+## Persistent state
+
+The loop writes `.pr-loop-state.json` in the project root after every cycle:
+
+```json
+{
+  "cycle": 5,
+  "last_exit_code": 1,
+  "last_run": "2026-06-22T14:07:35+00:00",
+  "last_thread_count": 3,
+  "terminal": "pending"
+}
+```
+
+This survives machine restarts and provides an audit trail. `goal` references it for progress tracking across sessions.
+
+## Discover phase
+
+At the start of each cycle, `goal` runs a discover check and reports:
+
+```
+Status: OPEN | Draft: no | CI: success | Mergeable: clean | Threads: 3
+```
+
+- **Draft**: skips the cycle if PR is still a draft
+- **CI**: reports passing/failing/running status from latest workflow run
+- **Mergeable**: detects merge conflicts before attempting auto-fix
+- **Threads**: unresolved review thread count (existing)
+
+## Verification gates (maker-checker split)
+
+Before committing auto-fixes, the loop runs:
+
+1. `ruff check .` — lint pass (if ruff and a config file exist)
+2. `mypy src/` — type check pass (if mypy and `src/` exist)
+
+If either fails, the commit is **skipped** and the loop exits `[blocked]` with the failure output. This is the deterministic "checker" gate — the same agent that wrote the fix cannot bypass it.
 
 ## Files
 
@@ -67,6 +120,7 @@ goal ──→ poll ──→ auto ──→ apply diffs ──→ commit ──
 | `apply_fixes.py` | Extracts CodeRabbit ` ```diff ` blocks and applies them |
 | `read_threads.py` | Formats unresolved threads for display |
 | `resolve_touched.py` | Finds threads to auto-resolve by changed files |
+| `.pr-loop-state.json` | Persistent state file (created at project root) |
 
 ## How auto-fix works
 
@@ -76,11 +130,12 @@ goal ──→ poll ──→ auto ──→ apply diffs ──→ commit ──
 4. Parse `-`/`+` lines, find-and-replace in source files
 5. If multiple diffs reference the same file, apply all before writing
 6. Resolve the thread via GraphQL `resolveReviewThread` mutation
-7. Commit, push, comment `@coderabbitai review` to trigger re-review
+7. Run verification gates (ruff + mypy)
+8. Commit, push, comment `@coderabbitai review` to trigger re-review
 
 ## Stagnation detection
 
-`goal` tracks unresolved thread count across cycles. If the count stays the same for `--stagnation N` consecutive cycles (no diffs applied, no threads resolved), it exits `[blocked]`. Prevents infinite loops on unactionable feedback.
+`goal` tracks unresolved thread count across cycles. If the count stays the same for `--stagnation N` consecutive cycles (no diffs applied, no threads resolved), it exits `[blocked]`. Prevents infinite loops on unactionable feedback. Cycles where no reviews exist yet (first review pending) do not count toward stagnation.
 
 ## Requirements
 

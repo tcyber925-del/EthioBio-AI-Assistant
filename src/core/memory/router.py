@@ -8,10 +8,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.memory.event_logger import EventLogger
 from src.core.memory.retrieval_orchestrator import RetrievalOrchestrator
+from src.core.memory.semantic_manager import SemanticFactManager
 from src.core.memory.session_manager import SessionManager
 from src.core.memory.socratic_manager import SocraticManager
 from src.core.memory.summarizer import Summarizer
-from src.database.models import MemoryEducationalSummary, MemoryEvent, MemorySession
+from src.database.models import (
+    ConversationTurn,
+    MemoryEducationalSummary,
+    MemoryEvent,
+    MemorySession,
+)
 from src.database.session import get_session
 from src.schemas.memory import (
     MemoryEventListResponse,
@@ -20,6 +26,9 @@ from src.schemas.memory import (
     MemorySearchRequest,
     MemorySearchResponse,
     MemorySearchResult,
+    SemanticFactCreateRequest,
+    SemanticFactListResponse,
+    SemanticFactResponse,
     SessionCloseResponse,
     SessionHeartbeatResponse,
     SessionResponse,
@@ -31,6 +40,8 @@ from src.schemas.memory import (
     SummarizeResponse,
     SummaryListResponse,
     SummaryResponse,
+    TimelineEntryResponse,
+    TimelineResponse,
 )
 
 logger = structlog.get_logger()
@@ -40,6 +51,7 @@ session_manager = SessionManager()
 socratic_manager = SocraticManager()
 event_logger = EventLogger()
 retrieval_orchestrator = RetrievalOrchestrator()
+semantic_manager = SemanticFactManager()
 
 
 @router.post("/session/start", response_model=SessionStartResponse)
@@ -345,6 +357,216 @@ async def get_memory_events(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/timeline/{user_id}", response_model=TimelineResponse)
+async def get_timeline(
+    user_id: UUID,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    limit: int = 50,
+    db: AsyncSession = Depends(get_session),
+):
+    try:
+        events_query = (
+            select(
+                MemoryEvent.id.label("entry_id"),
+                MemoryEvent.event_type.label("entry_type"),
+                MemoryEvent.created_at.label("timestamp"),
+            )
+            .where(MemoryEvent.user_id == user_id)
+        )
+        from sqlalchemy import case, literal
+
+        events_query = events_query.add_columns(
+            literal("memory_event").label("source"),
+            MemoryEvent.event_metadata,
+            MemoryEvent.topic,
+            case(
+                (MemoryEvent.event_type == "quiz_completed", "Completed a quiz"),
+                (MemoryEvent.event_type == "session_started", "Started a tutoring session"),
+                (MemoryEvent.event_type == "lesson_viewed", "Viewed a lesson"),
+                (MemoryEvent.event_type == "recovery_task_done", "Completed a recovery task"),
+                else_=MemoryEvent.event_type,
+            ).label("summary"),
+        )
+
+        turns_query = (
+            select(
+                ConversationTurn.id.label("entry_id"),
+                literal("conversation_turn").label("entry_type"),
+                ConversationTurn.created_at.label("timestamp"),
+                literal("conversation_turn").label("source"),
+                literal({}).label("event_metadata"),
+                ConversationTurn.topic,
+                ConversationTurn.content.label("summary"),
+            )
+            .where(ConversationTurn.user_id == user_id)
+            .where(ConversationTurn.role == "student")
+        )
+
+        if start_date:
+            from datetime import datetime
+            parsed_start = datetime.fromisoformat(start_date)
+            events_query = events_query.where(MemoryEvent.created_at >= parsed_start)
+            turns_query = turns_query.where(ConversationTurn.created_at >= parsed_start)
+
+        if end_date:
+            from datetime import datetime
+            parsed_end = datetime.fromisoformat(end_date)
+            events_query = events_query.where(MemoryEvent.created_at <= parsed_end)
+            turns_query = turns_query.where(ConversationTurn.created_at <= parsed_end)
+
+        events_query = events_query.order_by(MemoryEvent.created_at.desc())
+        turns_query = turns_query.order_by(ConversationTurn.created_at.desc())
+
+        events_result = await db.execute(events_query.limit(limit))
+        turns_result = await db.execute(turns_query.limit(limit))
+
+        def row_to_entry(row) -> TimelineEntryResponse:
+            return TimelineEntryResponse(
+                entry_id=row.entry_id,
+                entry_type=row.entry_type,
+                summary=str(row.summary or "")[:200],
+                topic=row.topic,
+                metadata=dict(row.event_metadata) if row.event_metadata else {},
+                timestamp=row.timestamp,
+            )
+
+        event_entries = [row_to_entry(r) for r in events_result]
+        turn_entries = [row_to_entry(r) for r in turns_result]
+
+        combined = sorted(
+            event_entries + turn_entries,
+            key=lambda e: e.timestamp,
+            reverse=True,
+        )[:limit]
+
+        return TimelineResponse(entries=combined, total=len(combined))
+    except Exception as e:
+        logger.error("timeline_get_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/facts/{user_id}", response_model=SemanticFactListResponse)
+async def list_semantic_facts(
+    user_id: UUID,
+    category: str | None = None,
+    limit: int = 50,
+    db: AsyncSession = Depends(get_session),
+):
+    try:
+        facts = await semantic_manager.list_by_user(
+            db=db, user_id=user_id, category=category, limit=limit,
+        )
+        return SemanticFactListResponse(
+            facts=[
+                SemanticFactResponse(
+                    id=f.id,
+                    user_id=f.user_id,
+                    fact_key=f.fact_key,
+                    fact_value=f.fact_value,
+                    category=f.category,
+                    confidence=f.confidence,
+                    source_event_id=f.source_event_id,
+                    is_active=f.is_active,
+                    consolidated_at=f.consolidated_at,
+                    created_at=f.created_at,
+                    updated_at=f.updated_at,
+                )
+                for f in facts
+            ],
+            total=len(facts),
+        )
+    except Exception as e:
+        logger.error("semantic_facts_list_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/facts/{user_id}", response_model=SemanticFactResponse)
+async def create_semantic_fact(
+    user_id: UUID,
+    request: SemanticFactCreateRequest,
+    db: AsyncSession = Depends(get_session),
+):
+    try:
+        fact = await semantic_manager.upsert(
+            db=db,
+            user_id=user_id,
+            fact_key=request.fact_key,
+            fact_value=request.fact_value,
+            category=request.category,
+            confidence=request.confidence,
+            source_event_id=request.source_event_id,
+        )
+        await db.commit()
+        return SemanticFactResponse(
+            id=fact.id,
+            user_id=fact.user_id,
+            fact_key=fact.fact_key,
+            fact_value=fact.fact_value,
+            category=fact.category,
+            confidence=fact.confidence,
+            source_event_id=fact.source_event_id,
+            is_active=fact.is_active,
+            consolidated_at=fact.consolidated_at,
+            created_at=fact.created_at,
+            updated_at=fact.updated_at,
+        )
+    except Exception as e:
+        await db.rollback()
+        logger.error("semantic_fact_create_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/facts/{user_id}/{fact_key}", response_model=SemanticFactResponse)
+async def get_semantic_fact(
+    user_id: UUID,
+    fact_key: str,
+    db: AsyncSession = Depends(get_session),
+):
+    try:
+        fact = await semantic_manager.get(user_id=user_id, fact_key=fact_key, db=db)
+        if not fact:
+            raise HTTPException(status_code=404, detail="Semantic fact not found")
+        return SemanticFactResponse(
+            id=fact.id,
+            user_id=fact.user_id,
+            fact_key=fact.fact_key,
+            fact_value=fact.fact_value,
+            category=fact.category,
+            confidence=fact.confidence,
+            source_event_id=fact.source_event_id,
+            is_active=fact.is_active,
+            consolidated_at=fact.consolidated_at,
+            created_at=fact.created_at,
+            updated_at=fact.updated_at,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("semantic_fact_get_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/facts/{user_id}/{fact_key}")
+async def delete_semantic_fact(
+    user_id: UUID,
+    fact_key: str,
+    db: AsyncSession = Depends(get_session),
+):
+    try:
+        success = await semantic_manager.deactivate(user_id=user_id, fact_key=fact_key, db=db)
+        await db.commit()
+        if not success:
+            raise HTTPException(status_code=404, detail="Semantic fact not found")
+        return {"deleted": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        logger.error("semantic_fact_delete_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/summaries/{user_id}", response_model=SummaryListResponse)
 async def get_educational_summaries(
     user_id: UUID,
@@ -422,6 +644,7 @@ async def memory_health(db: AsyncSession = Depends(get_session)):
         event_count_result = await db.execute(
             select(func.count(MemoryEvent.id))
         )
+        fact_count = await semantic_manager.get_count(db=db)
 
         summary_count = summary_count_result.scalar() or 0
         active_sessions = session_count_result.scalar() or 0
@@ -441,6 +664,7 @@ async def memory_health(db: AsyncSession = Depends(get_session)):
             "educational_summaries": summary_count,
             "active_sessions": active_sessions,
             "memory_events": event_count,
+            "semantic_facts": fact_count,
             "chromadb_embeddings": chroma_count,
         }
     except Exception as e:

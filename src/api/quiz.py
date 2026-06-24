@@ -1,12 +1,13 @@
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.quiz import QuizAgent
 from src.agents.weak_topic_detection import analyze_quiz_attempt, get_weak_topics
 from src.api.gamification import award_xp, check_achievements, update_streak
-from src.database.models import Question, Quiz, QuizAttempt
+from src.database.models import MisconceptionPattern, Question, Quiz, QuizAttempt
 from src.database.session import get_session
 from src.llm.router import ModelRouter
 from src.schemas.quiz import (
@@ -241,6 +242,32 @@ async def submit_quiz(request: QuizSubmitRequest, session: AsyncSession = Depend
 
         await analyze_quiz_attempt(attempt, session)
 
+        misconceptions_detected: list[dict] = []
+        try:
+            from datetime import datetime, timezone
+            cutoff = attempt.completed_at or attempt.started_at or datetime.now(timezone.utc)
+            mc_result = await session.execute(
+                select(MisconceptionPattern)
+                .where(
+                    MisconceptionPattern.user_id == request.user_id,
+                    MisconceptionPattern.last_detected_at >= cutoff,
+                )
+                .order_by(MisconceptionPattern.last_detected_at.desc())
+                .limit(10)
+            )
+            for mc in mc_result.scalars().all():
+                misconceptions_detected.append({
+                    "topic": mc.topic,
+                    "pattern_description": mc.pattern_description,
+                    "severity": mc.severity,
+                    "frequency": mc.frequency,
+                    "confidence": mc.confidence,
+                    "common_wrong_answer": mc.common_wrong_answer,
+                    "last_detected_at": str(mc.last_detected_at) if mc.last_detected_at else None,
+                })
+        except Exception:
+            logger.warning("quiz_misconception_fetch_error", exc_info=True)
+
         recommendations: list[QuizRecommendation] = []
         try:
             fresh_weak = await get_weak_topics(request.user_id, session)
@@ -280,6 +307,7 @@ async def submit_quiz(request: QuizSubmitRequest, session: AsyncSession = Depend
             feedback=feedback,
             xp_awarded=xp_awarded,
             recommendations=recommendations or None,
+            misconceptions_detected=misconceptions_detected,
         )
     except HTTPException:
         raise

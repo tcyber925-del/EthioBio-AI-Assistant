@@ -1,5 +1,10 @@
 # Glossary
 
+## Execution Roadmap
+Canonical implementation sequence at `01-Planning/ROADMAP.md`. 10 waves from Foundation Stabilization (Wave 0) through Multi-Agent System (Wave 10). Teacher Copilot MVP before infrastructure. Postgres-first. Event Bus deferred. Agents last.
+
+# Glossary
+
 ## Persistent Learning State
 The database-level records of student mastery, misconceptions, weak areas, and ability estimates that survive across sessions. Already implemented via `StudentMastery`, `MisconceptionPattern`, `TopicMasteryHistory`, `StudentAbility`, `SpacedRepetitionSchedule`, and `StudentProfile` models.
 
@@ -21,8 +26,62 @@ Tables that already exist and should be extended rather than replaced: `student_
 ## Canonical Tutor Pipeline
 The LangGraph pipeline (OrchestratorNode → RetrievalNode → TutorNode → SafetyNode) is the canonical tutoring path. The direct `TutorAgent` (`src/agents/tutor.py`) should be considered legacy or a thin wrapper. All memory integration targets the LangGraph pipeline.
 
+## Educational Knowledge Graph Strategy (PRD-003)
+Named adjacency tables in PostgreSQL with recursive CTEs instead of a generic Graph Abstraction Layer. Each relationship type gets its own table (`topic_prerequisites`, `student_misconceptions`, `intervention_outcomes`, `topic_misconceptions`). Prerequisite chain traversal uses `WITH RECURSIVE` CTEs. The graph builder/reasoning/query interfaces operate over named tables — no generic node/edge store. See ADR-0007.
+
 ## Educational Event System (MVP)
-Minimal logging approach. No dedicated event bus. A lightweight `memory_events` log table with (user_id, event_type, topic, metadata JSON, created_at). Existing event-like records (`QuizAttempt`, `RecoveryNotification`, `TopicMasteryHistory`, `FeedbackEvent`) handle domain-specific events. Full event-driven architecture deferred.
+Minimal logging approach. No dedicated event bus. A lightweight `memory_events` log table with (user_id, event_type, topic, metadata JSONB, created_at). Existing event-like records (`QuizAttempt`, `RecoveryNotification`, `TopicMasteryHistory`, `FeedbackEvent`) handle domain-specific events. Full event-driven architecture deferred.
+
+## Event Bus Strategy (PRD-002)
+PRD-002's full Event Bus (publisher/broker/subscriber/registry/replay) is **not implemented as specified**. Instead, the existing `EventLogger` is evolved with schema validation and an in-process subscriber registry. Rationale: the current platform is a single deployed service (monolith) — a dedicated broker/queue/replay layer would be premature abstraction. The `MemoryEvent` table already serves as an append-only event store queryable via JSONB. The full event-driven architecture (Redis Streams → Kafka) will be introduced when multiple independent services require decoupling. See ADR-0006.
+
+## Memory Event Storage
+Flat JSONB column on `memory_events.event_metadata` rather than normalized `memory_event_metadata` / `memory_event_links` tables. Chosen because event metadata is inherently heterogeneous per event type. Queryable via PostgreSQL JSONB operators `@>` and `->>`. GIN indexing is available but deferred until query patterns emerge. See ADR-0005.
+
+## Teacher Copilot Pipeline (PRD-004)
+New LangGraph pipeline at `src/core/teacher_copilot/` with dedicated nodes for intent routing, educational reasoning, evidence engine, and response generation. Separate from the student tutoring pipeline but reuses shared infrastructure (memory layer, knowledge graph, learning intelligence, evidence graph). The pipeline supports 5 MVP Copilot Skills: Student Intelligence, Classroom Intelligence, Intervention Guidance, Curriculum Analysis, and Assessment Generation. Not a thin REST wrapper — the pipeline handles multi-source reasoning chains that cross memory, graph, and analytics boundaries.
+
+## Agent Memory Integration Strategy
+Current agents (TutorAgent, QuizAgent, PlannerAgent) access memory via the existing `/memory/*` REST API. The formal `AgentMemoryClient` abstraction with `AgentMessage` protocol (PRD-010) is deferred until the Agent Orchestrator framework is built. The existing API surface is sufficient for current consumers and avoids building abstractions before the first multi-agent consumer (Teacher Copilot) exists. PRD-001's Phase 3 (Agent Integration) is subsumed by PRD-010.
+
+## Semantic Facts
+Single `semantic_facts` table as the Semantic Memory Store, replacing the PRD-001's planned three-table normalized schema (semantic_memories + semantic_entities + semantic_relationships). Covers unstructured educational facts not stored in existing models (StudentMastery, MisconceptionPattern, StudentAbility, MemoryEducationalSummary): behavioral patterns, teacher/classroom preferences, discovered learning patterns. Table has user_id, fact (text), confidence (float 0-1), source, category (behavior/preference/pattern), expires_at. Entity/relationship graph semantics deferred to Educational Knowledge Graph (PRD-003).
+
+## TopicPrerequisite Model
+Adjacency table at `src/database/models.py` mapping topic→prerequisite relationships. Fields: `topic_id`, `prerequisite_topic_id` (both FK to `curriculum_topics`), `relationship_type` ("prerequisite"/"corequisite"/"recommended"), `grade_level`. This is the concrete implementation of the Educational Knowledge Graph Strategy — named adjacency tables per relationship type, no generic node/edge store. See ADR-0007.
+
+## RelationshipBuilder
+CRUD service at `src/core/knowledge_graph/builder/` for managing prerequisite edges. Supports single/batch add, get prerequisites and dependents, and removal. Each operation validates against existing edges to prevent duplicates.
+
+## GraphReasoningEngine
+Service at `src/core/knowledge_graph/engine.py` using `WITH RECURSIVE` CTEs for:
+- **Prerequisite chain** — traverse `topic_prerequisites` upward (what must I know before this topic?)
+- **Dependent chain** — traverse downward (what topics depend on this one?)
+- **Gap analysis** — intersect prerequisite chain with `student_mastery` to find unmastered prerequisites
+
+Both CTEs use cycle detection via `path` arrays to prevent infinite loops. Depth-limited to 5 levels by default.
+
+## EKG API
+`APIRouter(prefix="/ekg")` at `src/api/ekg.py`. 9 endpoints: CRUD for prerequisites (single/batch/list/delete), chain traversal (prerequisite/dependent), gap analysis, and topic listing.
+
+## Timeline Memory Retrieval
+Chronological endpoint `GET /memory/timeline/{user_id}` that composites events + summaries + semantic facts into a date-sorted narrative. Thin compositing layer over existing tables — no new storage. Powers Teacher Copilot's "Show me what happened" and classroom timeline features. Builds on top of the existing event/summary/semantic_facts tables.
+
+## Event Schema Registry
+8 known event types with validated field schemas in `SCHEMA_REGISTRY` at `src/core/memory/event_logger.py`: `session_started`, `quiz_completed`, `lesson_viewed`, `recovery_task_done`, `misconception_detected`, `xp_awarded`, `streak_updated`, `achievement_unlocked`. Each schema defines `required_fields`, `optional_fields`, and typed `metadata_schema`. Unknown event types are accepted with a warning — the registry is additive, not restrictive.
+
+## Event Subscriber Registry
+In-process callback registry on `EventLogger._subscribers`. Handlers register via `subscribe(event_type, handler)` or `subscribe_all(handler)` for all event types. On each `log()` call, subscribers are notified asynchronously with `(event_type, user_id, metadata, event_id)`. Supports both sync and async handlers. Errors in one subscriber don't affect others. Designed for monolith-scale — no external broker, no persistence, no replay. Full event bus (Redis Streams → Kafka) deferred to Wave 8+ of ROADMAP.md.
+
+## Misconception Intelligence
+Dedicated package at `src/core/misconception_intelligence/` with two components:
+- **HeuristicDetector** — Scans LLM response text for 19 `MISCONCEPTION_INDICATORS` phrases, extracts correction sentences. Same logic as the inline `detect_misconception()` in the tutor modules, but reusable.
+- **MisconceptionProfiler** — Aggregates `MisconceptionPattern` records into a student profile (by topic, frequent patterns, improvement trend). Supports resolving individual patterns or by-topic bulk resolution.
+
+5 API endpoints under `/misconceptions/`: list (with resolved/topic filters), profile, analyze (heuristic text), resolve, resolve-topic. Dashboard component at `dashboard/src/components/misconceptions/MisconceptionPanel.tsx`.
+
+## Teacher Copilot Dashboard
+Chat UI at `dashboard/src/app/copilot/page.tsx` with example prompts, intent badges, evidence source citations, and streaming-style response display. Uses the `POST /copilot/query` endpoint with a 60s timeout. Follows DashboardV2 design language.
 
 ## Memory Conflict Resolution
 Confidence-based natural resolution. No dedicated conflict resolver. The retrieval ranking prefers recent, high-confidence memories. Corrected misconceptions naturally rank higher via recency + confidence. Old entries fade via recency decay. Sufficient for MVP.
@@ -49,8 +108,11 @@ Memory is injected into the LangGraph TutorNode as a structured **system prompt 
 ## Vector Storage for Educational Memory
 Reuses the existing ChromaDB via `VectorStoreAdapter` with a separate collection for educational summaries/semantic memories. No new vector infrastructure for MVP. pgvector integration is deferred — the adapter interface makes this swappable.
 
+## Memory Consolidation Pipeline
+Time-triggered background pipeline (cron/APScheduler) that runs daily, groups memory events by user+period, and generates consolidated summaries at daily → weekly → monthly → quarterly levels. Distinct from the session-level `Summarizer` — consolidation operates on aggregated events, not individual tutoring sessions. Implemented as `src/core/memory/consolidation/` with `scripts/run_consolidation.py`. Event-triggered and on-demand consolidation are future extensions.
+
 ## Memory Lifecycle Engine (MVP)
-Not implemented as a dedicated subsystem for MVP. Replaced by simpler strategies: recency-weighted retrieval ranking, periodic summary compression, spaced-repetition-based confidence decay, and a retention policy (keep N most recent session summaries per user). Full lifecycle engine deferred until data volume warrants it.
+Not implemented as a dedicated subsystem for MVP. Replaced by simpler strategies: recency-weighted retrieval ranking, periodic summary compression (via consolidation pipeline), spaced-repetition-based confidence decay, and a retention policy (keep N most recent session summaries per user). Full lifecycle engine deferred until data volume warrants it.
 
 ## Learning Intelligence Layer (LIL)
 Centralized orchestration layer at `src/core/learning_intelligence/` that transforms educational data into educational decisions. Consumes existing systems (StudentMastery, StudentAbility, etc.) without replacing them. Follows the existing `src/core/memory/` module convention.
@@ -237,3 +299,30 @@ Monitoring and observability for Agentic RAG pipeline. Provides trace_id generat
 
 ## Unified Graph
 Single graph that handles both legacy and agentic pipelines. Routes based on `requires_planning` after OrchestratorNode. Legacy pipeline: retrieve → tutor → safety. Agentic pipeline: planner → plan_executor → sufficient_context → tutor → claim_verifier → safety. Includes iterative retrieval loop and claim verification.
+
+## Diagnostic Assessment
+`POST /quiz/diagnostic` endpoint (`src/api/diagnostic.py`). Generates a multi-topic baseline pre-test by creating one `Quiz` per requested topic, all at EASY difficulty. Returns per-topic baselines with `TopicBaseline` (topic, score, total, correct, severity, questions). Overall severity is "pending" until the student submits answers via the standard `POST /quiz/submit` flow. See ADR-0010.
+
+## Exit Ticket
+Optional structured assessment appended to lesson plans. Three questions (MC/TF/short_answer) generated after the lesson plan by `LessonPlannerAgent._generate_exit_ticket()`. Triggered by `generate_exit_ticket: true` in the lesson plan request. Not persisted in the `LessonPlan` table — computed on-the-fly per generation. See ADR-0010.
+
+## Teacher Copilot Assessment Route
+Conditional edge in the Teacher Copilot pipeline (`src/core/teacher_copilot/pipeline.py`). When `IntentRouter` classifies a query as `assessment_creation`, the pipeline routes to `AssessmentCreatorNode` instead of the standard gather→reason path. Extracts grade (via regex) and topic (via keyword matching) from natural language, then calls `QuizAgent.generate()` to produce a real assessment. The generated questions are rendered in the response text.
+
+## InterventionAssignment
+Persisted database model at `src/database/models.py` for teacher-facing intervention tracking. Full lifecycle: `planned → active → completed | cancelled`. Fields: user_id, classroom_id, teacher_id, intervention_type (REVIEW_TOPIC, REVISE_MISCONCEPTION, RECOVERY_PLAN, TAKE_QUIZ, EXAM_PRACTICE, TUTOR_SESSION, ENGAGEMENT_BOOST), topic, priority (0.0-1.0), estimated_impact (0-100), effectiveness_score (nullable, computed after completion). See ADR-0011.
+
+## InterventionAnalytics
+Aggregated analytics endpoint `GET /interventions/analytics/summary`. Returns total_interventions, completed_count, active_count, completion_rate (%), average_effectiveness (%), effectiveness_by_type (dict), and effectiveness_by_topic (dict). Computed on-read by filtering completed interventions with non-null effectiveness scores and grouping by type/topic.
+
+## Intervention Effectiveness
+Computed by `InterventionService.compute_effectiveness()` which queries `StudentMastery` records before and after the intervention's `assigned_at` date. The difference in `average_score` becomes the effectiveness score (clamped 0-100). Requires pre-existing mastery data — returns `null` when unavailable.
+
+## Lesson Differentiation
+Three-track differentiation generated by `DIFFERENTIATION_PROMPT` in `LessonPlannerAgent`. Triggered by `generate_differentiation: true`. Creates three `DifferentiationActivity` objects per lesson: support (scaffolded), standard (grade-level), advanced (extended). Each has group, description, duration_minutes. Not persisted — computed on-the-fly. See ADR-0012.
+
+## Diagram Suggestion
+Topic-matched diagram suggestions generated by `DIAGRAM_SUGGESTION_PROMPT` in `LessonPlannerAgent`. Triggered by `generate_diagram_suggestions: true`. Returns `DiagramSuggestion` objects with title, description, and diagram_type (flowchart/labeling/concept_map/comparison/process/anatomy). Descriptive only — no diagram files are created. Future integration with the existing diagram labeling module. See ADR-0012.
+
+## Assessment Studio
+Dashboard page at `dashboard/src/app/assessment-studio/`. Aggregates all assessment types (diagnostic, quiz, adaptive quiz, exit ticket, teacher copilot assessment) with creation UI, status indicators, and reference table. Sidebar link under "Assessments" icon for admin/teacher roles.

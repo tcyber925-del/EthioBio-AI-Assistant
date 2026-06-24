@@ -105,6 +105,8 @@ cmd_read() {
     terminal_state 0 "success" "PR already merged."
   fi
 
+  discover_pr_state
+
   header "REVIEW DECISION"
   local decision
   decision=$(gh pr view "$PR_NUMBER" --json reviewDecision -q .reviewDecision 2>/dev/null || echo "unknown")
@@ -249,6 +251,13 @@ cmd_auto() {
     terminal_state 2 "blocked" "Exhausted $max_iter auto iterations. Handing off to human."
   fi
 
+  info "Running verification gates..."
+  if ! run_verification_gates; then
+    state_update "{\"applied_count\": $applied_count, \"skip_count\": $skip_count, \"gates_failed\": true, \"last_run\": \"$(date -Iseconds)\"}"
+    terminal_state 2 "blocked" "Verification gates failed (ruff/mypy). Fix issues and run pr-review-loop push."
+  fi
+  state_update "{\"applied_count\": $applied_count, \"skip_count\": $skip_count, \"gates_failed\": false, \"last_run\": \"$(date -Iseconds)\"}"
+
   git add -A
   git commit -m "$message"
   info "Pushing..."
@@ -339,6 +348,12 @@ cmd_verify() {
   if [[ "$unresolved_count" -eq 0 ]]; then
     iteration_cleanup "$PR_NUMBER"
     if [[ "$req_approval" != "true" ]]; then
+      local review_count
+      review_count=$(gh pr view "$PR_NUMBER" --json reviews -q '.reviews | length' 2>/dev/null || echo "0")
+      if [[ "$review_count" -eq 0 ]]; then
+        echo -e "\n  ${YELLOW}0 threads, but no reviews yet — waiting for first review cycle.${NC}"
+        terminal_state 1 "pending" "No reviews submitted yet."
+      fi
       echo -e "\n  ${GREEN}${BOLD}✓ Clean — no approvals required. Merging...${NC}"
       try_merge && terminal_state 0 "success" "Merged."
       echo -e "\n  ${YELLOW}Auto-merge failed.${NC}"
@@ -421,6 +436,130 @@ iteration_cleanup() {
   rm -f "${ITER_FILE}-${pr}"
 }
 
+STATE_FILE="$PWD/.pr-loop-state.json"
+
+state_update() {
+  local json="$1"
+  python3 -c "
+import json, os
+path = '$STATE_FILE'
+data = {}
+if os.path.exists(path):
+    with open(path) as f:
+        try:
+            data = json.load(f)
+        except json.JSONDecodeError:
+            data = {}
+data.update($json)
+with open(path, 'w') as f:
+    json.dump(data, f, indent=2)
+" 2>/dev/null
+}
+
+state_read_key() {
+  local key="$1"
+  if [[ ! -f "$STATE_FILE" ]]; then
+    echo ""
+    return
+  fi
+  python3 -c "
+import json, sys
+with open('$STATE_FILE') as f:
+    try:
+        d = json.load(f)
+        print(d.get('$key', ''))
+    except:
+        print('')
+" 2>/dev/null
+}
+
+state_cleanup() {
+  rm -f "$STATE_FILE"
+}
+
+discover_pr_state() {
+  local json
+  json=$(gh pr view "$PR_NUMBER" --json isDraft,mergeable,state 2>/dev/null || echo '{}')
+  local is_draft mergeable pr_state
+  is_draft=$(echo "$json" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('isDraft','?'))" 2>/dev/null || echo "?")
+  mergeable=$(echo "$json" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('mergeable','?'))" 2>/dev/null || echo "?")
+  pr_state=$(echo "$json" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('state','?'))" 2>/dev/null || echo "?")
+
+  local ci_json ci_status ci_conclusion
+  ci_json=$(gh run list --branch "$(git rev-parse --abbrev-ref HEAD)" --limit 1 --json status,conclusion 2>/dev/null || echo '[]')
+  ci_status=$(echo "$ci_json" | python3 -c "
+import json,sys
+try:
+    runs = json.load(sys.stdin)
+    if runs:
+        s = runs[0].get('status','?')
+        c = runs[0].get('conclusion','?')
+        print(f'{s}/{c}' if s != 'completed' else c)
+    else:
+        print('no-runs')
+except:
+    print('?')
+" 2>/dev/null || echo "?")
+
+  local draft_label merge_label
+  [[ "$is_draft" == "true" ]] && draft_label="${YELLOW}draft${NC}" || draft_label="${GREEN}no${NC}"
+  case "$mergeable" in
+    MERGEABLE)   merge_label="${GREEN}clean${NC}" ;;
+    CONFLICTING) merge_label="${RED}conflict${NC}" ;;
+    UNKNOWN)     merge_label="${YELLOW}checking${NC}" ;;
+    *)           merge_label="${YELLOW}$mergeable${NC}" ;;
+  esac
+  local ci_label
+  case "$ci_conclusion" in
+    success) ci_label="${GREEN}success${NC}" ;;
+    failure|startup_failure) ci_label="${RED}fail${NC}" ;;
+    cancelled) ci_label="${YELLOW}cancelled${NC}" ;;
+    in_progress|queued|waiting) ci_label="${YELLOW}running${NC}" ;;
+    no-runs) ci_label="${YELLOW}no runs${NC}" ;;
+    *) ci_label="${YELLOW}$ci_conclusion${NC}" ;;
+  esac
+
+  DISCOVER_DRAFT="$is_draft"
+  DISCOVER_CI="$ci_conclusion"
+  DISCOVER_MERGEABLE="$mergeable"
+
+  echo -e "  Status: ${GREEN}$pr_state${NC} | Draft: $draft_label | CI: $ci_label | Mergeable: $merge_label"
+}
+
+run_verification_gates() {
+  local failed=0
+  local results="[]"
+
+  if command -v ruff &>/dev/null && [[ -f "pyproject.toml" || -f ".ruff.toml" || -f "ruff.toml" ]]; then
+    info "Gate: ruff check ."
+    local ruff_out
+    ruff_out=$(ruff check . 2>&1) || {
+      warn "ruff check FAILED"
+      echo "$ruff_out" | sed 's/^/    /'
+      failed=1
+    }
+  fi
+
+  if command -v mypy &>/dev/null && [[ -d "src" ]]; then
+    info "Gate: mypy src/"
+    local mypy_out
+    mypy_out=$(mypy src/ 2>&1) || {
+      warn "mypy FAILED"
+      echo "$mypy_out" | sed 's/^/    /'
+      failed=1
+    }
+  fi
+
+  if [[ "$failed" -eq 1 ]]; then
+    warn "Verification gates failed — skipping commit."
+    state_update '{"verification_failed": true, "last_verification": "fail"}'
+    return 1
+  fi
+
+  state_update '{"verification_failed": false, "last_verification": "pass"}'
+  return 0
+}
+
 parse_duration() {
   local input="$1"
   local num="${input%[smh]}"
@@ -469,7 +608,28 @@ cmd_goal() {
     local state
     state=$(gh pr view "$PR_NUMBER" --json state -q .state 2>/dev/null || echo "")
     if [[ "$state" == "MERGED" ]]; then
+      state_update "{\"cycle\": $cycle, \"last_exit_code\": 0, \"last_run\": \"$(date -Iseconds)\", \"terminal\": \"success\"}"
       terminal_state 0 "success" "Goal achieved — PR #$PR_NUMBER merged!"
+    fi
+
+    discover_pr_state
+
+    if [[ "$DISCOVER_DRAFT" == "true" ]]; then
+      echo -e "  ${YELLOW}PR is in draft — not ready for review.${NC}"
+      echo -e "\n  ${YELLOW}⌛ Sleeping ${interval_secs}s...${NC}"
+      state_update "{\"cycle\": $cycle, \"last_exit_code\": 1, \"last_run\": \"$(date -Iseconds)\", \"terminal\": \"draft\"}"
+      sleep "$interval_secs"
+      continue
+    fi
+
+    if [[ "$DISCOVER_CI" == "failure" || "$DISCOVER_CI" == "startup_failure" ]]; then
+      echo -e "  ${YELLOW}CI is failing — fixing before continuing...${NC}"
+    fi
+
+    if [[ "$DISCOVER_MERGEABLE" == "CONFLICTING" ]]; then
+      echo -e "  ${RED}Merge conflict detected — needs human resolution.${NC}"
+      state_update "{\"cycle\": $cycle, \"last_exit_code\": 2, \"last_run\": \"$(date -Iseconds)\", \"terminal\": \"conflict\"}"
+      terminal_state 2 "blocked" "PR has merge conflicts. Resolve manually."
     fi
 
     local output exit_code=0
@@ -481,9 +641,11 @@ cmd_goal() {
 
     case "$exit_code" in
       0)
+        state_update "{\"cycle\": $cycle, \"last_exit_code\": 0, \"last_run\": \"$(date -Iseconds)\", \"terminal\": \"success\"}"
         terminal_state 0 "success" "Goal achieved — PR #$PR_NUMBER merged/approved."
         ;;
       2)
+        state_update "{\"cycle\": $cycle, \"last_exit_code\": 2, \"last_run\": \"$(date -Iseconds)\", \"terminal\": \"blocked\"}"
         terminal_state 2 "blocked" "Goal blocked — auto-fix hit a terminal stop."
         ;;
       1|*)
@@ -501,10 +663,21 @@ except:
 " 2>/dev/null || echo "0")
         fi
 
-        if [[ "$thread_count" -eq "$last_thread_count" && "$thread_count" -ge 0 ]]; then
+        state_update "{\"cycle\": $cycle, \"last_exit_code\": 1, \"last_run\": \"$(date -Iseconds)\", \"last_thread_count\": $thread_count, \"terminal\": \"pending\"}"
+
+        local review_count
+        review_count=$(gh pr view "$PR_NUMBER" --json reviews -q '.reviews | length' 2>/dev/null || echo "0")
+
+        # Don't count "waiting for first review" as stagnation
+        if [[ "$review_count" -eq 0 ]]; then
+          stagnant=0
+          last_thread_count="$thread_count"
+          echo -e "\n  ${YELLOW}⌛ Waiting for first review (${review_count} reviews, ${thread_count} threads)...${NC}"
+        elif [[ "$thread_count" -eq "$last_thread_count" && "$thread_count" -ge 0 ]]; then
           stagnant=$((stagnant + 1))
           echo -e "\n  ${YELLOW}⚠ Stagnant cycle ${stagnant}/${stagnation_max} (${thread_count} threads, unchanged)${NC}"
           if [[ "$stagnant" -ge "$stagnation_max" ]]; then
+            state_update '{"terminal": "stagnated"}'
             terminal_state 2 "blocked" "Stagnated after $stagnant cycles with $thread_count unresolved threads."
           fi
         else

@@ -4,10 +4,17 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.digital_twin import TwinBuilder
+from src.core.digital_twin import ForecastingEngine, SimulationEngine, TwinBuilder
 from src.database.models import StudentDigitalTwin
 from src.database.session import get_session
-from src.schemas.digital_twin import DigitalTwinDashboardResponse, DigitalTwinResponse
+from src.schemas.digital_twin import (
+    DigitalTwinDashboardResponse,
+    DigitalTwinResponse,
+    ForecastResponse,
+    MasteryForecastResponse,
+    SimulationAction,
+    SimulationResponse,
+)
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/digital-twin", tags=["Digital Twin"])
@@ -86,6 +93,45 @@ async def get_twin_dashboard(
         risk_indicators=risk_indicators,
         last_built_at=twin.last_built_at.isoformat() if twin.last_built_at else None,
     )
+
+
+@router.get("/{user_id}/forecast", response_model=ForecastResponse)
+async def get_twin_forecast(
+    user_id: uuid.UUID,
+    weeks_ahead: int = 4,
+    session: AsyncSession = Depends(get_session),
+):
+    engine = ForecastingEngine(session)
+    forecast = await engine.forecast_all(user_id, weeks_ahead)
+    return ForecastResponse(**forecast)
+
+
+@router.get("/{user_id}/forecast/mastery/{topic}", response_model=MasteryForecastResponse)
+async def get_mastery_forecast(
+    user_id: uuid.UUID,
+    topic: str,
+    weeks_ahead: int = 4,
+    session: AsyncSession = Depends(get_session),
+):
+    engine = ForecastingEngine(session)
+    result = await engine.forecast_mastery_topic(user_id, topic, weeks_ahead)
+    return MasteryForecastResponse(**result)
+
+
+@router.post("/{user_id}/simulate", response_model=SimulationResponse)
+async def simulate_twin_scenario(
+    user_id: uuid.UUID,
+    actions: list[SimulationAction],
+    weeks_ahead: int = 4,
+    session: AsyncSession = Depends(get_session),
+):
+    engine = SimulationEngine(session)
+    result = await engine.simulate(
+        user_id,
+        [a.model_dump() for a in actions],
+        weeks_ahead,
+    )
+    return SimulationResponse(**result)
 
 
 def _twin_to_response(twin: StudentDigitalTwin) -> DigitalTwinResponse:

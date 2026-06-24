@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from src.api import (
     activity,
     admin,
+    agent_orchestrator,
     auth,
     chat,
     diagnostic,
@@ -137,6 +138,7 @@ app.include_router(misconceptions.router)
 app.include_router(intervention.router)
 app.include_router(ekg.router)
 app.include_router(activity.router)
+app.include_router(agent_orchestrator.router)
 app.include_router(auth.router)
 
 app.include_router(parent.router)
