@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from src.api import (
     activity,
     admin,
+    agent_orchestrator,
     auth,
     chat,
     diagram,
@@ -124,6 +125,7 @@ app.include_router(recovery.router)
 app.include_router(notifications.router)
 app.include_router(memory_router)
 app.include_router(activity.router)
+app.include_router(agent_orchestrator.router)
 app.include_router(auth.router)
 
 app.include_router(parent.router)
