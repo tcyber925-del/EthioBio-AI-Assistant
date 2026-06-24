@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from uuid import UUID
 
 import structlog
@@ -11,7 +12,6 @@ from src.database.models import (
     StudentAbility,
     StudentDigitalTwin,
     StudentMastery,
-    TopicPrerequisite,
 )
 
 logger = structlog.get_logger()
@@ -25,7 +25,6 @@ class TwinBuilder:
         result = await self.session.execute(
             select(StudentAbility).where(
                 StudentAbility.user_id == user_id,
-                StudentAbility.ability_score != 0.0,
             )
         )
         rows = result.scalars().all()
@@ -100,7 +99,10 @@ class TwinBuilder:
                 ),
             })
 
+        overall = 1.0 - (len(active) / max(len(active) + len(resolved), 1))
+
         return {
+            "overall": round(overall, 2),
             "total_active": len(active),
             "total_resolved": len(resolved),
             "topics": topics,
@@ -122,10 +124,8 @@ class TwinBuilder:
             days_since = None
             forgetting_risk = "unknown"
             if row.last_reviewed_at:
-                delta_result = await self.session.execute(
-                    select(func.extract("epoch", func.now() - row.last_reviewed_at) / 86400)
-                )
-                days_since = round(delta_result.scalar() or 0)
+                delta = datetime.now(timezone.utc) - row.last_reviewed_at
+                days_since = round(delta.total_seconds() / 86400)
                 if days_since > 14:
                     forgetting_risk = "high"
                 elif days_since > 7:
@@ -171,7 +171,6 @@ class TwinBuilder:
 
             topics[row.topic] = {
                 "readiness_score": row.average_score,
-                "prerequisites_met": True,
                 "risk_level": risk,
             }
             total += row.average_score
