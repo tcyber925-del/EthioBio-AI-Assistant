@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
@@ -44,11 +44,11 @@ export default function ReflectionTable({ refreshKey }: { refreshKey: number }) 
     setError(null)
     try {
       const data = await fetchWithAuth('/agents/reflections?limit=20')
-      setReflections(data as ReflectionInfo[])
+  const requestIdRef = useRef(0)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err))
+    const requestId = ++requestIdRef.current
     } finally {
-      setLoading(false)
+      if (requestId === requestIdRef.current) {
     }
   }, [])
 

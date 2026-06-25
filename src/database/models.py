@@ -814,7 +814,7 @@ class StudentDigitalTwin(Base):
     intervention_state: Mapped[dict] = mapped_column(JSON, default=dict)
     overall_health: Mapped[str] = mapped_column(String(20), default="unknown")
     confidence: Mapped[float] = mapped_column(Float, default=0.0)
-    last_built_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_built_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow,
