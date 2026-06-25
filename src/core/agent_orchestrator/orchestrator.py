@@ -23,7 +23,7 @@ class AgentOrchestrator:
     def __init__(self, registry: AgentRegistry):
         self.registry = registry
         self._messages: list[AgentMessage] = []
-        self._reflections: list[AgentReflection] = []
+        self._reflections: deque[AgentReflection] = deque(maxlen=500)
 
     async def execute(
         self,
@@ -190,5 +190,5 @@ class AgentOrchestrator:
         )
 
     def get_reflections(self, limit: int = 20) -> list[AgentReflection]:
-        sorted_refs = sorted(self._reflections, key=lambda r: r.created_at, reverse=True)
-        return sorted_refs[:limit]
+        # deque preserves insertion (chronological) order; newest are last.
+        return list(self._reflections)[: -limit - 1 : -1] if limit else []
