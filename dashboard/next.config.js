@@ -12,6 +12,16 @@ const nextConfig = {
       { source: '/graph/:path*', destination: `${api}/graph/:path*` },
       { source: '/progress/:path*', destination: `${api}/progress/:path*` },
       { source: '/diagram/:path*', destination: `${api}/diagram/:path*` },
+      { source: '/diagrams/static/:path*', destination: `${api}/diagrams/static/:path*` },
+      { source: '/intelligence/:path*', destination: `${api}/intelligence/:path*` },
+      { source: '/auth/:path*', destination: `${api}/auth/:path*` },
+      { source: '/teacher/:path*', destination: `${api}/teacher/:path*` },
+      { source: '/recovery/:path*', destination: `${api}/recovery/:path*` },
+      { source: '/parent/:path*', destination: `${api}/parent/:path*` },
+      { source: '/admin/:path*', destination: `${api}/admin/:path*` },
+      { source: '/users/:path*', destination: `${api}/users/:path*` },
+      { source: '/agents/:path*', destination: `${api}/agents/:path*` },
+    ];
       { source: '/agents/:path*', destination: `${api}/agents/:path*` },
       { source: '/gamification/:path*', destination: `${api}/gamification/:path*` },
     ]

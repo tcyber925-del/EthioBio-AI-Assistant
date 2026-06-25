@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import PageHeader from '@/components/ui/PageHeader'
 import { CardSkeleton } from '@/components/Skeleton'
@@ -17,14 +17,19 @@ export default function AdminAgentsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  const abortRef = useRef<AbortController | null>(null)
 
   const fetchAgents = useCallback(async () => {
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchWithAuth('/agents')
+      const data = await fetchWithAuth('/agents', { signal: controller.signal })
       setAgents(data as AgentInfo[])
     } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
       setError(err instanceof Error ? err.message : String(err))
     } finally {
       setLoading(false)

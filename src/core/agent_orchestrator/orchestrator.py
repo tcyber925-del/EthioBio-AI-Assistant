@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from collections import deque
 from uuid import uuid4
 
 import structlog

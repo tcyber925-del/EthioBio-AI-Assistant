@@ -53,6 +53,7 @@ export default function ExecutionPanel({ agents, onExecute }: ExecutionPanelProp
       <h2 className="text-heading text-foreground mb-4">Execute Task</h2>
       <div className="space-y-4">
         <div>
+          <label htmlFor="agent-select" className="block text-small text-foreground-muted mb-1">Agent</label>
           <label className="block text-small text-foreground-muted mb-1">Agent</label>
           <select
             value={selectedAgent}
@@ -66,6 +67,7 @@ export default function ExecutionPanel({ agents, onExecute }: ExecutionPanelProp
           </select>
         </div>
         <div>
+            id="agent-select"
           <label className="block text-small text-foreground-muted mb-1">Task</label>
           <textarea
             value={task}

@@ -16,7 +16,7 @@ class StudentProgressAgent(BaseAgent):
     def __init__(self, llm_router: ModelRouter):
         super().__init__(llm_router, name="student_progress")
 
-    def analyze_progress(self, records: list, profile) -> dict:
+    async def analyze_progress(self, records: list, profile) -> dict:
         if not records:
             return {
                 "student_id": str(profile.id) if profile else "",

@@ -231,7 +231,8 @@ cmd_auto() {
   if [[ "$applied_count" -eq 0 && "$skip_count" -eq 0 ]]; then
     echo -e "  ${YELLOW}No auto-fixable threads found. Fix manually and run 'pr-review-loop push'.${NC}"
     cmd_read
-    return
+    echo -e "\n  ${YELLOW}$(echo "$threads_json" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "?" ) thread(s) remain unresolved.${NC}"
+    terminal_state 1 "pending" "Waiting for review or manual push."
   fi
 
   echo -e "  ${GREEN}$applied_count fix(es) applied${NC}, ${YELLOW}$skip_count skipped${NC}"
@@ -339,17 +340,32 @@ cmd_verify() {
 
   if [[ "$unresolved_count" -eq 0 ]]; then
     iteration_cleanup "$PR_NUMBER"
-    if [[ "$req_approval" != "true" ]]; then
-      echo -e "\n  ${GREEN}${BOLD}✓ Clean — no approvals required. Merging...${NC}"
-      try_merge && terminal_state 0 "success" "Merged."
-      echo -e "\n  ${YELLOW}Auto-merge failed.${NC}"
-      terminal_state 1 "pending" "Merge failed — push or merge manually."
-    elif [[ "$decision" == "APPROVED" ]]; then
+    if [[ "$decision" == "APPROVED" ]]; then
+      if [[ "$req_approval" != "true" ]]; then
+        echo -e "\n  ${GREEN}${BOLD}✓ Approved and clean. Merging...${NC}"
+        try_merge && terminal_state 0 "success" "Merged."
+        echo -e "\n  ${YELLOW}Auto-merge failed.${NC}"
+        terminal_state 1 "pending" "Merge failed — push or merge manually."
+      fi
       terminal_state 0 "success" "APPROVED — all threads resolved."
-    else
+    elif [[ "$decision" == "CHANGES_REQUESTED" ]]; then
+      echo -e "\n  ${YELLOW}All threads resolved but changes were requested. Waiting for re-review.${NC}"
+      terminal_state 1 "pending" "Changes requested — waiting for re-review."
+    elif [[ -z "$decision" ]]; then
+      # No review submitted yet — safe to merge if no protection required
+      if [[ "$req_approval" != "true" ]]; then
+        echo -e "\n  ${GREEN}${BOLD}✓ Clean — no approvals required. Merging...${NC}"
+        try_merge && terminal_state 0 "success" "Merged."
+        echo -e "\n  ${YELLOW}Auto-merge failed.${NC}"
+        terminal_state 1 "pending" "Merge failed — push or merge manually."
+      fi
       echo -e "\n  ${YELLOW}All threads resolved but $BASE_BRANCH requires approval.${NC}"
       echo -e "  Ask a collaborator to approve (self-approval is blocked)."
       terminal_state 2 "blocked" "Needs external approval."
+    else
+      # REVIEW_REQUIRED or other — wait
+      echo -e "\n  ${YELLOW}All threads resolved, waiting for review decision.${NC}"
+      terminal_state 1 "pending" "Waiting for review approval."
     fi
   fi
 

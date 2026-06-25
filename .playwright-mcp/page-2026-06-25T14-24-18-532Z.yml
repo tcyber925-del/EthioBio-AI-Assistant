@@ -1,0 +1,123 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e5]:
+        - img [ref=e6]
+        - generic [ref=e10]:
+          - heading "EthioBio" [level=2] [ref=e11]
+          - paragraph [ref=e12]: Admin Panel
+      - navigation [ref=e13]:
+        - link "Dashboard" [ref=e14] [cursor=pointer]:
+          - /url: /
+          - img [ref=e15]
+          - text: Dashboard
+        - link "Classroom" [ref=e18] [cursor=pointer]:
+          - /url: /classroom
+          - img [ref=e19]
+          - text: Classroom
+        - link "School" [ref=e24] [cursor=pointer]:
+          - /url: /school
+          - img [ref=e25]
+          - text: School
+        - link "Parent" [ref=e27] [cursor=pointer]:
+          - /url: /parent
+          - img [ref=e28]
+          - text: Parent
+        - link "Recovery" [ref=e31] [cursor=pointer]:
+          - /url: /recovery
+          - img [ref=e32]
+          - text: Recovery
+        - link "Quizzes" [ref=e34] [cursor=pointer]:
+          - /url: /quizzes
+          - img [ref=e35]
+          - text: Quizzes
+        - link "Lesson Plans" [ref=e39] [cursor=pointer]:
+          - /url: /lessons
+          - img [ref=e40]
+          - text: Lesson Plans
+        - link "Students" [ref=e43] [cursor=pointer]:
+          - /url: /students
+          - img [ref=e44]
+          - text: Students
+        - link "Monitoring" [ref=e49] [cursor=pointer]:
+          - /url: /monitoring
+          - img [ref=e50]
+          - text: Monitoring
+        - link "Diagrams" [ref=e52] [cursor=pointer]:
+          - /url: /diagrams
+          - img [ref=e53]
+          - text: Diagrams
+        - link "Ask Q&A" [ref=e55] [cursor=pointer]:
+          - /url: /ask
+          - img [ref=e56]
+          - text: Ask Q&A
+      - generic [ref=e58]:
+        - generic [ref=e59]:
+          - img [ref=e60]
+          - combobox [ref=e63] [cursor=pointer]:
+            - option "English" [selected]
+            - option "Amharic"
+        - button "Sign Out" [ref=e64] [cursor=pointer]:
+          - img [ref=e65]
+          - text: Sign Out
+      - generic [ref=e68]:
+        - generic [ref=e69]:
+          - img [ref=e70]
+          - generic [ref=e72]: Grade 9-12 curriculum
+        - paragraph [ref=e73]: gemma4:31b-cloud
+    - main [ref=e74]:
+      - generic [ref=e75]:
+        - complementary [ref=e76]:
+          - heading "Admin Panel" [level=1] [ref=e78]
+          - navigation [ref=e79]:
+            - link "📊 Dashboard" [ref=e80] [cursor=pointer]:
+              - /url: /admin
+              - generic [ref=e81]: 📊
+              - generic [ref=e82]: Dashboard
+            - link "🚩 Review Queue" [ref=e83] [cursor=pointer]:
+              - /url: /admin/review
+              - generic [ref=e84]: 🚩
+              - generic [ref=e85]: Review Queue
+            - link "📝 Content Review" [ref=e86] [cursor=pointer]:
+              - /url: /admin/content
+              - generic [ref=e87]: 📝
+              - generic [ref=e88]: Content Review
+            - link "🏫 Schools" [ref=e89] [cursor=pointer]:
+              - /url: /admin/schools
+              - generic [ref=e90]: 🏫
+              - generic [ref=e91]: Schools
+            - link "👥 Users" [ref=e92] [cursor=pointer]:
+              - /url: /admin/users
+              - generic [ref=e93]: 👥
+              - generic [ref=e94]: Users
+            - link "📡 Monitoring" [ref=e95] [cursor=pointer]:
+              - /url: /admin/monitoring
+              - generic [ref=e96]: 📡
+              - generic [ref=e97]: Monitoring
+            - link "🤖 Agents" [ref=e98] [cursor=pointer]:
+              - /url: /admin/agents
+              - generic [ref=e99]: 🤖
+              - generic [ref=e100]: Agents
+          - link "← Back to Dashboard" [ref=e102] [cursor=pointer]:
+            - /url: /
+            - generic [ref=e103]: ←
+            - generic [ref=e104]: Back to Dashboard
+        - main [ref=e105]:
+          - generic [ref=e106]:
+            - generic [ref=e108]:
+              - img [ref=e110]
+              - generic [ref=e113]:
+                - heading "Agent Orchestrator" [level=1] [ref=e114]
+                - paragraph [ref=e115]: Registered agents, task execution, and execution history
+            - generic [ref=e141]:
+              - heading "Execute Task" [level=2] [ref=e142]
+              - generic [ref=e143]:
+                - generic [ref=e144]:
+                  - generic [ref=e145]: Agent
+                  - combobox [ref=e146]:
+                    - option "Select an agent..." [selected]
+                - generic [ref=e147]:
+                  - generic [ref=e148]: Task
+                  - textbox "Describe the task for the agent..." [ref=e149]
+                - button "Execute" [disabled] [ref=e150]
+  - alert [ref=e157]

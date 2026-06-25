@@ -278,6 +278,7 @@ const statusBadge: Record<string, { variant: 'green' | 'yellow' | 'red'; label: 
   error: { variant: 'red', label: 'Error' },
 }
 
+const capabilityColors: Record<string, 'blue' | 'purple' | 'orange' | 'green' | 'red' | 'muted'> = {
 const capabilityColors: Record<string, 'blue' | 'purple' | 'orange' | 'green' | 'muted'> = {
   tutoring: 'blue',
   quiz_generation: 'purple',

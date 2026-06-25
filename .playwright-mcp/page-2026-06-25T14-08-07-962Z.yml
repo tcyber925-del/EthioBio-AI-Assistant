@@ -1,0 +1,315 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e5]:
+        - img [ref=e6]
+        - generic [ref=e10]:
+          - heading "EthioBio" [level=2] [ref=e11]
+          - paragraph [ref=e12]: Admin Panel
+      - navigation [ref=e13]:
+        - link "Dashboard" [ref=e14] [cursor=pointer]:
+          - /url: /
+          - img [ref=e15]
+          - text: Dashboard
+        - link "Classroom" [ref=e18] [cursor=pointer]:
+          - /url: /classroom
+          - img [ref=e19]
+          - text: Classroom
+        - link "School" [ref=e24] [cursor=pointer]:
+          - /url: /school
+          - img [ref=e25]
+          - text: School
+        - link "Parent" [ref=e27] [cursor=pointer]:
+          - /url: /parent
+          - img [ref=e28]
+          - text: Parent
+        - link "Recovery" [ref=e31] [cursor=pointer]:
+          - /url: /recovery
+          - img [ref=e32]
+          - text: Recovery
+        - link "Quizzes" [ref=e34] [cursor=pointer]:
+          - /url: /quizzes
+          - img [ref=e35]
+          - text: Quizzes
+        - link "Lesson Plans" [ref=e39] [cursor=pointer]:
+          - /url: /lessons
+          - img [ref=e40]
+          - text: Lesson Plans
+        - link "Students" [ref=e43] [cursor=pointer]:
+          - /url: /students
+          - img [ref=e44]
+          - text: Students
+        - link "Monitoring" [ref=e49] [cursor=pointer]:
+          - /url: /monitoring
+          - img [ref=e50]
+          - text: Monitoring
+        - link "Diagrams" [ref=e52] [cursor=pointer]:
+          - /url: /diagrams
+          - img [ref=e53]
+          - text: Diagrams
+        - link "Ask Q&A" [ref=e55] [cursor=pointer]:
+          - /url: /ask
+          - img [ref=e56]
+          - text: Ask Q&A
+      - generic [ref=e58]:
+        - generic [ref=e59]:
+          - img [ref=e60]
+          - combobox [ref=e63] [cursor=pointer]:
+            - option "English" [selected]
+            - option "Amharic"
+        - button "Sign Out" [ref=e64] [cursor=pointer]:
+          - img [ref=e65]
+          - text: Sign Out
+      - generic [ref=e68]:
+        - generic [ref=e69]:
+          - img [ref=e70]
+          - generic [ref=e72]: Grade 9-12 curriculum
+        - paragraph [ref=e73]: gemma4:31b-cloud
+    - main [ref=e74]:
+      - generic [ref=e75]:
+        - complementary [ref=e78]:
+          - heading "Admin Panel" [level=1] [ref=e80]
+          - navigation [ref=e81]:
+            - link "📊 Dashboard" [ref=e82] [cursor=pointer]:
+              - /url: /admin
+              - generic [ref=e83]: 📊
+              - generic [ref=e84]: Dashboard
+            - link "🚩 Review Queue" [ref=e85] [cursor=pointer]:
+              - /url: /admin/review
+              - generic [ref=e86]: 🚩
+              - generic [ref=e87]: Review Queue
+            - link "📝 Content Review" [ref=e88] [cursor=pointer]:
+              - /url: /admin/content
+              - generic [ref=e89]: 📝
+              - generic [ref=e90]: Content Review
+            - link "🏫 Schools" [ref=e91] [cursor=pointer]:
+              - /url: /admin/schools
+              - generic [ref=e92]: 🏫
+              - generic [ref=e93]: Schools
+            - link "👥 Users" [ref=e94] [cursor=pointer]:
+              - /url: /admin/users
+              - generic [ref=e95]: 👥
+              - generic [ref=e96]: Users
+            - link "📡 Monitoring" [ref=e97] [cursor=pointer]:
+              - /url: /admin/monitoring
+              - generic [ref=e98]: 📡
+              - generic [ref=e99]: Monitoring
+            - link "🤖 Agents" [ref=e100] [cursor=pointer]:
+              - /url: /admin/agents
+              - generic [ref=e101]: 🤖
+              - generic [ref=e102]: Agents
+          - link "← Back to Dashboard" [ref=e104] [cursor=pointer]:
+            - /url: /
+            - generic [ref=e105]: ←
+            - generic [ref=e106]: Back to Dashboard
+        - main [ref=e107]:
+          - generic [ref=e108]:
+            - heading "Dashboard Overview" [level=1] [ref=e109]
+            - generic [ref=e110]:
+              - generic [ref=e111]:
+                - generic [ref=e112]: "14"
+                - generic [ref=e113]: Users
+              - generic [ref=e114]:
+                - generic [ref=e115]: "1"
+                - generic [ref=e116]: Teachers
+              - generic [ref=e117]:
+                - generic [ref=e118]: "4"
+                - generic [ref=e119]: Students
+              - generic [ref=e120]:
+                - generic [ref=e121]: "22"
+                - generic [ref=e122]: Quizzes
+              - generic [ref=e123]:
+                - generic [ref=e124]: "92"
+                - generic [ref=e125]: Lessons
+            - generic [ref=e126]:
+              - generic [ref=e127]:
+                - heading "Recent Users" [level=2] [ref=e128]
+                - table [ref=e129]:
+                  - rowgroup [ref=e130]:
+                    - row "ID Role Grade Created" [ref=e131]:
+                      - columnheader "ID" [ref=e132]
+                      - columnheader "Role" [ref=e133]
+                      - columnheader "Grade" [ref=e134]
+                      - columnheader "Created" [ref=e135]
+                  - rowgroup [ref=e136]:
+                    - row "dd899eda... admin - 6/25/2026" [ref=e137]:
+                      - cell "dd899eda..." [ref=e138]
+                      - cell "admin" [ref=e139]
+                      - cell "-" [ref=e140]
+                      - cell "6/25/2026" [ref=e141]
+                    - row "937d7508... admin - 6/25/2026" [ref=e142]:
+                      - cell "937d7508..." [ref=e143]
+                      - cell "admin" [ref=e144]
+                      - cell "-" [ref=e145]
+                      - cell "6/25/2026" [ref=e146]
+                    - row "674af76e... admin - 6/25/2026" [ref=e147]:
+                      - cell "674af76e..." [ref=e148]
+                      - cell "admin" [ref=e149]
+                      - cell "-" [ref=e150]
+                      - cell "6/25/2026" [ref=e151]
+                    - row "67e88130... admin - 6/25/2026" [ref=e152]:
+                      - cell "67e88130..." [ref=e153]
+                      - cell "admin" [ref=e154]
+                      - cell "-" [ref=e155]
+                      - cell "6/25/2026" [ref=e156]
+                    - row "2cc0828b... admin - 6/25/2026" [ref=e157]:
+                      - cell "2cc0828b..." [ref=e158]
+                      - cell "admin" [ref=e159]
+                      - cell "-" [ref=e160]
+                      - cell "6/25/2026" [ref=e161]
+                    - row "357b9b34... admin - 6/25/2026" [ref=e162]:
+                      - cell "357b9b34..." [ref=e163]
+                      - cell "admin" [ref=e164]
+                      - cell "-" [ref=e165]
+                      - cell "6/25/2026" [ref=e166]
+                    - row "785a2bb0... admin - 6/25/2026" [ref=e167]:
+                      - cell "785a2bb0..." [ref=e168]
+                      - cell "admin" [ref=e169]
+                      - cell "-" [ref=e170]
+                      - cell "6/25/2026" [ref=e171]
+                    - row "99999999... student - 6/15/2026" [ref=e172]:
+                      - cell "99999999..." [ref=e173]
+                      - cell "student" [ref=e174]
+                      - cell "-" [ref=e175]
+                      - cell "6/15/2026" [ref=e176]
+                    - row "ec602c43... teacher - 6/4/2026" [ref=e177]:
+                      - cell "ec602c43..." [ref=e178]
+                      - cell "teacher" [ref=e179]
+                      - cell "-" [ref=e180]
+                      - cell "6/4/2026" [ref=e181]
+                    - row "52c676a1... admin - 6/3/2026" [ref=e182]:
+                      - cell "52c676a1..." [ref=e183]
+                      - cell "admin" [ref=e184]
+                      - cell "-" [ref=e185]
+                      - cell "6/3/2026" [ref=e186]
+                    - row "cb3dc881... admin - 6/3/2026" [ref=e187]:
+                      - cell "cb3dc881..." [ref=e188]
+                      - cell "admin" [ref=e189]
+                      - cell "-" [ref=e190]
+                      - cell "6/3/2026" [ref=e191]
+                    - row "00000000... student - 5/24/2026" [ref=e192]:
+                      - cell "00000000..." [ref=e193]
+                      - cell "student" [ref=e194]
+                      - cell "-" [ref=e195]
+                      - cell "5/24/2026" [ref=e196]
+                    - row "15088d61... student - 5/14/2026" [ref=e197]:
+                      - cell "15088d61..." [ref=e198]
+                      - cell "student" [ref=e199]
+                      - cell "-" [ref=e200]
+                      - cell "5/14/2026" [ref=e201]
+                    - row "1729db53... student - 5/13/2026" [ref=e202]:
+                      - cell "1729db53..." [ref=e203]
+                      - cell "student" [ref=e204]
+                      - cell "-" [ref=e205]
+                      - cell "5/13/2026" [ref=e206]
+              - generic [ref=e207]:
+                - heading "Recent Model Logs" [level=2] [ref=e208]
+                - table [ref=e209]:
+                  - rowgroup [ref=e210]:
+                    - row "Type Model Status Latency" [ref=e211]:
+                      - columnheader "Type" [ref=e212]
+                      - columnheader "Model" [ref=e213]
+                      - columnheader "Status" [ref=e214]
+                      - columnheader "Latency" [ref=e215]
+                  - rowgroup [ref=e216]:
+                    - row "lesson_planning ollama/gemma4:31b-cloud ✓ 0.8s" [ref=e217]:
+                      - cell "lesson_planning" [ref=e218]
+                      - cell "ollama/gemma4:31b-cloud" [ref=e219]
+                      - cell "✓" [ref=e220]
+                      - cell "0.8s" [ref=e221]
+                    - row "lesson_planning ollama/gemma4:31b-cloud ✓ 0.9s" [ref=e222]:
+                      - cell "lesson_planning" [ref=e223]
+                      - cell "ollama/gemma4:31b-cloud" [ref=e224]
+                      - cell "✓" [ref=e225]
+                      - cell "0.9s" [ref=e226]
+                    - row "lesson_planning ollama/gemma4:31b-cloud ✓ 0.8s" [ref=e227]:
+                      - cell "lesson_planning" [ref=e228]
+                      - cell "ollama/gemma4:31b-cloud" [ref=e229]
+                      - cell "✓" [ref=e230]
+                      - cell "0.8s" [ref=e231]
+                    - row "lesson_planning ollama/gemma4:31b-cloud ✓ 0.8s" [ref=e232]:
+                      - cell "lesson_planning" [ref=e233]
+                      - cell "ollama/gemma4:31b-cloud" [ref=e234]
+                      - cell "✓" [ref=e235]
+                      - cell "0.8s" [ref=e236]
+                    - row "lesson_planning ollama/gemma4:31b-cloud ✓ 0.8s" [ref=e237]:
+                      - cell "lesson_planning" [ref=e238]
+                      - cell "ollama/gemma4:31b-cloud" [ref=e239]
+                      - cell "✓" [ref=e240]
+                      - cell "0.8s" [ref=e241]
+                    - row "lesson_planning ollama/gemma4:31b-cloud ✓ 0.8s" [ref=e242]:
+                      - cell "lesson_planning" [ref=e243]
+                      - cell "ollama/gemma4:31b-cloud" [ref=e244]
+                      - cell "✓" [ref=e245]
+                      - cell "0.8s" [ref=e246]
+                    - row "lesson_planning ollama/gemma4:31b-cloud ✓ 0.8s" [ref=e247]:
+                      - cell "lesson_planning" [ref=e248]
+                      - cell "ollama/gemma4:31b-cloud" [ref=e249]
+                      - cell "✓" [ref=e250]
+                      - cell "0.8s" [ref=e251]
+                    - row "lesson_planning ollama/gemma4:31b-cloud ✓ 0.9s" [ref=e252]:
+                      - cell "lesson_planning" [ref=e253]
+                      - cell "ollama/gemma4:31b-cloud" [ref=e254]
+                      - cell "✓" [ref=e255]
+                      - cell "0.9s" [ref=e256]
+                    - row "lesson_planning ollama/gemma4:31b-cloud ✓ 0.8s" [ref=e257]:
+                      - cell "lesson_planning" [ref=e258]
+                      - cell "ollama/gemma4:31b-cloud" [ref=e259]
+                      - cell "✓" [ref=e260]
+                      - cell "0.8s" [ref=e261]
+                    - row "lesson_planning ollama/gemma4:31b-cloud ✓ 0.9s" [ref=e262]:
+                      - cell "lesson_planning" [ref=e263]
+                      - cell "ollama/gemma4:31b-cloud" [ref=e264]
+                      - cell "✓" [ref=e265]
+                      - cell "0.9s" [ref=e266]
+                    - row "lesson_planning ollama/gemma4:31b-cloud ✓ 0.8s" [ref=e267]:
+                      - cell "lesson_planning" [ref=e268]
+                      - cell "ollama/gemma4:31b-cloud" [ref=e269]
+                      - cell "✓" [ref=e270]
+                      - cell "0.8s" [ref=e271]
+                    - row "lesson_planning ollama/gemma4:31b-cloud ✓ 0.8s" [ref=e272]:
+                      - cell "lesson_planning" [ref=e273]
+                      - cell "ollama/gemma4:31b-cloud" [ref=e274]
+                      - cell "✓" [ref=e275]
+                      - cell "0.8s" [ref=e276]
+                    - row "lesson_planning ollama/gemma4:31b-cloud ✓ 0.8s" [ref=e277]:
+                      - cell "lesson_planning" [ref=e278]
+                      - cell "ollama/gemma4:31b-cloud" [ref=e279]
+                      - cell "✓" [ref=e280]
+                      - cell "0.8s" [ref=e281]
+                    - row "lesson_planning ollama/gemma4:31b-cloud ✓ 0.8s" [ref=e282]:
+                      - cell "lesson_planning" [ref=e283]
+                      - cell "ollama/gemma4:31b-cloud" [ref=e284]
+                      - cell "✓" [ref=e285]
+                      - cell "0.8s" [ref=e286]
+                    - row "lesson_planning ollama/gemma4:31b-cloud ✓ 0.8s" [ref=e287]:
+                      - cell "lesson_planning" [ref=e288]
+                      - cell "ollama/gemma4:31b-cloud" [ref=e289]
+                      - cell "✓" [ref=e290]
+                      - cell "0.8s" [ref=e291]
+                    - row "lesson_planning ollama/gemma4:31b-cloud ✓ 0.9s" [ref=e292]:
+                      - cell "lesson_planning" [ref=e293]
+                      - cell "ollama/gemma4:31b-cloud" [ref=e294]
+                      - cell "✓" [ref=e295]
+                      - cell "0.9s" [ref=e296]
+                    - row "lesson_planning ollama/gemma4:31b-cloud ✓ 0.8s" [ref=e297]:
+                      - cell "lesson_planning" [ref=e298]
+                      - cell "ollama/gemma4:31b-cloud" [ref=e299]
+                      - cell "✓" [ref=e300]
+                      - cell "0.8s" [ref=e301]
+                    - row "lesson_planning ollama/gemma4:31b-cloud ✓ 0.9s" [ref=e302]:
+                      - cell "lesson_planning" [ref=e303]
+                      - cell "ollama/gemma4:31b-cloud" [ref=e304]
+                      - cell "✓" [ref=e305]
+                      - cell "0.9s" [ref=e306]
+                    - row "lesson_planning ollama/gemma4:31b-cloud ✓ 0.8s" [ref=e307]:
+                      - cell "lesson_planning" [ref=e308]
+                      - cell "ollama/gemma4:31b-cloud" [ref=e309]
+                      - cell "✓" [ref=e310]
+                      - cell "0.8s" [ref=e311]
+                    - row "lesson_planning ollama/gemma4:31b-cloud ✓ 0.8s" [ref=e312]:
+                      - cell "lesson_planning" [ref=e313]
+                      - cell "ollama/gemma4:31b-cloud" [ref=e314]
+                      - cell "✓" [ref=e315]
+                      - cell "0.8s" [ref=e316]
+  - alert [ref=e77]

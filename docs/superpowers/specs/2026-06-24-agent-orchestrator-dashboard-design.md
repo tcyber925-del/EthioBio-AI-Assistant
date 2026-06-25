@@ -64,7 +64,7 @@ Add to `NAV_ITEMS` in `dashboard/src/app/admin/layout.tsx`:
 
 Add to `dashboard/next.config.js` `rewrites` array:
 ```
-{ source: '/agents/:path*', destination: `${api}/:path*` }
+{ source: '/agents/:path*', destination: `${api}/agents/:path*` }
 ```
 
 ## Data Types
