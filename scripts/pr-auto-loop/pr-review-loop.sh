@@ -231,7 +231,8 @@ cmd_auto() {
   if [[ "$applied_count" -eq 0 && "$skip_count" -eq 0 ]]; then
     echo -e "  ${YELLOW}No auto-fixable threads found. Fix manually and run 'pr-review-loop push'.${NC}"
     cmd_read
-    return
+    echo -e "\n  ${YELLOW}$(echo "$threads_json" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "?" ) thread(s) remain unresolved.${NC}"
+    terminal_state 1 "pending" "Waiting for review or manual push."
   fi
 
   echo -e "  ${GREEN}$applied_count fix(es) applied${NC}, ${YELLOW}$skip_count skipped${NC}"
