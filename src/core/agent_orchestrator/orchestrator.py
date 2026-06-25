@@ -22,6 +22,7 @@ _orchestrator_cache: dict[str, AgentOrchestrator] = {}
 class AgentOrchestrator:
     def __init__(self, registry: AgentRegistry):
         self.registry = registry
+        self._messages: list[AgentMessage] = []
         self._reflections: list[AgentReflection] = []
 
     async def execute(
