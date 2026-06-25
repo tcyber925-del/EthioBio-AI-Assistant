@@ -1,0 +1,32 @@
+name: opencode-fix
+on:
+  issue_comment:
+    types: [created]
+jobs:
+  auto-fix:
+    if: |
+      github.event.issue.pull_request &&
+      (github.event.comment.author_association == 'OWNER' ||
+       github.event.comment.author_association == 'MEMBER' ||
+       github.event.comment.author_association == 'COLLABORATOR') &&
+      (contains(github.event.comment.body, '/opencode auto-fix') ||
+       contains(github.event.comment.body, '/oc auto-fix'))
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.issue.pull_request.head.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run pr-auto-loop auto-fix
+        run: |
+          gh pr checkout ${{ github.event.issue.number }}
+          bash scripts/pr-auto-loop/pr-review-loop.sh auto -n 5
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

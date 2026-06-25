@@ -1,4 +1,6 @@
 
+from datetime import datetime
+
 import structlog
 from fastapi import APIRouter
 
@@ -41,10 +43,25 @@ class CapabilityInfo(SchemaModel):
     agents: list[str] = []
 
 
+class ReflectionInfo(SchemaModel):
+    agent: str
+    task: str
+    verdict: str
+    confidence: float
+    duration_ms: int
+    error: str | None = None
+    timestamp: datetime | None = None
+
+
+_orchestrator_instance: AgentOrchestrator | None = None
+
 def _get_orchestrator() -> AgentOrchestrator:
-    router_llm = ModelRouter()
-    adapter = VectorStoreAdapter()
-    return build_orchestrator(router_llm, adapter)
+    global _orchestrator_instance
+    if _orchestrator_instance is None:
+        router_llm = ModelRouter()
+        adapter = VectorStoreAdapter()
+        _orchestrator_instance = build_orchestrator(router_llm, adapter)
+    return _orchestrator_instance
 
 
 @router.post("/execute", response_model=ExecuteTaskResponse)
@@ -86,4 +103,21 @@ async def list_capabilities():
     return [
         CapabilityInfo(name=name, description=name.replace("_", " ").title(), agents=agents)
         for name, agents in cap_map.items()
+    ]
+
+
+@router.get("/reflections", response_model=list[ReflectionInfo])
+async def list_reflections(limit: int = Query(20, ge=1, le=200)):
+    orchestrator = _get_orchestrator()
+    return [
+        ReflectionInfo(
+            agent=r.agent_name,
+            task=r.objective,
+            verdict=r.verdict.value,
+            confidence=r.confidence,
+            duration_ms=r.duration_ms,
+            error=r.error,
+            timestamp=r.created_at,
+        )
+        for r in orchestrator.get_reflections(limit)
     ]

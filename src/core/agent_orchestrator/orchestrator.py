@@ -16,11 +16,14 @@ from src.core.agent_orchestrator.registry import AgentRegistry
 
 logger = structlog.get_logger()
 
+_orchestrator_cache: dict[str, AgentOrchestrator] = {}
+
 
 class AgentOrchestrator:
     def __init__(self, registry: AgentRegistry):
         self.registry = registry
         self._messages: list[AgentMessage] = []
+        self._reflections: deque[AgentReflection] = deque(maxlen=500)
 
     async def execute(
         self,
@@ -178,6 +181,7 @@ class AgentOrchestrator:
         return {"error": f"No capability matched for task: {task}", "agent": reg.name}
 
     def _record_reflection(self, reflection: AgentReflection) -> None:
+        self._reflections.append(reflection)
         logger.info(
             "agent_reflection",
             agent=reflection.agent_name,
@@ -185,5 +189,6 @@ class AgentOrchestrator:
             duration_ms=reflection.duration_ms,
         )
 
-    def get_reflections(self, agent_name: str | None = None) -> list[AgentReflection]:
-        return []
+    def get_reflections(self, limit: int = 20) -> list[AgentReflection]:
+        # deque preserves insertion (chronological) order; newest are last.
+        return list(self._reflections)[: -limit - 1 : -1] if limit else []
