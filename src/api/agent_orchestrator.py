@@ -108,6 +108,7 @@ async def list_capabilities():
 
 @router.get("/reflections", response_model=list[ReflectionInfo])
 async def list_reflections(limit: int = 20):
+async def list_reflections(limit: int = Query(20, ge=1, le=200)):
     orchestrator = _get_orchestrator()
     return [
         ReflectionInfo(

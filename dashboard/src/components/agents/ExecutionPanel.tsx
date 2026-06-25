@@ -54,6 +54,7 @@ export default function ExecutionPanel({ agents, onExecute }: ExecutionPanelProp
       <div className="space-y-4">
         <div>
           <label htmlFor="agent-select" className="block text-small text-foreground-muted mb-1">Agent</label>
+          <label className="block text-small text-foreground-muted mb-1">Agent</label>
           <select
             value={selectedAgent}
             onChange={e => setSelectedAgent(e.target.value)}
@@ -67,6 +68,7 @@ export default function ExecutionPanel({ agents, onExecute }: ExecutionPanelProp
         </div>
         <div>
             id="agent-select"
+          <label className="block text-small text-foreground-muted mb-1">Task</label>
           <textarea
             value={task}
             onChange={e => setTask(e.target.value)}
