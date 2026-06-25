@@ -13,6 +13,7 @@ const nextConfig = {
       { source: '/progress/:path*', destination: `${api}/progress/:path*` },
       { source: '/diagram/:path*', destination: `${api}/diagram/:path*` },
       { source: '/agents/:path*', destination: `${api}/agents/:path*` },
+      { source: '/gamification/:path*', destination: `${api}/gamification/:path*` },
     ]
   },
 }
