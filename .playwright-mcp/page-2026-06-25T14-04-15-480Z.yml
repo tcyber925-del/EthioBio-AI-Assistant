@@ -1,0 +1,230 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e5]:
+        - img [ref=e6]
+        - generic [ref=e10]:
+          - heading "EthioBio" [level=2] [ref=e11]
+          - paragraph [ref=e12]: Admin Panel
+      - navigation [ref=e13]:
+        - link "Dashboard" [ref=e14] [cursor=pointer]:
+          - /url: /
+          - img [ref=e15]
+          - text: Dashboard
+        - link "Classroom" [ref=e18] [cursor=pointer]:
+          - /url: /classroom
+          - img [ref=e19]
+          - text: Classroom
+        - link "School" [ref=e24] [cursor=pointer]:
+          - /url: /school
+          - img [ref=e25]
+          - text: School
+        - link "Parent" [ref=e27] [cursor=pointer]:
+          - /url: /parent
+          - img [ref=e28]
+          - text: Parent
+        - link "Recovery" [ref=e31] [cursor=pointer]:
+          - /url: /recovery
+          - img [ref=e32]
+          - text: Recovery
+        - link "Quizzes" [ref=e34] [cursor=pointer]:
+          - /url: /quizzes
+          - img [ref=e35]
+          - text: Quizzes
+        - link "Lesson Plans" [ref=e39] [cursor=pointer]:
+          - /url: /lessons
+          - img [ref=e40]
+          - text: Lesson Plans
+        - link "Students" [ref=e43] [cursor=pointer]:
+          - /url: /students
+          - img [ref=e44]
+          - text: Students
+        - link "Monitoring" [ref=e49] [cursor=pointer]:
+          - /url: /monitoring
+          - img [ref=e50]
+          - text: Monitoring
+        - link "Diagrams" [ref=e52] [cursor=pointer]:
+          - /url: /diagrams
+          - img [ref=e53]
+          - text: Diagrams
+        - link "Ask Q&A" [ref=e55] [cursor=pointer]:
+          - /url: /ask
+          - img [ref=e56]
+          - text: Ask Q&A
+      - generic [ref=e58]:
+        - generic [ref=e59]:
+          - img [ref=e60]
+          - combobox [ref=e63] [cursor=pointer]:
+            - option "English" [selected]
+            - option "Amharic"
+        - button "Sign Out" [ref=e64] [cursor=pointer]:
+          - img [ref=e65]
+          - text: Sign Out
+      - generic [ref=e68]:
+        - generic [ref=e69]:
+          - img [ref=e70]
+          - generic [ref=e72]: Grade 9-12 curriculum
+        - paragraph [ref=e73]: gemma4:31b-cloud
+    - main [ref=e74]:
+      - generic [ref=e75]:
+        - complementary [ref=e78]:
+          - heading "Admin Panel" [level=1] [ref=e80]
+          - navigation [ref=e81]:
+            - link "📊 Dashboard" [ref=e82] [cursor=pointer]:
+              - /url: /admin
+              - generic [ref=e83]: 📊
+              - generic [ref=e84]: Dashboard
+            - link "🚩 Review Queue" [ref=e85] [cursor=pointer]:
+              - /url: /admin/review
+              - generic [ref=e86]: 🚩
+              - generic [ref=e87]: Review Queue
+            - link "📝 Content Review" [ref=e88] [cursor=pointer]:
+              - /url: /admin/content
+              - generic [ref=e89]: 📝
+              - generic [ref=e90]: Content Review
+            - link "🏫 Schools" [ref=e91] [cursor=pointer]:
+              - /url: /admin/schools
+              - generic [ref=e92]: 🏫
+              - generic [ref=e93]: Schools
+            - link "👥 Users" [ref=e94] [cursor=pointer]:
+              - /url: /admin/users
+              - generic [ref=e95]: 👥
+              - generic [ref=e96]: Users
+            - link "📡 Monitoring" [ref=e97] [cursor=pointer]:
+              - /url: /admin/monitoring
+              - generic [ref=e98]: 📡
+              - generic [ref=e99]: Monitoring
+            - link "🤖 Agents" [ref=e100] [cursor=pointer]:
+              - /url: /admin/agents
+              - generic [ref=e101]: 🤖
+              - generic [ref=e102]: Agents
+          - link "← Back to Dashboard" [ref=e104] [cursor=pointer]:
+            - /url: /
+            - generic [ref=e105]: ←
+            - generic [ref=e106]: Back to Dashboard
+        - main [ref=e107]:
+          - generic [ref=e108]:
+            - generic [ref=e110]:
+              - img [ref=e112]
+              - generic [ref=e115]:
+                - heading "Agent Orchestrator" [level=1] [ref=e116]
+                - paragraph [ref=e117]: Registered agents, task execution, and execution history
+            - generic [ref=e118]:
+              - generic [ref=e119]:
+                - generic [ref=e120]:
+                  - generic [ref=e121]:
+                    - heading "tutor_agent" [level=3] [ref=e122]
+                    - paragraph [ref=e123]: Answers biology questions with RAG and Socratic tutoring
+                  - generic [ref=e124]: Idle
+                - generic [ref=e126]: tutoring
+                - generic [ref=e127]: v1.0.0
+              - generic [ref=e128]:
+                - generic [ref=e129]:
+                  - generic [ref=e130]:
+                    - heading "quiz_agent" [level=3] [ref=e131]
+                    - paragraph [ref=e132]: Generates biology quizzes with configurable difficulty
+                  - generic [ref=e133]: Idle
+                - generic [ref=e134]:
+                  - generic [ref=e135]: quiz generation
+                  - generic [ref=e136]: assessment creation
+                - generic [ref=e137]: v1.0.0
+              - generic [ref=e138]:
+                - generic [ref=e139]:
+                  - generic [ref=e140]:
+                    - heading "lesson_planner_agent" [level=3] [ref=e141]
+                    - paragraph [ref=e142]: Generates structured lesson plans with differentiation and exit tickets
+                  - generic [ref=e143]: Idle
+                - generic [ref=e145]: lesson planning
+                - generic [ref=e146]: v1.0.0
+              - generic [ref=e147]:
+                - generic [ref=e148]:
+                  - generic [ref=e149]:
+                    - heading "diagnostic_agent" [level=3] [ref=e150]
+                    - paragraph [ref=e151]: Generates diagnostic assessments to identify weak areas
+                  - generic [ref=e152]: Idle
+                - generic [ref=e154]: diagnostic assessment
+                - generic [ref=e155]: v1.0.0
+              - generic [ref=e156]:
+                - generic [ref=e157]:
+                  - generic [ref=e158]:
+                    - heading "translator_agent" [level=3] [ref=e159]
+                    - paragraph [ref=e160]: Translates content between English and Amharic
+                  - generic [ref=e161]: Idle
+                - generic [ref=e163]: translation
+                - generic [ref=e164]: v1.0.0
+              - generic [ref=e165]:
+                - generic [ref=e166]:
+                  - generic [ref=e167]:
+                    - heading "safety_agent" [level=3] [ref=e168]
+                    - paragraph [ref=e169]: Reviews content for safety and hallucination
+                  - generic [ref=e170]: Idle
+                - generic [ref=e172]: safety review
+                - generic [ref=e173]: v1.0.0
+              - generic [ref=e174]:
+                - generic [ref=e175]:
+                  - generic [ref=e176]:
+                    - heading "diagram_agent" [level=3] [ref=e177]
+                    - paragraph [ref=e178]: Generates biology diagrams
+                  - generic [ref=e179]: Idle
+                - generic [ref=e181]: diagram generation
+                - generic [ref=e182]: v1.0.0
+              - generic [ref=e183]:
+                - generic [ref=e184]:
+                  - generic [ref=e185]:
+                    - heading "student_progress_agent" [level=3] [ref=e186]
+                    - paragraph [ref=e187]: Analyzes student progress and generates insights
+                  - generic [ref=e188]: Idle
+                - generic [ref=e190]: student progress
+                - generic [ref=e191]: v1.0.0
+            - generic [ref=e192]:
+              - heading "Execute Task" [level=2] [ref=e193]
+              - generic [ref=e194]:
+                - generic [ref=e195]:
+                  - generic [ref=e196]: Agent
+                  - combobox [ref=e197]:
+                    - option "Select an agent..." [selected]
+                    - option "tutor_agent"
+                    - option "quiz_agent"
+                    - option "lesson_planner_agent"
+                    - option "diagnostic_agent"
+                    - option "translator_agent"
+                    - option "safety_agent"
+                    - option "diagram_agent"
+                    - option "student_progress_agent"
+                - generic [ref=e198]:
+                  - generic [ref=e199]: Task
+                  - textbox "Describe the task for the agent..." [ref=e200]
+                - button "Execute" [disabled] [ref=e201]
+            - generic [ref=e202]:
+              - generic [ref=e203]:
+                - heading "Recent Executions" [level=2] [ref=e204]
+                - button "Refresh" [ref=e205] [cursor=pointer]
+              - table [ref=e207]:
+                - rowgroup [ref=e208]:
+                  - row "Agent Task Verdict Confidence Duration Time" [ref=e209]:
+                    - columnheader "Agent" [ref=e210]
+                    - columnheader "Task" [ref=e211]
+                    - columnheader "Verdict" [ref=e212]
+                    - columnheader "Confidence" [ref=e213]
+                    - columnheader "Duration" [ref=e214]
+                    - columnheader "Time" [ref=e215]
+                - rowgroup [ref=e216]:
+                  - row "tutor_agent What is mitosis? success 85% 2470ms 13m ago" [ref=e217]:
+                    - cell "tutor_agent" [ref=e218]
+                    - cell "What is mitosis?" [ref=e219]
+                    - cell "success" [ref=e220]:
+                      - generic [ref=e221]: success
+                    - cell "85%" [ref=e222]:
+                      - generic [ref=e226]: 85%
+                    - cell "2470ms" [ref=e227]
+                    - cell "13m ago" [ref=e228]
+                  - row "tutor_agent What is mitosis? success 95% 7186ms 13m ago" [ref=e229]:
+                    - cell "tutor_agent" [ref=e230]
+                    - cell "What is mitosis?" [ref=e231]
+                    - cell "success" [ref=e232]:
+                      - generic [ref=e233]: success
+                    - cell "95%" [ref=e234]:
+                      - generic [ref=e238]: 95%
+                    - cell "7186ms" [ref=e239]
+                    - cell "13m ago" [ref=e240]
+  - alert [ref=e77]

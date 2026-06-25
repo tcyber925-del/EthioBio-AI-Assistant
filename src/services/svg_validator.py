@@ -1,7 +1,11 @@
 import io
 from typing import Optional
 
-import cv2
+try:
+    import cv2
+except ImportError:
+    cv2 = None  # type: ignore[assignment]
+
 import numpy as np
 from PIL import Image
 
@@ -12,6 +16,13 @@ class SvgImageValidator:
     def __init__(self, target_width: int = 800, target_height: int = 600):
         self.target_width = target_width
         self.target_height = target_height
+
+    def _resize(self, arr: np.ndarray, w: int, h: int) -> np.ndarray:
+        if cv2 is not None:
+            return cv2.resize(arr, (w, h))
+        from PIL import Image as PilImage
+        img = PilImage.fromarray(arr)
+        return np.array(img.resize((w, h), PilImage.LANCZOS), dtype=np.uint8)
 
     def validate(
         self,
@@ -27,8 +38,8 @@ class SvgImageValidator:
         ref_array = self._bytes_to_grayscale(reference_bytes)
 
         if svg_array.shape != ref_array.shape:
-            ref_array = cv2.resize(ref_array, (self.target_width, self.target_height))
-            svg_array = cv2.resize(svg_array, (self.target_width, self.target_height))
+            ref_array = self._resize(ref_array, self.target_width, self.target_height)
+            svg_array = self._resize(svg_array, self.target_width, self.target_height)
 
         mse = float(np.mean((svg_array.astype("float") - ref_array.astype("float")) ** 2))
         mse_score = max(0.0, 100.0 - (mse / 10.0))
@@ -58,9 +69,18 @@ class SvgImageValidator:
 
     @staticmethod
     def _histogram_similarity(img1: np.ndarray, img2: np.ndarray) -> float:
-        hist1 = cv2.calcHist([img1], [0], None, [256], [0, 256])
-        hist2 = cv2.calcHist([img2], [0], None, [256], [0, 256])
-        cv2.normalize(hist1, hist1, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
-        cv2.normalize(hist2, hist2, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
-        result = cv2.compareHist(hist1, hist2, cv2.HISTCMP_CORREL)
-        return max(0.0, float(result))
+        if cv2 is not None:
+            hist1 = cv2.calcHist([img1], [0], None, [256], [0, 256])
+            hist2 = cv2.calcHist([img2], [0], None, [256], [0, 256])
+            cv2.normalize(hist1, hist1, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
+            cv2.normalize(hist2, hist2, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
+            result = cv2.compareHist(hist1, hist2, cv2.HISTCMP_CORREL)
+            return max(0.0, float(result))
+        hist1, _ = np.histogram(img1, bins=256, range=(0, 256))
+        hist2, _ = np.histogram(img2, bins=256, range=(0, 256))
+        hist1 = hist1.astype(float)
+        hist2 = hist2.astype(float)
+        hist1 /= hist1.sum() or 1
+        hist2 /= hist2.sum() or 1
+        correlation = float(np.correlate(hist1, hist2)[0])
+        return max(0.0, min(1.0, correlation))

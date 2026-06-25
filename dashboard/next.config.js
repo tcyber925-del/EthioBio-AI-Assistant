@@ -1,8 +1,12 @@
+const createNextIntlPlugin = require('next-intl/plugin');
+
+const withNextIntl = createNextIntlPlugin('./i18n.ts');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
   async rewrites() {
-    const api = process.env.NEXT_PUBLIC_API_URL || 'http://app:8000'
+    const api = process.env.NEXT_PUBLIC_API_URL || 'http://app:8000';
     return [
       { source: '/api/:path*', destination: `${api}/:path*` },
       { source: '/models/:path*', destination: `${api}/models/:path*` },
@@ -11,11 +15,20 @@ const nextConfig = {
       { source: '/chat', destination: `${api}/chat` },
       { source: '/graph/:path*', destination: `${api}/graph/:path*` },
       { source: '/progress/:path*', destination: `${api}/progress/:path*` },
-      { source: '/diagram/:path*', destination: `${api}/diagram/:path*` },
-      { source: '/agents/:path*', destination: `${api}/agents/:path*` },
       { source: '/gamification/:path*', destination: `${api}/gamification/:path*` },
-    ]
+      { source: '/activity/:path*', destination: `${api}/activity/:path*` },
+      { source: '/diagram/:path*', destination: `${api}/diagram/:path*` },
+      { source: '/diagrams/static/:path*', destination: `${api}/diagrams/static/:path*` },
+      { source: '/intelligence/:path*', destination: `${api}/intelligence/:path*` },
+      { source: '/auth/:path*', destination: `${api}/auth/:path*` },
+      { source: '/teacher/:path*', destination: `${api}/teacher/:path*` },
+      { source: '/recovery/:path*', destination: `${api}/recovery/:path*` },
+      { source: '/parent/:path*', destination: `${api}/parent/:path*` },
+      { source: '/admin/:path*', destination: `${api}/admin/:path*` },
+      { source: '/users/:path*', destination: `${api}/users/:path*` },
+      { source: '/agents/:path*', destination: `${api}/agents/:path*` },
+    ];
   },
-}
+};
 
-module.exports = nextConfig
+module.exports = withNextIntl(nextConfig);
