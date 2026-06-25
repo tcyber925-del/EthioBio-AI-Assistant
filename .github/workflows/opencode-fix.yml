@@ -20,13 +20,20 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.issue.pull_request.head.ref }}
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Run pr-auto-loop auto-fix
+      - name: Checkout PR head (code to fix)
         run: |
           gh pr checkout ${{ github.event.issue.number }}
-          bash scripts/pr-auto-loop/pr-review-loop.sh auto -n 5
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pin pr-auto-loop scripts to base branch (security)
+        run: |
+          git fetch origin ${{ github.event.issue.pull_request.base.ref }}
+          git checkout origin/${{ github.event.issue.pull_request.base.ref }} -- scripts/pr-auto-loop/
+
+      - name: Run pr-auto-loop auto-fix
+        run: |
+          bash scripts/pr-auto-loop/pr-review-loop.sh auto -n 5
