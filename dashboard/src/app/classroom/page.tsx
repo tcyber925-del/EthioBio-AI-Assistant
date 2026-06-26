@@ -22,6 +22,7 @@ export default function ClassroomListPage() {
   const router = useRouter()
   const t = useTranslations('classroom')
   const tc = useTranslations('common')
+  const [ready, setReady] = useState(false)
   const [classes, setClasses] = useState<Classroom[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -34,6 +35,7 @@ export default function ClassroomListPage() {
       router.push('/login')
       return
     }
+    setReady(true)
     loadClasses()
   }, [])
 
@@ -62,7 +64,7 @@ export default function ClassroomListPage() {
     }
   }
 
-  if (!isAuthenticated()) return null
+  if (!ready) return null
 
   return (
     <div>
