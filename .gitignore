@@ -60,3 +60,4 @@ skills-lock.json
 .superpowers/
 session-ses_*.md
 dashboard/test-results/
+.playwright-mcp/

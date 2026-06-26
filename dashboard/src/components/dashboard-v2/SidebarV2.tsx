@@ -10,9 +10,19 @@ import {
   Search,
   LogOut,
   Globe,
+  Home,
+  School,
+  Shield,
+  User,
+  Activity,
+  ClipboardCheck,
+  FileText,
+  Users,
+  BarChart3,
+  MessageSquare,
+  Cpu,
 } from 'lucide-react'
 import { DnaIcon } from './BioIcon'
-import { useTranslations } from 'next-intl'
 import { useLocale } from 'next-intl'
 import { clearToken, getUserRole, isAuthenticated } from '@/lib/auth'
 import { setCookie } from '@/lib/cookies'
@@ -36,18 +46,68 @@ const NAV_STRUCTURE: NavSection[] = [
       { label: 'Overview', href: '/v2/overview', icon: LayoutDashboard, roles: ['admin', 'teacher', 'student', 'parent', 'school'] },
     ],
   },
+  {
+    section: 'Main',
+    items: [
+      { label: 'Dashboard', href: '/', icon: Home, roles: ['admin'] },
+      { label: 'Student Dashboard', href: '/student', icon: Home, roles: ['student'] },
+      { label: 'Parent', href: '/parent', icon: User, roles: ['parent', 'admin'] },
+    ],
+  },
+  {
+    section: 'Learning',
+    items: [
+      { label: 'Lessons', href: '/lessons', icon: FileText, roles: ['admin', 'teacher'] },
+      { label: 'Quizzes', href: '/quizzes', icon: ClipboardCheck, roles: ['admin', 'teacher'] },
+      { label: 'Ask Q&A', href: '/ask', icon: MessageSquare, roles: ['admin', 'teacher', 'student', 'parent'] },
+    ],
+  },
+  {
+    section: 'Management',
+    items: [
+      { label: 'Classroom', href: '/classroom', icon: School, roles: ['admin', 'teacher', 'student'] },
+      { label: 'Students', href: '/students', icon: Users, roles: ['admin', 'teacher'] },
+      { label: 'School', href: '/school', icon: Shield, roles: ['admin'] },
+      { label: 'Recovery', href: '/recovery', icon: Activity, roles: ['admin', 'teacher'] },
+    ],
+  },
+  {
+    section: 'System',
+    items: [
+      { label: 'Monitoring', href: '/monitoring', icon: BarChart3, roles: ['admin'] },
+      { label: 'Diagrams', href: '/diagrams', icon: BarChart3, roles: ['admin', 'teacher', 'student', 'parent'] },
+    ],
+  },
+  {
+    section: 'Admin',
+    items: [
+      { label: 'Admin Dashboard', href: '/admin', icon: Shield, roles: ['admin'] },
+      { label: 'Review Queue', href: '/admin/review', icon: ClipboardCheck, roles: ['admin'] },
+      { label: 'Content Review', href: '/admin/content', icon: FileText, roles: ['admin'] },
+      { label: 'Schools', href: '/admin/schools', icon: School, roles: ['admin'] },
+      { label: 'Users', href: '/admin/users', icon: Users, roles: ['admin'] },
+      { label: 'Agents', href: '/admin/agents', icon: Cpu, roles: ['admin'] },
+      { label: 'Monitoring', href: '/admin/monitoring', icon: BarChart3, roles: ['admin'] },
+    ],
+  },
 ]
 
 export function SidebarV2() {
-  const t = useTranslations('sidebar')
   const locale = useLocale()
   const pathname = usePathname()
   const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const role = getUserRole()
-  const authenticated = isAuthenticated()
+  const [ready, setReady] = useState(false)
+  const [role, setRole] = useState<string | null>(null)
+
+  useEffect(() => {
+    setRole(getUserRole())
+    setReady(true)
+  }, [])
+
+  const authenticated = ready && isAuthenticated()
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -100,24 +160,22 @@ export function SidebarV2() {
   return (
     <>
       <motion.aside
-        className="h-screen bg-v2-surface border-r border-v2-border flex flex-col flex-shrink-0 overflow-hidden relative z-30"
+        className="relative z-30 flex h-screen shrink-0 flex-col overflow-hidden border-r border-v2-border bg-v2-bg"
         animate={{ width: collapsed ? 72 : 256 }}
-        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
       >
-        {/* Subtle biology background */}
-        <div className="absolute inset-0 pointer-events-none select-none opacity-[0.02]" aria-hidden="true">
+        <div className="absolute inset-0 pointer-events-none select-none opacity-[0.04]" aria-hidden="true">
           <svg width="100%" height="100%" className="text-v2-accent">
             <defs>
-              <pattern id="sidebar-dots" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
-                <circle cx="16" cy="16" r="0.8" fill="currentColor" />
+              <pattern id="sidebar-hatch" x="0" y="0" width="28" height="28" patternUnits="userSpaceOnUse">
+                <path d="M0 28L28 0" stroke="currentColor" strokeWidth="1" />
               </pattern>
             </defs>
-            <rect width="100%" height="100%" fill="url(#sidebar-dots)" />
+            <rect width="100%" height="100%" fill="url(#sidebar-hatch)" />
           </svg>
         </div>
 
-        {/* Logo area */}
-        <div className="flex items-center justify-between px-4 h-16 border-b border-v2-border">
+        <div className="relative flex h-20 items-center justify-between border-b border-v2-border px-4">
           <AnimatePresence mode="wait">
             {!collapsed ? (
               <motion.div
@@ -125,15 +183,10 @@ export function SidebarV2() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="flex items-center gap-3 overflow-hidden"
+                className="min-w-0 overflow-hidden"
               >
-                <div className="w-8 h-8 rounded-lg bg-v2-accent flex items-center justify-center text-white shrink-0">
-                  <DnaIcon className="w-4.5 h-4.5" />
-                </div>
-                <div className="truncate">
-                  <p className="text-sm font-semibold text-v2-text-primary">EthioBio</p>
-                  <p className="text-[11px] text-v2-text-secondary">AI Assistant</p>
-                </div>
+                <p className="verge-display truncate text-[32px] leading-none text-v2-text-primary">EthioBio</p>
+                <p className="verge-label mt-1 text-v2-accent">AI Assistant</p>
               </motion.div>
             ) : (
               <motion.div
@@ -141,20 +194,19 @@ export function SidebarV2() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="w-8 h-8 rounded-lg bg-v2-accent flex items-center justify-center text-white mx-auto"
+                className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-v2-accent text-v2-accent"
               >
-                <DnaIcon className="w-4.5 h-4.5" />
+                <DnaIcon className="h-5 w-5" />
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Search trigger */}
         <button
           onClick={() => setSearchOpen(true)}
-          className="flex items-center gap-3 mx-3 mt-3 px-3 h-9 rounded-lg border border-v2-border text-v2-text-secondary text-sm hover:bg-v2-bg transition-colors duration-150"
+          className="relative mx-3 mt-4 flex h-10 items-center gap-3 rounded-[20px] border border-v2-border bg-v2-surface px-3 text-sm text-v2-text-secondary transition-colors duration-150 hover:border-v2-accent hover:text-v2-text-primary focus-visible:verge-focus"
         >
-          <Search className="w-4 h-4 shrink-0" />
+          <Search className="h-4 w-4 shrink-0" />
           <AnimatePresence mode="wait">
             {!collapsed && (
               <motion.span
@@ -162,17 +214,16 @@ export function SidebarV2() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="flex-1 text-left"
+                className="flex flex-1 items-center justify-between gap-3 text-left"
               >
-                Search
-                <span className="ml-auto text-[11px] text-v2-text-secondary/50">⌘K</span>
+                <span className="verge-label">Search</span>
+                <span className="font-mono text-[10px] text-v2-text-secondary/70">CMD K</span>
               </motion.span>
             )}
           </AnimatePresence>
         </button>
 
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+        <nav className="relative flex-1 overflow-y-auto px-3 py-5 space-y-6">
           {filteredNav.map((section, i) => (
             <div key={i}>
               <AnimatePresence mode="wait">
@@ -182,13 +233,13 @@ export function SidebarV2() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="text-[11px] font-semibold uppercase tracking-widest text-v2-text-secondary/60 px-3 mb-2"
+                    className="verge-label px-3 pb-2 text-v2-text-secondary"
                   >
                     {section.section}
                   </motion.p>
                 )}
               </AnimatePresence>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 {section.items.map(item => {
                   const Icon = item.icon
                   const active = isActive(item.href)
@@ -196,14 +247,14 @@ export function SidebarV2() {
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`flex items-center gap-3 px-3 h-10 rounded-xl text-sm transition-all duration-150 relative ${
+                      className={`relative flex h-11 items-center gap-3 rounded-[20px] border px-3 text-sm transition-colors duration-150 focus-visible:verge-focus ${
                         active
-                          ? 'bg-v2-accent-muted text-v2-accent font-medium'
-                          : 'text-v2-text-secondary hover:bg-v2-bg hover:text-v2-text-primary'
+                          ? 'border-v2-accent bg-v2-accent text-v2-inverted'
+                          : 'border-v2-border bg-v2-bg text-v2-text-secondary hover:border-v2-accent hover:text-v2-link-hover'
                       }`}
                       title={collapsed ? item.label : undefined}
                     >
-                      <Icon className="w-5 h-5 shrink-0" />
+                      <Icon className="h-5 w-5 shrink-0" />
                       <AnimatePresence mode="wait">
                         {!collapsed && (
                           <motion.span
@@ -211,19 +262,13 @@ export function SidebarV2() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="truncate"
+                            className="verge-label truncate"
                           >
                             {item.label}
                           </motion.span>
                         )}
                       </AnimatePresence>
-                      {active && (
-                        <motion.div
-                          layoutId="active-indicator"
-                          className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-v2-accent"
-                          transition={{ duration: 0.2 }}
-                        />
-                      )}
+                      {active && <span className="absolute -left-3 top-1/2 h-7 w-px -translate-y-1/2 bg-v2-purple-rule" />}
                     </Link>
                   )
                 })}
@@ -232,10 +277,9 @@ export function SidebarV2() {
           ))}
         </nav>
 
-        {/* Bottom area */}
-        <div className="border-t border-v2-border p-3 space-y-1">
-          <div className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-v2-text-secondary">
-            <Globe className="w-4 h-4 shrink-0" />
+        <div className="relative border-t border-v2-border p-3 space-y-2">
+          <div className="flex items-center gap-3 rounded-[20px] border border-v2-border px-3 py-2 text-sm text-v2-text-secondary">
+            <Globe className="h-4 w-4 shrink-0" />
             <AnimatePresence mode="wait">
               {!collapsed && (
                 <motion.select
@@ -245,7 +289,7 @@ export function SidebarV2() {
                   exit={{ opacity: 0 }}
                   value={locale}
                   onChange={handleLanguageChange}
-                  className="bg-transparent text-v2-text-primary text-sm outline-none cursor-pointer w-full"
+                  className="w-full cursor-pointer bg-transparent text-sm text-v2-text-primary outline-none"
                 >
                   <option value="en">English</option>
                   <option value="am">አማርኛ</option>
@@ -255,9 +299,9 @@ export function SidebarV2() {
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-v2-text-secondary hover:text-v2-error hover:bg-v2-error/5 w-full transition-colors duration-150"
+            className="flex w-full items-center gap-3 rounded-[20px] border border-transparent px-3 py-2 text-sm text-v2-text-secondary transition-colors duration-150 hover:border-v2-error hover:text-v2-error focus-visible:verge-focus"
           >
-            <LogOut className="w-4 h-4 shrink-0" />
+            <LogOut className="h-4 w-4 shrink-0" />
             <AnimatePresence mode="wait">
               {!collapsed && (
                 <motion.span
@@ -265,6 +309,7 @@ export function SidebarV2() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
+                  className="verge-label"
                 >
                   Sign out
                 </motion.span>
@@ -273,27 +318,26 @@ export function SidebarV2() {
           </button>
         </div>
 
-        {/* Collapse toggle */}
         <button
           onClick={() => setCollapsed(prev => !prev)}
-          className="absolute -right-3 top-20 w-6 h-6 rounded-full border border-v2-border bg-v2-surface flex items-center justify-center text-v2-text-secondary hover:text-v2-accent hover:border-v2-accent transition-colors duration-150 shadow-sm"
+          className="absolute -right-3 top-24 flex h-6 w-6 items-center justify-center rounded-full border border-v2-border bg-v2-bg text-v2-text-secondary transition-colors duration-150 hover:border-v2-accent hover:text-v2-accent focus-visible:verge-focus"
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           <ChevronLeft
-            className={`w-3.5 h-3.5 transition-transform duration-200 ${
+            className={`h-3.5 w-3.5 transition-transform duration-200 ${
               collapsed ? 'rotate-180' : ''
             }`}
           />
         </button>
       </motion.aside>
 
-      {/* Search overlay */}
       <AnimatePresence>
         {searchOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm"
+            className="fixed inset-0 z-50 bg-black/60"
             onClick={() => { setSearchOpen(false); setSearchQuery('') }}
           >
             <motion.div
@@ -301,25 +345,25 @@ export function SidebarV2() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: -10 }}
               transition={{ duration: 0.15 }}
-              className="absolute top-[15%] left-1/2 -translate-x-1/2 w-full max-w-lg"
+              className="absolute left-1/2 top-[15%] w-[calc(100%-32px)] max-w-lg -translate-x-1/2"
               onClick={e => e.stopPropagation()}
             >
-              <div className="bg-v2-surface rounded-2xl shadow-xl border border-v2-border overflow-hidden">
-                <div className="flex items-center gap-3 px-4 h-12 border-b border-v2-border">
-                  <Search className="w-4 h-4 text-v2-text-secondary" />
+              <div className="overflow-hidden rounded-[24px] border border-v2-accent bg-v2-bg">
+                <div className="flex h-12 items-center gap-3 border-b border-v2-border px-4">
+                  <Search className="h-4 w-4 text-v2-accent" />
                   <input
                     autoFocus
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     placeholder="Search pages..."
-                    className="flex-1 text-sm text-v2-text-primary bg-transparent outline-none placeholder:text-v2-text-secondary/50"
+                    className="flex-1 bg-transparent text-sm text-v2-text-primary outline-none placeholder:text-v2-text-secondary/70"
                   />
-                  <kbd className="text-[11px] text-v2-text-secondary/50 bg-v2-bg px-1.5 py-0.5 rounded border border-v2-border">
+                  <kbd className="rounded border border-v2-border px-1.5 py-0.5 font-mono text-[10px] text-v2-text-secondary">
                     ESC
                   </kbd>
                 </div>
                 {searchQuery && searchResults.length > 0 && (
-                  <div className="p-2 space-y-0.5 max-h-64 overflow-y-auto">
+                  <div className="max-h-64 space-y-1 overflow-y-auto p-2">
                     {searchResults.map(item => {
                       const Icon = item.icon
                       return (
@@ -327,10 +371,10 @@ export function SidebarV2() {
                           key={item.href}
                           href={item.href}
                           onClick={() => { setSearchOpen(false); setSearchQuery('') }}
-                          className="flex items-center gap-3 px-3 h-9 rounded-lg text-sm text-v2-text-secondary hover:bg-v2-bg hover:text-v2-text-primary transition-colors duration-150"
+                          className="flex h-10 items-center gap-3 rounded-[20px] border border-transparent px-3 text-sm text-v2-text-secondary transition-colors duration-150 hover:border-v2-accent hover:text-v2-link-hover focus-visible:verge-focus"
                         >
-                          <Icon className="w-4 h-4 shrink-0" />
-                          <span>{item.label}</span>
+                          <Icon className="h-4 w-4 shrink-0" />
+                          <span className="verge-label">{item.label}</span>
                         </Link>
                       )
                     })}

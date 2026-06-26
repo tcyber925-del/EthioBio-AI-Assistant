@@ -86,7 +86,7 @@ export function ParentDashboard() {
         <div className="text-center">
           <AlertTriangle className="w-10 h-10 text-v2-error mx-auto mb-3" />
           <p className="text-sm font-medium text-v2-text-secondary mb-4">{error}</p>
-          <button onClick={fetchChildren} className="inline-flex items-center gap-2 px-4 h-9 rounded-xl bg-v2-accent text-white text-sm font-medium hover:bg-v2-accent-hover transition-colors">
+          <button onClick={fetchChildren} className="inline-flex items-center gap-2 px-4 h-9 rounded-xl bg-v2-accent text-v2-inverted text-sm font-medium hover:bg-white transition-colors">
             <RefreshCw className="w-4 h-4" /> Retry
           </button>
         </div>
@@ -120,7 +120,7 @@ export function ParentDashboard() {
       )}
 
       {children.length === 0 ? (
-        <div className="bg-v2-surface rounded-[20px] border border-v2-border p-12 text-center shadow-[0_1px_2px_rgba(0,0,0,.04),0_12px_32px_rgba(0,0,0,.06)]">
+        <div className="bg-v2-surface rounded-[20px] border border-v2-border p-12 text-center">
           <p className="text-sm text-v2-text-secondary">No linked children found.</p>
         </div>
       ) : progressLoading ? (
@@ -141,7 +141,7 @@ export function ParentDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             <div className="lg:col-span-2 space-y-6">
               {/* Growth Trend / Topic Mastery */}
-              <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6 shadow-[0_1px_2px_rgba(0,0,0,.04),0_12px_32px_rgba(0,0,0,.06)]">
+              <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6">
                 <h2 className="text-lg font-semibold text-v2-text-primary mb-4">Topic Mastery</h2>
                 <div className="space-y-3">
                   {Object.entries(progress.mastery_heatmap)
@@ -160,7 +160,7 @@ export function ParentDashboard() {
 
               {/* Recent Quiz Results */}
               {progress.recent_quizzes.length > 0 && (
-                <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6 shadow-[0_1px_2px_rgba(0,0,0,.04),0_12px_32px_rgba(0,0,0,.06)]">
+                <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6">
                   <h2 className="text-lg font-semibold text-v2-text-primary mb-4">Recent Quiz Results</h2>
                   <div className="space-y-2">
                     {progress.recent_quizzes.slice(0, 10).map((q, i) => (
@@ -182,7 +182,7 @@ export function ParentDashboard() {
             <div className="space-y-6">
               {/* Weekly Summary */}
               {summary && (
-                <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6 shadow-[0_1px_2px_rgba(0,0,0,.04),0_12px_32px_rgba(0,0,0,.06)]">
+                <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6">
                   <h2 className="text-lg font-semibold text-v2-text-primary mb-2">Weekly Summary</h2>
                   <p className="text-xs text-v2-text-secondary mb-3">{summary.week_start} — {summary.week_end}</p>
                   {summary.is_low_performance_warning && (

@@ -1,4 +1,7 @@
 /** @type {import('next').NextConfig} */
+const createNextIntlPlugin = require('next-intl/plugin');
+const withNextIntl = createNextIntlPlugin('./i18n.ts');
+
 const nextConfig = {
   output: 'standalone',
   async rewrites() {
@@ -18,14 +21,11 @@ const nextConfig = {
       { source: '/teacher/:path*', destination: `${api}/teacher/:path*` },
       { source: '/recovery/:path*', destination: `${api}/recovery/:path*` },
       { source: '/parent/:path*', destination: `${api}/parent/:path*` },
-      { source: '/admin/:path*', destination: `${api}/admin/:path*` },
       { source: '/users/:path*', destination: `${api}/users/:path*` },
-      { source: '/agents/:path*', destination: `${api}/agents/:path*` },
-    ];
       { source: '/agents/:path*', destination: `${api}/agents/:path*` },
       { source: '/gamification/:path*', destination: `${api}/gamification/:path*` },
     ]
   },
 }
 
-module.exports = nextConfig
+module.exports = withNextIntl(nextConfig)

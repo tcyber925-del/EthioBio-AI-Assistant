@@ -91,6 +91,7 @@ function TrendIcon({ trend }: { trend: string }) {
 export default function DigitalTwinPage() {
   const router = useRouter()
   const userId = getUserId()
+  const [ready, setReady] = useState(false)
   const [data, setData] = useState<DashboardData | null>(null)
   const [forecast, setForecast] = useState<ForecastData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -149,10 +150,11 @@ export default function DigitalTwinPage() {
 
   useEffect(() => {
     if (!isAuthenticated()) { router.push('/login'); return }
+    setReady(true)
     fetchTwin()
   }, [userId, router])
 
-  if (!isAuthenticated()) return null
+  if (!ready) return null
 
   const healthColor = data ? HEALTH_COLORS[data.overall_health] || HEALTH_COLORS.needs_attention : ''
 

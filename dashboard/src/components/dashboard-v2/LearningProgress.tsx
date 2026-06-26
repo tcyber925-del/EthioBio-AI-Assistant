@@ -17,26 +17,26 @@ interface LearningProgressProps {
 export function LearningProgress({ title, percent, milestones }: LearningProgressProps) {
   const safePercent = Math.min(100, Math.max(0, percent))
   return (
-    <motion.div
+    <motion.section
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
-      className="bg-v2-surface rounded-[20px] border border-v2-border p-6 shadow-[0_1px_2px_rgba(0,0,0,.04),0_12px_32px_rgba(0,0,0,.06)]"
+      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
+      className="rounded-[20px] border border-v2-border bg-v2-surface p-6"
     >
-      <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 rounded-lg bg-v2-accent-muted text-v2-accent">
-          <Target className="w-5 h-5" />
+      <div className="mb-5 flex items-center gap-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full border border-v2-accent text-v2-accent">
+          <Target className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-v2-text-primary">{title}</h2>
-          <p className="text-xs text-v2-text-secondary">{safePercent}% complete</p>
+          <p className="verge-label text-v2-accent">{safePercent.toFixed(0)}% complete</p>
+          <h2 className="text-xl font-black leading-none text-v2-text-primary">{title}</h2>
         </div>
       </div>
 
-      <div className="h-2 bg-v2-border rounded-full overflow-hidden mb-5">
+      <div className="mb-5 h-3 overflow-hidden rounded-full border border-v2-border bg-v2-bg">
         <motion.div
           initial={{ width: 0 }}
-            animate={{ width: `${safePercent}%` }}
+          animate={{ width: `${safePercent}%` }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           className="h-full rounded-full bg-v2-accent"
         />
@@ -45,15 +45,15 @@ export function LearningProgress({ title, percent, milestones }: LearningProgres
       {milestones.length > 0 && (
         <div className="space-y-2">
           {milestones.map((m, i) => (
-            <div key={i} className="flex items-center gap-3">
+            <div key={i} className="flex items-center gap-3 rounded-[20px] border border-v2-border bg-v2-bg px-3 py-2">
               {m.completed ? (
-                <CheckCircle2 className="w-4 h-4 text-v2-accent shrink-0" />
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-v2-accent" />
               ) : (
-                <Circle className="w-4 h-4 text-v2-text-secondary/40 shrink-0" />
+                <Circle className="h-4 w-4 shrink-0 text-v2-text-secondary" />
               )}
               <span
                 className={`text-sm ${
-                  m.completed ? 'text-v2-text-primary' : 'text-v2-text-secondary/60'
+                  m.completed ? 'text-v2-text-primary' : 'text-v2-text-secondary'
                 }`}
               >
                 {m.label}
@@ -62,6 +62,6 @@ export function LearningProgress({ title, percent, milestones }: LearningProgres
           ))}
         </div>
       )}
-    </motion.div>
+    </motion.section>
   )
 }
