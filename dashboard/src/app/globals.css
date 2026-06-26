@@ -3,36 +3,50 @@
 @tailwind utilities;
 
 :root {
-  --background: #0a0e1a;
-  --background-secondary: #111827;
-  --foreground: #e8edf5;
-  --foreground-muted: #8896b8;
-  --border: #2a3454;
-  --border-light: #3d4a6b;
-  --card: #1a2035;
-  --card-hover: #232b45;
-  --primary: #34d399;
-  --primary-hover: #059669;
-  --primary-muted: rgba(52, 211, 153, 0.1);
+  --background: #131313;
+  --background-secondary: #1a1a1a;
+  --foreground: #ffffff;
+  --foreground-muted: #949494;
+  --border: rgba(255, 255, 255, 0.24);
+  --border-light: rgba(255, 255, 255, 0.12);
+  --card: #2d2d2d;
+  --card-hover: #383838;
+  --primary: #3cffd0;
+  --primary-hover: #3860be;
+  --primary-muted: rgba(60, 255, 208, 0.12);
   --danger: #ef4444;
   --danger-muted: rgba(239, 68, 68, 0.1);
-  --warning: #f59e0b;
-  --warning-muted: rgba(245, 158, 11, 0.1);
+  --warning: #ffcc00;
+  --warning-muted: rgba(255, 204, 0, 0.12);
   --info: #3b82f6;
   --info-muted: rgba(59, 130, 246, 0.1);
 
-  /* DashboardV2 design tokens */
-  --v2-bg: #FAFAFA;
-  --v2-surface: #FFFFFF;
-  --v2-text-primary: #0F172A;
-  --v2-text-secondary: #64748B;
-  --v2-border: #E5E7EB;
-  --v2-accent: #14B8A6;
-  --v2-accent-hover: #0D9488;
-  --v2-accent-muted: rgba(20, 184, 166, 0.1);
-  --v2-success: #22C55E;
-  --v2-warning: #F59E0B;
-  --v2-error: #EF4444;
+  /* DashboardV2 editorial tokens */
+  --v2-bg: #131313;
+  --v2-surface: #2d2d2d;
+  --v2-text-primary: #ffffff;
+  --v2-text-secondary: #949494;
+  --v2-border: rgba(255, 255, 255, 0.24);
+  --v2-border-strong: #ffffff;
+  --v2-accent: #3cffd0;
+  --v2-accent-hover: #3860be;
+  --v2-accent-muted: rgba(60, 255, 208, 0.12);
+  --v2-purple: #5200ff;
+  --v2-purple-rule: #3d00bf;
+  --v2-mint-border: #309875;
+  --v2-link-hover: #3860be;
+  --v2-focus: #1eaedb;
+  --v2-inverted: #000000;
+  --v2-image-frame: #313131;
+  --v2-success: #3cffd0;
+  --v2-warning: #ffcc00;
+  --v2-error: #ff4fa3;
+
+  /* Health band colors for SchoolDashboard */
+  --band-strong: #22C55E;
+  --band-ready: #14B8A6;
+  --band-developing: #F59E0B;
+  --band-critical: #EF4444;
 }
 
 * {
@@ -119,6 +133,40 @@ body {
 
   .badge-muted {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-border/50 text-foreground-muted;
+  }
+
+  .verge-display {
+    font-family: Impact, 'Arial Black', 'Helvetica Neue Condensed', Helvetica, sans-serif;
+    font-weight: 900;
+    line-height: 0.95;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+  }
+
+  .verge-label {
+    font-family: 'JetBrains Mono', 'Space Mono', 'Courier New', monospace;
+    font-size: 0.6875rem;
+    line-height: 1.2;
+    font-weight: 600;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+  }
+
+  .verge-panel {
+    background: var(--v2-surface);
+    border: 1px solid var(--v2-border);
+    border-radius: 20px;
+  }
+
+  .verge-panel-dark {
+    background: var(--v2-bg);
+    border: 1px solid var(--v2-border);
+    border-radius: 20px;
+  }
+
+  .verge-focus {
+    outline: 1px solid var(--v2-focus);
+    outline-offset: 2px;
   }
 }
 
