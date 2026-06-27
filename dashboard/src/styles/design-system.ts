@@ -34,7 +34,6 @@ export const colors = {
 export const typography = {
   display: {
     fontFamily: "Impact, 'Arial Black', 'Helvetica Neue Condensed', Helvetica, sans-serif",
-    fontSize: '60px',
     fontWeight: 900,
     lineHeight: 0.95,
     letterSpacing: '0.8px',

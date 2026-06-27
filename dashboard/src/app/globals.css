@@ -33,6 +33,14 @@
   --v2-success: #22C55E;
   --v2-warning: #F59E0B;
   --v2-error: #EF4444;
+  --v2-purple: #7C3AED;
+  --v2-purple-rule: #6D28D9;
+  --v2-inverted: #FFFFFF;
+  --v2-link-hover: #0D9488;
+  --v2-focus: #0EA5E9;
+  --v2-border-strong: #94A3B8;
+  --v2-mint-border: #14B8A6;
+  --v2-image-frame: #E2E8F0;
 }
 
 * {
