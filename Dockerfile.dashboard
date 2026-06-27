@@ -19,6 +19,8 @@ ENV HOSTNAME=0.0.0.0 PORT=3000
 
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/i18n.ts ./i18n.ts
+COPY --from=builder /app/messages ./messages
 
 EXPOSE 3000
 

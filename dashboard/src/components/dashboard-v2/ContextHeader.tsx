@@ -14,19 +14,19 @@ interface ContextHeaderProps {
 
 export function ContextHeader({ items }: ContextHeaderProps) {
   return (
-    <nav className="flex items-center gap-1.5 h-10 text-sm text-v2-text-secondary">
+    <nav className="flex h-10 items-center gap-2 text-v2-text-secondary verge-label">
       {items.map((item, i) => (
-        <div key={i} className="flex items-center gap-1.5">
-          {i > 0 && <ChevronRight className="w-3.5 h-3.5 text-v2-text-secondary/40" />}
+        <div key={i} className="flex items-center gap-2 min-w-0">
+          {i > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-v2-purple-rule" />}
           {item.href ? (
             <Link
               href={item.href}
-              className="hover:text-v2-text-primary transition-colors duration-150"
+              className="truncate transition-colors duration-150 hover:text-v2-link-hover focus-visible:verge-focus"
             >
               {item.label}
             </Link>
           ) : (
-            <span className="text-v2-text-primary font-medium">{item.label}</span>
+            <span className="truncate text-v2-accent">{item.label}</span>
           )}
         </div>
       ))}

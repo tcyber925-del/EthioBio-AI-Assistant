@@ -9,6 +9,7 @@ import {
   FlaskConical, Plus, X,
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/dashboard-v2'
+import GamificationProfile from '@/components/gamification/GamificationProfile'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserId, isAuthenticated } from '@/lib/auth'
 
@@ -91,6 +92,7 @@ function TrendIcon({ trend }: { trend: string }) {
 export default function DigitalTwinPage() {
   const router = useRouter()
   const userId = getUserId()
+  const [ready, setReady] = useState(false)
   const [data, setData] = useState<DashboardData | null>(null)
   const [forecast, setForecast] = useState<ForecastData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -149,10 +151,11 @@ export default function DigitalTwinPage() {
 
   useEffect(() => {
     if (!isAuthenticated()) { router.push('/login'); return }
+    setReady(true)
     fetchTwin()
   }, [userId, router])
 
-  if (!isAuthenticated()) return null
+  if (!ready) return null
 
   const healthColor = data ? HEALTH_COLORS[data.overall_health] || HEALTH_COLORS.needs_attention : ''
 
@@ -178,6 +181,8 @@ export default function DigitalTwinPage() {
             {rebuilding ? 'Rebuilding...' : 'Rebuild'}
           </button>
         </div>
+
+        <GamificationProfile userId={userId} />
 
         {loading ? (
           <div className="flex items-center justify-center py-16">

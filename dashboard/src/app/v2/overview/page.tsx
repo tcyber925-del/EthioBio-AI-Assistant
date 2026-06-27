@@ -9,10 +9,11 @@ import { StudentDashboard, TeacherDashboard, ParentDashboard, SchoolDashboard, A
 export default function V2OverviewPage() {
   const router = useRouter()
   const [ready, setReady] = useState(false)
-  const role = getUserRole()
+  const [role, setRole] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isAuthenticated()) { router.push('/login'); return }
+    setRole(getUserRole())
     setReady(true)
   }, [router])
 

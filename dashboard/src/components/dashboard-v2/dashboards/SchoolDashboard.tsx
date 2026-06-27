@@ -88,7 +88,7 @@ export function SchoolDashboard() {
         <div className="text-center">
           <AlertTriangle className="w-10 h-10 text-v2-error mx-auto mb-3" />
           <p className="text-sm font-medium text-v2-text-secondary mb-4">{error}</p>
-          <button onClick={fetchSchools} className="inline-flex items-center gap-2 px-4 h-9 rounded-xl bg-v2-accent text-white text-sm font-medium hover:bg-v2-accent-hover transition-colors">
+          <button onClick={fetchSchools} className="inline-flex items-center gap-2 px-4 h-9 rounded-xl bg-v2-accent text-v2-inverted text-sm font-medium hover:bg-white transition-colors">
             <RefreshCw className="w-4 h-4" /> Retry
           </button>
         </div>
@@ -133,7 +133,7 @@ export function SchoolDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             <div className="lg:col-span-2 space-y-6">
               {/* Health Distribution */}
-              <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6 shadow-[0_1px_2px_rgba(0,0,0,.04),0_12px_32px_rgba(0,0,0,.06)]">
+              <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6">
                 <h2 className="text-lg font-semibold text-v2-text-primary mb-4">Health Distribution</h2>
                 <div className="space-y-3">
                   {Object.entries({
@@ -152,7 +152,7 @@ export function SchoolDashboard() {
                             className="h-full rounded-full transition-all duration-500"
                             style={{
                               width: `${pct}%`,
-                              backgroundColor: band === 'Strong' ? '#22C55E' : band === 'Ready' ? '#14B8A6' : band === 'Developing' ? '#F59E0B' : '#EF4444',
+                              backgroundColor: band === 'Strong' ? 'var(--band-strong)' : band === 'Ready' ? 'var(--band-ready)' : band === 'Developing' ? 'var(--band-developing)' : 'var(--band-critical)',
                             }}
                           />
                         </div>
@@ -165,7 +165,7 @@ export function SchoolDashboard() {
 
               {/* Health Trend */}
               {trends.length > 0 && (
-                <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6 shadow-[0_1px_2px_rgba(0,0,0,.04),0_12px_32px_rgba(0,0,0,.06)]">
+                <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6">
                   <h2 className="text-lg font-semibold text-v2-text-primary mb-4">Health Trend (30 days)</h2>
                   <div className="space-y-1.5">
                     {trends.slice(-14).map((t, i) => (
@@ -183,7 +183,7 @@ export function SchoolDashboard() {
 
               {/* At-Risk Classrooms */}
               {profile.at_risk_classrooms.length > 0 && (
-                <div className="bg-v2-surface rounded-[20px] border border-v2-error/20 p-6 shadow-[0_1px_2px_rgba(0,0,0,.04),0_12px_32px_rgba(0,0,0,.06)]">
+                <div className="bg-v2-surface rounded-[20px] border border-v2-error/20 p-6">
                   <h2 className="text-lg font-semibold text-v2-text-primary mb-4">At-Risk Classrooms</h2>
                   <div className="space-y-2">
                     {profile.at_risk_classrooms.map(c => (
@@ -202,7 +202,7 @@ export function SchoolDashboard() {
 
             <div className="space-y-6">
               {/* Teacher Activity Summary */}
-              <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6 shadow-[0_1px_2px_rgba(0,0,0,.04),0_12px_32px_rgba(0,0,0,.06)]">
+              <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6">
                 <h2 className="text-lg font-semibold text-v2-text-primary mb-4">Teacher Activity</h2>
                 {profile.teacher_metrics.length > 0 ? (
                   <div className="space-y-2">
@@ -228,7 +228,7 @@ export function SchoolDashboard() {
           </div>
         </>
       ) : (
-        <div className="bg-v2-surface rounded-[20px] border border-v2-border p-12 text-center shadow-[0_1px_2px_rgba(0,0,0,.04),0_12px_32px_rgba(0,0,0,.06)]">
+        <div className="bg-v2-surface rounded-[20px] border border-v2-border p-12 text-center">
           <p className="text-sm text-v2-text-secondary">Select a school to view data.</p>
         </div>
       )}

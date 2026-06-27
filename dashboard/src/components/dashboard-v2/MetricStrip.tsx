@@ -17,17 +17,19 @@ export function MetricStrip({ metrics }: MetricStripProps) {
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-      className="bg-v2-surface rounded-[20px] border border-v2-border shadow-[0_1px_2px_rgba(0,0,0,.04),0_12px_32px_rgba(0,0,0,.06)]"
+      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+      className="overflow-hidden rounded-[20px] border border-v2-border bg-v2-bg"
     >
-      <div className="flex divide-x divide-v2-border">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {metrics.map((m, i) => (
           <div
             key={i}
-            className={`flex-1 px-6 py-4 ${m.accent ? 'bg-v2-accent-muted rounded-l-[20px]' : ''}`}
+            className={`min-h-28 border-v2-border px-6 py-5 ${i > 0 ? 'border-t sm:border-t-0 sm:border-l' : ''} ${
+              m.accent ? 'bg-v2-accent text-v2-inverted' : i % 2 === 0 ? 'bg-v2-surface' : 'bg-v2-bg'
+            }`}
           >
-            <p className="text-xs text-v2-text-secondary font-medium">{m.label}</p>
-            <p className={`text-xl font-bold mt-0.5 ${m.accent ? 'text-v2-accent' : 'text-v2-text-primary'}`}>
+            <p className={`verge-label ${m.accent ? 'text-v2-inverted/75' : 'text-v2-text-secondary'}`}>{m.label}</p>
+            <p className={`mt-3 text-3xl font-black leading-none ${m.accent ? 'text-v2-inverted' : 'text-v2-text-primary'}`}>
               {m.value}
             </p>
           </div>
