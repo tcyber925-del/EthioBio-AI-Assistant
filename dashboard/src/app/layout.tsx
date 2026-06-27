@@ -1,31 +1,13 @@
 import type { Metadata } from 'next';
-import { Inter, Spectral, JetBrains_Mono } from 'next/font/google';
+import NextDynamic from 'next/dynamic';
 import { NextIntlClientProvider } from 'next-intl';
-import { cookies } from 'next/headers';
-import Sidebar from '@/components/Sidebar';
+import { cookies, headers } from 'next/headers';
+import { BioPattern } from '@/components/dashboard-v2/BioPattern';
 import './globals.css';
 
+const SidebarV2 = NextDynamic(() => import('@/components/dashboard-v2/SidebarV2').then(m => m.SidebarV2), { ssr: false });
+
 export const dynamic = 'force-dynamic';
-
-const inter = Inter({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-inter',
-});
-
-const spectral = Spectral({
-  subsets: ['latin'],
-  weight: ['700'],
-  display: 'swap',
-  variable: '--font-spectral',
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500'],
-  display: 'swap',
-  variable: '--font-mono',
-});
 
 export const metadata: Metadata = {
   title: 'EthioBio AI Assistant',
@@ -41,15 +23,22 @@ export default async function RootLayout({
   const locale = cookieStore.get('NEXT_LOCALE')?.value ?? 'en';
   const messages = (await import(`../../messages/${locale}.json`)).default;
 
+  const headersList = await headers();
+  const pathname = headersList.get('x-pathname') || '';
+  const isV2 = pathname.startsWith('/v2');
+
   return (
-    <html lang={locale} className={`${inter.variable} ${spectral.variable} ${jetbrainsMono.variable}`}>
-      <body className="bg-background text-foreground font-sans" style={{ fontFamily: inter.style.fontFamily }}>
+    <html lang={locale}>
+      <body className="bg-v2-bg text-v2-text-primary font-sans">
         <NextIntlClientProvider locale={locale} messages={messages}>
           <div className="flex h-screen overflow-hidden">
-            <Sidebar />
-            <main className="flex-1 p-6 lg:p-8 overflow-auto">
-              {children}
-            </main>
+            <SidebarV2 />
+            <div className="relative flex flex-1 flex-col overflow-hidden min-w-0">
+              <BioPattern />
+              <div className={`relative z-10 flex-1 overflow-auto${isV2 ? '' : ' p-6 lg:p-8'}`}>
+                {children}
+              </div>
+            </div>
           </div>
         </NextIntlClientProvider>
       </body>

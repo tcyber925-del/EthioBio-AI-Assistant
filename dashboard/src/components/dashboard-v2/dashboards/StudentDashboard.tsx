@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { BookOpen, AlertTriangle, RefreshCw, Lock } from 'lucide-react'
+import { BookOpen, AlertTriangle, RefreshCw, Lock, Star, TrendingUp, Target } from 'lucide-react'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserId } from '@/lib/auth'
 import { HeroSection, InsightCard, MetricStrip, ActivityTimeline, AIInsightPanel, LearningProgress } from '@/components/dashboard-v2'
@@ -92,7 +92,7 @@ export function StudentDashboard() {
           <AlertTriangle className="w-10 h-10 text-v2-error mx-auto mb-3" />
           <p className="text-sm font-medium text-v2-error">Something went wrong</p>
           <p className="text-xs text-v2-text-secondary mt-1 mb-4">{error}</p>
-          <button onClick={retry} className="inline-flex items-center gap-2 px-4 h-9 rounded-xl bg-v2-accent text-white text-sm font-medium hover:bg-v2-accent-hover transition-colors">
+          <button onClick={retry} className="inline-flex items-center gap-2 px-4 h-9 rounded-xl bg-v2-accent text-v2-inverted text-sm font-medium hover:bg-white transition-colors">
             <RefreshCw className="w-4 h-4" /> Retry
           </button>
         </div>
@@ -118,14 +118,16 @@ export function StudentDashboard() {
           : `You're at ${readiness.overall_readiness.toFixed(0)}% overall readiness`
         }
         action={continueTopic ? { label: 'Review ' + continueTopic.topic, href: '/v2/lessons' } : undefined}
-        secondary={readiness.overall_readiness >= 80 ? '🌟 Strong readiness'
-          : readiness.overall_readiness >= 50 ? '📈 Steady progress'
-          : '🎯 Focused improvement needed'}
+        secondary={readiness.overall_readiness >= 80
+          ? <span><Star className="inline h-4 w-4 mr-1.5 text-v2-accent" />Strong readiness</span>
+          : readiness.overall_readiness >= 50
+          ? <span><TrendingUp className="inline h-4 w-4 mr-1.5 text-v2-accent" />Steady progress</span>
+          : <span><Target className="inline h-4 w-4 mr-1.5 text-v2-accent" />Focused improvement needed</span>}
       />
 
       {continueTopic && (
         <div className="mb-6">
-          <div className="bg-v2-surface rounded-[20px] border border-v2-accent/30 shadow-[0_1px_2px_rgba(0,0,0,.04),0_12px_32px_rgba(0,0,0,.06)] p-6">
+          <div className="bg-v2-surface rounded-[20px] border border-v2-accent/30 p-6">
             <div className="flex items-start justify-between">
               <div className="flex items-start gap-4">
                 <div className="p-3 rounded-xl bg-v2-accent-muted text-v2-accent">
@@ -165,7 +167,7 @@ export function StudentDashboard() {
           <LearningProgress title="Weekly Progress" percent={readiness.overall_readiness} milestones={milestones} />
 
           {sortedTopics.length > 0 && (
-            <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6 shadow-[0_1px_2px_rgba(0,0,0,.04),0_12px_32px_rgba(0,0,0,.06)]">
+            <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6">
               <h2 className="text-lg font-semibold text-v2-text-primary mb-4">Topic Mastery</h2>
               <div className="space-y-3">
                 {sortedTopics.map(([topic, score]) => (
@@ -182,7 +184,7 @@ export function StudentDashboard() {
           )}
 
           {weak_topics.length > 0 && (
-            <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6 shadow-[0_1px_2px_rgba(0,0,0,.04),0_12px_32px_rgba(0,0,0,.06)]">
+            <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6">
               <h2 className="text-lg font-semibold text-v2-text-primary mb-4">Areas to Improve ({weak_topics.length})</h2>
               <div className="space-y-2">
                 {weak_topics.slice(0, 5).map(wt => (
@@ -209,14 +211,14 @@ export function StudentDashboard() {
           )}
 
           {recent_activity.length > 0 && (
-            <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6 shadow-[0_1px_2px_rgba(0,0,0,.04),0_12px_32px_rgba(0,0,0,.06)]">
+            <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6">
               <ActivityTimeline items={recent_activity} />
             </div>
           )}
         </div>
 
         <div className="space-y-6">
-          <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6 shadow-[0_1px_2px_rgba(0,0,0,.04),0_12px_32px_rgba(0,0,0,.06)]">
+          <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 rounded-lg bg-v2-accent-muted text-v2-accent"><BookOpen className="w-5 h-5" /></div>
               <div>
