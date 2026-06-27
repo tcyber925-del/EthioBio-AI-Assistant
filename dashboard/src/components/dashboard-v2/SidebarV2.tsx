@@ -130,7 +130,8 @@ export function SidebarV2() {
 
   const isActive = useCallback((href: string) => {
     if (href === '/v2/overview') return pathname === '/v2/overview' || pathname === '/v2'
-    return pathname.startsWith(href)
+    if (href === '/') return pathname === '/'
+  return pathname === href || pathname.startsWith(`${href}/`)
   }, [pathname])
 
   const handleLogout = () => {
