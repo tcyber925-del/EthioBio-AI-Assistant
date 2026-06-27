@@ -14,7 +14,7 @@ interface ContextHeaderProps {
 
 export function ContextHeader({ items }: ContextHeaderProps) {
   return (
-    <nav className="flex h-10 items-center gap-2 text-v2-text-secondary verge-label">
+    <nav aria-label="Breadcrumb" className="flex h-10 items-center gap-2 text-v2-text-secondary verge-label">
       {items.map((item, i) => (
         <div key={i} className="flex items-center gap-2 min-w-0">
           {i > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-v2-purple-rule" />}
@@ -26,7 +26,7 @@ export function ContextHeader({ items }: ContextHeaderProps) {
               {item.label}
             </Link>
           ) : (
-            <span className="truncate text-v2-accent">{item.label}</span>
+            <span aria-current="page" className="truncate text-v2-accent">{item.label}</span>
           )}
         </div>
       ))}

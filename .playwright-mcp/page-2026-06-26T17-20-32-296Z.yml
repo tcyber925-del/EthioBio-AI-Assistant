@@ -1,0 +1,95 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic:
+        - img
+      - generic [ref=e5]:
+        - paragraph [ref=e6]: EthioBio
+        - paragraph [ref=e7]: AI Assistant
+      - button "Search CMD K" [ref=e8] [cursor=pointer]:
+        - img [ref=e9]
+        - generic [ref=e12]:
+          - generic [ref=e13]: Search
+          - generic [ref=e14]: CMD K
+      - navigation [ref=e15]:
+        - link "Overview" [ref=e18] [cursor=pointer]:
+          - /url: /v2/overview
+          - img [ref=e19]
+          - generic [ref=e24]: Overview
+        - generic [ref=e26]:
+          - paragraph [ref=e27]: Main
+          - generic [ref=e28]:
+            - link "Dashboard" [ref=e29] [cursor=pointer]:
+              - /url: /
+              - img [ref=e30]
+              - generic [ref=e33]: Dashboard
+            - link "Parent" [ref=e35] [cursor=pointer]:
+              - /url: /parent
+              - img [ref=e36]
+              - generic [ref=e39]: Parent
+        - generic [ref=e40]:
+          - paragraph [ref=e41]: Learning
+          - generic [ref=e42]:
+            - link "Lessons" [ref=e43] [cursor=pointer]:
+              - /url: /lessons
+              - img [ref=e44]
+              - generic [ref=e47]: Lessons
+            - link "Quizzes" [ref=e48] [cursor=pointer]:
+              - /url: /quizzes
+              - img [ref=e49]
+              - generic [ref=e53]: Quizzes
+            - link "Ask Q&A" [ref=e54] [cursor=pointer]:
+              - /url: /ask
+              - img [ref=e55]
+              - generic [ref=e57]: Ask Q&A
+        - generic [ref=e58]:
+          - paragraph [ref=e59]: Management
+          - generic [ref=e60]:
+            - link "Classroom" [ref=e61] [cursor=pointer]:
+              - /url: /classroom
+              - img [ref=e62]
+              - generic [ref=e67]: Classroom
+            - link "Students" [ref=e68] [cursor=pointer]:
+              - /url: /students
+              - img [ref=e69]
+              - generic [ref=e74]: Students
+            - link "School" [ref=e75] [cursor=pointer]:
+              - /url: /school
+              - img [ref=e76]
+              - generic [ref=e78]: School
+            - link "Recovery" [ref=e79] [cursor=pointer]:
+              - /url: /recovery
+              - img [ref=e80]
+              - generic [ref=e82]: Recovery
+        - generic [ref=e83]:
+          - paragraph [ref=e84]: System
+          - generic [ref=e85]:
+            - link "Monitoring" [ref=e86] [cursor=pointer]:
+              - /url: /monitoring
+              - img [ref=e87]
+              - generic [ref=e89]: Monitoring
+            - link "Diagrams" [ref=e90] [cursor=pointer]:
+              - /url: /diagrams
+              - img [ref=e91]
+              - generic [ref=e93]: Diagrams
+      - generic [ref=e94]:
+        - generic [ref=e95]:
+          - img [ref=e96]
+          - combobox [ref=e99] [cursor=pointer]:
+            - option "English" [selected]
+            - option "አማርኛ"
+        - button "Sign out" [ref=e100] [cursor=pointer]:
+          - img [ref=e101]
+          - generic [ref=e104]: Sign out
+      - button "Collapse sidebar" [ref=e105] [cursor=pointer]:
+        - img [ref=e106]
+    - generic [ref=e108]:
+      - generic:
+        - generic:
+          - img
+      - generic [ref=e109]:
+        - banner [ref=e110]:
+          - navigation [ref=e111]:
+            - generic [ref=e113]: Overview
+        - main [ref=e114]
+  - alert [ref=e118]
