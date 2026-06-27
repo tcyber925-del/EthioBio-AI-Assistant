@@ -18,13 +18,13 @@ export function MetricStrip({ metrics }: MetricStripProps) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-      className="overflow-hidden rounded-[20px] border border-v2-border bg-v2-bg"
+      className="overflow-hidden rounded-[20px] border border-v2-border"
     >
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-v2-border">
         {metrics.map((m, i) => (
           <div
             key={i}
-            className={`min-h-28 border-v2-border px-6 py-5 ${i > 0 ? 'border-t sm:border-t-0 sm:border-l' : ''} ${
+            className={`min-h-28 px-6 py-5 ${
               m.accent ? 'bg-v2-accent text-v2-inverted' : i % 2 === 0 ? 'bg-v2-surface' : 'bg-v2-bg'
             }`}
           >

@@ -26,7 +26,7 @@ export function HeroSection({ title, subtitle, action, secondary }: HeroSectionP
       <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           {secondary && (
-            <p className="verge-label mb-3 text-v2-accent">{secondary}</p>
+            <div className="verge-label mb-3 text-v2-accent">{secondary}</div>
           )}
           <h1 className="verge-display max-w-5xl text-5xl text-v2-text-primary md:text-[60px] lg:text-[72px]">
             {title}
