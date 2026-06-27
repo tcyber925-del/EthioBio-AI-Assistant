@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { ClipboardCheck, AlertTriangle, Plus, X, Loader2 } from 'lucide-react'
+import { ClipboardCheck, AlertTriangle, Plus, X, Loader2, CheckCircle, XCircle } from 'lucide-react'
 import { TableSkeleton } from '@/components/Skeleton'
 import ModelSelector from '@/components/ModelSelector'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
@@ -31,6 +31,7 @@ export default function QuizzesPage() {
   const [selectedModel, setSelectedModel] = useState('')
   const [generating, setGenerating] = useState(false)
   const [genMsg, setGenMsg] = useState<string | null>(null)
+  const [genStatus, setGenStatus] = useState<'success' | 'error' | null>(null)
   const t = useTranslations('quiz')
   const tc = useTranslations('common')
 
@@ -65,10 +66,12 @@ export default function QuizzesPage() {
       }, 120000)
       setShowModal(false)
       setGenTopic('')
-      setGenMsg(`✅ Quiz generated for Grade ${genGrade} - ${genTopic}`)
+      setGenMsg(`Quiz generated for Grade ${genGrade} - ${genTopic}`)
+      setGenStatus('success')
       fetchQuizzes()
     } catch (err: any) {
-      setGenMsg(`❌ ${err.message}`)
+      setGenMsg(err.message)
+      setGenStatus('error')
     } finally {
       setGenerating(false)
     }
@@ -93,10 +96,13 @@ export default function QuizzesPage() {
         </div>
       </div>
 
-      {genMsg && (
-        <div className={`mb-4 px-4 py-3 rounded-lg text-sm flex items-center justify-between ${genMsg.startsWith('✅') ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
-          <span>{genMsg}</span>
-          <button onClick={() => setGenMsg(null)} className="ml-3 hover:opacity-70"><X className="w-4 h-4" /></button>
+      {genMsg && genStatus && (
+        <div className={`mb-4 px-4 py-3 rounded-lg text-sm flex items-center justify-between ${genStatus === 'success' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+          <span className="flex items-center gap-2">
+            {genStatus === 'success' ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+            {genMsg}
+          </span>
+          <button onClick={() => { setGenMsg(null); setGenStatus(null); }} className="ml-3 hover:opacity-70"><X className="w-4 h-4" /></button>
         </div>
       )}
 

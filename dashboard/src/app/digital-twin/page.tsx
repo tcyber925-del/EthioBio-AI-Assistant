@@ -9,6 +9,7 @@ import {
   FlaskConical, Plus, X,
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/dashboard-v2'
+import GamificationProfile from '@/components/gamification/GamificationProfile'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserId, isAuthenticated } from '@/lib/auth'
 
@@ -180,6 +181,8 @@ export default function DigitalTwinPage() {
             {rebuilding ? 'Rebuilding...' : 'Rebuild'}
           </button>
         </div>
+
+        <GamificationProfile userId={userId} />
 
         {loading ? (
           <div className="flex items-center justify-center py-16">

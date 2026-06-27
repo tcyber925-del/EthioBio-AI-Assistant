@@ -150,7 +150,7 @@ The 0.80 line-height on Manuka display (107px, 90px, 60px) assumes the **proprie
 **StoryStream Tile**
 - Background: either `#131313` + 1px white border, OR a saturated accent fill (mint, purple, yellow, pink, orange, white)
 - Border radius: `20px` (standard) or `24px` (feature)
-- Border: `1px solid #ffffff` (on dark) or `1px solid #3cffd0` (on mint) or nothing (on saturated fill)
+- Border: `1px solid #ffffff` (on dark) or `0px 0px 1px solid #3cffd0` (on mint) or nothing (on saturated fill)
 - Padding: ~24–32px interior
 - Hover: no lift, no scale — the headline text color transitions from white to `#3860be` (deep link blue)
 - Transition: 150ms ease on color only

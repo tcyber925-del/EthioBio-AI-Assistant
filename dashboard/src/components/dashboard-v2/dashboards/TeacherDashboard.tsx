@@ -33,10 +33,10 @@ export function TeacherDashboard() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const role = getUserRole()
-  const endpoint = role === 'admin' ? '/api/admin/dashboard' : '/api/teacher/dashboard'
 
   const fetchData = async () => {
+    const role = getUserRole()
+    const endpoint = role === 'admin' ? '/api/admin/dashboard' : '/api/teacher/dashboard'
     setLoading(true); setError(null)
     try {
       const d = await fetchWithAuth(endpoint)
@@ -62,7 +62,7 @@ export function TeacherDashboard() {
         <div className="text-center">
           <AlertTriangle className="w-10 h-10 text-v2-error mx-auto mb-3" />
           <p className="text-sm font-medium text-v2-text-secondary mb-4">{error}</p>
-          <button onClick={fetchData} className="inline-flex items-center gap-2 px-4 h-9 rounded-xl bg-v2-accent text-white text-sm font-medium hover:bg-v2-accent-hover transition-colors">
+          <button onClick={fetchData} className="inline-flex items-center gap-2 px-4 h-9 rounded-xl bg-v2-accent text-v2-inverted text-sm font-medium hover:bg-white transition-colors">
             <RefreshCw className="w-4 h-4" /> Retry
           </button>
         </div>
@@ -107,7 +107,7 @@ export function TeacherDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6 shadow-[0_1px_2px_rgba(0,0,0,.04),0_12px_32px_rgba(0,0,0,.06)]">
+          <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6">
             <h2 className="text-lg font-semibold text-v2-text-primary mb-4">Recent Class Activity</h2>
             {recent_logs.length > 0 ? (
               <div className="space-y-2">
