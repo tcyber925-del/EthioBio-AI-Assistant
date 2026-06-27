@@ -60,7 +60,7 @@ export function ActivityTimeline({ items }: ActivityTimelineProps) {
             const isAccentTile = item.type === 'achievement'
             return (
               <motion.div
-                key={i}
+                key={`${item.type}-${item.description}-${item.created_at ?? i}`}
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.15, delay: i * 0.03 }}
