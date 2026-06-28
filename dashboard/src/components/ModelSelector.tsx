@@ -54,12 +54,12 @@ export default function ModelSelector({ value, onChange, disabled }: ModelSelect
   if (loading) return <div className="flex items-center gap-2 text-sm text-foreground-muted"><Loader2 className="w-4 h-4 animate-spin" />{tc('models_loading')}</div>
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 w-full">
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
         disabled={disabled}
-        className="px-3 py-2 border border-border rounded-lg text-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+        className="w-full min-w-0 px-3 py-2 border border-border rounded-lg text-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
       >
         {models.map(m => (
           <option key={m.id} value={m.id}>

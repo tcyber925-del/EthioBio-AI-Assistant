@@ -19,10 +19,24 @@ LESSON_SYSTEM_PROMPT = (
     '  "explanation": "Main lesson content and explanation",\n'
     '  "activities": [{"name": "Activity name", "duration_minutes": 10, '
     '"description": "What to do", "type": "group|individual|pair"}],\n'
+    '  "periods": [\n'
+    '    {\n'
+    '      "name": "Opening",\n'
+    '      "duration_minutes": 5,\n'
+    '      "objective": "Engage students",\n'
+    '      "description": "Brief warm-up activity",\n'
+    '      "activity_type": "teacher_led",\n'
+    '      "teacher_activity": "Pose a question",\n'
+    '      "student_activity": "Discuss in pairs",\n'
+    '      "materials_needed": ["Whiteboard", "Marker"]\n'
+    '    }\n'
+    "  ],\n"
     '  "assessment": "How to assess understanding",\n'
     '  "homework": "Optional homework assignment",\n'
     '  "teacher_notes": "Tips and preparation notes for the teacher"\n'
     "}\n\n"
+    "Structure the lesson into distinct periods (Opening, Direct Instruction, "
+    "Guided Practice, Independent Work, Closing) with clear time allocations. "
     "Ensure content matches the Ethiopian biology curriculum "
     "for the specified grade level."
 )
@@ -97,6 +111,18 @@ EXIT_TICKET_PROMPT = (
     "Generate 3 questions that check understanding of "
     "the key concepts from the lesson."
 )
+
+
+def _derive_activities_from_periods(periods: list[dict]) -> list[dict]:
+    return [
+        {
+            "name": p.get("name", ""),
+            "duration_minutes": p.get("duration_minutes", 0),
+            "description": p.get("description", ""),
+            "type": p.get("activity_type", "individual"),
+        }
+        for p in periods
+    ]
 
 
 class LessonPlannerAgent(BaseAgent):
@@ -193,14 +219,21 @@ Respond with valid JSON only."""
                 content = content.split("```")[1].split("```")[0].strip()
 
             parsed = json.loads(content)
+
+            periods = parsed.get("periods")
+            activities = parsed.get("activities", [])
+            if periods:
+                activities = _derive_activities_from_periods(periods)
+
             output = {
                 "objective": parsed.get("objective", ""),
                 "prior_knowledge": parsed.get("prior_knowledge", ""),
                 "explanation": parsed.get("explanation", ""),
-                "activities": parsed.get("activities", []),
+                "activities": activities,
                 "assessment": parsed.get("assessment", ""),
                 "homework": parsed.get("homework"),
                 "teacher_notes": parsed.get("teacher_notes"),
+                "periods": periods,
                 "model_used": result.get("model", ""),
             }
 
@@ -246,6 +279,7 @@ Respond with valid JSON only."""
                 "prior_knowledge": "",
                 "explanation": result["content"],
                 "activities": [],
+                "periods": None,
                 "assessment": "",
                 "homework": None,
                 "teacher_notes": None,

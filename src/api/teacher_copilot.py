@@ -40,7 +40,7 @@ async def copilot_query(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
-    pipeline = build_teacher_pipeline(router=ModelRouter())
+    pipeline = build_teacher_pipeline(router=ModelRouter(), session=session)
 
     initial_state = TeacherCopilotState(
         user_message=body.message,

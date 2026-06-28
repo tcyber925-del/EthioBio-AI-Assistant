@@ -152,8 +152,8 @@ export default function QuizzesPage() {
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
-          <div className="bg-card border border-border rounded-xl shadow-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 flex items-start justify-center z-50 pt-[5vh]" onClick={() => setShowModal(false)}>
+          <div className="bg-card border border-border rounded-xl shadow-xl p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-foreground">{t('generate_title')}</h2>
               <button onClick={() => setShowModal(false)} className="text-foreground-muted hover:text-foreground transition-colors"><X className="w-5 h-5" /></button>

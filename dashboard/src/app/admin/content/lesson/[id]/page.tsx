@@ -7,6 +7,26 @@ import { fetchWithAuth } from '@/lib/fetchWithAuth'
 
 export const dynamic = 'force-dynamic'
 
+interface Period {
+  name: string; duration_minutes: number
+  objective?: string; description: string; activity_type: string
+  teacher_activity?: string; student_activity?: string
+  materials_needed?: string[]
+}
+interface ExitTicketQuestion {
+  question_type: string; question_text: string
+  options?: string[]; correct_answer: string; explanation?: string
+}
+interface DifferentiationActivity {
+  group: string; description: string; duration_minutes: number
+}
+interface DiagramSuggestion {
+  title: string; description: string; diagram_type: string
+}
+interface MisconceptionActivity {
+  misconception: string; activity_name: string
+  description: string; duration_minutes: number; activity_type: string
+}
 interface LessonData {
   id: string
   topic: string
@@ -21,6 +41,11 @@ interface LessonData {
   assessment?: string
   homework?: string
   teacher_notes?: string
+  periods?: Period[]
+  exit_ticket?: ExitTicketQuestion[]
+  differentiation?: DifferentiationActivity[]
+  diagram_suggestions?: DiagramSuggestion[]
+  misconception_activities?: MisconceptionActivity[]
 }
 
 export default function AdminLessonDetailPage() {
@@ -66,9 +91,51 @@ export default function AdminLessonDetailPage() {
         {lesson.prior_knowledge && <div><strong>{tc('prior_knowledge')}:</strong><p className="mt-1">{lesson.prior_knowledge}</p></div>}
         {lesson.explanation && <div><strong>{tc('explanation')}:</strong><p className="mt-1">{lesson.explanation}</p></div>}
         {lesson.activities && <div><strong>{tc('activities')}:</strong><p className="mt-1 whitespace-pre-wrap">{typeof lesson.activities === 'string' ? lesson.activities : JSON.stringify(lesson.activities)}</p></div>}
+        {lesson.periods && lesson.periods.length > 0 && (
+          <div><strong>{tc('periods')}:</strong>
+            {lesson.periods.map((p, i) => (
+              <div key={i} className="mt-1 ml-2 p-2 bg-gray-50 rounded text-sm border-l-2 border-blue-400">
+                <p className="font-medium">{p.name} ({p.duration_minutes}min)</p>
+                {p.objective && <p className="text-xs text-gray-500">Objective: {p.objective}</p>}
+                <p className="text-xs">{p.description}</p>
+                {p.teacher_activity && <p className="text-xs text-gray-500">Teacher: {p.teacher_activity}</p>}
+                {p.student_activity && <p className="text-xs text-gray-500">Students: {p.student_activity}</p>}
+                {p.materials_needed && <p className="text-xs text-gray-500">Materials: {p.materials_needed.join(', ')}</p>}
+              </div>
+            ))}
+          </div>
+        )}
         {lesson.assessment && <div><strong>{tc('assessment')}:</strong><p className="mt-1">{lesson.assessment}</p></div>}
         {lesson.homework && <div><strong>{tc('homework')}:</strong><p className="mt-1">{lesson.homework}</p></div>}
         {lesson.teacher_notes && <div><strong>{tc('teacher_notes')}:</strong><p className="mt-1">{lesson.teacher_notes}</p></div>}
+        {lesson.exit_ticket && lesson.exit_ticket.length > 0 && (
+          <div className="mt-4"><strong>Exit Ticket:</strong>
+            {lesson.exit_ticket.map((q, i) => (
+              <p key={i} className="mt-1 text-sm">Q{i+1}. {q.question_text} ({q.question_type}) — ✓ {q.correct_answer}</p>
+            ))}
+          </div>
+        )}
+        {lesson.differentiation && lesson.differentiation.length > 0 && (
+          <div className="mt-4"><strong>Differentiated Activities:</strong>
+            {lesson.differentiation.map((d, i) => (
+              <p key={i} className="mt-1 text-sm">{d.group}: {d.description} ({d.duration_minutes}min)</p>
+            ))}
+          </div>
+        )}
+        {lesson.diagram_suggestions && lesson.diagram_suggestions.length > 0 && (
+          <div className="mt-4"><strong>Diagram Suggestions:</strong>
+            {lesson.diagram_suggestions.map((d, i) => (
+              <p key={i} className="mt-1 text-sm">{d.title} ({d.diagram_type}) — {d.description}</p>
+            ))}
+          </div>
+        )}
+        {lesson.misconception_activities && lesson.misconception_activities.length > 0 && (
+          <div className="mt-4"><strong>Misconception Activities:</strong>
+            {lesson.misconception_activities.map((a, i) => (
+              <p key={i} className="mt-1 text-sm">{a.activity_name} ({a.activity_type}, {a.duration_minutes}min) — addressing: {a.misconception}</p>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

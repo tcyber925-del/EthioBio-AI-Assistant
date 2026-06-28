@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
@@ -89,6 +89,270 @@ async def test_lesson_plan_generation(mock_router):
     result = await agent.generate(grade_level=10, topic="Cell Division")
     assert result["objective"] == "Understand cell division"
     assert len(result["activities"]) > 0
+
+
+@pytest.mark.asyncio
+async def test_lesson_plan_with_exit_ticket(mock_router):
+    agent = LessonPlannerAgent(llm_router=mock_router)
+    agent._call_llm = AsyncMock()
+    agent._call_llm.side_effect = [
+        {
+            "content": '{"objective": "Understand mitosis", "prior_knowledge": "Cell theory", "explanation": "Mitosis phases", "activities": [{"name": "Draw phases", "duration_minutes": 15, "description": "Draw each phase", "type": "individual"}], "assessment": "Label phases", "homework": "Review notes", "teacher_notes": "Use diagrams"}',
+            "model": "ollama/test",
+        },
+        {
+            "content": '[{"question_type": "multiple_choice", "question_text": "What is mitosis?", "options": ["A) Cell division", "B) Cell death", "C) Cell growth", "D) Cell transport"], "correct_answer": "A) Cell division", "explanation": "Mitosis is cell division"}]',
+            "model": "ollama/test",
+        },
+    ]
+
+    result = await agent.generate(
+        grade_level=10, topic="Mitosis",
+        generate_exit_ticket=True,
+    )
+    assert result["objective"] == "Understand mitosis"
+    assert "exit_ticket" in result
+    assert len(result["exit_ticket"]) == 1
+    assert result["exit_ticket"][0]["question_type"] == "multiple_choice"
+
+
+@pytest.mark.asyncio
+async def test_lesson_plan_with_differentiation(mock_router):
+    agent = LessonPlannerAgent(llm_router=mock_router)
+    agent._call_llm = AsyncMock()
+    agent._call_llm.side_effect = [
+        {
+            "content": '{"objective": "Understand photosynthesis", "prior_knowledge": "Plant cells", "explanation": "Photosynthesis process", "activities": [{"name": "Leaf experiment", "duration_minutes": 20, "description": "Test for starch", "type": "group"}], "assessment": "Written questions", "homework": "Diagram labeling", "teacher_notes": "Prepare iodine"}',
+            "model": "ollama/test",
+        },
+        {
+            "content": '[{"group": "support", "description": "Label diagram with word bank", "duration_minutes": 15}, {"group": "standard", "description": "Write photosynthesis equation", "duration_minutes": 15}, {"group": "advanced", "description": "Explain limiting factors", "duration_minutes": 15}]',
+            "model": "ollama/test",
+        },
+    ]
+
+    result = await agent.generate(
+        grade_level=10, topic="Photosynthesis",
+        generate_differentiation=True,
+    )
+    assert result["objective"] == "Understand photosynthesis"
+    assert "differentiation" in result
+    assert len(result["differentiation"]) == 3
+    groups = [d["group"] for d in result["differentiation"]]
+    assert "support" in groups
+    assert "standard" in groups
+    assert "advanced" in groups
+
+
+@pytest.mark.asyncio
+async def test_lesson_plan_with_diagram_suggestions(mock_router):
+    agent = LessonPlannerAgent(llm_router=mock_router)
+    agent._call_llm = AsyncMock()
+    agent._call_llm.side_effect = [
+        {
+            "content": '{"objective": "Identify cell organelles", "prior_knowledge": "Cell theory", "explanation": "Organelle functions", "activities": [{"name": "Microscope lab", "duration_minutes": 25, "description": "View prepared slides", "type": "pair"}], "assessment": "Organelle quiz", "homework": "Draw and label", "teacher_notes": "Prepare slides"}',
+            "model": "ollama/test",
+        },
+        {
+            "content": '[{"title": "Animal Cell", "description": "Labeled animal cell diagram", "diagram_type": "labeling"}, {"title": "Cell Comparison", "description": "Plant vs animal cell", "diagram_type": "comparison"}]',
+            "model": "ollama/test",
+        },
+    ]
+
+    result = await agent.generate(
+        grade_level=10, topic="Cell Organelles",
+        generate_diagram_suggestions=True,
+    )
+    assert result["objective"] == "Identify cell organelles"
+    assert "diagram_suggestions" in result
+    assert len(result["diagram_suggestions"]) == 2
+    assert result["diagram_suggestions"][0]["diagram_type"] == "labeling"
+
+
+@pytest.mark.asyncio
+async def test_lesson_plan_with_misconception_activities(mock_router):
+    agent = LessonPlannerAgent(llm_router=mock_router)
+    agent._call_llm = AsyncMock()
+    agent._call_llm.side_effect = [
+        {
+            "content": '{"objective": "Understand plant respiration", "prior_knowledge": "Cellular respiration", "explanation": "Plants respire too", "activities": [{"name": "Experiment design", "duration_minutes": 20, "description": "Design respiration experiment", "type": "group"}], "assessment": "Explain results", "homework": "Read chapter", "teacher_notes": "Prepare seeds"}',
+            "model": "ollama/test",
+        },
+        {
+            "content": '[{"misconception": "Plants do not respire", "activity_name": "Evidence Challenge", "description": "Students compare data from plant respiration experiment", "duration_minutes": 15, "activity_type": "evidence_challenge"}]',
+            "model": "ollama/test",
+        },
+    ]
+
+    classroom_context = {
+        "misconceptions": {
+            "by_topic": [
+                {"topic": "Plant Respiration", "top_pattern": "Plants do not respire", "affected_students": 12},
+            ],
+        },
+    }
+
+    result = await agent.generate(
+        grade_level=10, topic="Plant Respiration",
+        generate_misconception_activities=True,
+        classroom_context=classroom_context,
+    )
+    assert result["objective"] == "Understand plant respiration"
+    assert "misconception_activities" in result
+    assert len(result["misconception_activities"]) == 1
+    assert result["misconception_activities"][0]["activity_type"] == "evidence_challenge"
+
+
+@pytest.mark.asyncio
+async def test_lesson_plan_all_features(mock_router):
+    agent = LessonPlannerAgent(llm_router=mock_router)
+    agent._call_llm = AsyncMock()
+    agent._call_llm.side_effect = [
+        {
+            "content": '{"objective": "Learn genetics", "prior_knowledge": "Cell division", "explanation": "DNA structure and function", "activities": [{"name": "DNA model", "duration_minutes": 20, "description": "Build DNA model", "type": "group"}], "assessment": "DNA quiz", "homework": "Review notes", "teacher_notes": "Prepare materials"}',
+            "model": "ollama/test",
+        },
+        {"content": '[{"question_type": "true_false", "question_text": "DNA is single-stranded", "options": ["True", "False"], "correct_answer": "False", "explanation": "DNA is double-stranded"}]', "model": "ollama/test"},
+        {"content": '[{"group": "support", "description": "Label DNA components", "duration_minutes": 10}, {"group": "standard", "description": "Describe DNA replication", "duration_minutes": 10}, {"group": "advanced", "description": "Explain mutation effects", "duration_minutes": 10}]', "model": "ollama/test"},
+        {"content": '[{"title": "DNA Double Helix", "description": "Structure of DNA", "diagram_type": "labeling"}]', "model": "ollama/test"},
+        {"content": '[{"misconception": "Genes only exist in reproductive cells", "activity_name": "Concept Conflict", "description": "Challenge misconception with evidence", "duration_minutes": 12, "activity_type": "concept_conflict"}]', "model": "ollama/test"},
+    ]
+
+    classroom_context = {
+        "misconceptions": {
+            "by_topic": [
+                {"topic": "Genetics", "top_pattern": "Genes only exist in reproductive cells", "affected_students": 8},
+            ],
+        },
+    }
+
+    result = await agent.generate(
+        grade_level=10, topic="Genetics",
+        generate_exit_ticket=True,
+        generate_differentiation=True,
+        generate_diagram_suggestions=True,
+        generate_misconception_activities=True,
+        classroom_context=classroom_context,
+    )
+    assert "exit_ticket" in result
+    assert len(result["exit_ticket"]) == 1
+    assert "differentiation" in result
+    assert len(result["differentiation"]) == 3
+    assert "diagram_suggestions" in result
+    assert len(result["diagram_suggestions"]) == 1
+    assert "misconception_activities" in result
+    assert len(result["misconception_activities"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_lesson_plan_with_classroom_context(mock_router):
+    agent = LessonPlannerAgent(llm_router=mock_router)
+    agent._call_llm = AsyncMock()
+    agent._call_llm.return_value = {
+        "content": '{"objective": "Learn ecology", "prior_knowledge": "Ecosystem basics", "explanation": "Food chains and webs", "activities": [{"name": "Build food web", "duration_minutes": 20, "description": "Create a food web", "type": "group"}], "assessment": "Food web quiz", "homework": "Research local ecosystem", "teacher_notes": "Use examples"}',
+        "model": "ollama/test",
+    }
+
+    classroom_context = {
+        "classroom": {
+            "total_students": 45,
+            "classroom_health": 72.5,
+            "readiness_distribution": {"low": 8, "medium": 22, "high": 15},
+            "risk_students": [{"student_id": "abc", "readiness_score": 35, "risk_level": "high", "risk_factors": ["low_mastery"]}],
+        },
+        "misconceptions": {
+            "by_topic": [
+                {"topic": "Ecology", "top_pattern": "Producers don\'t need energy", "affected_students": 10},
+            ],
+        },
+        "prerequisite_gaps": [
+            {"topic": "Photosynthesis", "affected_count": 5, "total_checked": 10},
+        ],
+        "best_strategies": [
+            {"type": "diagram_based_learning", "avg_effectiveness": 85.0},
+        ],
+    }
+
+    result = await agent.generate(
+        grade_level=10, topic="Ecology",
+        classroom_context=classroom_context,
+    )
+    assert result["objective"] == "Learn ecology"
+    assert len(result["activities"]) > 0
+
+
+@pytest.mark.asyncio
+async def test_lesson_plan_parse_error_fallback(mock_router):
+    agent = LessonPlannerAgent(llm_router=mock_router)
+    agent._call_llm = AsyncMock()
+    agent._call_llm.return_value = {
+        "content": "This is not valid JSON at all",
+        "model": "ollama/test",
+    }
+
+    result = await agent.generate(grade_level=10, topic="Invalid")
+    assert result["objective"] == "Error parsing lesson plan"
+    assert "explanation" in result
+
+
+def test_derive_activities_from_periods():
+    from src.agents.lesson_planner import _derive_activities_from_periods
+
+    periods = [
+        {"name": "Opening", "duration_minutes": 5, "description": "Warm-up", "activity_type": "teacher_led"},
+        {"name": "Direct Instruction", "duration_minutes": 15, "description": "Lecture", "activity_type": "teacher_led"},
+        {"name": "Guided Practice", "duration_minutes": 10, "description": "Group work", "activity_type": "group"},
+    ]
+
+    activities = _derive_activities_from_periods(periods)
+
+    assert len(activities) == 3
+    assert activities[0]["name"] == "Opening"
+    assert activities[0]["duration_minutes"] == 5
+    assert activities[0]["description"] == "Warm-up"
+    assert activities[0]["type"] == "teacher_led"
+    assert activities[1]["name"] == "Direct Instruction"
+    assert activities[2]["name"] == "Guided Practice"
+
+
+@pytest.mark.asyncio
+async def test_lesson_plan_with_periods(mock_router):
+    agent = LessonPlannerAgent(llm_router=mock_router)
+    agent._call_llm = AsyncMock()
+    agent._call_llm.return_value = {
+        "content": '{"objective": "Understand cell division", "prior_knowledge": "Basic cell structure", "explanation": "Mitosis and meiosis", "periods": [{"name": "Opening", "duration_minutes": 5, "objective": "Engage students", "description": "Quick review game", "activity_type": "teacher_led", "teacher_activity": "Pose questions", "student_activity": "Answer in pairs", "materials_needed": ["Whiteboard"]}, {"name": "Direct Instruction", "duration_minutes": 15, "description": "Explain mitosis phases", "activity_type": "lecture", "teacher_activity": "Diagram on board", "student_activity": "Take notes", "materials_needed": ["Chalk", "Diagram"]}, {"name": "Guided Practice", "duration_minutes": 10, "description": "Label mitosis stages", "activity_type": "individual", "teacher_activity": "Circulate and assist", "student_activity": "Complete worksheet"}, {"name": "Independent Work", "duration_minutes": 8, "description": "Answer review questions", "activity_type": "individual"}, {"name": "Closing", "duration_minutes": 2, "description": "Summarize key points", "activity_type": "teacher_led"}], "assessment": "Quiz on stages", "homework": "Label diagrams", "teacher_notes": "Use visual aids"}',
+        "model": "ollama/test",
+    }
+
+    result = await agent.generate(grade_level=10, topic="Cell Division")
+    assert result["objective"] == "Understand cell division"
+    assert "periods" in result
+    assert len(result["periods"]) == 5
+    assert result["periods"][0]["name"] == "Opening"
+    assert result["periods"][4]["name"] == "Closing"
+    assert "activities" in result
+    assert len(result["activities"]) == 5
+    assert result["activities"][0]["name"] == "Opening"
+    assert result["activities"][0]["description"] == "Quick review game"
+    assert result["activities"][0]["type"] == "teacher_led"
+    assert result["activities"][4]["name"] == "Closing"
+
+
+@pytest.mark.asyncio
+async def test_lesson_plan_periods_backward_compat(mock_router):
+    agent = LessonPlannerAgent(llm_router=mock_router)
+    agent._call_llm = AsyncMock()
+    agent._call_llm.return_value = {
+        "content": '{"objective": "Understand cell division", "prior_knowledge": "Basic cell structure", "explanation": "Mitosis and meiosis", "activities": [{"name": "Diagram drawing", "duration_minutes": 15, "description": "Draw cell division stages", "type": "individual"}], "assessment": "Quiz on stages", "homework": "Label diagrams", "teacher_notes": "Use visual aids"}',
+        "model": "ollama/test",
+    }
+
+    result = await agent.generate(grade_level=10, topic="Cell Division")
+    assert result["objective"] == "Understand cell division"
+    assert "periods" not in result or result["periods"] is None
+    assert len(result["activities"]) == 1
+    assert result["activities"][0]["name"] == "Diagram drawing"
+    assert result["activities"][0]["type"] == "individual"
 
 
 @pytest.mark.asyncio
@@ -577,7 +841,7 @@ def test_diagram_validate_request_schema():
         pass
 
 
-def test_student_progress_analysis():
+async def test_student_progress_analysis():
     router = ModelRouter()
     agent = StudentProgressAgent(llm_router=router)
 
@@ -600,7 +864,7 @@ def test_student_progress_analysis():
         MockRecord("Ecology", 75, 100),
     ]
 
-    result = agent.analyze_progress(records, MockProfile())
+    result = await agent.analyze_progress(records, MockProfile())
     assert "topics" in result
     assert "weak_areas" in result
     assert "Genetics" in result["weak_areas"]
@@ -743,3 +1007,83 @@ async def test_quiz_generation_target_difficulty_override(mock_router):
     await agent.generate(grade_level=10, topic="Cell Biology", target_difficulty="easy")
     msg = agent._call_llm.call_args[1]["user_message"]
     assert "EASY questions" in msg
+
+
+@pytest.mark.asyncio
+async def test_unit_plan_generation(mock_router):
+    from src.agents.unit_planner import UnitPlannerAgent
+
+    outline_json = (
+        '[{"day": 1, "subtopic": "Cell Structure", "objective": "Identify organelles"},'
+        '{"day": 2, "subtopic": "Cell Division", "objective": "Explain mitosis"},'
+        '{"day": 3, "subtopic": "DNA", "objective": "Describe DNA replication"}]'
+    )
+    lesson_json = (
+        '{"objective": "Understand topic", "prior_knowledge": "Basic knowledge",'
+        '"explanation": "Content", "activities": [{"name": "Act1", "duration_minutes": 15,'
+        '"description": "Do it", "type": "individual"}], "assessment": "Quiz",'
+        '"homework": "Review", "teacher_notes": "Notes"}'
+    )
+
+    agent = UnitPlannerAgent(llm_router=mock_router)
+    agent._call_llm = AsyncMock(return_value={
+        "content": outline_json,
+        "model": "ollama/test",
+    })
+
+    mock_router.route.return_value = {
+        "content": lesson_json,
+        "model": "ollama/test",
+    }
+
+    result = await agent.generate_unit(
+        unit_title="Cell Biology Unit",
+        grade_level=10,
+        topic="Cell Biology",
+        days=3,
+    )
+
+    assert result["unit_title"] == "Cell Biology Unit"
+    assert result["days"] == 3
+    assert len(result["lessons"]) == 3
+    assert result["lessons"][0]["day_index"] == 1
+    assert result["lessons"][0]["subtopic"] == "Cell Structure"
+    assert "lesson" in result["lessons"][0]
+    assert result["lessons"][0]["lesson"]["objective"] == "Understand topic"
+    assert result["lessons"][2]["day_index"] == 3
+
+
+@pytest.mark.asyncio
+async def test_unit_plan_outline_fallback(mock_router):
+    from src.agents.unit_planner import UnitPlannerAgent
+
+    lesson_json = (
+        '{"objective": "Objective", "prior_knowledge": "Pre",'
+        '"explanation": "Exp", "activities": [{"name": "A", "duration_minutes": 10,'
+        '"description": "D", "type": "pair"}], "assessment": "A",'
+        '"homework": "H", "teacher_notes": "T"}'
+    )
+
+    agent = UnitPlannerAgent(llm_router=mock_router)
+    agent._call_llm = AsyncMock(return_value={
+        "content": "invalid json here",
+        "model": "ollama/test",
+    })
+
+    mock_router.route.return_value = {
+        "content": lesson_json,
+        "model": "ollama/test",
+    }
+
+    result = await agent.generate_unit(
+        unit_title="Fallback Unit",
+        grade_level=10,
+        topic="Biology",
+        days=2,
+    )
+
+    assert result["unit_title"] == "Fallback Unit"
+    assert result["days"] == 2
+    assert len(result["lessons"]) == 2
+    assert result["lessons"][0]["day_index"] == 1
+    assert result["lessons"][1]["day_index"] == 2

@@ -27,6 +27,7 @@ from src.api import (
     recovery,
     student,
     teacher,
+    teacher_copilot,
     tracing,
     users,
 )
@@ -133,6 +134,7 @@ app.include_router(auth.router)
 app.include_router(parent.router)
 
 app.include_router(teacher.router)
+app.include_router(teacher_copilot.router)
 
 app.include_router(student.router)
 app.include_router(tracing.router)

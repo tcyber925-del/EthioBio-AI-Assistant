@@ -2,12 +2,14 @@ import re
 
 import structlog
 from langgraph.graph import END, StateGraph
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.quiz import QuizAgent
 from src.core.teacher_copilot.evidence_engine import EvidenceEngine
 from src.core.teacher_copilot.intent_router import IntentRouter
 from src.core.teacher_copilot.reasoning_engine import ReasoningEngine
 from src.core.teacher_copilot.state import TeacherCopilotState
+from src.database.session import async_session_factory
 from src.llm.router import ModelRouter
 
 logger = structlog.get_logger()
@@ -27,14 +29,34 @@ class ClassifyIntentNode:
 
 
 class GatherDataNode:
-    def __init__(self, evidence: EvidenceEngine):
+    def __init__(self, evidence: EvidenceEngine, session: AsyncSession | None = None):
         self.evidence = evidence
+        self.session = session
 
     async def __call__(self, state: TeacherCopilotState) -> dict:
-        return {
-            "evidence": [],
-            "status": "gathered",
-        }
+        session = self.session
+        close_session = False
+        if session is None:
+            session = async_session_factory()
+            close_session = True
+
+        updates: dict = {"status": "gathered"}
+
+        try:
+            if state.user_id:
+                evidence = await self.evidence.gather_evidence(
+                    intent=state.intent,
+                    user_id=state.user_id,
+                    session=session,
+                )
+                updates["evidence"] = evidence
+        except Exception as e:
+            logger.exception("gather_evidence_error", error=str(e))
+        finally:
+            if close_session:
+                await session.close()
+
+        return updates
 
 
 class AssessmentCreatorNode:
@@ -94,14 +116,14 @@ class ReasonNode:
     async def __call__(self, state: TeacherCopilotState) -> dict:
         reasoning, confidence = await self.engine.reason(
             intent=state.intent,
-            classroom_profile=None,
-            student_profiles=[],
-            readiness_data=None,
-            misconception_data=None,
-            mastery_data=None,
-            intervention_data=None,
-            timeline_data=[],
-            rag_context="",
+            classroom_profile=state.classroom_profile,
+            student_profiles=state.student_profiles,
+            readiness_data=state.readiness_data,
+            misconception_data=state.misconception_data,
+            mastery_data=state.mastery_data,
+            intervention_data=state.intervention_data,
+            timeline_data=state.timeline_data,
+            rag_context=state.rag_context,
         )
         return {
             "reasoning": reasoning,
@@ -141,7 +163,10 @@ def route_after_classify(state: TeacherCopilotState) -> str:
     return "gather"
 
 
-def build_teacher_pipeline(router: ModelRouter | None = None) -> StateGraph:
+def build_teacher_pipeline(
+    router: ModelRouter | None = None,
+    session: AsyncSession | None = None,
+) -> StateGraph:
     intent_router = IntentRouter()
     evidence = EvidenceEngine()
     reasoning = ReasoningEngine(router=router)
@@ -149,7 +174,7 @@ def build_teacher_pipeline(router: ModelRouter | None = None) -> StateGraph:
     workflow = StateGraph(TeacherCopilotState)
 
     workflow.add_node("classify", ClassifyIntentNode(intent_router))
-    workflow.add_node("gather", GatherDataNode(evidence))
+    workflow.add_node("gather", GatherDataNode(evidence, session=session))
     workflow.add_node("create_assessment", AssessmentCreatorNode(router=router))
     workflow.add_node("reason", ReasonNode(reasoning))
     workflow.add_node("format", FormatResponseNode())

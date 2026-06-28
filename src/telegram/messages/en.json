@@ -76,7 +76,13 @@
     "grade_prompt": "Select grade level:",
     "generating": "Creating lesson plan...",
     "error": "Error creating lesson plan.",
-    "topic_prompt": "Grade {grade} selected. What biology topic?"
+    "topic_prompt": "Grade {grade} selected. What biology topic?",
+    "features_prompt": "Grade {grade} selected. Choose features to include:",
+    "features_done": "✅ Done — enter topic",
+    "feature_exit_ticket": "Exit Ticket",
+    "feature_differentiation": "Differentiation",
+    "feature_diagrams": "Diagram Suggestions",
+    "feature_misconceptions": "Misconception Activities"
   },
   "settings": {
     "text": "⚙️ Notification Settings\n\nMilestone Alerts: {milestone}\nReview Reminders: {reminder}\nDigest Frequency: {digest}\n\nTap to toggle or change settings."
@@ -154,6 +160,8 @@
   "error_generic": "Something went wrong. Please try again.",
   "choose_language": "Choose your language:",
   "language_set": "Language set to {name}!",
+  "copilot_chat": "🤖 Copilot Chat",
+  "ask_another": "Ask Another",
   "create_lesson_plan": "📋 Create Lesson Plan",
   "review_quizzes": "📄 Review Quizzes",
   "open_dashboard": "📈 Open Dashboard",
@@ -168,5 +176,23 @@
   "choose_grade": "Choose your grade:",
   "choose_topic": "Choose a topic:",
   "choose_quiz_type": "Choose quiz type:",
-  "welcome": "Welcome to EthioBio AI Assistant!\n\nI'm your biology learning assistant for Ethiopian Grades 7-12.\n\nSend me any biology question, or use the menu below:"
+  "welcome": "Welcome to EthioBio AI Assistant!\n\nI'm your biology learning assistant for Ethiopian Grades 7-12.\n\nSend me any biology question, or use the menu below:",
+  "copilot": {
+    "title": "🤖 Teacher Copilot",
+    "prompt": "Ask me anything about your classroom.\n\nExamples:\n• Who needs attention today?\n• Why is a student struggling?\n• Create a 5-question quiz on genetics\n• Summarize classroom readiness\n• What interventions work for cell division?",
+    "analyzing": "🔄 Analyzing your classroom data...",
+    "evidence_label": "📋 Evidence",
+    "not_linked": "👨‍🏫 Teacher access required.\n\nUse /link <email> to connect your dashboard teacher account.",
+    "not_teacher": "👨‍🏫 This feature is for teachers only.\n\nUse /link <email> to connect your dashboard teacher account.",
+    "error": "Sorry, I couldn't complete that analysis. Please try again."
+  },
+  "link": {
+    "usage": "Usage: /link <email>\n\nLink your Telegram to your teacher dashboard account.\n\nExample: /link teacher@school.com",
+    "otp_sent": "📧 Verification code sent to your Telegram: <b>{code}</b>\n\nEnter this code to link your teacher account.\n\nThis code expires in 5 minutes.",
+    "otp_prompt": "Enter the verification code sent to your Telegram:",
+    "verified": "✅ Teacher account linked! You now have full teacher access.\nTry \"Copilot Chat\" in Teacher Tools.",
+    "not_found": "No teacher account found with that email. Make sure you registered as a teacher on the dashboard first.",
+    "already_linked": "This Telegram is already linked to a teacher account.",
+    "wrong_otp": "❌ Invalid code. Please try again or use /link to restart."
+  }
 }

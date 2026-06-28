@@ -2,6 +2,20 @@ from src.telegram.i18n import t
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 
+def lesson_features_keyboard(features: dict | None = None, language: str = "en"):
+    f = features or {}
+    check = lambda key: "✅" if f.get(key, False) else "⬜"
+    buttons = [
+        [InlineKeyboardButton(f"{check('exit_ticket')} {t('lesson.feature_exit_ticket', language)}", callback_data="lesson_feature_exit_ticket")],
+        [InlineKeyboardButton(f"{check('differentiation')} {t('lesson.feature_differentiation', language)}", callback_data="lesson_feature_differentiation")],
+        [InlineKeyboardButton(f"{check('diagram_suggestions')} {t('lesson.feature_diagrams', language)}", callback_data="lesson_feature_diagrams")],
+        [InlineKeyboardButton(f"{check('misconception_activities')} {t('lesson.feature_misconceptions', language)}", callback_data="lesson_feature_misconceptions")],
+        [InlineKeyboardButton(t("lesson.features_done", language), callback_data="lesson_features_done")],
+        [InlineKeyboardButton(t("back", language), callback_data="menu")],
+    ]
+    return InlineKeyboardMarkup(buttons)
+
+
 def main_menu_keyboard(socratic_enabled: bool = False, language: str = "en"):
     socratic_label = t("socratic_on", language) if socratic_enabled else t("socratic_off", language)
     buttons = [
@@ -18,6 +32,7 @@ def main_menu_keyboard(socratic_enabled: bool = False, language: str = "en"):
 
 def teacher_tools_keyboard(language: str = "en"):
     buttons = [
+        [InlineKeyboardButton(t("copilot_chat", language), callback_data="copilot")],
         [InlineKeyboardButton(t("create_lesson_plan", language), callback_data="lesson_plan")],
         [InlineKeyboardButton(t("review_quizzes", language), callback_data="open_quizzes")],
         [InlineKeyboardButton(t("open_dashboard", language), callback_data="open_dashboard")],
