@@ -142,7 +142,8 @@ def export_lesson_plan_to_pdf(lesson: dict[str, Any]) -> bytes:
             pdf.set_font("Helvetica", "", 10)
             p_obj = period.get("objective")
             if p_obj:
-                pdf.cell(0, 5, f"Objective: {p_obj}", new_x="LMARGIN", new_y="NEXT")
+                pdf.cell(0, 5, "Objective:", new_x="LMARGIN", new_y="NEXT")
+                pdf.multi_cell(0, 5, str(p_obj))
             p_desc = period.get("description", "")
             if p_desc:
                 pdf.multi_cell(0, 5, p_desc)

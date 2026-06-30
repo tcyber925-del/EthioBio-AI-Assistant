@@ -220,8 +220,15 @@ Respond with valid JSON only."""
 
             parsed = json.loads(content)
 
-            periods = parsed.get("periods")
+            raw_periods = parsed.get("periods")
+            periods = (
+                [p for p in raw_periods if isinstance(p, dict)]
+                if isinstance(raw_periods, list)
+                else None
+            )
             activities = parsed.get("activities", [])
+            if not isinstance(activities, list):
+                activities = []
             if periods:
                 activities = _derive_activities_from_periods(periods)
 

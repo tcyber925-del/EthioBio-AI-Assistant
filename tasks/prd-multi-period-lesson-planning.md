@@ -22,7 +22,7 @@ This feature restructures the lesson plan output into labeled period blocks (Pha
 **Acceptance Criteria:**
 - [ ] `LESSON_SYSTEM_PROMPT` (or equivalent) instructs the LLM to output `periods` as a JSON array of `Period` objects
 - [ ] Each period includes: `name`, `duration_minutes`, `objective`, `description`, `activity_type`, `teacher_activity`, `student_activity`, `materials_needed`
-- [ ] The existing `activities` field is also populated (from the same prompt generation) for backward compatibility
+- [ ] The existing `activities` field is derived from `periods` for backward compatibility
 - [ ] `LessonPlanOutput` / response schema accepts both `periods: list[Period]` and `activities: list[Activity]`
 - [ ] Typecheck passes
 
@@ -113,7 +113,7 @@ This feature restructures the lesson plan output into labeled period blocks (Pha
 ## Design Considerations
 
 - **Backward compatibility:** The `activities` field stays in the response. The `periods` field is additive. Any consumer that reads `activities` continues to work unchanged.
-- **Prompt design:** Use the existing `_call_structured` pattern with a new Pydantic model for the structured output. The prompt instructs the LLM to produce both `periods` and `activities` arrays from a single generation call.
+- **Prompt design:** Use the existing `_call_structured` pattern with a new Pydantic model for the structured output. The prompt instructs the LLM to produce `periods`, and `activities` is derived post-hoc.
 - **Existing 4 sub-generators** (ExitTicketGenerator, DifferentiationGenerator, DiagramSuggestionGenerator, MisconceptionGenerator) remain untouched. Feature flags are evaluated once per lesson, not per period.
 - **Frontend rendering:** Reuse existing card/list component patterns. Add a `PeriodCard` component that mirrors the existing activity layout but adds period-specific fields.
 

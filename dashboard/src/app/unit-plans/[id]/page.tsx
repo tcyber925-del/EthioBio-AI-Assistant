@@ -102,7 +102,7 @@ export default function UnitPlanDetailPage() {
           <span className="flex items-center gap-1"><BookOpen className="w-4 h-4" /> {t('col_topic')}: {plan.topic}</span>
           <span className="flex items-center gap-1"><Target className="w-4 h-4" /> {t('col_grade')} {plan.grade_level}</span>
           <span className="flex items-center gap-1"><Calendar className="w-4 h-4" /> {t('details_days')}: {plan.days}</span>
-          <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {t('details_duration')}: {plan.model_used}</span>
+          <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {t('details_model')}: {plan.model_used}</span>
         </div>
         <p className="text-xs text-foreground-muted mt-3">{t('details_created')} {plan.created_at?.slice(0, 10)}</p>
       </div>

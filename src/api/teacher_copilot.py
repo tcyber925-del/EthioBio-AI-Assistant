@@ -40,7 +40,7 @@ async def copilot_query(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
-    pipeline = build_teacher_pipeline(router=ModelRouter(), session=session)
+    router = ModelRouter()
 
     initial_state = TeacherCopilotState(
         user_message=body.message,
@@ -49,11 +49,11 @@ async def copilot_query(
         classroom_id=body.classroom_id,
     )
 
+    pipeline = build_teacher_pipeline(router=router, session=session)
     try:
         final_state = await pipeline.ainvoke(initial_state)
     except Exception as e:
         logger.error("copilot_pipeline_error", error=str(e))
-        raise HTTPException(status_code=500, detail="Pipeline execution failed") from e
 
     if final_state.error:
         raise HTTPException(status_code=500, detail=final_state.error)
