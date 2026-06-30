@@ -125,4 +125,124 @@ def export_lesson_plan_to_pdf(lesson: dict[str, Any]) -> bytes:
 
         pdf.ln(4)
 
+    periods = lesson.get("periods")
+    if periods:
+        if pdf.get_y() > 240:
+            pdf.add_page()
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.cell(0, 8, "Lesson Periods", new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(1)
+        for period in periods:
+            if pdf.get_y() > 260:
+                pdf.add_page()
+            p_name = period.get("name", "")
+            p_dur = period.get("duration_minutes", "")
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.cell(0, 5, f"{p_name} ({p_dur} min)", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font("Helvetica", "", 10)
+            p_obj = period.get("objective")
+            if p_obj:
+                pdf.cell(0, 5, "Objective:", new_x="LMARGIN", new_y="NEXT")
+                pdf.multi_cell(0, 5, str(p_obj))
+            p_desc = period.get("description", "")
+            if p_desc:
+                pdf.multi_cell(0, 5, p_desc)
+            p_ta = period.get("teacher_activity")
+            if p_ta:
+                pdf.cell(0, 5, f"Teacher: {p_ta}", new_x="LMARGIN", new_y="NEXT")
+            p_sa = period.get("student_activity")
+            if p_sa:
+                pdf.cell(0, 5, f"Students: {p_sa}", new_x="LMARGIN", new_y="NEXT")
+            p_mat = period.get("materials_needed")
+            if p_mat:
+                materials = ", ".join(p_mat) if isinstance(p_mat, list) else str(p_mat)
+                pdf.cell(0, 5, f"Materials: {materials}", new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(2)
+
+    exit_ticket = lesson.get("exit_ticket", [])
+    if exit_ticket:
+        if pdf.get_y() > 240:
+            pdf.add_page()
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.cell(0, 8, "Exit Ticket", new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(1)
+        pdf.set_font("Helvetica", "", 10)
+        for i, q in enumerate(exit_ticket, 1):
+            if pdf.get_y() > 265:
+                pdf.add_page()
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.multi_cell(0, 5, f"Q{i}. ({q.get('question_type', '')}) {q.get('question_text', '')}")
+            options = q.get("options")
+            if options:
+                pdf.set_font("Helvetica", "", 10)
+                for opt in options:
+                    pdf.cell(0, 5, f"  - {opt}", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font("Helvetica", "", 10)
+            pdf.set_text_color(0, 100, 0)
+            pdf.multi_cell(0, 5, f"Answer: {q.get('correct_answer', '')}")
+            pdf.set_text_color(0, 0, 0)
+            exp = q.get("explanation")
+            if exp:
+                pdf.set_font("Helvetica", "I", 10)
+                pdf.set_text_color(80, 80, 80)
+                pdf.multi_cell(0, 5, f"Explanation: {exp}")
+                pdf.set_text_color(0, 0, 0)
+            pdf.ln(2)
+
+    differentiation = lesson.get("differentiation", [])
+    if differentiation:
+        if pdf.get_y() > 240:
+            pdf.add_page()
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.cell(0, 8, "Differentiated Activities", new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(1)
+        pdf.set_font("Helvetica", "", 10)
+        for d in differentiation:
+            if pdf.get_y() > 265:
+                pdf.add_page()
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.cell(0, 5, f"[{d.get('group', '').title()}]", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font("Helvetica", "", 10)
+            pdf.multi_cell(0, 5, f"{d.get('description', '')} ({d.get('duration_minutes', '')}min)")
+            pdf.ln(1)
+
+    diagram_suggestions = lesson.get("diagram_suggestions", [])
+    if diagram_suggestions:
+        if pdf.get_y() > 240:
+            pdf.add_page()
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.cell(0, 8, "Diagram Suggestions", new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(1)
+        pdf.set_font("Helvetica", "", 10)
+        for d in diagram_suggestions:
+            if pdf.get_y() > 265:
+                pdf.add_page()
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.cell(0, 5, f"{d.get('title', '')} ({d.get('diagram_type', '')})", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font("Helvetica", "", 10)
+            desc = d.get("description")
+            if desc:
+                pdf.multi_cell(0, 5, desc)
+            pdf.ln(1)
+
+    misconception_activities = lesson.get("misconception_activities", [])
+    if misconception_activities:
+        if pdf.get_y() > 240:
+            pdf.add_page()
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.cell(0, 8, "Misconception Activities", new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(1)
+        pdf.set_font("Helvetica", "", 10)
+        for a in misconception_activities:
+            if pdf.get_y() > 265:
+                pdf.add_page()
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.cell(0, 5, f"{a.get('activity_name', '')} ({a.get('activity_type', '')} · {a.get('duration_minutes', '')}min)", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font("Helvetica", "", 10)
+            pdf.cell(0, 5, f"Addressing: {a.get('misconception', '')}", new_x="LMARGIN", new_y="NEXT")
+            desc = a.get("description")
+            if desc:
+                pdf.multi_cell(0, 5, desc)
+            pdf.ln(2)
+
     return bytes(pdf.output())

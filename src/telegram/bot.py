@@ -45,6 +45,7 @@ from src.telegram.keyboards import (
     grade_keyboard,
     hint_keyboard,
     language_keyboard,
+    lesson_features_keyboard,
     main_menu_keyboard,
     model_providers_keyboard,
     provider_models_keyboard,
@@ -61,7 +62,7 @@ logger = structlog.get_logger()
 
 from datetime import datetime, timedelta, timezone
 
-TUTOR, QUIZ_TYPE, QUIZ_GRADE, QUIZ_TOPIC, QUIZ_ANSWERING, LESSON_GRADE, LESSON_TOPIC, TUTOR_GRADE, DIAGRAM_GRADE, DIAGRAM_TOPIC = range(10)
+TUTOR, QUIZ_TYPE, QUIZ_GRADE, QUIZ_TOPIC, QUIZ_ANSWERING, LESSON_GRADE, LESSON_FEATURES, LESSON_TOPIC, TUTOR_GRADE, DIAGRAM_GRADE, DIAGRAM_TOPIC, LINK_OTP, COPILOT = range(13)
 
 
 async def _db_try(action, fallback=None):
@@ -755,9 +756,23 @@ async def menu(update: Update, context):
     await query.message.reply_text(t("common.choose_option", _lang(context)), reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
 
 
+async def _get_user_role(telegram_id: int) -> str | None:
+    async def _fetch():
+        factory = async_session_factory()
+        async with factory() as session:
+            result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+            user = result.scalar_one_or_none()
+            return user.role.value if user else None
+    return await _db_try(_fetch)
+
+
 async def handle_teacher_tools(update: Update, context):
     query = update.callback_query
     await query.answer()
+    role = await _get_user_role(update.effective_user.id)
+    if role != "teacher":
+        await query.message.reply_text(t("copilot.not_linked", _lang(context)))
+        return
     await query.message.reply_text(t("common.teacher_tools", _lang(context)), reply_markup=teacher_tools_keyboard(language=_lang(context)))
 
 
@@ -1430,35 +1445,93 @@ async def handle_lesson_grade(update: Update, context):
     await query.answer()
     grade = int(query.data.split("_")[-1])
     context.user_data["lesson_grade"] = grade
+    # Reset feature selections
+    context.user_data["lesson_features"] = {
+        "exit_ticket": False,
+        "differentiation": False,
+        "diagram_suggestions": False,
+        "misconception_activities": False,
+    }
     await query.edit_message_text(
-        t("lesson.topic_prompt", _lang(context), grade=grade),
-        reply_markup=back_keyboard(language=_lang(context)),
+        t("lesson.features_prompt", _lang(context), grade=grade),
+        reply_markup=lesson_features_keyboard(context.user_data["lesson_features"], language=_lang(context)),
     )
-    return LESSON_TOPIC
+    return LESSON_FEATURES
+
+
+async def handle_lesson_features(update: Update, context):
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+    if data == "lesson_features_done":
+        grade = context.user_data.get("lesson_grade", 10)
+        await query.edit_message_text(
+            t("lesson.topic_prompt", _lang(context), grade=grade),
+            reply_markup=back_keyboard(language=_lang(context)),
+        )
+        return LESSON_TOPIC
+    # Toggle a feature
+    feature_map = {
+        "lesson_feature_exit_ticket": "exit_ticket",
+        "lesson_feature_differentiation": "differentiation",
+        "lesson_feature_diagrams": "diagram_suggestions",
+        "lesson_feature_misconceptions": "misconception_activities",
+    }
+    feature_key = feature_map.get(data)
+    if feature_key:
+        features = context.user_data.setdefault("lesson_features", {})
+        features[feature_key] = not features.get(feature_key, False)
+        await query.edit_message_reply_markup(
+            reply_markup=lesson_features_keyboard(features, language=_lang(context)),
+        )
+    return LESSON_FEATURES
 
 
 async def handle_lesson_topic(update: Update, context):
     topic = update.message.text
     grade = context.user_data.get("lesson_grade", 10)
+    features = context.user_data.get("lesson_features", {})
     await update.message.reply_text(t("lesson.generating", _lang(context)))
 
     try:
         router_llm = ModelRouter()
         agent = LessonPlannerAgent(llm_router=router_llm)
-        result = await agent.generate(grade_level=grade, topic=topic)
+        result = await agent.generate(
+            grade_level=grade, topic=topic,
+            generate_exit_ticket=features.get("exit_ticket", False),
+            generate_differentiation=features.get("differentiation", False),
+            generate_diagram_suggestions=features.get("diagram_suggestions", False),
+            generate_misconception_activities=features.get("misconception_activities", False),
+        )
         response = (
             f"Lesson Plan: {topic} (Grade {grade})\n\n"
             f"Objective:\n{result['objective']}\n\n"
-            f"Explanation:\n{result['explanation'][:1000]}...\n\n"
+            f"Explanation:\n{result['explanation'][:800]}...\n\n"
         )
         if result.get("activities"):
             response += "Activities:\n"
             for a in result["activities"]:
                 response += f"  * {a.get('name', '')} ({a.get('duration_minutes', '')}min)\n"
         if result.get("assessment"):
-            response += f"\nAssessment:\n{result['assessment'][:500]}"
+            response += f"\nAssessment:\n{result['assessment'][:400]}"
         if result.get("homework"):
-            response += f"\n\nHomework:\n{result['homework'][:500]}"
+            response += f"\n\nHomework:\n{result['homework'][:400]}"
+        if result.get("exit_ticket"):
+            response += "\n\n📝 Exit Ticket:"
+            for q in result["exit_ticket"][:3]:
+                response += f"\n• {q['question_text'][:200]}"
+        if result.get("differentiation"):
+            response += "\n\n🎯 Differentiation:"
+            for d in result["differentiation"][:3]:
+                response += f"\n• {d['group']}: {d['description'][:150]}"
+        if result.get("diagram_suggestions"):
+            response += "\n\n📊 Diagrams:"
+            for d in result["diagram_suggestions"][:3]:
+                response += f"\n• {d['title']} ({d['diagram_type']})"
+        if result.get("misconception_activities"):
+            response += "\n\n🔬 Misconception Activities:"
+            for a in result["misconception_activities"][:2]:
+                response += f"\n• {a['activity_name']}"
         await _reply_long(update.message, response, reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)), parse_mode="HTML")
         await router_llm.close()
     except Exception as e:
@@ -2267,6 +2340,210 @@ async def handle_settings_toggle(update: Update, context):
     await _db_try(_handle)
 
 
+async def link_command(update: Update, context):
+    email = (context.args[0] if context.args else "").strip().lower()
+    if not email:
+        await update.message.reply_text(t("link.usage", _lang(context)))
+        return
+
+    async def _verify_email():
+        factory = async_session_factory()
+        async with factory() as session:
+            result = await session.execute(
+                select(User).where(
+                    User.email == email,
+                    User.role == UserRole.teacher,
+                    User.is_active,
+                )
+            )
+            teacher = result.scalar_one_or_none()
+            if not teacher:
+                await update.message.reply_text(t("link.not_found", _lang(context)))
+                return
+
+            if teacher.telegram_id == update.effective_user.id:
+                await update.message.reply_text(t("link.already_linked", _lang(context)))
+                return
+
+            code = f"{random.randint(100000, 999999)}"
+            redis_conn = await get_redis()
+            await redis_conn.setex(
+                f"link:{update.effective_user.id}",
+                300,
+                f"{email}:{code}",
+            )
+            await update.message.reply_text(
+                t("link.otp_sent", _lang(context), code=code),
+                parse_mode="HTML",
+            )
+    await _db_try(_verify_email)
+    return LINK_OTP
+
+
+async def handle_link_otp(update: Update, context):
+    telegram_id = update.effective_user.id
+    user_code = update.message.text.strip()
+
+    async def _link():
+        redis_conn = await get_redis()
+        stored = await redis_conn.get(f"link:{telegram_id}")
+        if not stored:
+            await update.message.reply_text(t("link.wrong_otp", _lang(context)))
+            return
+
+        stored_str = stored.decode() if isinstance(stored, bytes) else stored
+        if ":" not in stored_str:
+            await update.message.reply_text(t("link.wrong_otp", _lang(context)))
+            return
+
+        email, expected_code = stored_str.split(":", 1)
+        if user_code != expected_code:
+            await update.message.reply_text(t("link.wrong_otp", _lang(context)))
+            return
+
+        await redis_conn.delete(f"link:{telegram_id}")
+
+        factory = async_session_factory()
+        async with factory() as session:
+            teacher = await session.execute(
+                select(User).where(
+                    User.email == email,
+                    User.role == UserRole.teacher,
+                    User.is_active,
+                )
+            )
+            teacher_user = teacher.scalar_one_or_none()
+            if not teacher_user:
+                await update.message.reply_text(t("link.not_found", _lang(context)))
+                return
+
+            old = await session.execute(
+                select(User).where(User.telegram_id == telegram_id)
+            )
+            old_user = old.scalar_one_or_none()
+            if old_user and old_user.id != teacher_user.id:
+                old_user.telegram_id = None
+
+            teacher_user.telegram_id = telegram_id
+            await session.commit()
+
+        await update.message.reply_text(
+            t("link.verified", _lang(context)),
+            reply_markup=main_menu_keyboard(
+                context.user_data.get("socratic_mode", False),
+                language=_lang(context),
+            ),
+        )
+    await _db_try(_link)
+    return ConversationHandler.END
+
+
+async def handle_copilot_start(update: Update, context):
+    query = update.callback_query
+    await query.answer()
+
+    role = await _get_user_role(update.effective_user.id)
+    if role != "teacher":
+        await query.message.reply_text(t("copilot.not_teacher", _lang(context)))
+        return ConversationHandler.END
+
+    await query.message.reply_text(
+        t("copilot.prompt", _lang(context)),
+        reply_markup=back_keyboard(language=_lang(context)),
+    )
+    return COPILOT
+
+
+async def handle_copilot_query(update: Update, context):
+    question = update.message.text.strip()
+    if not question:
+        return COPILOT
+
+    await update.message.reply_text(t("copilot.analyzing", _lang(context)))
+
+    result = await _run_copilot(update.effective_user.id, question)
+    if result is None:
+        await update.message.reply_text(t("copilot.not_teacher", _lang(context)))
+        return ConversationHandler.END
+
+    if result.get("error"):
+        await update.message.reply_text(t("copilot.error", _lang(context)))
+        return ConversationHandler.END
+
+    text = _format_copilot_response(result, _lang(context))
+    await _reply_long(update, text, parse_mode="HTML")
+    return ConversationHandler.END
+
+
+async def _run_copilot(telegram_id: int, question: str) -> dict | None:
+    from src.core.teacher_copilot.pipeline import build_teacher_pipeline
+    from src.core.teacher_copilot.state import TeacherCopilotState
+
+    async def _fetch_user():
+        factory = async_session_factory()
+        async with factory() as session:
+            result = await session.execute(
+                select(User).where(User.telegram_id == telegram_id)
+            )
+            return result.scalar_one_or_none()
+    user = await _db_try(_fetch_user)
+    if not user or user.role != UserRole.teacher:
+        return None
+
+    try:
+        router = ModelRouter()
+        pipeline = build_teacher_pipeline(router=router)
+        state = TeacherCopilotState(
+            user_message=question,
+            teacher_id=user.id,
+        )
+        final = await pipeline.ainvoke(state)
+        await router.close()
+        return {
+            "intent": final.intent,
+            "response_text": final.response_text or final.reasoning,
+            "evidence": final.evidence,
+            "confidence": final.confidence,
+            "error": final.error,
+        }
+    except Exception as e:
+        logger.exception("copilot_run_error", telegram_id=telegram_id, error=str(e))
+        return {"error": str(e)}
+
+
+def _format_copilot_response(result: dict, language: str) -> str:
+    intent = result.get("intent", "")
+    text = result.get("response_text", "")
+
+    intent_icons = {
+        "student_analysis": "🎯",
+        "classroom_analysis": "🏫",
+        "intervention_guidance": "💡",
+        "curriculum_analysis": "📚",
+        "lesson_planning": "📋",
+        "assessment_creation": "📝",
+    }
+    icon = intent_icons.get(intent, "🤖")
+    label = intent.replace("_", " ").title()
+    header = f"{icon} {label}\n\n"
+
+    lines = [header + text]
+
+    evidence = result.get("evidence", [])
+    if evidence:
+        lines.append(f"\n📋 {t('copilot.evidence_label', language)}:")
+        from src.core.teacher_copilot.evidence_engine import EvidenceEngine
+        citations = EvidenceEngine.format_citations(evidence)
+        lines.append(f"<code>{citations}</code>")
+
+    full = "\n".join(lines)
+
+    if len(full) > 4000:
+        full = full[:3997] + "..."
+
+    return full
+
+
 def build_app() -> Application:
     from telegram.request import HTTPXRequest
     _request = HTTPXRequest(
@@ -2294,6 +2571,40 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("parent_register", register_parent))
     app.add_handler(CommandHandler("children", list_children))
     app.add_handler(CommandHandler("child_progress", child_progress))
+
+    link_handler = ConversationHandler(
+        entry_points=[CommandHandler("link", link_command)],
+        states={
+            LINK_OTP: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_link_otp),
+                CallbackQueryHandler(end_conversation, pattern="^menu$"),
+            ],
+        },
+        fallbacks=[
+            CommandHandler("cancel", cancel),
+            CommandHandler("menu", menu),
+            CallbackQueryHandler(end_conversation, pattern="^menu$"),
+        ],
+        per_user=True,
+    )
+    app.add_handler(link_handler)
+
+    copilot_handler = ConversationHandler(
+        entry_points=[CallbackQueryHandler(handle_copilot_start, pattern="^copilot$")],
+        states={
+            COPILOT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_copilot_query),
+                CallbackQueryHandler(end_conversation, pattern="^menu$"),
+            ],
+        },
+        fallbacks=[
+            CommandHandler("cancel", cancel),
+            CommandHandler("menu", menu),
+            CallbackQueryHandler(end_conversation, pattern="^menu$"),
+        ],
+        per_user=True,
+    )
+    app.add_handler(copilot_handler)
 
     quiz_handler = ConversationHandler(
         entry_points=[
@@ -2336,6 +2647,11 @@ def build_app() -> Application:
         states={
             LESSON_GRADE: [
                 CallbackQueryHandler(handle_lesson_grade, pattern="^lesson_grade_"),
+                CallbackQueryHandler(end_conversation, pattern="^menu$"),
+            ],
+            LESSON_FEATURES: [
+                CallbackQueryHandler(handle_lesson_features, pattern="^lesson_feature_"),
+                CallbackQueryHandler(handle_lesson_features, pattern="^lesson_features_done$"),
                 CallbackQueryHandler(end_conversation, pattern="^menu$"),
             ],
             LESSON_TOPIC: [
@@ -2443,6 +2759,7 @@ async def main():
         BotCommand("settings", "Notification settings"),
         BotCommand("email", "Set your email"),
         BotCommand("model", "Manage AI models"),
+        BotCommand("link", "Link teacher dashboard account"),
         BotCommand("cancel", "Cancel current operation"),
         BotCommand("menu", "Show main menu"),
     ]

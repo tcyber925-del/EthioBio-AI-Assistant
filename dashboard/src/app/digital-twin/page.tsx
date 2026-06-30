@@ -182,7 +182,7 @@ export default function DigitalTwinPage() {
           </button>
         </div>
 
-        <GamificationProfile userId={userId} />
+        {userId && <GamificationProfile userId={userId} />}
 
         {loading ? (
           <div className="flex items-center justify-center py-16">

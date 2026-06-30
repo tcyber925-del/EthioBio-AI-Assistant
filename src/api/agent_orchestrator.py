@@ -2,7 +2,7 @@
 from datetime import datetime
 
 import structlog
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from src.core.agent_orchestrator import AgentOrchestrator, build_orchestrator
 from src.llm.router import ModelRouter
@@ -107,7 +107,6 @@ async def list_capabilities():
 
 
 @router.get("/reflections", response_model=list[ReflectionInfo])
-async def list_reflections(limit: int = 20):
 async def list_reflections(limit: int = Query(20, ge=1, le=200)):
     orchestrator = _get_orchestrator()
     return [

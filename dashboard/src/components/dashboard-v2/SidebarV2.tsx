@@ -17,6 +17,7 @@ import {
   Activity,
   ClipboardCheck,
   FileText,
+  BookOpen,
   Users,
   BarChart3,
   MessageSquare,
@@ -58,6 +59,7 @@ const NAV_STRUCTURE: NavSection[] = [
     section: 'Learning',
     items: [
       { label: 'Lessons', href: '/lessons', icon: FileText, roles: ['admin', 'teacher'] },
+      { label: 'Unit Plans', href: '/unit-plans', icon: BookOpen, roles: ['admin', 'teacher'] },
       { label: 'Quizzes', href: '/quizzes', icon: ClipboardCheck, roles: ['admin', 'teacher'] },
       { label: 'Ask Q&A', href: '/ask', icon: MessageSquare, roles: ['admin', 'teacher', 'student', 'parent'] },
     ],

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { FileText, AlertTriangle, Plus, X, Loader2, CheckCircle, XCircle } from 'lucide-react'
+import { FileText, AlertTriangle, Plus, X, Loader2, CheckCircle, XCircle, Sparkles } from 'lucide-react'
 import { TableSkeleton } from '@/components/Skeleton'
 import ModelSelector from '@/components/ModelSelector'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
@@ -28,9 +28,14 @@ export default function LessonsPage() {
   const [genTopic, setGenTopic] = useState('')
   const [genDuration, setGenDuration] = useState(40)
   const [selectedModel, setSelectedModel] = useState('')
+  const [genExitTicket, setGenExitTicket] = useState(false)
+  const [genDifferentiation, setGenDifferentiation] = useState(false)
+  const [genDiagrams, setGenDiagrams] = useState(false)
+  const [genMisconceptions, setGenMisconceptions] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [genMsg, setGenMsg] = useState<string | null>(null)
   const [genStatus, setGenStatus] = useState<'success' | 'error' | null>(null)
+  const [genResult, setGenResult] = useState<any>(null)
   const t = useTranslations('lesson')
   const tc = useTranslations('common')
 
@@ -57,15 +62,25 @@ export default function LessonsPage() {
     setGenerating(true)
     setGenMsg(null)
     try {
-      await fetchWithAuth(`/lesson-plan/generate`, {
+      const data = await fetchWithAuth(`/lesson-plan/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ grade_level: genGrade, topic: genTopic, duration_minutes: genDuration, model: selectedModel }),
+        body: JSON.stringify({
+          grade_level: genGrade,
+          topic: genTopic,
+          duration_minutes: genDuration,
+          model: selectedModel,
+          generate_exit_ticket: genExitTicket,
+          generate_differentiation: genDifferentiation,
+          generate_diagram_suggestions: genDiagrams,
+          generate_misconception_activities: genMisconceptions,
+        }),
       }, 120000)
       setShowModal(false)
       setGenTopic('')
       setGenMsg(`Lesson plan created for Grade ${genGrade} - ${genTopic}`)
       setGenStatus('success')
+      setGenResult(data)
       fetchLessons()
     } catch (err: any) {
       setGenMsg(err.message)
@@ -100,7 +115,59 @@ export default function LessonsPage() {
             {genStatus === 'success' ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
             {genMsg}
           </span>
-          <button onClick={() => { setGenMsg(null); setGenStatus(null); }} className="ml-3 hover:opacity-70"><X className="w-4 h-4" /></button>
+          <div className="flex items-center gap-2">
+            {genResult && (
+              <button onClick={() => setGenResult(null)} className="text-xs underline hover:no-underline">Hide details</button>
+            )}
+            <button onClick={() => { setGenMsg(null); setGenStatus(null); setGenResult(null); }} className="ml-3 hover:opacity-70"><X className="w-4 h-4" /></button>
+          </div>
+        </div>
+      )}
+      {genResult && (
+        <div className="mb-4 bg-card border border-border rounded-xl p-4 space-y-3">
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary" /> Generated Content
+          </h3>
+          {genResult.exit_ticket && genResult.exit_ticket.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-foreground-muted uppercase mb-1">Exit Ticket ({genResult.exit_ticket.length} questions)</p>
+              <div className="space-y-1">
+                {genResult.exit_ticket.map((q: any, i: number) => (
+                  <p key={i} className="text-xs text-foreground">• {q.question_text} <span className="text-foreground-muted">({q.question_type})</span></p>
+                ))}
+              </div>
+            </div>
+          )}
+          {genResult.differentiation && genResult.differentiation.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-foreground-muted uppercase mb-1">Differentiation</p>
+              <div className="space-y-1">
+                {genResult.differentiation.map((d: any, i: number) => (
+                  <p key={i} className="text-xs text-foreground">• {d.group}: {d.description} <span className="text-foreground-muted">({d.duration_minutes}min)</span></p>
+                ))}
+              </div>
+            </div>
+          )}
+          {genResult.diagram_suggestions && genResult.diagram_suggestions.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-foreground-muted uppercase mb-1">Diagram Suggestions</p>
+              <div className="space-y-1">
+                {genResult.diagram_suggestions.map((d: any, i: number) => (
+                  <p key={i} className="text-xs text-foreground">• {d.title} <span className="text-foreground-muted">({d.diagram_type})</span></p>
+                ))}
+              </div>
+            </div>
+          )}
+          {genResult.misconception_activities && genResult.misconception_activities.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-foreground-muted uppercase mb-1">Misconception Activities</p>
+              <div className="space-y-1">
+                {genResult.misconception_activities.map((a: any, i: number) => (
+                  <p key={i} className="text-xs text-foreground">• {a.activity_name} <span className="text-foreground-muted">({a.activity_type})</span></p>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -148,8 +215,8 @@ export default function LessonsPage() {
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
-          <div className="bg-card border border-border rounded-xl shadow-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 flex items-start justify-center z-50 pt-[5vh]" onClick={() => setShowModal(false)}>
+          <div className="bg-card border border-border rounded-xl shadow-xl p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-foreground">{t('create_title')}</h2>
               <button onClick={() => setShowModal(false)} className="text-foreground-muted hover:text-foreground transition-colors"><X className="w-5 h-5" /></button>
@@ -172,6 +239,36 @@ export default function LessonsPage() {
               <div>
                 <label className="text-sm text-foreground-muted block mb-1">{t('duration_minutes')}</label>
                 <input type="number" min={20} max={120} value={genDuration} onChange={e => setGenDuration(Number(e.target.value))} className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+              </div>
+
+              <div className="border-t border-border pt-3">
+                <p className="text-xs font-medium text-foreground-muted mb-2 uppercase tracking-wide">Enhancements</p>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={genExitTicket} onChange={e => setGenExitTicket(e.target.checked)}
+                      className="w-4 h-4 rounded border-border bg-background-secondary accent-primary" />
+                    <span className="text-sm text-foreground">{t('exit_ticket')}</span>
+                    <span className="text-xs text-foreground-muted">{t('exit_ticket_hint')}</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={genDifferentiation} onChange={e => setGenDifferentiation(e.target.checked)}
+                      className="w-4 h-4 rounded border-border bg-background-secondary accent-primary" />
+                    <span className="text-sm text-foreground">{t('differentiation')}</span>
+                    <span className="text-xs text-foreground-muted">{t('differentiation_hint')}</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={genDiagrams} onChange={e => setGenDiagrams(e.target.checked)}
+                      className="w-4 h-4 rounded border-border bg-background-secondary accent-primary" />
+                    <span className="text-sm text-foreground">{t('diagram_suggestions')}</span>
+                    <span className="text-xs text-foreground-muted">{t('diagram_suggestions_hint')}</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={genMisconceptions} onChange={e => setGenMisconceptions(e.target.checked)}
+                      className="w-4 h-4 rounded border-border bg-background-secondary accent-primary" />
+                    <span className="text-sm text-foreground">{t('misconception_activities')}</span>
+                    <span className="text-xs text-foreground-muted">{t('misconception_activities_hint')}</span>
+                  </label>
+                </div>
               </div>
               <button
                 onClick={createLesson}

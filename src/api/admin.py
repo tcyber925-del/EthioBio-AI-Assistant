@@ -242,6 +242,11 @@ async def get_lesson_detail(
             "teacher_notes": lesson.teacher_notes,
             "status": lesson.status,
             "model_used": lesson.model_used,
+            "periods": lesson.periods,
+            "exit_ticket": lesson.exit_ticket,
+            "differentiation": lesson.differentiation,
+            "diagram_suggestions": lesson.diagram_suggestions,
+            "misconception_activities": lesson.misconception_activities,
             "created_at": lesson.created_at.isoformat() if lesson.created_at else None,
         }
     except ValueError:
