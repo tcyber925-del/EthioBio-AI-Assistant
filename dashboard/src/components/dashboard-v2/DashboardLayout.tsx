@@ -11,7 +11,7 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children, breadcrumbs }: DashboardLayoutProps) {
   return (
-    <>
+    <div className="flex min-h-screen flex-col">
       <header className="relative z-10 shrink-0 px-5 pt-4 pb-0 sm:px-8 lg:px-10">
         <ContextHeader items={breadcrumbs} />
       </header>
@@ -25,6 +25,6 @@ export function DashboardLayout({ children, breadcrumbs }: DashboardLayoutProps)
           {children}
         </div>
       </motion.main>
-    </>
+    </div>
   )
 }

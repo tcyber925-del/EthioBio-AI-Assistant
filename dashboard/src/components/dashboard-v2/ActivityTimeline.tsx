@@ -22,6 +22,13 @@ const TIMELINE_ICONS: Record<string, { icon: React.ElementType; accent: string; 
 
 const DEFAULT_ICON = { icon: AlertTriangle, accent: 'text-v2-text-secondary', tile: 'border-v2-border bg-v2-surface' }
 
+const TYPE_LABELS: Record<string, string> = {
+  xp: 'XP Earned',
+  quiz: 'Quiz Completed',
+  tutor: 'Tutoring Session',
+  achievement: 'Achievement Unlocked',
+}
+
 function formatTime(ts: string | null): string {
   if (!ts) return ''
   const diff = Date.now() - new Date(ts).getTime()
@@ -53,7 +60,7 @@ export function ActivityTimeline({ items }: ActivityTimelineProps) {
             const isAccentTile = item.type === 'achievement'
             return (
               <motion.div
-                key={i}
+                key={`${item.type}-${item.description}-${item.created_at ?? i}`}
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.15, delay: i * 0.03 }}
@@ -70,7 +77,7 @@ export function ActivityTimeline({ items }: ActivityTimelineProps) {
                       <Icon className="h-4 w-4" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className={`verge-label mb-1 ${isAccentTile ? 'text-v2-inverted/70' : 'text-v2-text-secondary'}`}>{item.type}</p>
+                      <p className={`verge-label mb-1 ${isAccentTile ? 'text-v2-inverted/70' : 'text-v2-text-secondary'}`}>{TYPE_LABELS[item.type] || item.type}</p>
                       <p className={`text-sm leading-relaxed ${isAccentTile ? 'text-v2-inverted' : 'text-v2-text-primary'}`}>{item.description}</p>
                     </div>
                   </div>

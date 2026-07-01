@@ -112,6 +112,8 @@ class UnitPlannerAgent(BaseAgent):
             f"Create a {days}-day unit outline for Grade {grade_level} "
             f"biology on topic: {topic}.\n"
             f"Unit title: {unit_title}\n"
+            duration_minutes=duration_minutes,
+        duration_minutes: int,
             f"Each day should be {duration_minutes} minutes.\n\n"
             f"Respond with valid JSON only."
         )

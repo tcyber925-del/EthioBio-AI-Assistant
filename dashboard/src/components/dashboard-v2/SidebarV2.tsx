@@ -132,7 +132,8 @@ export function SidebarV2() {
 
   const isActive = useCallback((href: string) => {
     if (href === '/v2/overview') return pathname === '/v2/overview' || pathname === '/v2'
-    return pathname.startsWith(href)
+    if (href === '/') return pathname === '/'
+  return pathname === href || pathname.startsWith(`${href}/`)
   }, [pathname])
 
   const handleLogout = () => {
@@ -206,6 +207,7 @@ export function SidebarV2() {
 
         <button
           onClick={() => setSearchOpen(true)}
+          aria-label="Open page search"
           className="relative mx-3 mt-4 flex h-10 items-center gap-3 rounded-[20px] border border-v2-border bg-v2-surface px-3 text-sm text-v2-text-secondary transition-colors duration-150 hover:border-v2-accent hover:text-v2-text-primary focus-visible:verge-focus"
         >
           <Search className="h-4 w-4 shrink-0" />
@@ -301,6 +303,7 @@ export function SidebarV2() {
           </div>
           <button
             onClick={handleLogout}
+            aria-label="Sign out"
             className="flex w-full items-center gap-3 rounded-[20px] border border-transparent px-3 py-2 text-sm text-v2-text-secondary transition-colors duration-150 hover:border-v2-error hover:text-v2-error focus-visible:verge-focus"
           >
             <LogOut className="h-4 w-4 shrink-0" />
@@ -339,6 +342,9 @@ export function SidebarV2() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Search pages"
             className="fixed inset-0 z-50 bg-black/60"
             onClick={() => { setSearchOpen(false); setSearchQuery('') }}
           >
@@ -358,6 +364,7 @@ export function SidebarV2() {
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     placeholder="Search pages..."
+                    aria-label="Search pages"
                     className="flex-1 bg-transparent text-sm text-v2-text-primary outline-none placeholder:text-v2-text-secondary/70"
                   />
                   <kbd className="rounded border border-v2-border px-1.5 py-0.5 font-mono text-[10px] text-v2-text-secondary">
