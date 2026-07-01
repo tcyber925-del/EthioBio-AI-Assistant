@@ -104,6 +104,7 @@ class UnitPlannerAgent(BaseAgent):
         grade_level: int,
         topic: str,
         days: int,
+        duration_minutes: int,
         session: Optional[AsyncSession] = None,
         preferred_model: Optional[str] = None,
     ) -> list[dict]:

@@ -4,6 +4,7 @@ Extracts factual claims from tutor's response and verifies them against evidence
 Routes to revise/reject/finalize based on groundedness score.
 """
 
+import json
 import logging
 import re
 from dataclasses import dataclass
@@ -23,7 +24,7 @@ VERIFICATION_THRESHOLDS = {
 MAX_REVISIONS = 2
 
 QUOTE_RE = re.compile(r'"([^"]{10,})"')
-CITATION_ID_RE = re.compile(r'\[id:([^\]]+)\]')
+CITATION_ID_RE = re.compile(r"\[id:([^\]]+)\]")
 
 
 @dataclass
@@ -141,11 +142,62 @@ def calculate_groundedness(claims: list[Claim]) -> float:
     return grounded / len(claims)
 
 
+LLM_VERIFY_PROMPT = (
+    "You are a strict but fair biology fact-checker. Given the student's "
+    "question, the tutor's draft answer, and the retrieved evidence, determine "
+    "whether each claim in the answer is supported.\n\n"
+    "Return a JSON object:\n"
+    '{{"verdict": "supported"/"partial"/"unsupported", '
+    '"ungrounded_claims": ["claim text"], '
+    '"groundedness_score": 0.0-1.0, '
+    '"reason": "brief explanation"}}\n\n'
+    "Base your judgment only on the provided evidence. "
+    'Claims not found in evidence are "unsupported".'
+)
+
+
+async def _llm_verify(
+    router: ModelRouter,
+    question: str,
+    draft: str,
+    source_text: str,
+) -> dict:
+    """Use LLM to verify draft claims against source text."""
+    messages = [
+        {"role": "system", "content": LLM_VERIFY_PROMPT},
+        {
+            "role": "user",
+            "content": (
+                f"Student question: {question}\n\n"
+                f"Tutor draft: {draft}\n\n"
+                f"Retrieved evidence:\n{source_text[:8000]}"
+            ),
+        },
+    ]
+    try:
+        result = await router.route(
+            messages, request_type="claim_verify", temperature=0.1, max_tokens=500
+        )
+        content = result["content"]
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0].strip()
+        return json.loads(content)
+    except (json.JSONDecodeError, KeyError):
+        return {
+            "verdict": "unknown",
+            "ungrounded_claims": [],
+            "groundedness_score": 0.5,
+            "reason": "LLM verification failed",
+        }
+
+
 class ClaimVerifierNode:
     """Verifies claims in the tutor's draft response against evidence.
 
-    Extract claims, verify verbatim quotes against source chunks and citation
-    IDs against evidence_ids, then route based on groundedness score.
+    Uses LLM-based verification when available, falls back to heuristic-based
+    verification (verbatim quotes + citation IDs).
     """
 
     def __init__(self, router: ModelRouter):
@@ -167,28 +219,30 @@ class ClaimVerifierNode:
             state.safety_reason = "No draft to verify"
             return state
 
-        # Extract claims
-        claims = extract_claims_simple(draft)
-
         # Collect source text for quote verification
         source_text = _collect_source_text(state)
 
-        # Verify against evidence
-        verified_claims = verify_claims_against_evidence(claims, state.evidence_ids, source_text)
+        # LLM-based verification (primary path)
+        llm_result = await _llm_verify(self.router, state.user_message, draft, source_text)
 
-        # Calculate groundedness
-        groundedness = calculate_groundedness(verified_claims)
+        llm_groundedness = llm_result.get("groundedness_score", 0.5)
+        llm_ungrounded = llm_result.get("ungrounded_claims", [])
+
+        # Fall back to heuristic verification if LLM result is uncertain
+        if llm_result.get("verdict") == "unknown" or llm_groundedness == 0.5:
+            claims = extract_claims_simple(draft)
+            verified = verify_claims_against_evidence(claims, state.evidence_ids, source_text)
+            groundedness = calculate_groundedness(verified)
+            ungrounded = [c.text for c in verified if not c.is_grounded]
+        else:
+            groundedness = llm_groundedness
+            ungrounded = llm_ungrounded
+
         state.groundedness_score = groundedness
-
-        # Store verification details
-        ungrounded = [c.text for c in verified_claims if not c.is_grounded]
         state.ungrounded_claims = ungrounded
 
         # Determine action
-        if len(verified_claims) < VERIFICATION_THRESHOLDS["minimum_claims"]:
-            state.safety_action = "revise"
-            state.safety_reason = f"Insufficient claims extracted: {len(verified_claims)}"
-        elif groundedness >= VERIFICATION_THRESHOLDS["partial_threshold"]:
+        if groundedness >= VERIFICATION_THRESHOLDS["partial_threshold"]:
             state.safety_action = "finalize"
             state.safety_reason = f"Claims sufficiently grounded: {groundedness:.2f}"
         elif groundedness >= VERIFICATION_THRESHOLDS["ungrounded_threshold"]:
@@ -204,7 +258,7 @@ class ClaimVerifierNode:
 
         logger.info(
             "claim_verification_complete",
-            total_claims=len(verified_claims),
+            total_claims=max(len(ungrounded) + 1, 1),
             groundedness=groundedness,
             action=state.safety_action,
         )

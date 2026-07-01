@@ -11,6 +11,10 @@ from src.core.memory.session_manager import SessionManager
 from src.database.models import User
 from src.database.session import async_session_factory, get_session
 from src.graph.orchestrator import run_graph
+from src.guardrails.input.conversation_context import ConversationTracker
+from src.guardrails.input.prompt_injection import PromptInjectionDetector
+from src.guardrails.input.sanitizer import InputSanitizer
+from src.guardrails.output import OutputGuardrailRunner
 from src.schemas.chat import TutorRequest, TutorResponse
 from src.schemas.common import LanguageEnum
 
@@ -21,9 +25,36 @@ session_manager = SessionManager()
 context_assembler = ContextAssembler()
 context_adapter = TutorContextAdapter()
 
+input_sanitizer = InputSanitizer()
+prompt_injection_detector = PromptInjectionDetector()
+conversation_tracker = ConversationTracker()
+output_guardrails = OutputGuardrailRunner()
+
 
 @router.post("", response_model=TutorResponse)
 async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_session)):
+    # Input guardrails — sanitize, injection detect, conversation context
+    sanitized = input_sanitizer.sanitize(request.question)
+    if not input_sanitizer.validate_length(sanitized):
+        raise HTTPException(status_code=400, detail="Message is empty after sanitization")
+
+    inj_result = prompt_injection_detector.check(sanitized)
+    if request.user_id:
+        conv_ctx = conversation_tracker.get_or_create(str(request.user_id))
+        multi_turn_conf = conv_ctx.check_multiturn_attack(sanitized)
+        conv_ctx.add_turn(sanitized)
+    else:
+        multi_turn_conf = 0.0
+
+    if inj_result.detected or multi_turn_conf >= 0.7:
+        logger.warning(
+            "input_guardrail_triggered",
+            injection_detected=inj_result.detected,
+            injection_pattern=inj_result.pattern_match,
+            multi_turn_confidence=multi_turn_conf,
+        )
+        raise HTTPException(status_code=403, detail="Message blocked by content safety filter")
+
     effective_language = request.language
     if request.user_id and effective_language == LanguageEnum.EN:
         result = await session.execute(
@@ -39,7 +70,9 @@ async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_
         conversation_messages: list[dict] = []
         if request.user_id:
             mem_session = await session_manager.get_or_create_active_session(
-                request.user_id, topic=request.topic, db=session,
+                request.user_id,
+                topic=request.topic,
+                db=session,
             )
             if mem_session:
                 memory_context = await context_assembler.assemble(
@@ -51,7 +84,9 @@ async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_
                         "tutoring_mode": mem_session.tutoring_mode,
                         "educational_context": mem_session.educational_context,
                         "unresolved_questions": mem_session.unresolved_questions,
-                    } if mem_session else None,
+                    }
+                    if mem_session
+                    else None,
                     socratic_state=None,
                 )
                 conversation_messages = session_manager.get_messages(mem_session)
@@ -60,14 +95,16 @@ async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_
         if request.user_id:
             try:
                 package = await context_adapter.build(
-                    session, request.user_id, current_topic=request.topic,
+                    session,
+                    request.user_id,
+                    current_topic=request.topic,
                 )
                 learner_profile_block = package.formatted_block
             except Exception:
                 logger.warning("tutor_context_build_failed", user_id=str(request.user_id))
 
         result = await run_graph(
-            user_message=request.question,
+            user_message=sanitized,
             user_id=request.user_id,
             grade_level=request.grade_level,
             topic=request.topic,
@@ -82,6 +119,11 @@ async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_
             messages=conversation_messages,
             db_session_factory=async_session_factory,
         )
+
+        output_check = output_guardrails.check(result.answer or "", topic=request.topic)
+        if output_check.blocked:
+            logger.warning("output_guardrail_triggered", reasons=output_check.reasons)
+            raise HTTPException(status_code=422, detail="Response blocked by output safety filter")
 
         if mem_session:
             conversation_messages.append({"role": "user", "content": request.question})
@@ -102,6 +144,7 @@ async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_
                 from src.agents.diagram_tutor_integration import (
                     generate_tutor_diagram,
                 )
+
                 diagram_data = await generate_tutor_diagram(
                     question=request.question,
                     topic=request.topic,
@@ -118,15 +161,20 @@ async def chat_tutor(request: TutorRequest, session: AsyncSession = Depends(get_
             await update_streak(request.user_id, session)
             xp_amount = XP_SOURCES.get("tutor_interaction", 5)
             gam, _, level_up = await award_xp(
-                request.user_id, "tutor_interaction", xp_amount,
-                {"question_topic": request.topic or ""}, session,
+                request.user_id,
+                "tutor_interaction",
+                xp_amount,
+                {"question_topic": request.topic or ""},
+                session,
             )
             xp_awarded = xp_amount
             new_level = gam.level if level_up else 0
             await check_achievements(request.user_id, gam, session)
         return TutorResponse(
             answer=result.answer,
-            language=effective_language.value if hasattr(effective_language, 'value') else str(effective_language),
+            language=effective_language.value
+            if hasattr(effective_language, "value")
+            else str(effective_language),
             sources=result.sources,
             model_used=result.model_used,
             confidence=result.confidence,

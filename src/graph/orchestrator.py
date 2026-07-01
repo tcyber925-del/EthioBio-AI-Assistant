@@ -19,7 +19,7 @@ from src.graph.nodes.orchestrator import OrchestratorNode, needs_retrieval
 from src.graph.nodes.plan_executor import PlanExecutor
 from src.graph.nodes.planner import PlannerNode
 from src.graph.nodes.retrieval import RetrievalNode, SkipRetrievalNode
-from src.graph.nodes.safety import SafetyNode
+from src.graph.nodes.safety import SafetyNode, should_revise
 from src.graph.nodes.sufficient_context import SufficientContextNode, route_after_sufficiency
 from src.graph.nodes.synthesis import SynthesisNode
 from src.graph.nodes.tutor import TutorNode
@@ -50,9 +50,14 @@ def build_agentic_graph(
 
     workflow.add_node("orchestrator", OrchestratorNode(router))
     workflow.add_node("planner", PlannerNode(router))
-    workflow.add_node("plan_executor", PlanExecutor(
-        adapter, router=router, db_session_factory=db_session_factory,
-    ))
+    workflow.add_node(
+        "plan_executor",
+        PlanExecutor(
+            adapter,
+            router=router,
+            db_session_factory=db_session_factory,
+        ),
+    )
     workflow.add_node("evidence_graph", EvidenceGraphNode(db_session_factory=db_session_factory))
     workflow.add_node("sufficient_context", SufficientContextNode())
     workflow.add_node("synthesis", SynthesisNode(router))
@@ -89,7 +94,11 @@ def build_agentic_graph(
         {"finalize": "safety", "revise": "tutor", "reject": "safety"},
     )
 
-    workflow.add_edge("safety", END)
+    workflow.add_conditional_edges(
+        "safety",
+        should_revise,
+        {"finalize": END, "revise": "tutor", "reject": END},
+    )
 
     return workflow.compile()
 
@@ -173,11 +182,14 @@ async def run_graph(
             "evidence_count": len(result.get("evidence_ids", [])),
         }
         await pipeline_monitor.finalize_trace(
-            trace.trace_id, "completed", metadata=metadata,
+            trace.trace_id,
+            "completed",
+            metadata=metadata,
         )
     except Exception as e:
         await pipeline_monitor.finalize_trace(
-            trace.trace_id, "failed",
+            trace.trace_id,
+            "failed",
             metadata={"user_message": initial_state.user_message, "error": str(e)},
         )
         raise
@@ -248,9 +260,14 @@ def build_unified_graph(
 
     # Agentic pipeline nodes
     workflow.add_node("planner", PlannerNode(router))
-    workflow.add_node("plan_executor", PlanExecutor(
-        adapter, router=router, db_session_factory=db_session_factory,
-    ))
+    workflow.add_node(
+        "plan_executor",
+        PlanExecutor(
+            adapter,
+            router=router,
+            db_session_factory=db_session_factory,
+        ),
+    )
     workflow.add_node("evidence_graph", EvidenceGraphNode(db_session_factory=db_session_factory))
     workflow.add_node("sufficient_context", SufficientContextNode())
     workflow.add_node("synthesis", SynthesisNode(router))
@@ -298,8 +315,12 @@ def build_unified_graph(
         {"finalize": "safety", "revise": "tutor", "reject": "safety"},
     )
 
-    # Safety
-    workflow.add_edge("safety", END)
+    # Safety — conditional edge for revision loop
+    workflow.add_conditional_edges(
+        "safety",
+        should_revise,
+        {"finalize": END, "revise": "tutor", "reject": END},
+    )
 
     return workflow.compile()
 

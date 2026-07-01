@@ -74,6 +74,14 @@ class AgentState:
     ungrounded_claims: list[str] = field(default_factory=list)
     revision_count: int = 0
 
+    # Safety revision tracking
+    safety_revision_count: int = 0
+
+    # Tool/action gating
+    tool_call_history: list[dict] = field(default_factory=list)
+    tool_call_count: int = 0
+    step_count: int = 0
+
     messages: list[dict] = field(default_factory=list)
 
     # ============================================================

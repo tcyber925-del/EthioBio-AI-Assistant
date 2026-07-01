@@ -1,0 +1,6 @@
+# label|||query|||response|||context
+CLEAN|||What is mitosis?|||Mitosis is the process of cell division that produces two identical daughter cells.|||
+CLEAN|||What are the 5 kingdoms of life?|||The 5 kingdoms are Monera, Protista, Fungi, Plantae, and Animalia.|||
+CLEAN|||Explain the food chain.|||A food chain shows the flow of energy from producers to consumers to decomposers in an ecosystem.|||
+CLEAN|||What is the function of enzymes?|||Enzymes are biological catalysts that speed up chemical reactions in living organisms.|||
+CLEAN|||What is natural selection?|||Natural selection is the process by which organisms better adapted to their environment tend to survive and produce more offspring.|||
