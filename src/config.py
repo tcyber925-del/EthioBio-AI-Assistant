@@ -57,7 +57,51 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 480
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "case_sensitive": False, "extra": "ignore"}
+    # Guardrail settings
+    rate_limit_enabled: bool = True
+    rate_limit_user_max: int = 60
+    rate_limit_user_window: int = 60
+    rate_limit_ip_max: int = 120
+    rate_limit_ip_window: int = 60
+    rate_limit_global_max: int = 1000
+    rate_limit_global_window: int = 60
+
+    input_sanitize_enabled: bool = True
+    input_max_length: int = 2000
+
+    prompt_injection_enabled: bool = True
+    prompt_injection_threshold: float = 0.7
+
+    output_toxicity_enabled: bool = True
+    output_pii_detection_enabled: bool = True
+    output_topic_enforcement_enabled: bool = True
+
+    tool_guard_enabled: bool = True
+
+    drift_monitor_enabled: bool = True
+    drift_monitor_window: int = 1000
+    drift_alert_threshold: float = 0.05
+
+    # Observability settings
+    otel_service_name: str = "ethiobio"
+    otel_endpoint: Optional[str] = None
+    otel_traces_sampling_rate: float = 1.0
+
+    observability_metrics_enabled: bool = True
+    observability_health_enabled: bool = True
+    observability_alerting_enabled: bool = True
+
+    eval_enabled: bool = True
+    eval_sampling_rate: float = 0.15
+    eval_judge_model: str = "gpt-4o-mini"
+    eval_drift_threshold: float = 0.10
+
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "case_sensitive": False,
+        "extra": "ignore",
+    }
 
 
 settings = Settings()

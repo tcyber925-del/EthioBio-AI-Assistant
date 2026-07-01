@@ -25,14 +25,16 @@ class HallucinationDetector:
         evidence_items: list[dict],
     ) -> HallucinationReport:
         if not citation_map:
-            return HallucinationReport(
-                supported_claims=0,
-                unsupported_claims=0,
-                hallucination_rate=0.0,
-                grounding_score=1.0,
-                claim_assessments=[],
-                detection_mode=self.mode,
-            )
+            if evidence_items:
+                citation_map = [
+                    {
+                        "claim": item.get("content", "")[:200],
+                        "evidence_id": item.get("id", f"ev{idx}"),
+                        "source": item.get("metadata", {}).get("source", ""),
+                    }
+                    for idx, item in enumerate(evidence_items)
+                    if item.get("content")
+                ]
 
         if self.mode == DetectionMode.STRUCTURAL:
             return structural_check(citation_map, evidence_items)

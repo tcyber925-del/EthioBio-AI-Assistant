@@ -6,7 +6,9 @@ from pathlib import Path
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
+from redis.asyncio import Redis
 
 from src.api import (
     activity,
@@ -60,22 +62,49 @@ async def _save_trace_from_pipeline(trace, repo):
             end_time=end,
             error=trace.error,
             nodes_visited=trace.nodes_visited,
-            node_timings={
-                k: v for k, v in trace.node_timings.items()
-                if not k.endswith("_start")
+            node_timings={k: v for k, v in trace.node_timings.items() if not k.endswith("_start")},
+            metadata={
+                k: v for k, v in trace.metadata.items() if k not in ("user_message", "response")
             },
-            metadata={k: v for k, v in trace.metadata.items()
-                      if k not in ("user_message", "response")},
             duration_ms=trace.duration_ms,
         )
     except Exception:
         logger.exception("trace_persist_failed", trace_id=trace.trace_id)
 
 
+_eval_judge = None
+_eval_sampler = None
+
+
+async def _evaluate_trace(trace):
+    global _eval_judge, _eval_sampler
+    from src.observability.evaluation.judge import LLMJudge
+    from src.observability.evaluation.sampler import EvalSampler
+    from src.observability.evaluation.writer import evaluate_and_write
+
+    if _eval_sampler is None:
+        _eval_sampler = EvalSampler()
+    user_message = trace.metadata.get("user_message", "")
+    response = trace.metadata.get("response", "")
+    if not user_message or not response:
+        return
+    context = trace.metadata.get("context", "")
+    is_error = trace.status == "failed"
+    if not _eval_sampler.should_evaluate(is_error=is_error):
+        return
+    if _eval_judge is None:
+        _eval_judge = LLMJudge()
+    try:
+        await evaluate_and_write(_eval_judge, user_message, response, context)
+    except Exception:
+        logger.exception("eval_trace_failed", trace_id=trace.trace_id)
+
+
 def _preload_models():
     """Preload sentence-transformer models at startup."""
     from src.rag.embedder import _get_or_create_sentence_transformer
     from src.retrieval.reranker import _get_or_create_cross_encoder
+
     _get_or_create_sentence_transformer()
     _get_or_create_cross_encoder()
     logger.info("embedding_models_preloaded")
@@ -86,11 +115,37 @@ async def lifespan(app: FastAPI):
     logger.info("app_starting", name=settings.app_name)
     await init_db()
     _preload_models()
+    from src.guardrails.startup import run_startup_checks
+
+    warnings = await run_startup_checks()
+    if warnings:
+        logger.warning("startup_checks_completed", warning_count=len(warnings))
+
+    from src.observability.instrumentation import init_openllmetry, init_otel
+
+    init_otel()
+    init_openllmetry()
+
+    from src.observability.health import health_registry as _health_registry
+
+    if _health_registry:
+        guardrail_modules = [
+            "rate_limiter", "input_sanitizer", "prompt_injection",
+            "conversation_context", "toxicity", "topic_enforcer",
+            "pii_scanner", "tool_guard", "safety_node",
+            "claim_verifier", "hallucination_detector",
+        ]
+        for name in guardrail_modules:
+            _health_registry.register(name)
+
     repo = TraceRepository(async_session_factory)
+
+    async def _on_trace_complete(trace):
+        await _save_trace_from_pipeline(trace, repo)
+        asyncio.create_task(_evaluate_trace(trace))
+
     pipeline_monitor.set_on_complete(
-        lambda trace: asyncio.create_task(
-            _save_trace_from_pipeline(trace, repo)
-        )
+        lambda trace: asyncio.create_task(_on_trace_complete(trace))
     )
     yield
     await close_db()
@@ -103,9 +158,22 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+_redis = Redis.from_url(settings.redis_url)
+from src.guardrails.input.middleware import add_rate_limit_middleware
+add_rate_limit_middleware(app, _redis)
+
+_dev_origins = [
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:8000",
+]
+_allowed = (
+    [settings.dashboard_url] if settings.dashboard_url and not settings.debug else _dev_origins
+)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.dashboard_url, "*"],
+    allow_origins=_allowed,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -143,6 +211,7 @@ diagram_static_dir = Path("data/diagrams")
 diagram_static_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/diagrams/static", StaticFiles(directory=str(diagram_static_dir)), name="diagrams")
 
+
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
     router = ModelRouter()
@@ -154,8 +223,27 @@ async def health_check():
     )
 
 
+@app.get("/health/modules")
+async def health_modules():
+    from src.observability.health import health_registry
+
+    if not health_registry:
+        return {"overall_status": "disabled", "uptime_seconds": 0, "modules": []}
+    return health_registry.to_dict(include_details=True)
+
+
+@app.get("/metrics", response_class=PlainTextResponse)
+async def metrics_endpoint():
+    from src.observability.metrics import registry
+
+    if not registry:
+        return "# No metrics registry (disabled)\n"
+    return registry.prometheus_text()
+
+
 def run():
     import uvicorn
+
     uvicorn.run("src.main:app", host="0.0.0.0", port=8000, reload=settings.debug)
 
 

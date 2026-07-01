@@ -1,0 +1,74 @@
+{
+  "__inputs": [],
+  "__requires": [],
+  "title": "EthioBio Overview",
+  "version": 1,
+  "timezone": "browser",
+  "panels": [
+    {
+      "title": "Guardrail Invocations",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(guardrail_invocations[5m]))",
+          "legendFormat": "rate"
+        }
+      ],
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 }
+    },
+    {
+      "title": "Guardrail Invocations by Module",
+      "type": "bargauge",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum by (module) (guardrail_invocations)",
+          "legendFormat": "{{module}}"
+        }
+      ],
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 }
+    },
+    {
+      "title": "Eval Scores",
+      "type": "gauge",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "gen_ai_evaluation_faithfulness_score",
+          "legendFormat": "faithfulness"
+        }
+      ],
+      "gridPos": { "h": 6, "w": 4, "x": 12, "y": 0 }
+    },
+    {
+      "title": "Guardrail Duration",
+      "type": "graph",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "guardrail_toxicity_detector_duration_ms",
+          "legendFormat": "toxicity"
+        },
+        {
+          "expr": "guardrail_prompt_injection_duration_ms",
+          "legendFormat": "prompt_injection"
+        }
+      ],
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 6 }
+    },
+    {
+      "title": "Health Status",
+      "type": "table",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "guardrail_invocations",
+          "legendFormat": "{{module}}"
+        }
+      ],
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 6 }
+    }
+  ],
+  "schemaVersion": 27
+}

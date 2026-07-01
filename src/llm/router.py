@@ -4,12 +4,23 @@ import time
 from typing import Optional
 
 import structlog
+from opentelemetry import trace
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.models import ModelRoutingLog
 from src.llm.manager import ProviderManager
 from src.llm.ollama_client import OllamaClient
 from src.llm.registry import ModelRegistry
+from src.observability.tracing import (
+    GEN_AI_OPERATION_NAME,
+    GEN_AI_PROVIDER_NAME,
+    GEN_AI_REQUEST_MODEL,
+    GEN_AI_REQUEST_TEMPERATURE,
+    GEN_AI_RESPONSE_FINISH_REASONS,
+    GEN_AI_USAGE_INPUT_TOKENS,
+    GEN_AI_USAGE_OUTPUT_TOKENS,
+    tracer,
+)
 
 logger = structlog.get_logger()
 
@@ -63,14 +74,29 @@ class ModelRouter:
         fallback_triggered = False
 
         try:
-            result = await self._manager.route(
-                messages=messages,
-                request_type=request_type,
-                session=session,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                preferred_model=preferred_model,
-            )
+            with tracer.start_as_current_span("chat llm") as span:
+                span.set_attribute(GEN_AI_OPERATION_NAME, "chat")
+                span.set_attribute(GEN_AI_REQUEST_TEMPERATURE, temperature)
+
+                result = await self._manager.route(
+                    messages=messages,
+                    request_type=request_type,
+                    session=session,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    preferred_model=preferred_model,
+                )
+
+                model_name = result.get("model", "unknown")
+                span.set_attribute(GEN_AI_REQUEST_MODEL, model_name)
+                span.set_attribute(GEN_AI_PROVIDER_NAME, request_type)
+                if "usage" in result:
+                    usage = result["usage"]
+                    span.set_attribute(GEN_AI_USAGE_INPUT_TOKENS, usage.get("prompt_tokens", 0))
+                    span.set_attribute(GEN_AI_USAGE_OUTPUT_TOKENS, usage.get("completion_tokens", 0))
+                span.set_attribute(GEN_AI_RESPONSE_FINISH_REASONS, ["stop"])
+                span.update_name(f"chat {model_name}")
+
             confidence = self._estimate_confidence(result["content"])
 
             if session:

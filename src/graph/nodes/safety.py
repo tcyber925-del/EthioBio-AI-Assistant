@@ -1,13 +1,14 @@
 """Safety node — runs self-check on generated content."""
 
+import asyncio
 import json
 import re
 
 from src.graph.state import AgentState
 from src.llm.router import ModelRouter
 
-SAFETY_PROMPT = """You are EthioBio Safety Agent. Review the following biology content for:
-1. Factual accuracy
+SAFETY_PROMPT_EN = """You are EthioBio Safety Agent. Review the following biology content for:
+1. Factual accuracy (check names, processes, numbers)
 2. Grade-appropriateness
 3. Safety (no harmful content)
 4. Curriculum alignment
@@ -16,6 +17,20 @@ SAFETY_PROMPT = """You are EthioBio Safety Agent. Review the following biology c
 
 Respond with ONLY a JSON object:
 {{"safe": true/false, "issues": ["issue1"], "score": 0.0-1.0, "suggestions": ["suggestion"]}}"""
+
+SAFETY_PROMPT_AM = """እርስዎ የEthioBio ደህንነት ተቆጣጣሪ ነዎት። የሚከተለውን የባዮሎጂ ይዘት ይገምግሙ፡
+1. ትክክለኛነት (ስሞች፣ ሂደቶች፣ ቁጥሮች)
+2. የክፍል ደረጃ ተገቢነት
+3. ደህንነት (ምንም ጎጂ ይዘት የለም)
+4. ከሥርዓተ ትምህርት ጋር መጣጣም
+5. ግልጽነት
+6. የቋንቋ ጥራት (ትክክለኛ {language})
+
+በJSON ብቻ ይመልሱ፦
+{{"safe": true/false, "issues": ["issue1"], "score": 0.0-1.0, "suggestions": ["suggestion"]}}"""
+
+MAX_RETRIES = 2
+RETRY_DELAY = 0.5
 
 # Citation pattern: (Grade X, Unit Y: Title, Section N.N: Name, p. Z)
 CITATION_RE = re.compile(
@@ -68,9 +83,7 @@ def _verify_citations(text: str, grade_level: int | None = None) -> list[str]:
             if len(parts) >= 2:
                 section_unit = parts[0]
                 if section_unit != cited_unit:
-                    issues.append(
-                        f"Section {cited_section} does not belong to Unit {cited_unit}"
-                    )
+                    issues.append(f"Section {cited_section} does not belong to Unit {cited_unit}")
     return issues
 
 
@@ -90,7 +103,7 @@ def _verify_verbatim_quotes(response: str, state: AgentState) -> list[str]:
     for q in quotes:
         if _normalize(q) not in normalized_sources:
             truncated = q[:100] + "..." if len(q) > 100 else q
-            issues.append(f"Quote not found in curriculum: \"{truncated}\"")
+            issues.append(f'Quote not found in curriculum: "{truncated}"')
     return issues
 
 
@@ -100,10 +113,11 @@ class SafetyNode:
 
     async def __call__(self, state: AgentState) -> AgentState:
         grade_context = f" (Grade {state.grade_level})" if state.grade_level else ""
-        lang_names = {"en": "English", "am": "Amharic",
-                       "both": "English/Amharic"}
+        lang_names = {"en": "English", "am": "አማርኛ", "both": "English/አማርኛ"}
         lang_name = lang_names.get(state.language, "English")
-        safety_prompt = SAFETY_PROMPT.format(language=lang_name)
+
+        prompt_template = SAFETY_PROMPT_EN if state.language == "en" else SAFETY_PROMPT_AM
+        safety_prompt = prompt_template.format(language=lang_name)
 
         messages = [
             {"role": "system", "content": safety_prompt},
@@ -113,25 +127,30 @@ class SafetyNode:
             },
         ]
 
-        result = await self.router.route(
-            messages, request_type="safety_check", temperature=0.1, max_tokens=500
-        )
+        for attempt in range(MAX_RETRIES + 1):
+            try:
+                result = await self.router.route(
+                    messages, request_type="safety_check", temperature=0.1, max_tokens=500
+                )
 
-        try:
-            content = result["content"]
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0].strip()
-            elif "```" in content:
-                content = content.split("```")[1].split("```")[0].strip()
+                content = result["content"]
+                if "```json" in content:
+                    content = content.split("```json")[1].split("```")[0].strip()
+                elif "```" in content:
+                    content = content.split("```")[1].split("```")[0].strip()
 
-            parsed = json.loads(content)
-            state.safe = parsed.get("safe", True)
-            state.safety_issues = parsed.get("issues", [])
-            state.safety_score = parsed.get("score", 1.0)
-        except (json.JSONDecodeError, KeyError):
-            state.safe = True
-            state.safety_issues = []
-            state.safety_score = 1.0
+                parsed = json.loads(content)
+                state.safe = parsed.get("safe", True)
+                state.safety_issues = parsed.get("issues", [])
+                state.safety_score = parsed.get("score", 1.0)
+                break
+            except (json.JSONDecodeError, KeyError):
+                if attempt < MAX_RETRIES:
+                    await asyncio.sleep(RETRY_DELAY * (attempt + 1))
+                else:
+                    state.safe = False
+                    state.safety_issues = ["Safety check failed after retries"]
+                    state.safety_score = 0.0
 
         # Citation verification — catch hallucinated textbook references
         citation_issues = _verify_citations(state.draft, state.grade_level)
@@ -150,6 +169,7 @@ class SafetyNode:
                 state.safe = False
 
         if not state.safe or state.safety_score < 0.6:
+            state.safety_revision_count += 1
             state.requires_teacher_review = True
             state.status = "needs_review"
         else:
@@ -162,5 +182,7 @@ def should_revise(state: AgentState) -> str:
     if not state.safe and state.safety_score < 0.4:
         return "reject"
     if not state.safe or state.safety_score < 0.7:
-        return "revise"
+        if state.safety_revision_count < 2:
+            return "revise"
+        return "reject"
     return "finalize"

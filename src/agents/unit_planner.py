@@ -104,6 +104,7 @@ class UnitPlannerAgent(BaseAgent):
         grade_level: int,
         topic: str,
         days: int,
+        duration_minutes: int,
         session: Optional[AsyncSession] = None,
         preferred_model: Optional[str] = None,
     ) -> list[dict]:
@@ -111,8 +112,6 @@ class UnitPlannerAgent(BaseAgent):
             f"Create a {days}-day unit outline for Grade {grade_level} "
             f"biology on topic: {topic}.\n"
             f"Unit title: {unit_title}\n"
-            duration_minutes=duration_minutes,
-        duration_minutes: int,
             f"Each day should be {duration_minutes} minutes.\n\n"
             f"Respond with valid JSON only."
         )

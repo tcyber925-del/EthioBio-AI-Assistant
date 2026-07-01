@@ -111,8 +111,21 @@ src/
 │   └── diagram_extractor.py    # Diagram extraction from textbooks
 ├── evaluation/
 │   └── ragas_test.py           # Ragas evaluation + heuristic fallback + gold dataset
-└── observability/
-    └── tracing.py              # LangSmith tracing (optional)
+├── observability/
+│   ├── tracing.py              # OTel span helpers + GenAI semconv constants
+│   ├── metrics.py              # Counter/Gauge/Histogram registry + Prometheus text export
+│   ├── structured_logging.py   # Consistent log_event schema via structlog
+│   ├── health.py               # ModuleHealthRegistry for per-module health checks
+│   ├── alerting.py             # Threshold-driven alert manager
+│   ├── instrumentation.py      # OTel SDK init + OpenLLMetry (optional, requires TRACELOOP_API_KEY)
+│   ├── guardrail_instrumentation.py  # @observe_guardrail decorator
+│   └── evaluation/             # Async eval pipeline (sampler, LLM judge, drift, datasets)
+│       ├── sampler.py
+│       ├── judge.py
+│       ├── writer.py
+│       ├── drift.py
+│       ├── runner.py
+│       └── datasets/
 dashboard/                      # Next.js teacher dashboard (7 routes)
 scripts/
 ├── ingest_curriculum.py        # PDF → ChromaDB + BM25 ingestion with Docling/OCR
@@ -257,7 +270,9 @@ Key environment variables (see `.env.example` for full list):
 | `FALLBACK_PROVIDER` | Fallback provider | `openai` or `anthropic` |
 | `FALLBACK_API_KEY` | Fallback API key | (required if fallback enabled) |
 | `VECTOR_STORE_PATH` | ChromaDB persist directory | `./data/vectors_new` |
-| `LANGCHAIN_API_KEY` | LangSmith tracing | (optional) |
+| `OTEL_ENDPOINT` | OTLP gRPC endpoint | (optional, e.g. `http://jaeger:4317`) |
+| `OTEL_SERVICE_NAME` | OTel service name | `ethiobio-ai-assistant` |
+| `TRACELOOP_API_KEY` | OpenLLMetry API key | (optional — set to enable auto-instrumentation) |
 | `API_BASE_URL` | Backend API URL for Telegram bot | `http://app:8000` |
 | `PROVIDER_OPENAI_COMPATIBLE_NAME` | OpenAI-compatible provider name | (optional) |
 | `PROVIDER_OPENAI_COMPATIBLE_URL` | OpenAI-compatible provider URL | (optional) |
@@ -322,6 +337,8 @@ Key environment variables (see `.env.example` for full list):
 | GET | `/activity/{user_id}` | Activity | Get recent activity feed |
 | GET | `/graph/traces` | Graph | List recent pipeline traces |
 | GET | `/graph/traces/{trace_id}` | Graph | Get specific trace details |
+| GET | `/health/modules` | — | Per-module health status (guardrails, eval) |
+| GET | `/metrics` | — | Prometheus-format metrics export |
 
 ## Agentic RAG Pipeline
 
@@ -483,7 +500,22 @@ pip install datasets ragas
 python -c "from src.evaluation.ragas_test import run_evaluation; import asyncio; asyncio.run(run_evaluation())"
 ```
 
-Set `LANGCHAIN_API_KEY` to enable LangSmith tracing.
+Set `OTEL_ENDPOINT` to export traces to Jaeger or another OTLP collector.
+Set `TRACELOOP_API_KEY` to enable OpenLLMetry auto-instrumentation (optional).
+
+## Observability Stack
+
+The project ships with a full observability stack in `docker-compose.yml`:
+
+| Service | Port | Credentials |
+|---------|------|-------------|
+| Jaeger (traces) | `:16686` | — |
+| Prometheus (metrics) | `:9090` | — |
+| Grafana (dashboards) | `:3001` | `admin` / `ethiobio` |
+
+- **Traces**: OTel spans exported via OTLP gRPC (`:4317`) to Jaeger. GenAI semantic conventions for LLM calls.
+- **Metrics**: Prometheus-format at `/metrics` (counters, gauges, histograms). Scraped by Prometheus on 15s interval.
+- **Dashboards**: Pre-built Grafana dashboard auto-provisioned in `grafana/dashboards/`.
 
 ## Bug Fixes Applied
 
@@ -530,12 +562,12 @@ pip install datasets ragas
 python -c "from src.evaluation.ragas_test import run_evaluation; import asyncio; print(asyncio.run(run_evaluation(...)))"
 ```
 
-Set `LANGCHAIN_API_KEY` to enable LangSmith tracing.
+Set `OTEL_ENDPOINT` and `TRACELOOP_API_KEY` to enable tracing (optional).
 
 ## Deployment
 
 1. Configure `.env` with production values (secret keys, tokens)
-2. Start PostgreSQL + Redis: `docker compose up -d postgres redis`
+2. Start infrastructure: `docker compose up -d postgres redis jaeger prometheus grafana`
 3. Ingest curriculum: `python scripts/ingest_curriculum.py`
 4. Start API: `python -m uvicorn src.main:app --host 0.0.0.0 --port 8000`
 5. Start bot: `python -m src.telegram.bot`
@@ -546,8 +578,8 @@ Set `LANGCHAIN_API_KEY` to enable LangSmith tracing.
 
 | Metric | Value |
 |--------|-------|
-| Python source files | 90 |
-| Total Python lines | ~68,600 |
+| Python source files | 97 |
+| Total Python lines | ~70,500 |
 | Database models | 31 |
 | Providers | 3 (Ollama, OpenAI, Anthropic) + extensible |
 | Agents | 14 (Tutor, Quiz, LessonPlanner, Safety, Translator, StudentProgress, ParentSummary, Orchestrator, Diagram, RecoveryAgent, SpacedRepetition, WeakTopicDetection, AdaptiveQuiz, Base) |
