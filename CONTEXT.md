@@ -41,14 +41,33 @@ Flat JSONB column on `memory_events.event_metadata` rather than normalized `memo
 ## Teacher Copilot Pipeline (PRD-004)
 New LangGraph pipeline at `src/core/teacher_copilot/` with dedicated nodes for intent routing, educational reasoning, evidence engine, and response generation. Separate from the student tutoring pipeline but reuses shared infrastructure (memory layer, knowledge graph, learning intelligence, evidence graph). The pipeline supports 5 MVP Copilot Skills: Student Intelligence, Classroom Intelligence, Intervention Guidance, Curriculum Analysis, and Assessment Generation. Not a thin REST wrapper — the pipeline handles multi-source reasoning chains that cross memory, graph, and analytics boundaries.
 
+**Pipeline Bugfix:** The original pipeline had `GatherDataNode` returning empty evidence (`[]`) and `ReasonNode` passing `None`/`[]` for all educational data. Both are now wired to `EvidenceEngine.gather_evidence()` (via `async_session_factory` for DB access) and pass structured data through the state to `ReasoningEngine.reason()`. The backend API also gained `GET /recovery/last-plan` at `src/api/recovery.py` for frontend convenience.
+
 ## Agent Memory Integration Strategy
 Current agents (TutorAgent, QuizAgent, PlannerAgent) access memory via the existing `/memory/*` REST API. The formal `AgentMemoryClient` abstraction with `AgentMessage` protocol (PRD-010) is deferred until the Agent Orchestrator framework is built. The existing API surface is sufficient for current consumers and avoids building abstractions before the first multi-agent consumer (Teacher Copilot) exists. PRD-001's Phase 3 (Agent Integration) is subsumed by PRD-010.
+
+## Procedural Memory (EMAS v1)
+Not implemented. No table, no manager, no API. EMAS v1's "what works" strategy store is novel and has no precedent in the codebase. Deferred until Teacher Copilot usage patterns inform what strategies look like in practice.
+
+## Memory Consolidation Engine
+Not implemented. PRD-001's Phase 2 (daily → weekly → monthly → quarterly consolidation) has no code, no scheduled job, no scripts. The `consolidated_at` column on `semantic_facts` exists but is never written to. The session-level `Summarizer` at `src/core/memory/summarizer.py` handles per-session summarization, but cross-session aggregation is missing.
+
+## Memory Service ABC
+Removed. The `MemoryService` ABC at `src/core/memory/service.py` was a Wave-0 stub with 0 concrete implementations and 0 consumers. The real services (`RetrievalOrchestrator`, `SessionManager`, `EventLogger`, `SemanticFactManager`) don't inherit from it. The dead `src/core/learning_intelligence/schemas/` directory was also removed (empty schemas with no consumers).
+
+## Vector Memory Store
+Uses ChromaDB via `MemoryVectorStore` instead of pgvector as EMAS v1 specifies. The `VectorStoreAdapter` interface makes this swappable. Migration is deferred until ChromaDB proves insufficient.
+
+## Pattern Retrieval Mode
+PRD-001 specifies 5 retrieval modes. Direct, Semantic, and Timeline are implemented. Pattern (anomaly detection over memory events) and full Historical ("why is this student struggling" reasoning) are missing.
 
 ## Semantic Facts
 Single `semantic_facts` table as the Semantic Memory Store, replacing the PRD-001's planned three-table normalized schema (semantic_memories + semantic_entities + semantic_relationships). Covers unstructured educational facts not stored in existing models (StudentMastery, MisconceptionPattern, StudentAbility, MemoryEducationalSummary): behavioral patterns, teacher/classroom preferences, discovered learning patterns. Table has user_id, fact (text), confidence (float 0-1), source, category (behavior/preference/pattern), expires_at. Entity/relationship graph semantics deferred to Educational Knowledge Graph (PRD-003).
 
 ## TopicPrerequisite Model
 Adjacency table at `src/database/models.py` mapping topic→prerequisite relationships. Fields: `topic_id`, `prerequisite_topic_id` (both FK to `curriculum_topics`), `relationship_type` ("prerequisite"/"corequisite"/"recommended"), `grade_level`. This is the concrete implementation of the Educational Knowledge Graph Strategy — named adjacency tables per relationship type, no generic node/edge store. See ADR-0007.
+
+**Model cleanup:** 5 duplicate model classes were removed from `models.py` that were defined a second time (same name, same/similar fields) causing Alembic autogenerate confusion: `TopicPrerequisite`, `SemanticFact`, `InterventionAssignment`, `InterventionKnowledgeEntry`, `MisconceptionKnowledgeEntry`. The broken FK `ForeignKey("classrooms.id")` → `ForeignKey("class_groups.id")` in the intervention models was also fixed. A duplicate `last_built_at` column on `StudentDigitalTwin` was removed.
 
 ## RelationshipBuilder
 CRUD service at `src/core/knowledge_graph/builder/` for managing prerequisite edges. Supports single/batch add, get prerequisites and dependents, and removal. Each operation validates against existing edges to prevent duplicates.
@@ -64,14 +83,16 @@ Both CTEs use cycle detection via `path` arrays to prevent infinite loops. Depth
 ## EKG API
 `APIRouter(prefix="/ekg")` at `src/api/ekg.py`. 9 endpoints: CRUD for prerequisites (single/batch/list/delete), chain traversal (prerequisite/dependent), gap analysis, and topic listing.
 
+**Registration fix:** This router was imported but never registered in `main.py` — all 9 endpoints were unreachable. Now registered alongside the legacy graph router.
+
 ## Timeline Memory Retrieval
 Chronological endpoint `GET /memory/timeline/{user_id}` that composites events + summaries + semantic facts into a date-sorted narrative. Thin compositing layer over existing tables — no new storage. Powers Teacher Copilot's "Show me what happened" and classroom timeline features. Builds on top of the existing event/summary/semantic_facts tables.
 
 ## Event Schema Registry
-8 known event types with validated field schemas in `SCHEMA_REGISTRY` at `src/core/memory/event_logger.py`: `session_started`, `quiz_completed`, `lesson_viewed`, `recovery_task_done`, `misconception_detected`, `xp_awarded`, `streak_updated`, `achievement_unlocked`. Each schema defines `required_fields`, `optional_fields`, and typed `metadata_schema`. Unknown event types are accepted with a warning — the registry is additive, not restrictive.
+8 known event types with validated field schemas in `SCHEMA_REGISTRY` at `src/core/memory/event_logger.py`: `session_started`, `quiz_completed`, `lesson_viewed`, `recovery_task_done`, `misconception_detected`, `xp_awarded`, `streak_updated`, `achievement_unlocked`. Each schema defines `required_fields`, `optional_fields`, and typed `metadata_schema`. Unknown event types are accepted with a warning — the registry is additive, not restrictive. Implemented per ADR-0009.
 
 ## Event Subscriber Registry
-In-process callback registry on `EventLogger._subscribers`. Handlers register via `subscribe(event_type, handler)` or `subscribe_all(handler)` for all event types. On each `log()` call, subscribers are notified asynchronously with `(event_type, user_id, metadata, event_id)`. Supports both sync and async handlers. Errors in one subscriber don't affect others. Designed for monolith-scale — no external broker, no persistence, no replay. Full event bus (Redis Streams → Kafka) deferred to Wave 8+ of ROADMAP.md.
+In-process callback registry on `EventLogger._subscribers`. Handlers register via `subscribe(event_type, handler)` or `subscribe_all(handler)` for all event types. On each `log()` call, subscribers are notified asynchronously with `(event_type, user_id, metadata, event_id)`. Supports both sync and async handlers. Errors in one subscriber don't affect others. Designed for monolith-scale — no external broker, no persistence, no replay. Full event bus (Redis Streams → Kafka) deferred to Wave 8+ of ROADMAP.md. Implemented per ADR-0009.
 
 ## Misconception Intelligence
 Dedicated package at `src/core/misconception_intelligence/` with two components:
@@ -79,6 +100,8 @@ Dedicated package at `src/core/misconception_intelligence/` with two components:
 - **MisconceptionProfiler** — Aggregates `MisconceptionPattern` records into a student profile (by topic, frequent patterns, improvement trend). Supports resolving individual patterns or by-topic bulk resolution.
 
 5 API endpoints under `/misconceptions/`: list (with resolved/topic filters), profile, analyze (heuristic text), resolve, resolve-topic. Dashboard component at `dashboard/src/components/misconceptions/MisconceptionPanel.tsx`.
+
+**Registration fix:** The misconceptions, intervention, and teacher_copilot routers were all imported but never registered in `main.py` — their endpoints were unreachable. All are now registered.
 
 ## Teacher Copilot Dashboard
 Chat UI at `dashboard/src/app/copilot/page.tsx` with example prompts, intent badges, evidence source citations, and streaming-style response display. Uses the `POST /copilot/query` endpoint with a 60s timeout. Follows DashboardV2 design language.
@@ -215,6 +238,8 @@ Score-to-band mapping: 0-39=Critical (high risk of failure), 40-59=Developing (s
 
 ## Continue Learning Readiness Integration
 `ContinueLearningService.get_feed()` accepts optional `readiness_profile`. When provided, risk topics (`HIGH` or `CRITICAL` risk level) receive a +0.3 priority boost in their `LearningCard.priority_score` and `exam_impact` is set to `"high"`. The feed is re-sorted so risk-topics cards surface before same-score non-risk cards. Graceful degradation when readiness data is absent.
+
+**Bugfix:** The readiness-boosted sort was silently overwritten by a second `sorted()` call that received the unboosted feed. The dead-call overwrite was removed from `continue_learning_router.py:37`.
 
 ## Readiness Boost Formula
 Risk topics get `priority_score * 1.3` (30% boost) capped at 100. The boost is multiplicative so high-priority items get more absolute lift. Cards from non-risk topics are untouched. Sorting is stable — original Recommendation Engine priority order is preserved within each band.

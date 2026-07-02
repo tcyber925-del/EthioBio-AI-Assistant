@@ -34,11 +34,8 @@ class GatherDataNode:
         self.session = session
 
     async def __call__(self, state: TeacherCopilotState) -> dict:
-        session = self.session
-        close_session = False
-        if session is None:
-            session = async_session_factory()
-            close_session = True
+        session = self.session or async_session_factory()
+        close_session = self.session is None
 
         updates: dict = {"status": "gathered"}
 
@@ -50,6 +47,19 @@ class GatherDataNode:
                     session=session,
                 )
                 updates["evidence"] = evidence
+
+                mastery_data = {}
+                misconception_data = {}
+                for e in evidence:
+                    c = e["content"]
+                    if e["source"] == "mastery_record":
+                        mastery_data[c["topic"]] = c
+                    elif e["source"] in ("memory_event", "quiz_attempt"):
+                        topic = c.get("topic", c.get("quiz_id", ""))
+                        misconception_data[topic] = c
+
+                updates["mastery_data"] = mastery_data or None
+                updates["misconception_data"] = misconception_data or None
         except Exception as e:
             logger.exception("gather_evidence_error", error=str(e))
         finally:
@@ -114,16 +124,18 @@ class ReasonNode:
         self.engine = engine
 
     async def __call__(self, state: TeacherCopilotState) -> dict:
+        rag_context = EvidenceEngine.format_citations(state.evidence) if state.evidence else ""
+
         reasoning, confidence = await self.engine.reason(
             intent=state.intent,
             classroom_profile=state.classroom_profile,
-            student_profiles=state.student_profiles,
+            student_profiles=state.student_profiles or [],
             readiness_data=state.readiness_data,
             misconception_data=state.misconception_data,
             mastery_data=state.mastery_data,
             intervention_data=state.intervention_data,
-            timeline_data=state.timeline_data,
-            rag_context=state.rag_context,
+            timeline_data=state.timeline_data or [],
+            rag_context=rag_context,
         )
         return {
             "reasoning": reasoning,
@@ -149,7 +161,6 @@ class FormatResponseNode:
             parts.append("\n_Answer key and explanations available._")
 
         if state.evidence:
-            from src.core.teacher_copilot.evidence_engine import EvidenceEngine
             parts.append("\n\n**Evidence:**")
             parts.append(EvidenceEngine.format_citations(state.evidence))
 

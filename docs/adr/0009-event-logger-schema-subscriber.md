@@ -2,7 +2,7 @@
 
 The EventLogger at `src/core/memory/event_logger.py` was evolved with schema validation for event metadata and an in-process subscriber registry. This is the concrete implementation of the Event Bus Strategy (PRD-002 / ADR-0006), which deferred a full event-driven architecture in favor of evolving the existing logger.
 
-**Status:** accepted
+**Status:** implemented
 
 ## Context
 

@@ -450,7 +450,7 @@ class InterventionAssignment(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), index=True)
-    classroom_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("classrooms.id"), nullable=True)
+    classroom_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("class_groups.id"), nullable=True)
     teacher_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     intervention_type: Mapped[str] = mapped_column(String(50))
     topic: Mapped[str | None] = mapped_column(String(300), nullable=True)
@@ -479,7 +479,7 @@ class InterventionKnowledgeEntry(Base):
     topic: Mapped[str | None] = mapped_column(String(300), nullable=True)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     teacher_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    classroom_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("classrooms.id"), nullable=True)
+    classroom_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("class_groups.id"), nullable=True)
     effectiveness_score: Mapped[float] = mapped_column(Float, default=0.0)
     mastery_change: Mapped[float | None] = mapped_column(Float, nullable=True)
     readiness_change: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -811,7 +811,6 @@ class AgentTrace(Base):
     event_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
     duration_ms: Mapped[float] = mapped_column(Float, default=0.0)
 
-
 class StudentDigitalTwin(Base):
     __tablename__ = "student_digital_twins"
 
@@ -827,7 +826,6 @@ class StudentDigitalTwin(Base):
     overall_health: Mapped[str] = mapped_column(String(20), default="unknown")
     confidence: Mapped[float] = mapped_column(Float, default=0.0)
     last_built_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    last_built_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow,

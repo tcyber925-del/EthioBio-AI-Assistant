@@ -16,12 +16,16 @@ from src.api import (
     agent_orchestrator,
     auth,
     chat,
+    diagnostic,
     diagram,
     digital_twin,
+    ekg,
     export,
     gamification,
     intelligence,
+    intervention,
     lesson,
+    misconceptions,
     notifications,
     parent,
     progress,
@@ -181,20 +185,24 @@ app.add_middleware(
 
 app.include_router(chat.router)
 app.include_router(quiz.router)
+app.include_router(diagnostic.router)
 app.include_router(lesson.router)
 app.include_router(progress.router)
 app.include_router(admin.router)
 app.include_router(graph_router)
 app.include_router(models_router)
 app.include_router(diagram.router)
+app.include_router(ekg.router)
 app.include_router(digital_twin.router)
 app.include_router(export.router)
 app.include_router(gamification.router)
+app.include_router(intervention.router)
 app.include_router(intelligence.router)
 app.include_router(continue_learning_router)
 app.include_router(recovery.router)
 app.include_router(notifications.router)
 app.include_router(memory_router)
+app.include_router(misconceptions.router)
 app.include_router(activity.router)
 app.include_router(agent_orchestrator.router)
 app.include_router(auth.router)
