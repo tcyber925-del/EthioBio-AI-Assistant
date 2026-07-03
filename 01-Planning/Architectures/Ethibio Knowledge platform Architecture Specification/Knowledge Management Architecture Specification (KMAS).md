@@ -14,11 +14,11 @@ Instead of describing *features*, this document will define **architectural cont
 
 **Version:** 1.0
 
-**Status:** Proposed Architecture
+**Status:** Approved & Implemented (As-Built)
 
 **Priority:** Platform Critical
 
-**Target Release:** Next Major Platform Evolution
+**Target Release:** Current Production Platform Evolution
 
 ---
 
@@ -519,8 +519,16 @@ The architecture will be considered successful when it enables:
 
 ---
 
-## Review before proceeding
+# 13. As-Built System Architecture Reference (As of July 2026 Implementation)
 
-I recommend treating this KMAS as the **constitutional document** for the new subsystem. Every implementation PRD should explicitly reference it rather than redefining architectural concepts.
+During execution, the target architecture was implemented with the following characteristics:
 
-The next document should be **Knowledge Lifecycle & Domain Model Specification (KLDMS)**. It will move from architecture to concrete engineering by defining Knowledge Objects, workspaces, collections, metadata schemas, lifecycle states, permissions, versioning, and processing state machines. That specification will effectively become the domain model for both the backend services and the frontend Knowledge Workspace.
+### 13.1 Strangler Fig Adoption
+The KML layers and database services are built in parallel with the legacy RAG pipeline. New features route queries through the KML Retrieval Gateway, while legacy nodes (`RetrievalNode`, `SearchFanoutNode`, `TutorNode`) maintain their existing pathways through the `VectorStoreAdapter`. This guarantees 100% legacy application stability.
+
+### 13.2 Logical Layers & Routing
+Rather than physically separating layers, the 7 proposed layers are represented logically as a `layer` field on Knowledge Objects and indexed chunks. The Retrieval Gateway and Knowledge Router dynamically filter vector database query bounds by this field using workspace contextual constraints.
+
+### 13.3 Monolithic Service Contract (KASCS logical packaging)
+To prevent complex deployment overhead, KASCS services are implemented as logical Python packages inside the existing monolithic backend under `src/core/`. Each package exposes clean boundaries (e.g. `src/core/workspace/`, `src/core/knowledge_registry/`) using `__init__.py` facades.
+
