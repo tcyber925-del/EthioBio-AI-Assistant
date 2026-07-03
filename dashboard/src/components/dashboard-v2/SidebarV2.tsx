@@ -22,6 +22,7 @@ import {
   BarChart3,
   MessageSquare,
   Cpu,
+  GitFork,
 } from 'lucide-react'
 import { DnaIcon } from './BioIcon'
 import { useLocale } from 'next-intl'
@@ -60,6 +61,8 @@ const NAV_STRUCTURE: NavSection[] = [
     items: [
       { label: 'Lessons', href: '/lessons', icon: FileText, roles: ['admin', 'teacher'] },
       { label: 'Unit Plans', href: '/unit-plans', icon: BookOpen, roles: ['admin', 'teacher'] },
+      { label: 'Assessment Studio', href: '/assessment-studio', icon: ClipboardCheck, roles: ['admin', 'teacher'] },
+      { label: 'Knowledge Graph', href: '/knowledge-graph', icon: GitFork, roles: ['admin', 'teacher'] },
       { label: 'Quizzes', href: '/quizzes', icon: ClipboardCheck, roles: ['admin', 'teacher'] },
       { label: 'Ask Q&A', href: '/ask', icon: MessageSquare, roles: ['admin', 'teacher', 'student', 'parent'] },
     ],
