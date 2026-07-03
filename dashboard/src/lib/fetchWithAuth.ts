@@ -13,6 +13,13 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}, time
   if (token) {
     headers['Authorization'] = `Bearer ${token}`
   }
+  
+  if (typeof window !== 'undefined') {
+    const workspaceId = localStorage.getItem('ethiobio_active_workspace_id')
+    if (workspaceId) {
+      headers['X-Workspace-Id'] = workspaceId
+    }
+  }
 
   try {
     const cacheBust = url.includes('?') ? `${url}&_t=${Date.now()}` : `${url}?_t=${Date.now()}`
