@@ -56,20 +56,11 @@ const NAV_STRUCTURE: NavSection[] = [
     ],
   },
   {
-    section: 'Workspace',
-    items: [
-      { label: 'Dashboard', href: '/workspace', icon: LayoutDashboard, roles: ['admin', 'teacher'] },
-      { label: 'Upload Files', href: '/workspace/upload', icon: FileText, roles: ['admin', 'teacher'] },
-      { label: 'Browse Assets', href: '/workspace/browse', icon: BookOpen, roles: ['admin', 'teacher'] },
-      { label: 'Search', href: '/workspace/search', icon: Search, roles: ['admin', 'teacher'] },
-      { label: 'Processing Queue', href: '/workspace/processing', icon: Activity, roles: ['admin', 'teacher'] },
-    ],
-  },
-  {
     section: 'Learning',
     items: [
       { label: 'Lessons', href: '/lessons', icon: FileText, roles: ['admin', 'teacher'] },
       { label: 'Unit Plans', href: '/unit-plans', icon: BookOpen, roles: ['admin', 'teacher'] },
+      { label: 'Assessment Studio', href: '/assessment-studio', icon: ClipboardCheck, roles: ['admin', 'teacher'] },
       { label: 'Quizzes', href: '/quizzes', icon: ClipboardCheck, roles: ['admin', 'teacher'] },
       { label: 'Ask Q&A', href: '/ask', icon: MessageSquare, roles: ['admin', 'teacher', 'student', 'parent'] },
     ],
