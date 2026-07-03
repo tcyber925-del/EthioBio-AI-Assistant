@@ -492,7 +492,12 @@ class TestClaimVerifierNode:
 
     @pytest.mark.asyncio
     async def test_node_verifies_claims(self):
-        node = ClaimVerifierNode(router=AsyncMock())
+        router = AsyncMock()
+        router.route.return_value = {
+            "content": '{"verdict": "supported", "ungrounded_claims": [], "groundedness_score": 0.9, "reason": ""}',
+            "model": "test",
+        }
+        node = ClaimVerifierNode(router=router)
         state = AgentState(
             user_message="test",
             draft='Mitosis has four stages: "prophase, metaphase, anaphase, and telophase" (Grade 10, Unit 2: Cells, p. 25).',
@@ -509,7 +514,12 @@ class TestClaimVerifierNode:
 
     @pytest.mark.asyncio
     async def test_node_low_groundedness(self):
-        node = ClaimVerifierNode(router=AsyncMock())
+        router = AsyncMock()
+        router.route.return_value = {
+            "content": '{"verdict": "unsupported", "ungrounded_claims": ["Mitosis happens on the Moon"], "groundedness_score": 0.1, "reason": ""}',
+            "model": "test",
+        }
+        node = ClaimVerifierNode(router=router)
         state = AgentState(
             user_message="test",
             draft="Mitosis happens on the Moon.",

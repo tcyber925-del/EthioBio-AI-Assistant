@@ -16,6 +16,7 @@ from src.api import (
     agent_orchestrator,
     auth,
     chat,
+    collection,
     diagnostic,
     diagram,
     digital_twin,
@@ -24,6 +25,7 @@ from src.api import (
     gamification,
     intelligence,
     intervention,
+    knowledge,
     lesson,
     misconceptions,
     notifications,
@@ -36,12 +38,14 @@ from src.api import (
     teacher_copilot,
     tracing,
     users,
+    workspace,
 )
 from src.api.graph import router as graph_router
 from src.api.intelligence.continue_learning_router import (
     router as continue_learning_router,
 )
 from src.api.models import router as models_router
+from src.api.retrieval import router as retrieval_router
 from src.config import settings
 from src.core.memory.router import router as memory_router
 from src.core.monitoring import pipeline_monitor
@@ -151,7 +155,44 @@ async def lifespan(app: FastAPI):
     pipeline_monitor.set_on_complete(
         lambda trace: asyncio.create_task(_on_trace_complete(trace))
     )
+
+    _pipeline_consumer_task = None
+    try:
+        from src.core.knowledge_registry import KnowledgeRegistry
+        from src.core.pipeline.consumer import PipelineStreamConsumer
+        from src.core.pipeline.service import PipelineOrchestrator
+        from src.core.storage import LocalFileStorage
+        from src.rag.embedder import Embedder
+        from src.rag.vector_store import VectorStore
+
+        _pipeline_consumer = PipelineStreamConsumer(
+            pipeline=PipelineOrchestrator(
+                registry=KnowledgeRegistry(async_session_factory()),
+                storage=LocalFileStorage(),
+                embedder=Embedder(),
+                vector_store=VectorStore(
+                    persist_directory=settings.vector_store_path,
+                    collection_name=settings.collection_name,
+                ),
+                session_factory=async_session_factory(),
+            ),
+            storage=LocalFileStorage(),
+            redis_url=settings.redis_url,
+        )
+        await _pipeline_consumer.start()
+        _pipeline_consumer_task = asyncio.create_task(_pipeline_consumer.run_forever())
+        logger.info("pipeline_consumer_started")
+    except Exception:
+        logger.warning("pipeline_consumer_unavailable, processing via inline background tasks only")
+
     yield
+
+    if _pipeline_consumer_task is not None:
+        _pipeline_consumer_task.cancel()
+        try:
+            await _pipeline_consumer_task
+        except asyncio.CancelledError:
+            pass
     await close_db()
     logger.info("app_shutdown")
 
@@ -204,6 +245,10 @@ app.include_router(notifications.router)
 app.include_router(memory_router)
 app.include_router(misconceptions.router)
 app.include_router(activity.router)
+app.include_router(knowledge.router)
+app.include_router(retrieval_router)
+app.include_router(workspace.router)
+app.include_router(collection.router)
 app.include_router(agent_orchestrator.router)
 app.include_router(auth.router)
 

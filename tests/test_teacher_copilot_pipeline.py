@@ -90,11 +90,11 @@ class TestClassifyIntentNode:
 
 
 class TestGatherDataNode:
-    @patch("src.database.session.async_session_factory")
+    @patch("src.core.teacher_copilot.pipeline.async_session_factory")
     async def test_gathers_evidence_and_extracts_mastery(self, mock_factory):
         mock_session = AsyncMock()
         mock_session.__aenter__.return_value = mock_session
-        mock_factory.return_value = mock_session
+        mock_factory.return_value.return_value = mock_session
 
         mock_evidence = AsyncMock(spec=EvidenceEngine)
         mock_evidence.gather_evidence.return_value = [
@@ -119,28 +119,28 @@ class TestGatherDataNode:
         assert result["misconception_data"] is not None
         assert result["status"] == "gathered"
 
-    @patch("src.database.session.async_session_factory")
+    @patch("src.core.teacher_copilot.pipeline.async_session_factory")
     async def test_empty_evidence_returns_empty_fields(self, mock_factory):
         mock_session = AsyncMock()
         mock_session.__aenter__.return_value = mock_session
-        mock_factory.return_value = mock_session
+        mock_factory.return_value.return_value = mock_session
 
         mock_evidence = AsyncMock(spec=EvidenceEngine)
         mock_evidence.gather_evidence.return_value = []
 
         node = GatherDataNode(mock_evidence)
-        state = TeacherCopilotState(intent="classroom_analysis")
+        state = TeacherCopilotState(intent="classroom_analysis", user_id="u1")
         result = await node(state)
 
         assert result["evidence"] == []
         assert result["mastery_data"] is None
         assert result["misconception_data"] is None
 
-    @patch("src.database.session.async_session_factory")
+    @patch("src.core.teacher_copilot.pipeline.async_session_factory")
     async def test_no_user_id_still_proceeds(self, mock_factory):
         mock_session = AsyncMock()
         mock_session.__aenter__.return_value = mock_session
-        mock_factory.return_value = mock_session
+        mock_factory.return_value.return_value = mock_session
 
         mock_evidence = AsyncMock(spec=EvidenceEngine)
         mock_evidence.gather_evidence.return_value = []

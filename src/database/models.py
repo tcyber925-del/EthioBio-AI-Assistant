@@ -16,6 +16,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.types import Uuid
 
 from src.database.session import Base
 
@@ -834,6 +835,37 @@ class StudentDigitalTwin(Base):
     user: Mapped["User"] = relationship(backref="digital_twin")
 
 
+class KnowledgeObject(Base):
+    __tablename__ = "knowledge_objects"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_uuid)
+    workspace_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    collection_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("collections.id"), nullable=True
+    )
+    owner_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"))
+    title: Mapped[str] = mapped_column(String(500))
+    content_type: Mapped[str] = mapped_column(String(100))
+    content_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    lifecycle_state: Mapped[str] = mapped_column(String(50), default="uploaded")
+    enrichment_status: Mapped[str] = mapped_column(String(20), default="pending")
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    ko_metadata: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class KnowledgeObjectVersion(Base):
+    __tablename__ = "knowledge_object_versions"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_uuid)
+    ko_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("knowledge_objects.id"))
+    version: Mapped[int] = mapped_column(Integer)
+    snapshot: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class UnitPlan(Base):
     __tablename__ = "unit_plans"
 
@@ -848,3 +880,61 @@ class UnitPlan(Base):
     model_used: Mapped[str] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class WorkspaceRole(str, enum.Enum):
+    owner = "owner"
+    admin = "admin"
+    member = "member"
+    viewer = "viewer"
+
+
+class Workspace(Base):
+    __tablename__ = "workspaces"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_uuid)
+    name: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    organization_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    class_group_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("class_groups.id"), nullable=True
+    )
+    created_by: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    members: Mapped[list["WorkspaceMember"]] = relationship(
+        back_populates="workspace", cascade="all, delete-orphan"
+    )
+
+
+class WorkspaceMember(Base):
+    __tablename__ = "workspace_members"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_uuid)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("workspaces.id"))
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"))
+    role: Mapped[WorkspaceRole] = mapped_column(Enum(WorkspaceRole), default=WorkspaceRole.member)
+    invited_by: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("users.id"), nullable=True
+    )
+    joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    workspace: Mapped["Workspace"] = relationship(back_populates="members")
+
+
+class Collection(Base):
+    __tablename__ = "collections"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_uuid)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("workspaces.id"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
