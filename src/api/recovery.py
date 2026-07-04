@@ -227,7 +227,12 @@ async def complete_recovery_task(
                     subject_en = f"Milestone: {improvement:.0f}% complete in {plan.topic}"
                     subject_am = f"የእድገት ደረጃ: በ{plan.topic} ላይ {improvement:.0f}% ተጠናቋል"
                     subject = subject_am if lang == "am" else subject_en
-                    await send_email(prefs.email, subject, html)
+                    if not await send_email(prefs.email, subject, html):
+                        logger.warning(
+                            "recovery_milestone_email_skipped",
+                            email=prefs.email,
+                            subject=subject,
+                        )
         except Exception as e:
             logger.error("recovery_milestone_email_error", error=str(e))
 
