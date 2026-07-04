@@ -115,7 +115,7 @@ async def main():
             "unit": chunk.get("unit", "") or "",
             "section": chunk.get("section", "") or "",
             "subtopic": chunk.get("subtopic", "") or "",
-            "topic": chunk.get("topic", "") or "",
+            "topic": chunk.get("topic", "") or ic._derive_topic_from_unit(chunk.get("unit", "")),
             "heading": chunk.get("heading", "") or chunk["text"][:80],
             "page_number": chunk.get("page_number", 0) or 0,
             "chunk_index": i,

@@ -49,6 +49,28 @@ class Retriever:
                 "id": results["ids"][i] if i < len(results["ids"]) else "",
             })
 
+        if not retrieved and topic:
+            logger.warning(
+                "topic_filter_excluded_all",
+                topic=topic,
+                grade_level=grade_level,
+                falling_back="no_topic_filter",
+            )
+            no_topic_where = {"grade_level": {"$eq": grade_level}} if grade_level else None
+            results = await self.vector_store.query(
+                query_embedding=query_embedding,
+                n_results=n_results,
+                where=no_topic_where,
+            )
+            retrieved = []
+            for i in range(len(results["documents"])):
+                retrieved.append({
+                    "content": results["documents"][i],
+                    "metadata": results["metadatas"][i] if i < len(results["metadatas"]) else {},
+                    "score": 1.0 - results["distances"][i] if i < len(results["distances"]) else 0.0,
+                    "id": results["ids"][i] if i < len(results["ids"]) else "",
+                })
+
         logger.info("retrieved_documents", count=len(retrieved), query_preview=query[:50])
         return retrieved
 
