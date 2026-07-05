@@ -379,7 +379,7 @@ export default function KnowledgeGraphPage() {
                           <div className="flex items-center justify-between">
                             <span className="text-[9px] text-v2-text-secondary font-semibold uppercase">Prerequisite</span>
                             {selectedStudentId && (
-                              <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
                                 isGap ? 'bg-v2-error/20 text-v2-error' : 'bg-v2-success/20 text-v2-success'
                               }`}>
                                 {isGap ? `Gap (${scoreText})` : 'Mastered'}

@@ -39,7 +39,7 @@ export default function LessonsPage() {
   const [genStatus, setGenStatus] = useState<'success' | 'error' | null>(null)
   const [genResult, setGenResult] = useState<any>(null)
   const t = useTranslations('lesson')
-  const tc = useTranslations('common')
+
 
   const fetchLessons = async () => {
     setLoading(true)

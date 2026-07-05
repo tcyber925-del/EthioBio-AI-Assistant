@@ -40,7 +40,6 @@ export default function UnitPlansPage() {
   const [genStatus, setGenStatus] = useState<'success' | 'error' | null>(null)
   const [genResult, setGenResult] = useState<any>(null)
   const t = useTranslations('unit_plans')
-  const tc = useTranslations('common')
 
   const fetchPlans = async () => {
     setLoading(true)
