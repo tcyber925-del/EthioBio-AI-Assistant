@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from enum import StrEnum
 
 
@@ -11,15 +12,9 @@ class PipelineStage(StrEnum):
     ENRICHMENT = "enrichment"
 
 
+@dataclass
 class PipelineResult:
-    def __init__(
-        self,
-        ko_id: str,
-        success: bool,
-        stage: str | None = None,
-        error: str | None = None,
-    ):
-        self.ko_id = ko_id
-        self.success = success
-        self.stage = stage
-        self.error = error
+    ko_id: str
+    success: bool
+    stage: str | None = None
+    error: str | None = None

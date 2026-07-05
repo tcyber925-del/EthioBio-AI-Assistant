@@ -45,7 +45,7 @@ def _get_registry() -> KnowledgeRegistry:
     return _registry
 
 
-def _get_producer():
+def _get_producer() -> RedisStreamProducer | None:
     global _producer
     if _producer is None:
         try:

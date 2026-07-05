@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useWorkspace } from './context'
 import { DashboardLayout } from '@/components/dashboard-v2'
@@ -31,24 +31,23 @@ export default function WorkspaceDashboard() {
   const [assets, setAssets] = useState<KnowledgeObject[]>([])
   const [collections, setCollections] = useState<Collection[]>([])
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!activeWorkspace) return
     setLoading(true)
     setError(null)
     try {
-      // Fetch knowledge objects in workspace
-      const assetList = await fetchWithAuth(`/api/v1/knowledge/?workspace_id=${activeWorkspace.id}`)
+      const [assetList, collectionList] = await Promise.all([
+        fetchWithAuth(`/api/v1/knowledge/?workspace_id=${activeWorkspace.id}`),
+        fetchWithAuth(`/api/v1/collections/?workspace_id=${activeWorkspace.id}`),
+      ])
       setAssets(assetList)
-
-      // Fetch collections in workspace
-      const collectionList = await fetchWithAuth(`/api/v1/collections/?workspace_id=${activeWorkspace.id}`)
       setCollections(collectionList)
     } catch (err: any) {
       setError(err.message || 'Failed to load workspace details')
     } finally {
       setLoading(false)
     }
-  }
+  }, [activeWorkspace])
 
   useEffect(() => {
     fetchData()
