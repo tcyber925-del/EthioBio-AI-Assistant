@@ -24,6 +24,7 @@ env/
 data/vectors/
 data/vectors_new/
 data/chroma/
+data/storage/
 *.db
 
 # Node

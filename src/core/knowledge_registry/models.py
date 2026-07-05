@@ -55,6 +55,14 @@ class LifecycleTransition(BaseModel):
     reason: str | None = None
 
 
+class KnowledgeObjectVersion(BaseModel):
+    id: str
+    ko_id: str
+    version: int
+    snapshot: dict
+    created_at: datetime
+
+
 class SearchResult(BaseModel):
     ko_id: str
     title: str

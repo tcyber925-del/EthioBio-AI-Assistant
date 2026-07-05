@@ -18,6 +18,7 @@ from src.core.knowledge_registry.events import (
 from src.core.knowledge_registry.models import (
     KnowledgeFilter,
     KnowledgeObject,
+    KnowledgeObjectVersion,
     LifecycleState,
     LifecycleTransition,
     NewKnowledgeObject,
@@ -281,7 +282,7 @@ class KnowledgeRegistry:
             logger.info("knowledge_object_version_created", ko_id=ko_id, version=row.version)
             return row.version, events
 
-    async def list_versions(self, ko_id: str) -> list[dict]:
+    async def list_versions(self, ko_id: str) -> list[KnowledgeObjectVersion]:
         async with self._session_factory() as db:
             query = (
                 select(KnowledgeObjectVersionModel)
@@ -290,12 +291,12 @@ class KnowledgeRegistry:
             )
             rows = (await db.execute(query)).scalars().all()
             return [
-                {
-                    "id": str(r.id),
-                    "ko_id": str(r.ko_id),
-                    "version": r.version,
-                    "snapshot": r.snapshot,
-                    "created_at": r.created_at,
-                }
+                KnowledgeObjectVersion(
+                    id=str(r.id),
+                    ko_id=str(r.ko_id),
+                    version=r.version,
+                    snapshot=r.snapshot,
+                    created_at=r.created_at,
+                )
                 for r in rows
             ]

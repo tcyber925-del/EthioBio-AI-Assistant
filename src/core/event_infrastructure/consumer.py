@@ -124,7 +124,8 @@ class StreamConsumer(ABC):
                 await self._move_to_dead_letter(entry_id, None)
             else:
                 try:
-                    msg_data = entry.get("raw_data") or {}
+                    raw = await self._r.xrange(self._stream_name, min=entry_id, max=entry_id, count=1)
+                    msg_data = raw[0][1] if raw else {}
                     await self._handle_message(entry_id, msg_data)
                 except Exception:
                     logger.exception(
