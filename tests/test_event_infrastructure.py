@@ -91,10 +91,22 @@ class TestEventInfrastructure:
             "test:stream", "test_group", id="0", mkstream=True
         )
 
-        # Run consumer in a task
+        # Use asyncio.Event for deterministic synchronization
+        processed = asyncio.Event()
+        original_process = consumer.process
+
+        async def process_and_signal(event):
+            await original_process(event)
+            processed.set()
+
+        consumer.process = process_and_signal
         task = asyncio.create_task(consumer.run_forever())
-        await asyncio.sleep(0.1)  # allow loop iteration
-        await task
+        await asyncio.wait_for(processed.wait(), timeout=5)
+        await consumer.stop()
+        try:
+            await asyncio.wait_for(task, timeout=1)
+        except asyncio.TimeoutError:
+            pass
 
         assert len(consumer.processed_events) == 1
         assert consumer.processed_events[0].ko_id == "ko-uuid-123"

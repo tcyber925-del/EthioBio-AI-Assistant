@@ -6,7 +6,7 @@ import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
 import ModelSelector from '@/components/ModelSelector'
-import { ClipboardCheck, Sparkles, AlertCircle, RefreshCw, Eye, Check, Loader2, BookOpen, Layers, Award } from 'lucide-react'
+import { Sparkles, AlertCircle, RefreshCw, Eye, Check, Loader2, Layers, Award } from 'lucide-react'
 import Link from 'next/link'
 
 interface Quiz {

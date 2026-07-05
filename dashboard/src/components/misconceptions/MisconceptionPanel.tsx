@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
-import { AlertTriangle, Check, RefreshCw, Award, HelpCircle, Flame, CheckCircle, ShieldAlert } from 'lucide-react'
+import { AlertTriangle, Check, RefreshCw, Flame, CheckCircle } from 'lucide-react'
 
 interface MisconceptionDetail {
   id: string

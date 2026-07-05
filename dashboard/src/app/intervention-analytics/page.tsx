@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
-import { TrendingUp, Award, AwardIcon, Compass, Sparkles, RefreshCw, BarChart2, CheckCircle2, ShieldAlert, AlertCircle } from 'lucide-react'
+import { TrendingUp, Award, Compass, RefreshCw, AlertCircle } from 'lucide-react'
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar } from 'recharts'
 
 interface LeaderboardEntry {

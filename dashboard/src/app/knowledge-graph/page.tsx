@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
-import { BookOpen, Sparkles, RefreshCw, AlertCircle, Plus, Trash2, ArrowRight, User, CheckCircle2, ShieldAlert } from 'lucide-react'
+import { BookOpen, RefreshCw, AlertCircle, Plus, Trash2, CheckCircle2 } from 'lucide-react'
 
 interface CurriculumTopic {
   id: string
