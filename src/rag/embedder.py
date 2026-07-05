@@ -25,6 +25,10 @@ class Embedder:
         self._force_ollama = force_ollama
         self._local_dim = 384
 
+    @property
+    def dimension(self) -> int:
+        return self._local_dim
+
     def _get_local_model(self):
         return _get_or_create_sentence_transformer()
 

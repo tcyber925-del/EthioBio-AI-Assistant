@@ -75,6 +75,7 @@ class CollectionService:
                 row.name = data.name
             if data.description is not None:
                 row.description = data.description
+            row.updated_at = datetime.now(timezone.utc)
             await db.commit()
             logger.info("collection_updated", id=collection_id)
             return _from_orm(row)
@@ -85,6 +86,7 @@ class CollectionService:
             if row is None or row.deleted_at is not None:
                 return False
             row.deleted_at = datetime.now(timezone.utc)
+            row.updated_at = datetime.now(timezone.utc)
             await db.commit()
             logger.info("collection_deleted", id=collection_id)
             return True

@@ -259,12 +259,13 @@ async def get_knowledge_content(ko_id: str):
         raise HTTPException(status_code=404, detail="KnowledgeObject not found")
 
     from src.config import settings
+    from src.rag.embedder import Embedder
 
     vector_store = VectorStore(
         persist_directory=settings.vector_store_path,
         collection_name=settings.collection_name,
     )
-    dummy_embedding = [0.0] * 384
+    dummy_embedding = [0.0] * Embedder().dimension
     raw = await vector_store.query(
         dummy_embedding,
         n_results=1000,

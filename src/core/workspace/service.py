@@ -109,6 +109,7 @@ class WorkspaceService:
             if row is None or row.deleted_at is not None:
                 return False
             row.deleted_at = datetime.now(timezone.utc)
+            row.updated_at = datetime.now(timezone.utc)
             await db.commit()
             logger.info("workspace_deleted", workspace_id=workspace_id)
             return True
