@@ -105,21 +105,21 @@ export default function InterventionAnalyticsPage() {
               <div className="bg-v2-surface border border-v2-border p-5 rounded-[20px]">
                 <p className="text-xs text-v2-text-secondary uppercase font-semibold">Global Avg Effectiveness</p>
                 <p className="verge-display text-3xl text-v2-accent mt-1">
-                  {insights?.global_average ? `${insights.global_average}%` : '—'}
+                  {insights?.global_average != null ? `${insights.global_average}%` : '—'}
                 </p>
               </div>
               <div className="bg-v2-surface border border-v2-border p-5 rounded-[20px]">
                 <p className="text-xs text-v2-text-secondary uppercase font-semibold">Top Performing Inoculation</p>
                 <p className="text-base font-bold text-v2-text-primary mt-2.5 truncate">
                   {insights?.top_recommended_type
-                    ? insights.top_recommended_type.replace('_', ' ').toUpperCase()
+                    ? insights.top_recommended_type.replace(/_/g, ' ').toUpperCase()
                     : 'None Logged'}
                 </p>
               </div>
               <div className="bg-v2-surface border border-v2-border p-5 rounded-[20px]">
                 <p className="text-xs text-v2-text-secondary uppercase font-semibold">Recommendation Boost</p>
                 <p className="verge-display text-3xl text-v2-text-primary mt-1">
-                  {insights?.learned_boost ? `+${(insights.learned_boost * 100).toFixed(1)}%` : '0%'}
+                  {insights?.learned_boost != null ? `+${(insights.learned_boost * 100).toFixed(1)}%` : '0%'}
                 </p>
               </div>
             </div>
@@ -161,7 +161,7 @@ export default function InterventionAnalyticsPage() {
                       <div key={type} className="flex flex-col gap-1.5 p-3 rounded-xl border border-v2-border bg-v2-bg/40">
                         <div className="flex justify-between items-center text-xs font-semibold">
                           <span className="text-v2-text-primary uppercase tracking-wider">
-                            {type.replace('_', ' ')}
+                            {type.replace(/_/g, ' ')}
                           </span>
                           <span className="text-v2-accent font-bold">{score}%</span>
                         </div>
@@ -203,7 +203,7 @@ export default function InterventionAnalyticsPage() {
                       {leaderboard.map(entry => (
                         <tr key={entry.id} className="text-sm hover:bg-v2-bg/30">
                           <td className="py-3 font-semibold text-v2-text-primary uppercase tracking-wider text-xs">
-                            {entry.intervention_type.replace('_', ' ')}
+                            {entry.intervention_type.replace(/_/g, ' ')}
                           </td>
                           <td className="py-3 text-v2-text-secondary font-medium">
                             {entry.topic}

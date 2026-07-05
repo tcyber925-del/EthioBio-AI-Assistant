@@ -242,9 +242,9 @@ export default function LessonsPage() {
                 </select>
               </div>
               <div>
-                <label className="text-sm text-foreground-muted block mb-1">Classroom Context (Optional)</label>
+                <label className="text-sm text-foreground-muted block mb-1">{t('classroom_context')}</label>
                 <select value={selectedClassroomId} onChange={e => setSelectedClassroomId(e.target.value)} className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
-                  <option value="">-- Reference Only --</option>
+                  <option value="">{t('classroom_reference_only')}</option>
                   {classrooms.map(c => <option key={c.id} value={c.id}>{c.name} (Grade {c.grade_level})</option>)}
                 </select>
               </div>

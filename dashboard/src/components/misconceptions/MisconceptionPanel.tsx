@@ -63,7 +63,7 @@ export function MisconceptionPanel({ userId }: { userId: string }) {
       })
       await fetchProfile()
     } catch (err: any) {
-      alert(err.message || 'Failed to resolve misconception')
+      setError(err.message || 'Failed to resolve misconception')
     } finally {
       setResolvingId(null)
     }
@@ -77,7 +77,7 @@ export function MisconceptionPanel({ userId }: { userId: string }) {
       })
       await fetchProfile()
     } catch (err: any) {
-      alert(err.message || 'Failed to resolve topic misconceptions')
+      setError(err.message || 'Failed to resolve topic misconceptions')
     } finally {
       setResolvingTopic(null)
     }
@@ -91,7 +91,7 @@ export function MisconceptionPanel({ userId }: { userId: string }) {
     )
   }
 
-  if (error) {
+  if (error && !profile) {
     return (
       <div className="p-5 border border-v2-error/30 bg-v2-error/10 text-v2-error rounded-xl flex items-center gap-3">
         <AlertTriangle className="w-5 h-5 shrink-0" />

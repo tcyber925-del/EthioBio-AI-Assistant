@@ -65,7 +65,7 @@ def format_event_description(event: MemoryEvent) -> str:
 async def get_memory_timeline(
     user_id: UUID,
     limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    offset: int = Query(0, ge=0, le=5000),
     db: AsyncSession = Depends(get_session),
 ):
     # Fetch events
@@ -146,7 +146,7 @@ async def get_memory_timeline(
                 id=str(fact.id),
                 type="fact",
                 timestamp=fact.created_at,
-                title=f"Learner Profile Update",
+                title="Learner Profile Update",
                 description=f"Identified learning pattern/preference: {fact.fact_key} = {fact.fact_value}.",
                 metadata={
                     "fact_key": fact.fact_key,

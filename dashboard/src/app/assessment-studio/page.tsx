@@ -87,6 +87,7 @@ export default function AssessmentStudioPage() {
         grade_level: grade,
         topic: topic,
         question_count: count,
+        assessment_type: assessmentType,
         types: selectedTypes.length > 0 ? selectedTypes : ['multiple_choice'],
         model: selectedModel,
         adaptive: adaptive,
