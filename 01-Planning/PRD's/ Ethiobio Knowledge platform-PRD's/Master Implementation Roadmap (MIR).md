@@ -10,7 +10,7 @@ One thing I'd improve over a conventional roadmap is to organize it around **pla
 
 **Version:** 1.0
 
-**Status:** Approved for Planning
+**Status:** Execution Progress - Phase 0 to 4 Fully Complete
 
 **Depends on:**
 
@@ -419,3 +419,17 @@ For example:
 * **Wave 5:** Collaboration & Rollout (Sharing, Migration, Testing, Observability)
 
 This wave-based approach matches how your project has evolved so far, allows you to validate each layer before building on it, and provides clear, manageable work packages for coding agents. From there, we can write one implementation PRD per epic, with each PRD directly referencing the architecture documents we've created.
+
+---
+
+# 9. As-Built Implementation Execution Summary (As of July 2026)
+
+The implementation waves proposed in the roadmap have been fully completed as follows:
+
+* **Wave 0: Foundation Stabilization & Redesign — *Complete*:** Redesigned the design system token parameters (DashboardV2, Calm Educational Intelligence) and stabilized all database schemas.
+* **Wave 1: Teacher Copilot MVP & Ingestion — *Complete*:** Implemented the Knowledge Management Layer (KML) backend and Next.js Workspace interface (pages for uploading, browsing, searching, and managing collections).
+* **Wave 2: Memory Foundation & Chronological Timeline — *Complete*:** Integrated the chronological user timeline API `/api/v1/memory/timeline/{id}` to composite and serve events, facts, and session summaries.
+* **Wave 3: Misconception Intelligence MVP — *Complete*:** Integrated the teacher-facing misconception profile breakdown pane with individual/bulk resolution triggers.
+* **Wave 4: Assessment Studio MVP — *Complete*:** Developed the Assessment Studio dashboard (`/assessment-studio`) supporting customized diagnostics, adapter tuning, format types, and model selections.
+* **Wave 5: Intervention Effectiveness Analytics MVP — *Complete*:** Developed the Intervention Analytics dashboard (`/intervention-analytics`) displaying strategy comparison metrics, effectiveness timelines, and best-performing leaderboard scores.
+

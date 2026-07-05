@@ -146,3 +146,13 @@ async def test_quiz_recommend_endpoint():
             data = response.json()
             assert "recommendations" in data
             assert "total_recommendations" in data
+
+
+@pytest.mark.asyncio
+async def test_memory_timeline_endpoint():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(f"/api/v1/memory/timeline/{uuid4()}")
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)

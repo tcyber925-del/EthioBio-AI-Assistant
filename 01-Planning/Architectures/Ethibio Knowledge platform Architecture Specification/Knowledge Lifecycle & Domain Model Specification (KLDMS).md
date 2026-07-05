@@ -10,9 +10,9 @@ Instead of modeling **documents**, we're going to model **knowledge**.
 
 **Version:** 1.0
 
-**Status:** Proposed Architecture
+**Status:** Approved & Implemented (As-Built)
 
-**Depends on:** KMAS v1.0
+**Depends on:** KMAS v1.0 (As-Built)
 
 **Priority:** Platform Critical
 
@@ -590,15 +590,23 @@ The domain model is successful when:
 
 ---
 
-# Review and next step
+# 20. As-Built Domain Model Reference (As of July 2026 Implementation)
 
-With **KMAS** and **KLDMS**, we now have:
+During execution, the domain models were fully mapped to the PostgreSQL database schema and FastAPI models as described below:
 
-* **System architecture** (how the platform is organized).
-* **Domain language** (what the platform manages).
+### 20.1 Surfaced Lifecycle States
+The logical states proposed in KLDMS have been consolidated to 6 user-visible statuses:
+* **Uploaded:** Document metadata created, binary uploaded.
+* **Processing:** Ingestion queue processes extraction, OCR, educational enrichment, chunking, and embedding.
+* **Published:** Chunks indexed into ChromaDB and made active.
+* **Active:** Accessible by the Retrieval Gateway and AI agents.
+* **Archived:** Excluded from standard retrieval searches.
+* **Deleted:** Hidden from active registries (soft delete).
 
-These two documents define the *what*. The next document should define the *how*:
+### 20.2 Knowledge Relationships (Split Strategy)
+* **Structured Relationships:** Managed via specific adjacency tables for fast indexing, including `knowledge_prerequisites` (prerequisite dependencies) and `knowledge_alignment` (curriculum objective mapping).
+* **Generic Metadata Relationships:** Free-form semantic annotations (e.g. `explains`, `references`, `supersedes`) are stored in the generic `knowledge_relationships` metadata table.
 
-> **Knowledge Processing Pipeline Specification (KPPS)**
+### 20.3 Object Ownership and Permission Bounds
+* Permissions are anchored at the **Workspace** level rather than individual Knowledge Objects. Users inherit view/edit rights dynamically based on their role in the `workspace_members` table, ensuring high-performance querying without complex object-level security.
 
-That specification will cover the complete ingestion and processing workflow—from upload through validation, extraction, OCR, educational enrichment, structure-aware chunking, embedding generation, hybrid indexing, relationship extraction, background intelligence (summaries, flashcards, quizzes, glossaries), failure handling, retries, observability, and publication into the Knowledge Management Layer. It will serve as the implementation blueprint for the backend ingestion subsystem.
