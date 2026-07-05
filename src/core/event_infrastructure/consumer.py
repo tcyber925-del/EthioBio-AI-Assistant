@@ -86,7 +86,7 @@ class StreamConsumer(ABC):
                 if not results:
                     continue
 
-                for stream_name, messages in results:
+                for _, messages in results:
                     for msg_id, msg_data in messages:
                         await self._handle_message(msg_id, msg_data)
 
