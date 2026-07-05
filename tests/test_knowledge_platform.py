@@ -574,9 +574,9 @@ class TestCollection:
 
         items = await collection_service.list_knowledge_objects(coll.id)
         assert len(items) == 1
-        assert items[0]["id"] == ko.id
+        assert items[0].id == ko.id
 
-        ok = await collection_service.remove_knowledge_object(ko.id)
+        ok = await collection_service.remove_knowledge_object(coll.id, ko.id)
         assert ok is True
 
         items = await collection_service.list_knowledge_objects(coll.id)

@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from src.core.collection import CollectionService
 from src.core.collection.models import Collection, NewCollection, UpdateCollection
+from src.core.knowledge_registry.models import KnowledgeObject
 from src.database.session import async_session_factory
 
 logger = structlog.get_logger()
@@ -70,7 +71,6 @@ async def remove_from_collection(collection_id: str, ko_id: str):
         raise HTTPException(status_code=404, detail="KnowledgeObject not found")
 
 
-@router.get("/{collection_id}/items")
+@router.get("/{collection_id}/items", response_model=list[KnowledgeObject])
 async def list_collection_items(collection_id: str):
-    items = await _get_service().list_knowledge_objects(collection_id)
-    return items
+    return await _get_service().list_knowledge_objects(collection_id)

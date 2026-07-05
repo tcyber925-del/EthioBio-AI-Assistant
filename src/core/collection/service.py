@@ -7,6 +7,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from src.core.knowledge_registry.models import KnowledgeObject, LifecycleState
 from src.database.models import Collection as CollectionModel
 from src.database.models import KnowledgeObject as KnowledgeObjectModel
 
@@ -24,6 +25,7 @@ def _from_orm(row: CollectionModel) -> Collection:
         created_by=str(row.created_by),
         created_at=row.created_at,
         updated_at=row.updated_at,
+        deleted_at=row.deleted_at,
     )
 
 
@@ -110,7 +112,7 @@ class CollectionService:
             logger.info("ko_removed_from_collection", ko_id=ko_id, collection_id=collection_id)
             return True
 
-    async def list_knowledge_objects(self, collection_id: str) -> list[dict]:
+    async def list_knowledge_objects(self, collection_id: str) -> list[KnowledgeObject]:
         async with self._session_factory() as db:
             query = (
                 select(KnowledgeObjectModel)
@@ -122,11 +124,20 @@ class CollectionService:
             )
             rows = (await db.execute(query)).scalars().all()
             return [
-                {
-                    "id": str(r.id),
-                    "title": r.title,
-                    "content_type": r.content_type,
-                    "lifecycle_state": r.lifecycle_state,
-                }
+                KnowledgeObject(
+                    id=str(r.id),
+                    workspace_id=str(r.workspace_id) if r.workspace_id else "",
+                    collection_id=str(r.collection_id) if r.collection_id else None,
+                    owner_id=str(r.owner_id),
+                    title=r.title,
+                    content_type=r.content_type,
+                    content_hash=r.content_hash,
+                    lifecycle_state=LifecycleState(r.lifecycle_state),
+                    enrichment_status=r.enrichment_status,
+                    version=r.version,
+                    metadata=r.ko_metadata or {},
+                    created_at=r.created_at,
+                    updated_at=r.updated_at,
+                )
                 for r in rows
             ]
