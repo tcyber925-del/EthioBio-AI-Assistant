@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from src.core.retrieval.citation import CitationFormatter
-from src.core.retrieval.models import EvidencePackage, EvidenceSource
+from src.core.retrieval.models import EvidencePackage, EvidenceSource, RetrievalResult
 
 
 class EvidencePackageBuilder:
@@ -11,7 +11,7 @@ class EvidencePackageBuilder:
     def build(
         self,
         query: str,
-        results: list,
+        results: list[RetrievalResult],
         degraded: bool = False,
     ) -> EvidencePackage:
         sources: list[EvidenceSource] = []

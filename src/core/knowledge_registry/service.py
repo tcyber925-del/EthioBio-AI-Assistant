@@ -127,35 +127,35 @@ class KnowledgeRegistry:
                 return None
             return _ko_from_orm(row)
 
-    async def list_by_filter(self, filter: KnowledgeFilter) -> list[KnowledgeObject]:
+    async def list_by_filter(self, kf: KnowledgeFilter) -> list[KnowledgeObject]:
         async with self._session_factory() as db:
             query = select(KnowledgeObjectModel).where(KnowledgeObjectModel.deleted_at.is_(None))
 
-            if filter.workspace_id:
+            if kf.workspace_id:
                 query = query.where(
-                    KnowledgeObjectModel.workspace_id == UUID(filter.workspace_id)
+                    KnowledgeObjectModel.workspace_id == UUID(kf.workspace_id)
                 )
-            if filter.collection_id:
+            if kf.collection_id:
                 query = query.where(
-                    KnowledgeObjectModel.collection_id == UUID(filter.collection_id)
+                    KnowledgeObjectModel.collection_id == UUID(kf.collection_id)
                 )
-            if filter.lifecycle_states:
+            if kf.lifecycle_states:
                 query = query.where(
                     KnowledgeObjectModel.lifecycle_state.in_(
-                        [s.value for s in filter.lifecycle_states]
+                        [s.value for s in kf.lifecycle_states]
                     )
                 )
-            if filter.enrichment_status:
+            if kf.enrichment_status:
                 query = query.where(
-                    KnowledgeObjectModel.enrichment_status == filter.enrichment_status
+                    KnowledgeObjectModel.enrichment_status == kf.enrichment_status
                 )
-            if filter.search:
+            if kf.search:
                 query = query.where(
-                    KnowledgeObjectModel.title.ilike(f"%{filter.search}%")
+                    KnowledgeObjectModel.title.ilike(f"%{kf.search}%")
                 )
 
             query = query.order_by(KnowledgeObjectModel.created_at.desc())
-            query = query.offset(filter.offset).limit(filter.limit)
+            query = query.offset(kf.offset).limit(kf.limit)
 
             rows = (await db.execute(query)).scalars().all()
             return [_ko_from_orm(r) for r in rows]

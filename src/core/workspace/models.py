@@ -14,6 +14,7 @@ class Workspace(BaseModel):
     created_by: str
     created_at: datetime
     updated_at: datetime
+    deleted_at: datetime | None = None
 
 
 class NewWorkspace(BaseModel):

@@ -902,6 +902,7 @@ class Workspace(Base):
     created_by: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     members: Mapped[list["WorkspaceMember"]] = relationship(
         back_populates="workspace", cascade="all, delete-orphan"

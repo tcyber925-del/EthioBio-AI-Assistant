@@ -5,6 +5,7 @@ import structlog
 from src.core.event_infrastructure.consumer import StreamConsumer
 from src.core.event_infrastructure.models import PipelineEvent
 from src.core.pipeline.service import PipelineOrchestrator
+from src.core.storage.interface import StorageAdapter
 
 logger = structlog.get_logger()
 
@@ -13,7 +14,7 @@ class PipelineStreamConsumer(StreamConsumer):
     def __init__(
         self,
         pipeline: PipelineOrchestrator,
-        storage,
+        storage: StorageAdapter,
         redis_url: str,
         group_name: str = "pipeline-workers",
         consumer_name: str | None = None,

@@ -25,6 +25,7 @@ def _workspace_from_orm(row: WorkspaceModel) -> Workspace:
         created_by=str(row.created_by),
         created_at=row.created_at,
         updated_at=row.updated_at,
+        deleted_at=row.deleted_at,
     )
 
 
@@ -70,7 +71,7 @@ class WorkspaceService:
     async def get(self, workspace_id: str) -> Workspace | None:
         async with self._session_factory() as db:
             row = await db.get(WorkspaceModel, UUID(workspace_id))
-            if row is None:
+            if row is None or row.deleted_at is not None:
                 return None
             return _workspace_from_orm(row)
 
@@ -80,6 +81,7 @@ class WorkspaceService:
                 select(WorkspaceModel)
                 .join(WorkspaceMemberModel)
                 .where(WorkspaceMemberModel.user_id == UUID(user_id))
+                .where(WorkspaceModel.deleted_at.is_(None))
                 .order_by(WorkspaceModel.created_at.desc())
             )
             rows = (await db.execute(query)).scalars().all()
@@ -104,9 +106,9 @@ class WorkspaceService:
     async def soft_delete(self, workspace_id: str) -> bool:
         async with self._session_factory() as db:
             row = await db.get(WorkspaceModel, UUID(workspace_id))
-            if row is None:
+            if row is None or row.deleted_at is not None:
                 return False
-            await db.delete(row)
+            row.deleted_at = datetime.now(timezone.utc)
             await db.commit()
             logger.info("workspace_deleted", workspace_id=workspace_id)
             return True

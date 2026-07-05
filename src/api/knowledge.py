@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -21,6 +22,7 @@ from src.core.knowledge_registry.models import (
     LifecycleTransition,
     NewKnowledgeObject,
     SearchResult,
+    TextMatch as KOTextMatch,
 )
 from src.core.pipeline import PipelineOrchestrator
 from src.core.pipeline.service import PipelineResult
@@ -122,8 +124,6 @@ async def search_knowledge(
     workspace_id: str | None = Query(None),
     limit: int = Query(10, ge=1, le=50),
 ):
-    from src.core.knowledge_registry.models import TextMatch as KOTextMatch
-
     results = await _get_gateway().search(q=q, workspace_id=workspace_id, limit=limit)
     return [
         SearchResult(
@@ -242,8 +242,6 @@ async def get_knowledge_enrichment(ko_id: str):
     ko = await _get_registry().get(ko_id)
     if ko is None:
         raise HTTPException(status_code=404, detail="KnowledgeObject not found")
-
-    import json
 
     raw = ko.metadata.get("enrichment")
     if not raw:

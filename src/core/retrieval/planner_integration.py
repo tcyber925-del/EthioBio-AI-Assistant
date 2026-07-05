@@ -1,15 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import structlog
 
 from src.core.retrieval.evidence_package import EvidencePackageBuilder
 from src.core.retrieval.gateway import RetrievalGateway
 from src.core.retrieval.models import EvidencePackage
-
-if TYPE_CHECKING:
-    pass
 
 logger = structlog.get_logger()
 

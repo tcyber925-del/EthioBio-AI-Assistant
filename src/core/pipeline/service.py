@@ -157,7 +157,8 @@ class PipelineOrchestrator:
         if ext == ".pdf":
             return await self._extract_pdf_text(file_path)
         if ext == ".docx":
-            return _extract_docx_text(file_path)
+            loop = asyncio.get_running_loop()
+            return await loop.run_in_executor(None, _extract_docx_text, file_path)
         return await _read_text_async(file_path)
 
     async def _extract_pdf_text(self, file_path: Path) -> str:
