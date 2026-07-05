@@ -34,7 +34,7 @@ class GatherDataNode:
         self.session = session
 
     async def __call__(self, state: TeacherCopilotState) -> dict:
-        session = self.session or async_session_factory()
+        session = self.session or async_session_factory()()
         close_session = self.session is None
 
         updates: dict = {"status": "gathered"}

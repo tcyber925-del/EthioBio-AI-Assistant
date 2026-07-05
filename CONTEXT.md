@@ -3,6 +3,105 @@
 ## Execution Roadmap
 Canonical implementation sequence at `01-Planning/ROADMAP.md`. 10 waves from Foundation Stabilization (Wave 0) through Multi-Agent System (Wave 10). Teacher Copilot MVP before infrastructure. Postgres-first. Event Bus deferred. Agents last.
 
+## KML Strangler Fig (Architectural Decision)
+The Knowledge Management Layer (KMAS/KLDMS) is built alongside the existing RAG system without modifying it. New features (Program D workspaces, Program E educational intelligence, Program F classroom) route through the KML gateway and get workspace scoping, layer routing, and provenance tracking. Existing graph nodes (`RetrievalNode`, `SearchFanoutNode`, `TutorNode`) keep their direct path through `VectorStoreAdapter` unchanged. Migration to the gateway happens incrementally per-feature when a feature needs workspace awareness or provenance.
+
+## Knowledge Layers (logical)
+The 7 layers defined in KMAS (Platform, Curriculum, Organization, Workspace, Personal, Memory, External) are a logical concept — a `layer` metadata field on Knowledge Objects and chunks, plus a route table mapping each layer to its storage backend. Not separate physical infrastructure per layer. The Retrieval Gateway uses this field to scope queries to the correct backends.
+
+## Knowledge Router (facade)
+The Knowledge Router (KMAS §4.3) is a thin facade for new KML consumers — it wraps the existing Orchestrator + PlanExecutor with workspace context and layer scoping. It does NOT replace `_route_after_orchestrator` or `PlanExecutor`. Existing graph nodes continue routing through the existing OrchestratorNode directly. The Router exists so new features (Program D/E/F) get workspace-aware, layer-scoped routing without touching the legacy pipeline internals.
+
+## Planner vs Gateway responsibility
+The Planner decides *what* to retrieve and *why* (subtasks, objectives, source types). The KML Retrieval Gateway decides *how* to retrieve it (depth, strategy, thresholds). The Planner can override defaults via the Retrieval Plan but isn't required to. KPPS/KROS/KASCS all inherit this boundary: Planner does educational reasoning, Gateway does retrieval mechanics.
+
+## Legacy corpus vs KML migration
+KMAS Step 1 (register existing corpus) and Step 5 (route through Retrieval Gateway) apply only to the new knowledge pipeline (Program B). The legacy Biology corpus stays in ChromaDB, accessed directly by existing graph nodes. When a future feature needs workspace-aware retrieval of the Biology corpus, that specific query path goes through the Gateway — which talks to the same ChromaDB with layer context added. No backfill unless/until the legacy corpus itself needs workspace integration.
+
+## Knowledge Object (storage model)
+Knowledge Object is a metadata record in PostgreSQL (identity, lifecycle state, ownership, provenance). Chunks remain in ChromaDB tagged by `knowledge_object_id`. The existing `VectorStoreAdapter.search()` path is unchanged — it queries ChromaDB as before. The KML Retrieval Gateway enriches search results by joining the chunk's `knowledge_object_id` with PostgreSQL metadata. New pipeline (Program B) creates KO records; legacy corpus has none.
+
+## Knowledge Lifecycle states (user-visible)
+Collapsed to 6 user-visible states: Uploaded → Processing → Published → Active → Archived → Deleted. Intermediate pipeline states (Validated, Registered, Enriched, Indexed) are internal progress, emitted as granular events for observability but not surfaced to the KO record. Users see "Processing" with a progress bar, not individual stage hops.
+
+## Knowledge Relationships (split strategy)
+Two categories: structured adjacency tables for high-frequency query-heavy types (prerequisites, alignment, derivation) using the ADR-0007 pattern, and a single generic `knowledge_relationships` table (source_id, target_id, relationship_type ENUM, metadata JSONB) for low-frequency types (contradicts, duplicates, belongs_to). Structured tables: `knowledge_prerequisites` (prerequisite_of, depends_on), `knowledge_alignment` (aligned_with, extends), `knowledge_derivation` (summarizes, explains, references, supersedes).
+
+## Permissions (workspace-level only)
+Permissions are enforced at workspace level (KWCAS membership model), not object level. Object-level ownership and viewer access inherit from the workspace the KO belongs to. The KLDMS object-level role table is a computed projection of workspace membership, not a separate table. AI Agent inherits the requesting user's permissions.
+
+## KPPS Processing Queue (Redis Streams)
+The processing queue uses Redis Streams (`knowledge:processing` consumer group) matching existing Redis infra. Workers for extraction, enrichment, chunking, embedding, indexing consume from this stream. Domain events (KnowledgePublished, KnowledgeArchived) continue using the existing `EventLogger` subscriber pattern for in-process consumers. No Kafka/RabbitMQ per ADR-0006.
+
+## KPPS Content Extraction & Chunking
+Stage 4 wraps existing `src/ingestion/` processors (docling, OCR, diagram) as Redis Stream consumers with no internal changes. Stage 5+7 replaces the existing token-based chunker with a new structure-aware chunker for the KML pipeline only (chapters → sections → topics → paragraphs → token limit). The existing token-based chunker stays for the legacy pipeline.
+
+## KPPS Educational Enrichment (async)
+Stage 6 runs asynchronously after publication. Pipeline publishes with minimal deterministic metadata (subject, grade, language) and a `status: enrichment_pending` flag. A separate enrichment worker extracts AI metadata (Bloom's, objectives, concepts, prerequisites) and updates the KO record. Program E workflows check enrichment status before generating artifacts. Stage 11 (Background Intelligence) triggers Program E subscribers on `KnowledgePublished` — it's a coordination pattern, not a separate generator implementation.
+
+## KPPS Validation
+Three lightweight checks: format rejection (unsupported types), size rejection (configurable limit), and checksum duplicate warning (SHA-256 against KOs in target workspace — creates a new version rather than silently duplicating). All non-blocking for pipeline entry.
+
+## KPPS Relationship Extraction (async)
+Stage 8 runs as part of the async enrichment workflow (not blocking publication). Outputs go into the `knowledge_relationships` generic table (KLDMS split strategy). Only free-form KO-to-KO relationships (`explains`, `summarizes`, `references`, `contradicts`, `supersedes`, `aligned_with`). The existing `TopicPrerequisite` model stays untouched — it governs curriculum-level prerequisites that are pre-defined, not AI-extracted.
+
+## Evidence Package (KML path only)
+Evidence Package is a new Pydantic model for the KML path only. Existing agentic path (`EvidenceGraphNode → SufficientContextNode → SynthesisNode → TutorNode`) keeps its current `evidence_items` dicts unchanged. Knowledge Router facade translates between the two when invoked by new consumers.
+
+## Conflict Resolution (deferred)
+Deferred to Phase 2. Phase 1 uses implicit trust via existing confidence scoring (`src/core/evidence/scoring.py` source quality weights: curriculum=0.95, memory=0.75, etc.) without explicit conflict detection. Reasoning agents receive evidence sorted by confidence — higher-confidence sources are presented first, both remain available for citation. Explicit conflict detection (flagging contradictory sources) comes when usage patterns justify it.
+
+## Retrieval Hierarchy (layer priority on SearchFanout)
+Layer priority is a pre-filter parameter on SearchFanout. KML Gateway passes `layer_priority` — SearchFanout queries layers in priority order and stops when `SufficientContextNode` threshold is met. Legacy path continues querying all layers in parallel (current behavior). Additive parameter change with default "all parallel" for backward compatibility.
+
+## Workspace wraps ClassGroup
+New `workspaces` table with nullable `class_group_id` FK to existing `ClassGroup`. When a teacher workspace is seeded from a ClassGroup, membership and context metadata are copied from the group. ClassGroup stays unchanged for legacy pipeline. New features use `workspaces` directly.
+
+## Workspace Membership
+Single `workspace_members` table (user_id, workspace_id, role ENUM). Seeded from ClassGroup: teacher_id → Owner+Teacher roles, enrolled students → Student role. After seeding, KWCAS membership logic applies (invitations, role changes). Existing `classroom_enrollments` stays as authoritative enrollment record for legacy pipeline.
+
+## Multi-tenancy (org_id on workspace, deferred isolation)
+Add `organization_id` (nullable) to `workspaces` table for Phase 1. ChromaDB stays shared; PostgreSQL isolation is natural via FK relationships (workspace → members → KO). Physical isolation (separate ChromaDB collections per org) deferred until volume proves it necessary. No `organization_id` on KO records — workspace membership is the isolation boundary.
+
+## KASCS Services (logical packages, not microservices)
+KASCS services are logical Python packages within the existing FastAPI monolith. Each has a public `__init__.py` exporting the service class, private internal modules, and no direct access to other services' tables (convention-enforced, not deployment-isolated). Existing `src/` modules superseded by a KASCS service get a thin wrapper package that delegates to existing code until migration is complete. These logical boundaries map 1:1 to future microservices if needed.
+
+## Workspace Context Header (X-Workspace-Id)
+Workspace context is a separate HTTP header, not embedded in the JWT. The API Gateway/BFF validates workspace membership and injects resolved workspace context into downstream services. Workspace switching is lightweight (no re-auth).
+
+## Program A build order (Strangler Fig)
+A1 (Knowledge Registry) built first — foundation for everything. A2 (Workspace Service) and A3 (Storage MVP) and A4 (scoped Event Infrastructure) built in parallel after A1. A3 MVP: file/blob storage for raw uploads only. A4 scoped: Redis Streams consumer group for pipeline, EventLogger for domain events — no DLQ, no external broker. A5 (Observability MVP): structured logging + pipeline stage metrics only; distributed tracing and dashboards deferred.
+
+## Storage Platform (local FS + adapter interface)
+MVP uses local filesystem (`./data/storage/{workspace_id}/{ko_id}/{filename}`) with a `StorageAdapter` interface (`store/retrieve`). S3/MinIO support added via the same interface when multi-server deployment warrants it.
+
+## Upload Service endpoint
+New `src/api/knowledge.py` router at `/api/v1/knowledge/upload`. POST multipart with file, workspace_id, collection_id (optional). Delegates to KML services: KnowledgeRegistry.register(), StorageAdapter.store(), emits KnowledgeUploaded to Redis Stream. Returns `{knowledge_object_id, status: "processing"}`. No existing router files modified.
+
+## Knowledge Publication (gates on mandatory chain only)
+Publication waits for mandatory chain: Validation → Parsing/OCR → Chunking → Embedding → Indexing. KO transitions to Published with `enrichment_status: pending`. Async enrichment (educational metadata, relationships) updates `enrichment_status: complete` later, emitting `KnowledgeEnriched`. Subscribers that need full metadata check `enrichment_status` before generating artifacts.
+
+## Citation Engine (additive CitationFormatter)
+New `CitationFormatter` service that transforms Evidence Package records into structured citations (source title, workspace, confidence badge, chunk excerpt). Consumed by: KML Gateway (new consumer responses), TutorNode via adapter (when workspace context available), frontend Program D (citation display). No existing `format_context()` code modified.
+
+## Workspace pages (/workspace/*, V2 design)
+New top-level routes under `/workspace/` using DashboardV2 design tokens directly (not `/v2/` prefix). Sidebar gets new "Workspace" section: Dashboard (D1), Upload (D2), Browse (D3), Search (D5), Processing (D6). Collections (D4) and Version History (D7) are sub-pages of Browse. Metadata Editor (D8) is a panel/overlay on KO detail.
+
+## Processing progress (polling)
+Frontend polls `GET /knowledge/{id}` every 3s for KOs in non-terminal state. Endpoint returns `lifecycle_state`, `enrichment_status`, `progress: {current_stage, total_stages, completed_stages}`. Polling stops once Published/Archived/Deleted. Processing dashboard (D6) fetches recent KO list with same status fields. SSE deferred — polling sufficient for MVP.
+
+## Program E epics (existing stay legacy, KML additive)
+Existing features (E4 QuizGen, E7 LessonPlanner, E8/E9 KnowledgeGraph) stay on legacy path with no changes. KML-enhanced versions are additive — new endpoints/parameters for workspace-aware consumers. E1 (Metadata Intelligence) is met by KPPS Stage 6 async enrichment. E2, E3, E5, E6 are net-new agents consuming KML Evidence Packages.
+
+## Program F existing epics stay on ClassGroup
+Existing F1 (Classroom Management) stays on `ClassGroup` for all current functionality. The workspace layer (wrapping ClassGroup) provides the same data for new workspace-dashboard consumers (Program D). No F1 rewrite. Net-new epics (F2 Assignments, F5 Classroom AI, F10 Calendar) use workspace model from day one.
+
+## Program G (Strangler Fig rollout)
+No cutover migration. Each KML feature goes live independently alongside existing system. G2 one-time script seeds workspace_members from existing ClassGroups. G1 per-epic feature flags (`kml_upload`, `kml_workspace_dashboard`). G3 (Knowledge Migration Pipeline), G4 (Compatibility Layer), G7–G10 removed — Strangler Fig achieves zero-downtime, no-data-loss, safe-rollback by design.
+
+## Knowledge Registry interface (synthesized)
+8 methods: `register`, `get`, `list`, `update_lifecycle`, `update_metadata`, `soft_delete`, `create_version`, `list_versions`. Typed lifecycle transitions. Events emitted as side-effect to EventLogger after commit (not event-sourced storage). Simple PG CRUD under the hood with auto-versioning on content changes. Metadata stored as JSONB dict.
+
 # Glossary
 
 ## Persistent Learning State

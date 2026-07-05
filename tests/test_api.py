@@ -1,9 +1,42 @@
 from uuid import uuid4
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from src.main import app
+from src.database.session import get_session
+
+
+@pytest.fixture(autouse=True)
+def override_db():
+    async def mock_get_session():
+        mock = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_result.scalar.return_value = None
+        mock_result.scalars.return_value.all.return_value = []
+        mock.execute.return_value = mock_result
+
+        def mock_add(instance):
+            try:
+                instance.id = uuid4()
+            except Exception:
+                pass
+
+        mock.add.side_effect = mock_add
+
+        async def mock_refresh(instance):
+            try:
+                instance.id = uuid4()
+            except Exception:
+                pass
+
+        mock.refresh.side_effect = mock_refresh
+        yield mock
+    app.dependency_overrides[get_session] = mock_get_session
+    yield
+    app.dependency_overrides.clear()
 
 
 @pytest.mark.asyncio

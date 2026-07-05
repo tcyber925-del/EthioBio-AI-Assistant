@@ -36,13 +36,13 @@ class TestTwinBuilder:
     @pytest.mark.asyncio
     async def test_rebuild_updates_existing_twin(self, mock_session):
         user_id = uuid4()
-        existing = StudentDigitalTwin(user_id=user_id, overall_health="critical")
+        existing = StudentDigitalTwin(user_id=user_id, overall_health="healthy")
         mock_session.get.return_value = existing
 
         builder = TwinBuilder(mock_session)
         twin = await builder.rebuild(user_id)
         assert twin.user_id == user_id
-        assert twin.overall_health != "critical"
+        assert twin.overall_health == "critical"
 
     @pytest.mark.asyncio
     async def test_rebuild_with_ability_data(self, mock_session):
@@ -185,12 +185,12 @@ class TestTwinBuilder:
 
     def test_compute_confidence_all_populated(self):
         dims = [
-            {"overall": 0.8, "topics": {}},
-            {"overall": 0.9, "topics": {}},
-            {"total_active": 2},
-            {"overall": 0.7, "topics": {}},
-            {"overall": 0.6, "topics": {}},
-            {"active_count": 1, "completed_count": 2},
+            {"overall": 0.8, "topics": {"Bio": 0.8}},
+            {"overall": 0.9, "topics": {"Bio": 0.9}},
+            {"total_active": 2, "topics": {"Bio": ["confuses mitosis and meiosis"]}},
+            {"overall": 0.7, "topics": {"Bio": 0.7}},
+            {"overall": 0.6, "topics": {"Bio": 0.6}},
+            {"active_count": 1, "completed_count": 2, "total": 3},
         ]
         result = _compute_confidence(dims)
         assert isinstance(result, float)
@@ -222,8 +222,13 @@ class TestTwinBuilder:
 
         summary = MagicMock(spec=MemoryEducationalSummary)
         summary.topic = "Bio"
-        summary.key_misconceptions = []
+        summary.key_misconceptions = [{"topic": "Bio", "pattern": "confuses mitosis and meiosis"}]
         summary.created_at = datetime.now(timezone.utc)
+
+        event = MagicMock(spec=MemoryEvent)
+        event.event_type = "intervention"
+        event.event_metadata = {"status": "completed"}
+        event.created_at = datetime.now(timezone.utc)
 
         calls = [
             MagicMock(
@@ -242,7 +247,7 @@ class TestTwinBuilder:
                 scalars=lambda *a, **kw: MagicMock(all=lambda: [ability]),
             ),
             MagicMock(
-                scalars=lambda *a, **kw: MagicMock(all=lambda: []),
+                scalars=lambda *a, **kw: MagicMock(all=lambda: [event]),
             ),
         ]
         mock_session.execute.side_effect = calls

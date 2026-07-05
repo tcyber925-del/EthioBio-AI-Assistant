@@ -102,6 +102,13 @@ async def init_db():
 
 
 async def close_db():
-    engine = _get_engine()
-    await engine.dispose()
+    global _engine, _async_session_factory
+    if _engine is not None:
+        try:
+            await _engine.dispose()
+        except Exception:
+            logger.warning("database_engine_dispose_error_ignored")
+        finally:
+            _engine = None
+    _async_session_factory = None
     logger.info("database engine disposed")
