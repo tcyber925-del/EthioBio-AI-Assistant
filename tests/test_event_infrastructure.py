@@ -43,6 +43,7 @@ class TestEventInfrastructure:
     async def test_consumer_loop(self, mock_redis_class):
         mock_redis = AsyncMock()
         mock_redis_class.from_url = AsyncMock(return_value=mock_redis)
+        mock_redis.xpending_range = AsyncMock(return_value=[])
 
         # Mock xreadgroup to return one message then stop
         mock_redis.xreadgroup.side_effect = [

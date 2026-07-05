@@ -91,7 +91,7 @@ async def get_memory_timeline(
     # Fetch semantic facts
     facts_stmt = (
         select(SemanticFact)
-        .where(SemanticFact.user_id == user_id, SemanticFact.is_active == True)
+        .where(SemanticFact.user_id == user_id, SemanticFact.is_active)
         .order_by(SemanticFact.created_at.desc())
         .limit((limit + offset) * 3)
     )

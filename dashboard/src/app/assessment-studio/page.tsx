@@ -263,7 +263,7 @@ export default function AssessmentStudioPage() {
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4" /> Create Assessment Studio MVP
+                    <Sparkles className="w-4 h-4" /> Create Assessment
                   </>
                 )}
               </button>
