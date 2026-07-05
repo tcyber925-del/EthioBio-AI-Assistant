@@ -17,6 +17,12 @@ interface Lesson {
   objective: string; status: string; created_at: string
 }
 
+interface Classroom {
+  id: string
+  name: string
+  grade_level: number
+}
+
 export default function LessonsPage() {
   const router = useRouter()
   const [items, setItems] = useState<Lesson[]>([])
@@ -28,7 +34,7 @@ export default function LessonsPage() {
   const [genTopic, setGenTopic] = useState('')
   const [genDuration, setGenDuration] = useState(40)
   const [selectedModel, setSelectedModel] = useState('')
-  const [classrooms, setClassrooms] = useState<any[]>([])
+  const [classrooms, setClassrooms] = useState<Classroom[]>([])
   const [selectedClassroomId, setSelectedClassroomId] = useState('')
   const [genExitTicket, setGenExitTicket] = useState(false)
   const [genDifferentiation, setGenDifferentiation] = useState(false)
@@ -66,8 +72,12 @@ export default function LessonsPage() {
   useEffect(() => {
     if (!isAuthenticated()) { router.push('/login'); return }
     fetchLessons()
-    fetchClassrooms()
   }, [filter, router])
+
+  useEffect(() => {
+    if (!isAuthenticated()) return
+    fetchClassrooms()
+  }, [router])
 
   const createLesson = async () => {
     if (!genTopic.trim()) return

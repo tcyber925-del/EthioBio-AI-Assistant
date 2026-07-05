@@ -17,6 +17,12 @@ interface UnitPlan {
   grade_level: number; days: number; created_at: string
 }
 
+interface Classroom {
+  id: string
+  name: string
+  grade_level: number
+}
+
 export default function UnitPlansPage() {
   const router = useRouter()
   const [items, setItems] = useState<UnitPlan[]>([])
@@ -29,7 +35,7 @@ export default function UnitPlansPage() {
   const [genDays, setGenDays] = useState(5)
   const [genDuration, setGenDuration] = useState(40)
   const [selectedModel, setSelectedModel] = useState('')
-  const [classrooms, setClassrooms] = useState<any[]>([])
+  const [classrooms, setClassrooms] = useState<Classroom[]>([])
   const [selectedClassroomId, setSelectedClassroomId] = useState('')
   const [genExitTicket, setGenExitTicket] = useState(false)
   const [genDifferentiation, setGenDifferentiation] = useState(false)

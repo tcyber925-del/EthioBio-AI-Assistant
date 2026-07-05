@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
@@ -59,6 +59,8 @@ export default function KnowledgeGraphPage() {
   const [loading, setLoading] = useState(true)
   const [loadingGraph, setLoadingGraph] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [deleting, setDeleting] = useState<string | null>(null)
+  const fetchVersion = useRef(0)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
@@ -95,17 +97,21 @@ export default function KnowledgeGraphPage() {
   // Fetch EKG chains for selected topic
   const fetchGraphChains = async (topicId: string, studentId: string) => {
     if (!topicId) return
+    const version = ++fetchVersion.current
     setLoadingGraph(true)
     setError(null)
     try {
       const prereqs = await fetchWithAuth(`/api/ekg/chain/${topicId}/prerequisites?max_depth=3`)
+      if (version !== fetchVersion.current) return
       setPrereqChain(prereqs)
 
       const dependents = await fetchWithAuth(`/api/ekg/chain/${topicId}/dependents?max_depth=3`)
+      if (version !== fetchVersion.current) return
       setDependentChain(dependents)
 
       if (studentId) {
         const gaps = await fetchWithAuth(`/api/ekg/gap-analysis/${topicId}/${studentId}`)
+        if (version !== fetchVersion.current) return
         setGapAnalysis(gaps)
       } else {
         setGapAnalysis([])
@@ -164,7 +170,9 @@ export default function KnowledgeGraphPage() {
   }
 
   const handleDeletePrerequisite = async (prereqId: string) => {
+    if (deleting) return
     if (!confirm('Are you sure you want to remove this prerequisite relationship?')) return
+    setDeleting(prereqId)
     setError(null)
     setSuccess(null)
     try {
@@ -172,6 +180,7 @@ export default function KnowledgeGraphPage() {
       const prereqs = await fetchWithAuth(`/api/ekg/prerequisites/${selectedTopicId}`)
       const matching = prereqs.find((p: any) => p.prerequisite_topic_id === prereqId)
       if (!matching) {
+        setDeleting(null)
         throw new Error('Relationship edge not found')
       }
       await fetchWithAuth(`/api/ekg/prerequisites/${matching.id}`, {
@@ -181,6 +190,8 @@ export default function KnowledgeGraphPage() {
       fetchGraphChains(selectedTopicId, selectedStudentId)
     } catch (err: any) {
       setError(err.message || 'Failed to remove relationship')
+    } finally {
+      setDeleting(null)
     }
   }
 
@@ -391,7 +402,8 @@ export default function KnowledgeGraphPage() {
                             <span className="text-[10px] text-v2-text-secondary">Grade {n.grade_level}</span>
                             <button
                               onClick={() => handleDeletePrerequisite(n.node_id)}
-                              className="text-v2-text-secondary hover:text-v2-error p-0.5 transition-colors"
+                              disabled={!!deleting}
+                              className="text-v2-text-secondary hover:text-v2-error p-0.5 transition-colors disabled:opacity-40"
                               title="Delete Prerequisite"
                             >
                               <Trash2 className="w-3.5 h-3.5" />

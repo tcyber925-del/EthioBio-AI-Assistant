@@ -43,13 +43,13 @@ export default function InterventionAnalyticsPage() {
     setLoading(true)
     setError(null)
     try {
-      const ins = await fetchWithAuth('/api/interventions/learning-insights')
+      const [ins, lead, trendData] = await Promise.all([
+        fetchWithAuth('/api/interventions/learning-insights'),
+        fetchWithAuth('/api/interventions/analytics/leaderboard?limit=10'),
+        fetchWithAuth('/api/interventions/analytics/trends?months=6'),
+      ])
       setInsights(ins)
-
-      const lead = await fetchWithAuth('/api/interventions/analytics/leaderboard?limit=10')
       setLeaderboard(lead)
-
-      const trendData = await fetchWithAuth('/api/interventions/analytics/trends?months=6')
       setTrends(trendData)
     } catch (err: any) {
       setError(err.message || 'Failed to load intervention analytics')
