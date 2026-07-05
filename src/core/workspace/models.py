@@ -22,6 +22,7 @@ class NewWorkspace(BaseModel):
     description: str | None = None
     organization_id: str | None = None
     class_group_id: str | None = None
+    owner_id: str | None = None
 
 
 class WorkspaceMember(BaseModel):

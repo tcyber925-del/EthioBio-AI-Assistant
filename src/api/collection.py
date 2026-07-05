@@ -65,7 +65,7 @@ async def add_to_collection(collection_id: str, ko_id: str = Query(...)):
 
 @router.delete("/{collection_id}/items/{ko_id}", status_code=204)
 async def remove_from_collection(collection_id: str, ko_id: str):
-    ok = await _get_service().remove_knowledge_object(ko_id)
+    ok = await _get_service().remove_knowledge_object(collection_id, ko_id)
     if not ok:
         raise HTTPException(status_code=404, detail="KnowledgeObject not found")
 

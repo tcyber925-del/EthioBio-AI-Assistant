@@ -13,7 +13,7 @@ service = WorkspaceService(async_session_factory())
 
 @router.post("/", response_model=Workspace, status_code=201)
 async def create_workspace(body: NewWorkspace):
-    ws = await service.create(body, created_by=body.organization_id or "system")
+    ws = await service.create(body, created_by=body.owner_id or "system")
     return ws
 
 

@@ -100,14 +100,14 @@ class CollectionService:
             logger.info("ko_added_to_collection", ko_id=ko_id, collection_id=collection_id)
             return True
 
-    async def remove_knowledge_object(self, ko_id: str) -> bool:
+    async def remove_knowledge_object(self, collection_id: str, ko_id: str) -> bool:
         async with self._session_factory() as db:
             ko = await db.get(KnowledgeObjectModel, UUID(ko_id))
-            if ko is None or ko.deleted_at is not None:
+            if ko is None or ko.deleted_at is not None or str(ko.collection_id) != collection_id:
                 return False
             ko.collection_id = None
             await db.commit()
-            logger.info("ko_removed_from_collection", ko_id=ko_id)
+            logger.info("ko_removed_from_collection", ko_id=ko_id, collection_id=collection_id)
             return True
 
     async def list_knowledge_objects(self, collection_id: str) -> list[dict]:

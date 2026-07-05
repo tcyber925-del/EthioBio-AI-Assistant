@@ -299,7 +299,7 @@ async def list_knowledge_objects(
     if lifecycle_states:
         states = [LifecycleState(s.strip()) for s in lifecycle_states.split(",")]
 
-    filter = KnowledgeFilter(
+    kf = KnowledgeFilter(
         workspace_id=workspace_id,
         collection_id=collection_id,
         lifecycle_states=states,
@@ -308,7 +308,7 @@ async def list_knowledge_objects(
         limit=limit,
         offset=offset,
     )
-    return await _get_registry().list_by_filter(filter)
+    return await _get_registry().list_by_filter(kf)
 
 
 @router.patch("/{ko_id}/lifecycle", response_model=KnowledgeObject)

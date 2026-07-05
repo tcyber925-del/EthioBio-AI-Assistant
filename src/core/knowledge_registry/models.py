@@ -55,15 +55,12 @@ class LifecycleTransition(BaseModel):
     reason: str | None = None
 
 
-class TextMatch(BaseModel):
-    text: str
-    chunk_index: int
-    score: float
-
-
 class SearchResult(BaseModel):
     ko_id: str
     title: str
     content_type: str
     score: float
-    matches: list[TextMatch]
+    matches: list["TextMatch"]
+
+
+from src.core.retrieval.models import TextMatch
