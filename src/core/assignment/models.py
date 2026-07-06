@@ -14,7 +14,7 @@ class Assignment(BaseModel):
     assignment_type: str = "homework"
     due_date: datetime | None = None
     rubric: dict = {}
-    status: str = "draft"
+    status: Literal["draft", "published", "completed", "archived"] = "draft"
     max_attempts: int = 1
     allow_late_submission: bool = False
     created_at: datetime
@@ -52,7 +52,7 @@ class Submission(BaseModel):
     student_id: str
     storage_key: str | None = None
     content_text: str | None = None
-    status: str = "submitted"
+    status: Literal["submitted", "under_review", "revision_requested", "reviewed", "completed"] = "submitted"
     ai_feedback: dict = {}
     teacher_feedback: dict = {}
     grade: float | None = None

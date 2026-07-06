@@ -255,9 +255,9 @@ class AssignmentService:
         async with self._session_factory() as db:
             query = (
                 select(SubmissionModel)
+                .join(AssignmentModel, SubmissionModel.assignment_id == AssignmentModel.id)
                 .where(
                     SubmissionModel.student_id == UUID(student_id),
-                    SubmissionModel.assignment_id == AssignmentModel.id,
                     AssignmentModel.deleted_at.is_(None),
                 )
                 .order_by(SubmissionModel.submitted_at.desc())
