@@ -2564,7 +2564,7 @@ async def assignments_command(update: Update, context):
             ws_id = ws_resp.json()[0]["id"]
             resp = await client.get(f"{api_base}/api/v1/assignments/?workspace_id={ws_id}")
         else:
-            resp = await client.get(f"{api_base}/api/v1/assignments/my/?student_id={user_data['id']}")
+            resp = await client.get(f"{api_base}/api/v1/assignments/my?student_id={user_data['id']}")
 
         if resp.status_code != 200:
             await _reply_long(update, "❌ Failed to load assignments.")

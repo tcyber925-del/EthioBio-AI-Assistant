@@ -108,3 +108,4 @@ async def test_digital_twin_consumer_invalid_user_id():
             
             # Assert
             MockBuilder.assert_not_called()
+            MockFactory.assert_not_called()

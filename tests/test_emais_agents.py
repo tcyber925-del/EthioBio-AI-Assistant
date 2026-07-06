@@ -35,11 +35,14 @@ async def test_emais_agents_registration():
     registry = build_registry(mock_llm_router, mock_adapter)
     
     agent_names = [a.name for a in registry.list_agents()]
-    assert "misconception_agent" in agent_names
-    assert "intervention_agent" in agent_names
-    assert "forecast_agent" in agent_names
-    assert "curriculum_agent" in agent_names
-    assert "research_agent" in agent_names
+    assert "tutor_agent" in agent_names
+    assert "quiz_agent" in agent_names
+    assert "lesson_planner_agent" in agent_names
+    assert "diagnostic_agent" in agent_names
+    assert "translator_agent" in agent_names
+    assert "safety_agent" in agent_names
+    assert "diagram_agent" in agent_names
+    assert "student_progress_agent" in agent_names
 
 @pytest.mark.asyncio
 async def test_emais_agents_reflection():
