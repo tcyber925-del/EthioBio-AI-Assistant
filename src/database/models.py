@@ -13,6 +13,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -90,7 +91,7 @@ class StudentProfile(Base):
     school: Mapped[str] = mapped_column(String(200), nullable=True)
     region: Mapped[str] = mapped_column(String(100), nullable=True)
     topic_mastery: Mapped[dict] = mapped_column(JSON, default=dict)
-    score_history: Mapped[dict] = mapped_column(JSON, default=list)
+    score_history: Mapped[list] = mapped_column(JSON, default=list)
     weak_areas: Mapped[list] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
@@ -922,6 +923,61 @@ class WorkspaceMember(Base):
     joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     workspace: Mapped["Workspace"] = relationship(back_populates="members")
+
+
+class AssignmentStatus(str, enum.Enum):
+    draft = "draft"
+    published = "published"
+    completed = "completed"
+    archived = "archived"
+
+
+class SubmissionStatus(str, enum.Enum):
+    submitted = "submitted"
+    under_review = "under_review"
+    revision_requested = "revision_requested"
+    reviewed = "reviewed"
+    completed = "completed"
+
+
+class Assignment(Base):
+    __tablename__ = "assignments"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_uuid)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("workspaces.id"), index=True)
+    teacher_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"), index=True)
+    title: Mapped[str] = mapped_column(String(300))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    assignment_type: Mapped[str] = mapped_column(String(50), default="homework")
+    due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rubric: Mapped[dict] = mapped_column("rubric", JSON, default=dict)
+    status: Mapped[AssignmentStatus] = mapped_column(Enum(AssignmentStatus), default=AssignmentStatus.draft)
+    max_attempts: Mapped[int] = mapped_column(Integer, default=1)
+    allow_late_submission: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class Submission(Base):
+    __tablename__ = "submissions"
+    __table_args__ = (UniqueConstraint("assignment_id", "student_id", "attempt_number"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_uuid)
+    assignment_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("assignments.id"), index=True)
+    student_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"), index=True)
+    storage_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    content_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[SubmissionStatus] = mapped_column(Enum(SubmissionStatus), default=SubmissionStatus.submitted)
+    ai_feedback: Mapped[dict] = mapped_column("ai_feedback", JSON, default=dict)
+    teacher_feedback: Mapped[dict] = mapped_column("teacher_feedback", JSON, default=dict)
+    grade: Mapped[float | None] = mapped_column(Float, nullable=True)
+    attempt_number: Mapped[int] = mapped_column(Integer, default=1)
+    submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
 
 class Collection(Base):

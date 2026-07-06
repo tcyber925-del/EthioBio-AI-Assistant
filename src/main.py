@@ -14,6 +14,7 @@ from src.api import (
     activity,
     admin,
     agent_orchestrator,
+    assignment,
     auth,
     chat,
     collection,
@@ -251,6 +252,7 @@ app.include_router(knowledge.router)
 app.include_router(retrieval_router)
 app.include_router(workspace.router)
 app.include_router(collection.router)
+app.include_router(assignment.router)
 app.include_router(agent_orchestrator.router)
 app.include_router(auth.router)
 
