@@ -35,7 +35,7 @@ class DigitalTwinEventConsumer(StreamConsumer):
             user_id_str = event.ko_id
 
         try:
-            user_id = UUID(user_id_str)
+            user_id = UUID(str(user_id_str))
         except (ValueError, TypeError):
             logger.warning(
                 "digital_twin_invalid_user_id",

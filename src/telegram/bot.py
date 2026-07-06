@@ -2547,7 +2547,7 @@ def _format_copilot_response(result: dict, language: str) -> str:
 async def assignments_command(update: Update, context):
     api_base = settings.api_base_url
     user_id = update.effective_user.id
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         user_resp = await client.get(f"{api_base}/users/by_telegram/{user_id}")
         if user_resp.status_code != 200:
             await _reply_long(update, "❌ You need to /start first.")
@@ -2591,7 +2591,7 @@ async def submit_command(update: Update, context):
     assignment_id = args[0]
     answer = " ".join(args[1:])
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         user_resp = await client.get(f"{api_base}/users/by_telegram/{update.effective_user.id}")
         if user_resp.status_code != 200:
             await _reply_long(update, "❌ You need to /start first.")

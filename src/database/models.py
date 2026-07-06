@@ -13,6 +13,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -961,10 +962,11 @@ class Assignment(Base):
 
 class Submission(Base):
     __tablename__ = "submissions"
+    __table_args__ = (UniqueConstraint("assignment_id", "student_id", "attempt_number"),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_uuid)
-    assignment_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("assignments.id"))
-    student_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"))
+    assignment_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("assignments.id"), index=True)
+    student_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"), index=True)
     storage_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
     content_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[SubmissionStatus] = mapped_column(Enum(SubmissionStatus), default=SubmissionStatus.submitted)

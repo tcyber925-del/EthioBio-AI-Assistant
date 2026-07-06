@@ -241,7 +241,11 @@ class AssignmentService:
         async with self._session_factory() as db:
             query = (
                 select(SubmissionModel)
-                .where(SubmissionModel.student_id == UUID(student_id))
+                .where(
+                    SubmissionModel.student_id == UUID(student_id),
+                    SubmissionModel.assignment_id == AssignmentModel.id,
+                    AssignmentModel.deleted_at.is_(None),
+                )
                 .order_by(SubmissionModel.submitted_at.desc())
             )
             rows = (await db.execute(query)).scalars().all()
