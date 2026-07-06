@@ -1,3 +1,4 @@
+import json
 import structlog
 from src.agents.base import BaseAgent
 from src.llm.router import ModelRouter
@@ -59,7 +60,6 @@ Provide a JSON response with:
             request_type="misconception_reflection"
         )
         
-        import json
         try:
             return json.loads(result["content"])
         except Exception:

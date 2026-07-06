@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, model_validator
 
@@ -40,7 +41,7 @@ class UpdateAssignment(BaseModel):
     assignment_type: str | None = None
     due_date: datetime | None = None
     rubric: dict | None = None
-    status: str | None = None
+    status: Literal["draft", "published", "completed", "archived"] | None = None
     max_attempts: int | None = None
     allow_late_submission: bool | None = None
 
@@ -74,7 +75,7 @@ class NewSubmission(BaseModel):
 
 
 class UpdateSubmission(BaseModel):
-    status: str | None = None  # validated against SubmissionStatus in service
+    status: Literal["submitted", "under_review", "revision_requested", "reviewed", "completed"] | None = None
     ai_feedback: dict | None = None
     teacher_feedback: dict | None = None
     grade: float | None = None

@@ -1,3 +1,4 @@
+import json
 import structlog
 from src.agents.base import BaseAgent
 from src.llm.router import ModelRouter
@@ -60,7 +61,6 @@ Provide a JSON response with:
         )
         
         # Parse JSON string from LLM result. In a real system, you might want strict structured outputs.
-        import json
         try:
             return json.loads(result["content"])
         except Exception:

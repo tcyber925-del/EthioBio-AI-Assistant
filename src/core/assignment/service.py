@@ -98,7 +98,7 @@ class AssignmentService:
             return _assignment_from_orm(row)
 
     async def list_for_workspace(
-        self, workspace_id: str, status_filter: str | None = None
+        self, workspace_id: str, status_filter: AssignmentStatus | None = None
     ) -> list[Assignment]:
         async with self._session_factory() as db:
             query = (
@@ -109,13 +109,13 @@ class AssignmentService:
                 )
             )
             if status_filter:
-                query = query.where(AssignmentModel.status == AssignmentStatus(status_filter))
+                query = query.where(AssignmentModel.status == status_filter)
             query = query.order_by(AssignmentModel.created_at.desc())
             rows = (await db.execute(query)).scalars().all()
             return [_assignment_from_orm(r) for r in rows]
 
     async def list_for_student(
-        self, student_id: str, status_filter: str | None = None
+        self, student_id: str, status_filter: AssignmentStatus | None = None
     ) -> list[Assignment]:
         async with self._session_factory() as db:
             enrolled = await db.execute(
@@ -138,7 +138,7 @@ class AssignmentService:
                 )
             )
             if status_filter:
-                query = query.where(AssignmentModel.status == AssignmentStatus(status_filter))
+                query = query.where(AssignmentModel.status == status_filter)
             else:
                 query = query.where(AssignmentModel.status == AssignmentStatus.published)
             query = query.order_by(AssignmentModel.due_date.asc().nullslast())
@@ -224,7 +224,15 @@ class AssignmentService:
 
     async def get_submission(self, submission_id: str) -> Submission | None:
         async with self._session_factory() as db:
-            row = await db.get(SubmissionModel, UUID(submission_id))
+            query = (
+                select(SubmissionModel)
+                .join(AssignmentModel, SubmissionModel.assignment_id == AssignmentModel.id)
+                .where(
+                    SubmissionModel.id == UUID(submission_id),
+                    AssignmentModel.deleted_at.is_(None),
+                )
+            )
+            row = (await db.execute(query)).scalars().first()
             if row is None:
                 return None
             return _submission_from_orm(row)

@@ -10,6 +10,7 @@ from src.core.assignment.models import (
     UpdateAssignment,
     UpdateSubmission,
 )
+from src.database.models import AssignmentStatus
 from src.database.session import async_session_factory
 
 logger = structlog.get_logger()
@@ -33,7 +34,7 @@ async def create_assignment(data: NewAssignment, teacher_id: str = Query(...)):
 @router.get("/", response_model=list[Assignment])
 async def list_assignments(
     workspace_id: str = Query(...),
-    status: str | None = Query(None),
+    status: AssignmentStatus | None = Query(None),
 ):
     return await _get_service().list_for_workspace(workspace_id, status)
 
