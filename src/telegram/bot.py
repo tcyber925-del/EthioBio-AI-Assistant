@@ -326,7 +326,7 @@ async def child_progress(update: Update, context):
             user_result = await session.execute(
                 select(User).where(
                     User.telegram_id == telegram_id,
-                    User.is_active,
+                    User.is_active == True,
                 )
             )
             user = user_result.scalar_one_or_none()

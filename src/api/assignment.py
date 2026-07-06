@@ -96,6 +96,9 @@ async def my_submissions(student_id: str = Query(...)):
 
 @router.get("/{assignment_id}/submissions", response_model=list[Submission])
 async def list_submissions(assignment_id: str):
+    assignment = await _get_service().get(assignment_id)
+    if assignment is None:
+        raise HTTPException(status_code=404, detail="Assignment not found")
     return await _get_service().list_submissions(assignment_id)
 
 

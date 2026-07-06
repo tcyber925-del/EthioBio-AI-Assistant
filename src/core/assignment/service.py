@@ -190,7 +190,7 @@ class AssignmentService:
     async def submit(self, assignment_id: str, student_id: str, data: NewSubmission) -> Submission | None:
         async with self._session_factory() as db:
             assignment = await db.get(AssignmentModel, UUID(assignment_id))
-            if assignment is None or assignment.deleted_at is not None:
+            if assignment is None or assignment.deleted_at is not None or assignment.status != AssignmentStatus.published:
                 return None
 
             existing = (
@@ -260,7 +260,7 @@ class AssignmentService:
                 row.teacher_feedback = data.teacher_feedback
             if data.grade is not None:
                 row.grade = data.grade
-            if data.status in ("reviewed", "completed"):
+            if data.status is not None and data.status in ("reviewed", "completed"):
                 row.reviewed_at = datetime.now(timezone.utc)
             row.updated_at = datetime.now(timezone.utc)
             await db.commit()
