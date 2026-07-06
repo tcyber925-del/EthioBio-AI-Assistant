@@ -90,7 +90,7 @@ class StudentProfile(Base):
     school: Mapped[str] = mapped_column(String(200), nullable=True)
     region: Mapped[str] = mapped_column(String(100), nullable=True)
     topic_mastery: Mapped[dict] = mapped_column(JSON, default=dict)
-    score_history: Mapped[dict] = mapped_column(JSON, default=list)
+    score_history: Mapped[list] = mapped_column(JSON, default=list)
     weak_areas: Mapped[list] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)

@@ -1170,7 +1170,7 @@ async def _fetch_recovery_notifications(user_id, session):
         select(RecoveryNotification)
         .where(
             RecoveryNotification.user_id == user_id,
-            not RecoveryNotification.is_read,
+            RecoveryNotification.is_read == False,
         )
         .order_by(RecoveryNotification.created_at.desc())
         .limit(5)

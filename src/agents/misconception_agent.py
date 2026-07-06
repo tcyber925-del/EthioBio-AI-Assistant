@@ -30,6 +30,7 @@ Provide your analysis in a structured format."""
             request_type="misconception_analysis"
         )
         return result["content"]
+
     async def reflect(self, past_diagnosis: dict, outcome_data: dict) -> dict:
         """
         Agent Reflection Loop: Evaluates a historical misconception diagnosis against later student performance.

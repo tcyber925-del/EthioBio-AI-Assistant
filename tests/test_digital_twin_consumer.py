@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.core.digital_twin.consumer import DigitalTwinEventConsumer
 from src.core.event_infrastructure.models import PipelineEvent
@@ -16,7 +16,7 @@ async def test_digital_twin_consumer_process():
         ko_id="ko_123",
         workspace_id="ws_123",
         payload={"user_id": user_id, "score": 85},
-        occurred_at=datetime.utcnow(),
+        occurred_at=datetime.now(timezone.utc),
         correlation_id="corr_123"
     )
     
@@ -63,7 +63,7 @@ async def test_digital_twin_consumer_fallback_koid():
         ko_id=user_id,
         workspace_id="ws_123",
         payload={"progress": 100},
-        occurred_at=datetime.utcnow(),
+        occurred_at=datetime.now(timezone.utc),
         correlation_id="corr_123"
     )
     
@@ -97,7 +97,7 @@ async def test_digital_twin_consumer_invalid_user_id():
         ko_id="not-a-uuid",
         workspace_id="ws_123",
         payload={"score": 85},
-        occurred_at=datetime.utcnow(),
+        occurred_at=datetime.now(timezone.utc),
         correlation_id="corr_123"
     )
     

@@ -30,6 +30,7 @@ Provide your recommended interventions with historical success evidence."""
             request_type="intervention_analysis"
         )
         return result["content"]
+
     async def reflect(self, past_intervention: dict, outcome_data: dict) -> dict:
         """
         Agent Reflection Loop: Evaluates a historical recommendation against actual student outcomes.

@@ -134,12 +134,13 @@ class AssignmentService:
                 select(AssignmentModel)
                 .where(
                     AssignmentModel.workspace_id.in_(workspace_ids),
-                    AssignmentModel.status == AssignmentStatus.published,
                     AssignmentModel.deleted_at.is_(None),
                 )
             )
             if status_filter:
                 query = query.where(AssignmentModel.status == AssignmentStatus(status_filter))
+            else:
+                query = query.where(AssignmentModel.status == AssignmentStatus.published)
             query = query.order_by(AssignmentModel.due_date.asc().nullslast())
             rows = (await db.execute(query)).scalars().all()
             return [_assignment_from_orm(r) for r in rows]

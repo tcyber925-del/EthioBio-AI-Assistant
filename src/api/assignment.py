@@ -30,14 +30,6 @@ async def create_assignment(data: NewAssignment, teacher_id: str = Query(...)):
     return await _get_service().create(data, teacher_id)
 
 
-@router.get("/{assignment_id}", response_model=Assignment)
-async def get_assignment(assignment_id: str):
-    result = await _get_service().get(assignment_id)
-    if result is None:
-        raise HTTPException(status_code=404, detail="Assignment not found")
-    return result
-
-
 @router.get("/", response_model=list[Assignment])
 async def list_assignments(
     workspace_id: str = Query(...),
@@ -52,6 +44,14 @@ async def my_assignments(
     status: str | None = Query(None),
 ):
     return await _get_service().list_for_student(student_id, status)
+
+
+@router.get("/{assignment_id}", response_model=Assignment)
+async def get_assignment(assignment_id: str):
+    result = await _get_service().get(assignment_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    return result
 
 
 @router.patch("/{assignment_id}", response_model=Assignment)
@@ -89,14 +89,14 @@ async def submit_assignment(
     return result
 
 
-@router.get("/{assignment_id}/submissions", response_model=list[Submission])
-async def list_submissions(assignment_id: str):
-    return await _get_service().list_submissions(assignment_id)
-
-
 @router.get("/submissions/my", response_model=list[Submission])
 async def my_submissions(student_id: str = Query(...)):
     return await _get_service().list_my_submissions(student_id)
+
+
+@router.get("/{assignment_id}/submissions", response_model=list[Submission])
+async def list_submissions(assignment_id: str):
+    return await _get_service().list_submissions(assignment_id)
 
 
 @router.get("/submissions/{submission_id}", response_model=Submission)
