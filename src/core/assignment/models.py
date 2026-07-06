@@ -74,7 +74,7 @@ class NewSubmission(BaseModel):
 
 
 class UpdateSubmission(BaseModel):
-    status: str | None = None
+    status: str | None = None  # validated against SubmissionStatus in service
     ai_feedback: dict | None = None
     teacher_feedback: dict | None = None
     grade: float | None = None

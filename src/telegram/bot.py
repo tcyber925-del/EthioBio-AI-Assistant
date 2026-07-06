@@ -1,4 +1,5 @@
 import random
+import uuid
 
 import httpx
 import structlog
@@ -2353,7 +2354,7 @@ async def link_command(update: Update, context):
                 select(User).where(
                     User.email == email,
                     User.role == UserRole.teacher,
-                    User.is_active,
+                    User.is_active == True,
                 )
             )
             teacher = result.scalar_one_or_none()
@@ -2409,7 +2410,7 @@ async def handle_link_otp(update: Update, context):
                 select(User).where(
                     User.email == email,
                     User.role == UserRole.teacher,
-                    User.is_active,
+                    User.is_active == True,
                 )
             )
             teacher_user = teacher.scalar_one_or_none()
@@ -2590,6 +2591,12 @@ async def submit_command(update: Update, context):
 
     assignment_id = args[0]
     answer = " ".join(args[1:])
+
+    try:
+        uuid.UUID(assignment_id)
+    except ValueError:
+        await _reply_long(update, "❌ Invalid assignment ID. Use the full UUID from /assignments.")
+        return
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         user_resp = await client.get(f"{api_base}/users/by_telegram/{update.effective_user.id}")

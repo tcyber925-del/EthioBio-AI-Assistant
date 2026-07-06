@@ -192,6 +192,8 @@ class AssignmentService:
             assignment = await db.get(AssignmentModel, UUID(assignment_id))
             if assignment is None or assignment.deleted_at is not None or assignment.status != AssignmentStatus.published:
                 return None
+            if assignment.due_date and not assignment.allow_late_submission and datetime.now(timezone.utc) > assignment.due_date:
+                return None
 
             existing = (
                 await db.execute(
