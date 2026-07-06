@@ -42,7 +42,7 @@ async def list_assignments(
 @router.get("/my", response_model=list[Assignment])
 async def my_assignments(
     student_id: str = Query(...),
-    status: str | None = Query(None),
+    status: AssignmentStatus | None = Query(None),
 ):
     return await _get_service().list_for_student(student_id, status)
 
