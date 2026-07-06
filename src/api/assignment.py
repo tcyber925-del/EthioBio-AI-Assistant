@@ -38,7 +38,7 @@ async def list_assignments(
     return await _get_service().list_for_workspace(workspace_id, status)
 
 
-@router.get("/my/", response_model=list[Assignment])
+@router.get("/my", response_model=list[Assignment])
 async def my_assignments(
     student_id: str = Query(...),
     status: str | None = Query(None),

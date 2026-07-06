@@ -2577,7 +2577,7 @@ async def assignments_command(update: Update, context):
         for a in assignments[:10]:
             status_icon = {"draft": "📝", "published": "📢", "completed": "✅", "archived": "📦"}.get(a["status"], "📄")
             due = f" 📅 {a['due_date'][:10]}" if a.get("due_date") else ""
-            lines.append(f"\n{status_icon} *{a['title']}*\n  `{a['id'][:8]}...` | {a['assignment_type']}{due}")
+            lines.append(f"\n{status_icon} *{a['title']}*\n  `{a['id']}` | {a['assignment_type']}{due}")
         await _reply_long(update, "\n".join(lines), parse_mode="Markdown")
 
 
@@ -2607,8 +2607,7 @@ async def submit_command(update: Update, context):
         elif resp.status_code == 404:
             await _reply_long(update, "❌ Assignment not found or max attempts exceeded.")
         else:
-            detail = resp.text[:200]
-            await _reply_long(update, f"❌ Submission failed: {detail}")
+            await _reply_long(update, "❌ Submission failed. Please try again later.")
 
 
 def build_app() -> Application:

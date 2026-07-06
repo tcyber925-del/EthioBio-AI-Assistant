@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 
 class Assignment(BaseModel):
@@ -65,6 +65,12 @@ class Submission(BaseModel):
 class NewSubmission(BaseModel):
     storage_key: str | None = None
     content_text: str | None = None
+
+    @model_validator(mode="after")
+    def _require_content(self):
+        if not self.storage_key and not self.content_text:
+            raise ValueError("Either storage_key or content_text must be provided")
+        return self
 
 
 class UpdateSubmission(BaseModel):
