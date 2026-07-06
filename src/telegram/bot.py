@@ -2544,6 +2544,73 @@ def _format_copilot_response(result: dict, language: str) -> str:
     return full
 
 
+async def assignments_command(update: Update, context):
+    api_base = settings.api_base_url
+    user_id = update.effective_user.id
+    async with httpx.AsyncClient() as client:
+        user_resp = await client.get(f"{api_base}/users/by_telegram/{user_id}")
+        if user_resp.status_code != 200:
+            await _reply_long(update, "❌ You need to /start first.")
+            return
+        user_data = user_resp.json()
+        role = user_data.get("role", "student")
+
+        if role in ("admin", "teacher"):
+            ws_resp = await client.get(f"{api_base}/api/v1/workspaces/?user_id={user_data['id']}")
+            if ws_resp.status_code != 200 or not ws_resp.json():
+                await _reply_long(update, "No workspace found. Create one in the dashboard first.")
+                return
+            ws_id = ws_resp.json()[0]["id"]
+            resp = await client.get(f"{api_base}/api/v1/assignments/?workspace_id={ws_id}")
+        else:
+            resp = await client.get(f"{api_base}/api/v1/assignments/my/?student_id={user_data['id']}")
+
+        if resp.status_code != 200:
+            await _reply_long(update, "❌ Failed to load assignments.")
+            return
+        assignments = resp.json()
+        if not assignments:
+            await _reply_long(update, "📋 No assignments found.")
+            return
+
+        lines = ["📋 *Assignments*"]
+        for a in assignments[:10]:
+            status_icon = {"draft": "📝", "published": "📢", "completed": "✅", "archived": "📦"}.get(a["status"], "📄")
+            due = f" 📅 {a['due_date'][:10]}" if a.get("due_date") else ""
+            lines.append(f"\n{status_icon} *{a['title']}*\n  `{a['id'][:8]}...` | {a['assignment_type']}{due}")
+        await _reply_long(update, "\n".join(lines), parse_mode="Markdown")
+
+
+async def submit_command(update: Update, context):
+    api_base = settings.api_base_url
+    args = context.args
+    if len(args) < 2:
+        await _reply_long(update, "Usage: /submit <assignment_id> <your answer>\nExample: /submit abc12345 My homework answer")
+        return
+
+    assignment_id = args[0]
+    answer = " ".join(args[1:])
+
+    async with httpx.AsyncClient() as client:
+        user_resp = await client.get(f"{api_base}/users/by_telegram/{update.effective_user.id}")
+        if user_resp.status_code != 200:
+            await _reply_long(update, "❌ You need to /start first.")
+            return
+        user_data = user_resp.json()
+
+        resp = await client.post(
+            f"{api_base}/api/v1/assignments/{assignment_id}/submissions?student_id={user_data['id']}",
+            json={"content_text": answer},
+        )
+        if resp.status_code == 201:
+            await _reply_long(update, "✅ Your answer has been submitted successfully!")
+        elif resp.status_code == 404:
+            await _reply_long(update, "❌ Assignment not found or max attempts exceeded.")
+        else:
+            detail = resp.text[:200]
+            await _reply_long(update, f"❌ Submission failed: {detail}")
+
+
 def build_app() -> Application:
     from telegram.request import HTTPXRequest
     _request = HTTPXRequest(
@@ -2571,6 +2638,8 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("parent_register", register_parent))
     app.add_handler(CommandHandler("children", list_children))
     app.add_handler(CommandHandler("child_progress", child_progress))
+    app.add_handler(CommandHandler("assignments", assignments_command))
+    app.add_handler(CommandHandler("submit", submit_command))
 
     link_handler = ConversationHandler(
         entry_points=[CommandHandler("link", link_command)],
@@ -2762,6 +2831,8 @@ async def main():
         BotCommand("link", "Link teacher dashboard account"),
         BotCommand("cancel", "Cancel current operation"),
         BotCommand("menu", "Show main menu"),
+        BotCommand("assignments", "View your assignments"),
+        BotCommand("submit", "Submit answer to an assignment"),
     ]
     await app.bot.set_my_commands(commands)
 
