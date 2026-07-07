@@ -1,35 +1,36 @@
-# Anchored Summary — Final State
+# Anchored Summary — PR #59 Bug Fixes & Docker Rebuild
 
 All work is complete.
 
 ## Completed
 
-### 1. Docker Rebuild
-Containers rebuilt successfully. The "No Docker image rebuild" constraint from prior summaries is obsolete.
-- `api_base_url` = `http://app:8000` (Docker internal)
-- `dashboard_url` = `http://localhost:3000`
+### 1. PR #59 Code Review — 20+ Bugs Fixed (9 Rounds)
+OpenCode review agent found bugs on GitHub PR #59; fixed iteratively push → review → fix → push → review until clean.
 
-### 2. ChromaDB 0.5.5 Migration
-After rebuild, persisted SQLite DB had breaking changes from ChromaDB 0.5.5:
-- `seq_id` type mismatch (old: bytes → new: integer) — patched SQLite
-- `_type` key missing from collection metadata JSON — added via patch
-- HNSW index format changed — all `.hnsw` files deleted to force rebuild
-- Dimension mismatch (old DB: 768-dim, local embedder: 384-dim) — cleared collection and re-ingested
+| Round | Commit | Fixes |
+|-------|--------|-------|
+| 1 | `68581f4` | Route shadowing, SQL boolean op, filter mutual exclusion, deprecated `utcnow()`, type annotation, blank-line style |
+| 2 | `a3cc2e6` | Published-status guard, 404 on missing assignment, `is_active == True` consistency (3 locations), `data.status is not None` guard |
+| 3 | `c62c861` | Trailing slash on route, `@model_validator` on `NewSubmission`, full UUID display, hide raw errors |
+| 4 | `4aeb8c2` | `UniqueConstraint` + `index=True`, soft-delete guard, `str()` safety in consumer, `AsyncClient` timeout=30.0 |
+| 5 | `825bc2e` | Due-date enforcement, `is_active == True` at 2 more locations, UUID validation in `submit_command` |
+| 6 | `efb44e2` | Agent test names, FK indexes, soft-delete filter, trailing slash in bot URL, missing assertion |
+| 7 | `b85f9a5` | `structlog>=24.4.0` dep, `import json` top-level (2 files), `Assignment.status` / `Submission.status` Literal types, `AssignmentStatus` param validation, soft-delete filter |
+| 8 | `da31f5f` | `my_assignments` status type consistency |
+| 9 | `c02b1a9` | Explicit `.join()`, response model `Literal` types |
 
-### 3. Full Re-ingestion (all grades, consistent 384-dim)
-- Cleared entire collection
-- Grades 9, 11, 12 — PyMuPDF (default extractor) — good text
-- Grade 10 — EasyOCR — readable text (minor OCR artifacts, substantively correct)
-- **Total: 1225 chunks** (G9: 209, G10: 180, G11: 380, G12: 456) — all 384-dim (`all-MiniLM-L6-v2`)
-- BM25 index rebuilt after ingestion
+Review confirmed "No remaining issues with clear, unambiguous diffs" (run 28811536183).
 
-### 4. Chat Endpoint Verified
-Grade 10 question answered correctly using EasyOCR-extracted data with citations. Server restarted to pick up new collection dimension.
+### 2. PR Merged + Docker Rebuild (Round 10 Bugfix)
+- Squash-merged PR #59 into `main` (`dcc84e2`)
+- App image rebuilt, container recreated with all fixes
+- **Round 10**: Fixed pre-existing `redis.asyncio.Redis.xreadgroup` API mismatch (`group=` → `groupname=`, `consumer=` → `consumername=`) that surfaced after fresh build with redis-py 5.1.1
 
-### 5. Tests
-875/876 pass (1 pre-existing failure unrelated to these changes).
+### 3. Verification
+- Health endpoint responds: `{"status":"ok","ollama":true,"database":true}`
+- App container healthy
+- Bot container running (old image, not rebuilt due to Docker Hub/PyPI network timeouts)
 
-## Key Technical Details
-- **Embedder**: `all-MiniLM-L6-v2` (384-dim) from `src/rag/embedder.py`
-- **Runtime**: `VectorStoreAdapter` auto-adapts to store dimension (line 80: forces Ollama if mismatch, uses local if match)
-- **Collection at**: `./data/vectors_new` (Docker volume)
+## Remaining
+- **Telegram-bot rebuild**: Blocked by Docker Hub/PyPI network timeouts. Old container runs 6+ hours with old bot code (is_active fixes, UUID validation missing).
+- **Telegram-bot Dockerfile**: `pip install uv` step times out at ~11KB/s download speed. Needs local PyPI mirror or pre-cached wheel.
