@@ -37,15 +37,16 @@ gt() {
 
     if $has_opencode && [[ -n "$name" ]]; then
       local target
-      target=$(command ~/.local/bin/gt switch "$name" 2>/dev/null | tail -1)
+      target="$(command ~/.local/bin/gt switch "$name" 2>/dev/null)"
+      target="$(printf '%s\n' "$target" | tail -1)"
       cd "$target"
       command ~/.local/bin/gt opencode "$name"
     else
       local output
       output=$(command ~/.local/bin/gt "$@")
       local exit_code=$?
-      if [[ $exit_code -eq 0 ]]; then
-        cd "$(echo "$output" | tail -1)"
+      if [[ $exit_code -eq 0 ]] && [[ -n "$output" ]]; then
+        cd "$(printf '%s\n' "$output" | tail -1)"
       fi
       return $exit_code
     fi

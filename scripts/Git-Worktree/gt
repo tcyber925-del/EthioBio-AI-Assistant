@@ -11,6 +11,12 @@ gt_find_root() {
   local dir="${1:-$PWD}"
   while [[ "$dir" != "/" ]]; do
     if [[ -f "$dir/.gt/config.json" ]]; then
+      # If this dir is itself a git worktree (.git is a file, not dir),
+      # skip it and keep walking up to the real project root
+      if [[ -f "$dir/.git" ]]; then
+        dir="$(dirname "$dir")"
+        continue
+      fi
       echo "$dir"
       return 0
     fi
