@@ -76,8 +76,8 @@ class StreamConsumer(ABC):
         while not self._stop_event.is_set():
             try:
                 results = await self._redis.xreadgroup(
-                    group=self._group_name,
-                    consumer=self._consumer_name,
+                    groupname=self._group_name,
+                    consumername=self._consumer_name,
                     streams={self._stream_name: ">"},
                     count=10,
                     block=5000,
