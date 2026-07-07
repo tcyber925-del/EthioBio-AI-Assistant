@@ -1,8 +1,8 @@
 # gt — Git Worktree Orchestrator
 
-`gt` is a global CLI for managing git worktrees. It lets you jump between
-branches without stashing, switching, or cluttering a single checkout — each
-worktree is an independent working directory on its own branch.
+`gt` is a global CLI for managing git worktrees. Jump between branches without
+stashing, switching, or cluttering a single checkout — each worktree is an
+independent working directory on its own branch.
 
 ## Installation
 
@@ -18,92 +18,77 @@ gt --version   # → gt v0.1.0
 gt help        # → subcommand list
 ```
 
-The installer does two things:
-1. Copies the `gt` script to `~/.local/bin/gt`
+The installer:
+1. Copies `gt` to `~/.local/bin/gt`
 2. Adds a shell function to `~/.zshrc` — this makes `gt switch` actually
-   change your current directory (a subprocess can't do that on its own)
+   change your current directory (a subprocess can't do that)
 
-**Upgrade:** Re-run `install.sh` anytime you pull new changes — it
-automatically replaces the binary and updates the shell function.
+**Upgrade:** Re-run `install.sh` after pulling new changes — it replaces the
+binary and updates the shell function.
 
-**Agent skill:** A `gt` skill is available at `~/.opencode/skills/gt/SKILL.md`
-for AI agents. Agents will auto-load it when worktree tasks are detected.
-
-## Usage
-
-### This Project (EthioBio AI Assistant)
-
-The project is already configured with 5 worktrees. Jump straight in:
+## Quick Reference
 
 ```bash
-# See everything at a glance
-gt list
+# Navigation
+gt switch agents        # cd into a worktree
+gt switch -o backend    # cd + launch opencode
+gt switch .             # cd back to project root
+gt switch root          # same as '.'
 
-# Jump into a worktree
-gt switch agents            # main branch — specs, plans, codebase-wide
-gt switch backend           # ethibio-knowledge-platform branch — API, DB, core
-gt switch bot               # main branch — Telegram bot
-gt switch frontend          # main branch — Next.js dashboard
-gt switch memory-timeline   # feat/memory-timeline-misconceptions — feature branch
+# Lifecycle
+gt list                 # show all worktrees
+gt create my-feature    # new branch + worktree + config
+gt remove my-feature    # remove worktree + config entry
 
-# Jump + launch opencode
-gt switch -o agents
-
-# PWD changed — verify
-pwd   # → .../.worktrees/agents
+# New project
+cd /other/project && gt init --auto-detect
 ```
 
-All 5 worktrees live in `.worktrees/`. Switch between them freely — no stashing,
-no branch switching, no merge conflicts from context changes.
+## In This Project (EthioBio AI Assistant)
 
-### Any Other Project
+5 pre-configured worktrees in `.worktrees/`:
+
+| Command | Branch | For |
+|---------|--------|-----|
+| `gt switch agents` | `main` | Codebase-wide, agents, specs, plans |
+| `gt switch backend` | `ethibio-knowledge-platform` | API, DB, core logic |
+| `gt switch bot` | `main` | Telegram bot |
+| `gt switch frontend` | `main` | Next.js dashboard |
+| `gt switch memory-timeline` | `feat/memory-timeline-misconceptions` | Feature branch |
+
+Switch freely between them — no stashing, no branch switching, no merge
+conflicts.
+
+## Switching Worktrees
+
+**From the shell:** `gt switch <name>` — changes directory immediately.
+
+**From inside opencode:** `gt` can't change a running opencode session's
+directory. Two options:
+
+**A) Tmux panes (best):** Run opencode in separate panes, each in a
+different worktree. Switch panes instead of switching sessions.
 
 ```bash
-cd /path/to/other/project
-
-# Auto-detect existing worktrees
-gt init --auto-detect
-
-# Or create from scratch
-gt init
-# → creates .gt/config.json
-# → edit to add worktrees, or create them with:
-gt create frontend          # new branch + worktree + config entry
-gt create backend main      # existing branch + worktree + config entry
+# Pane 1                # Pane 2                # Pane 3
+gt switch -o agents     gt switch -o backend    gt switch -o frontend
 ```
 
-### Worktree Lifecycle
+**B) Exit + re-launch:** Exit opencode (`Ctrl+C` or `/exit`), then run
+`gt switch -o <name>` to cd and re-launch.
 
-```bash
-# Create
-gt create my-feature                     # new branch my-feature from default
-gt create my-feature feat/my-feature     # explicit branch name
-gt create scratch --no-config            # temporary — skip .gt/config.json
-
-# List
-gt list
-
-# Switch
-gt switch my-feature
-gt switch -o my-feature                  # + launch opencode
-
-# Remove
-gt remove my-feature
-gt remove scratch --force                # skip dirty check
-```
-
-## Subcommands
+## Commands
 
 | Command | Action |
 |---------|--------|
-| `gt list` | Table of worktrees: name, branch, status (clean/dirty/missing), path |
-| `gt switch <name> [-o]` | `cd` into a worktree; `-o` also launches opencode |
-| `gt switch .` or `root` | `cd` back to project root |
-| `gt create <name> [branch] [--no-config]` | Create worktree + branch + config entry |
+| `gt list` | Table: name, branch, status (clean/dirty/missing), path |
+| `gt switch <name> [-o]` | cd into a worktree; `-o` also launches opencode |
+| `gt switch .` or `root` | cd back to project root |
+| `gt create <name> [branch] [--no-config]` | Create worktree + branch + config |
 | `gt remove <name> [--force]` | Remove worktree + config entry |
-| `gt opencode <name>` | Launch opencode in a worktree's directory |
-| `gt init [--auto-detect]` | Bootstrap `.gt/config.json` for a project |
-| `gt help` | Show usage |
+| `gt opencode <name>` | Launch opencode in a worktree |
+| `gt init [--auto-detect]` | Bootstrap `.gt/config.json` |
+| `gt help` | Show help |
 | `gt --version` | Show version |
 
 ## Config
@@ -114,57 +99,42 @@ Per-project config at `.gt/config.json`:
 {
   "worktrees_dir": ".worktrees",
   "default_branch": "main",
-  "opencode_config": "opencode.jsonc",
   "worktrees": {
-    "agents":          { "branch": "main", "auto_attach": true },
-    "backend":         { "branch": "ethibio-knowledge-platform", "auto_attach": true }
+    "agents":  { "branch": "main", "auto_attach": true },
+    "backend": { "branch": "ethibio-knowledge-platform", "auto_attach": true }
   }
 }
 ```
 
-- **`worktrees_dir`** — directory inside the project where worktrees live
-- **`default_branch`** — branch used when creating without an explicit branch
-- **`opencode_config`** — config file name for `gt opencode`
-- **`worktrees.<name>`** — each worktree maps to a branch
-- **`auto_attach`** — auto-create worktree on `switch` if missing
+| Field | Description |
+|-------|-------------|
+| `worktrees_dir` | Directory for worktrees (relative to project root) |
+| `default_branch` | Branch used when creating without explicit branch |
+| `worktrees.<name>.branch` | Branch this worktree tracks |
+| `worktrees.<name>.auto_attach` | Auto-create on `switch` if missing |
 
 ## How It Works
 
-### Root Detection
+**Root detection:** `gt` walks up from `pwd` looking for `.gt/config.json`.
+Works from any subdirectory. Skips worktree-internal configs (`.git` is a
+file, not a directory).
 
-`gt` walks up from your current directory looking for `.gt/config.json`. This
-means it works from any subdirectory, not just the project root.
+**Shell function:** `gt switch` changes directory via a `.zshrc` shell
+function. Without it, `gt switch` just prints the path.
 
-If you're inside a git worktree (`.git` is a file, not a directory), `gt` skips
-that directory's config and continues up to the real project root.
-
-### Shell Function
-
-`gt switch` changes directory through a shell function in `.zshrc` (installed
-by `install.sh`). The function:
-
-- For `gt switch <name>`: runs `gt` in a subshell, captures the output path,
-  and `cd`s to it
-- For `gt switch -o <name>`: `cd`s first, then launches opencode in the
-  foreground
-- For other commands: runs `gt` directly, printing output to the terminal
-
-Without the shell function, `gt switch` would only print the path — you'd need
-to run `eval "$(gt switch agents)"` or `cd "$(gt switch agents)"`.
-
-### Status Detection
-
-`gt list` checks each worktree's git status:
-- **clean** — no uncommitted changes
-- **DIRTY** — has uncommitted changes (visible in bold)
-- **missing** — directory doesn't exist (auto-attach will recreate it)
+**Status:** `gt list` checks each worktree — `clean` (no changes),
+`DIRTY` (has uncommitted changes), `missing` (not created yet).
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---------|-----|
 | `gt: command not found` | Re-run `install.sh`, then `source ~/.zshrc` |
-| `gt switch` doesn't change directory | Run `source ~/.zshrc` — shell function not loaded |
-| `Worktree X not found` | Run `gt switch X` again — `auto_attach` creates it if true |
+| `gt switch` doesn't cd | Run `source ~/.zshrc` — shell function not loaded |
+| `Worktree X not found` | Run again — `auto_attach` creates it if `true` |
 | `Config already exists` | Delete `.gt/config.json` and re-run `gt init --auto-detect` |
-| Paths with spaces in error | Should not happen since `0f27ba6` — re-install if you see this |
+
+## Agent Skill
+
+A `gt` skill is available at `~/.opencode/skills/gt/SKILL.md`. Agents
+auto-load it when worktree tasks are detected.
