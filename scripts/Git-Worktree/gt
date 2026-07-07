@@ -139,6 +139,12 @@ gt_cmd_switch() {
 
   local root
   root="$(gt_find_root)" || { echo "Not in a gt project" >&2; exit 1; }
+
+  # Special case: "root" or "." goes back to project root
+  if [[ "$name" == "root" || "$name" == "." ]]; then
+    echo "$root"
+    return 0
+  fi
   local config_file="$root/.gt/config.json"
   local worktrees_dir
   worktrees_dir="$(gt_config_get "$config_file" ".worktrees_dir // \".worktrees\"")"

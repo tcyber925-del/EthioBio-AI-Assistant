@@ -40,7 +40,10 @@ gt() {
       target="$(command ~/.local/bin/gt switch "$name" 2>/dev/null)"
       target="$(printf '%s\n' "$target" | tail -1)"
       cd "$target"
-      command ~/.local/bin/gt opencode "$name"
+      # Skip opencode for root switch — no worktree to open
+      if [[ "$name" != "." && "$name" != "root" ]]; then
+        command ~/.local/bin/gt opencode "$name"
+      fi
     else
       local output
       output=$(command ~/.local/bin/gt "$@")

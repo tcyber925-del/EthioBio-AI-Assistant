@@ -98,6 +98,7 @@ gt remove scratch --force                # skip dirty check
 |---------|--------|
 | `gt list` | Table of worktrees: name, branch, status (clean/dirty/missing), path |
 | `gt switch <name> [-o]` | `cd` into a worktree; `-o` also launches opencode |
+| `gt switch .` or `root` | `cd` back to project root |
 | `gt create <name> [branch] [--no-config]` | Create worktree + branch + config entry |
 | `gt remove <name> [--force]` | Remove worktree + config entry |
 | `gt opencode <name>` | Launch opencode in a worktree's directory |
