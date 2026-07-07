@@ -2617,6 +2617,94 @@ async def submit_command(update: Update, context):
             await _reply_long(update, "❌ Submission failed. Please try again later.")
 
 
+ALLOWED_UPLOAD_EXTENSIONS = {".pdf", ".docx", ".txt", ".md"}
+MAX_UPLOAD_SIZE = 50 * 1024 * 1024
+
+
+async def handle_document_upload(update: Update, context):
+    doc = update.message.document
+    if not doc:
+        return
+
+    ext = "." + doc.file_name.rsplit(".", 1)[-1].lower() if "." in doc.file_name else ""
+    if ext not in ALLOWED_UPLOAD_EXTENSIONS:
+        await _reply_long(update, f"❌ Unsupported file format `{ext}`. Accepted: pdf, docx, txt, md")
+        return
+
+    if doc.file_size and doc.file_size > MAX_UPLOAD_SIZE:
+        await _reply_long(update, "❌ File too large. Maximum size is 50 MB.")
+        return
+
+    user_id = update.effective_user.id
+    api_base = settings.api_base_url
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        user_resp = await client.get(f"{api_base}/users/by_telegram/{user_id}")
+        if user_resp.status_code != 200:
+            await _reply_long(update, "❌ You need to /start first.")
+            return
+        user_data = user_resp.json()
+
+        if user_data.get("role") not in ("admin", "teacher"):
+            await _reply_long(update, "❌ Only teachers and admins can upload materials.")
+            return
+
+        ws_resp = await client.get(f"{api_base}/api/v1/workspaces/?user_id={user_data['id']}")
+        if ws_resp.status_code != 200 or not ws_resp.json():
+            await _reply_long(update, "❌ No workspace found. Create one in the dashboard first.")
+            return
+        workspace_id = ws_resp.json()[0]["id"]
+
+    status_msg = await update.message.reply_text("⏳ Downloading and processing your file...")
+
+    file = await update.message.effective_attachment.get_file()
+    file_bytes = await file.download_as_bytearray()
+
+    await status_msg.edit_text("⏳ Uploading to knowledge platform...")
+
+    title = doc.file_name.rsplit(".", 1)[0]
+
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        files = {"file": (doc.file_name, file_bytes, doc.mime_type or "application/octet-stream")}
+        params = {
+            "workspace_id": workspace_id,
+            "owner_id": user_data["id"],
+            "title": title,
+        }
+        resp = await client.post(
+            f"{api_base}/api/v1/knowledge/upload",
+            files=files,
+            params=params,
+        )
+
+    if resp.status_code == 201:
+        ko_id = resp.json().get("id", "")
+        await status_msg.edit_text(
+            f"✅ *File uploaded successfully!*\n\n"
+            f"📄 `{doc.file_name}`\n"
+            f"🆔 `{ko_id}`\n\n"
+            f"It will be processed and indexed shortly.",
+            parse_mode="Markdown",
+        )
+    else:
+        await status_msg.edit_text(
+            f"❌ Upload failed (HTTP {resp.status_code}). Please try again later."
+        )
+
+
+async def handle_upload_hint(update: Update, context):
+    query = update.callback_query
+    await query.answer()
+    await query.message.reply_text(
+        "📎 *Upload Material*\n\n"
+        "Send me a file and I'll upload it to your workspace for processing.\n\n"
+        "Accepted formats: `pdf`, `docx`, `txt`, `md`\n"
+        "Maximum size: 50 MB\n\n"
+        "Just drag and drop or attach a file directly in this chat.",
+        parse_mode="Markdown",
+    )
+
+
 def build_app() -> Application:
     from telegram.request import HTTPXRequest
     _request = HTTPXRequest(
@@ -2646,6 +2734,7 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("child_progress", child_progress))
     app.add_handler(CommandHandler("assignments", assignments_command))
     app.add_handler(CommandHandler("submit", submit_command))
+    app.add_handler(MessageHandler(filters.Document, handle_document_upload))
 
     link_handler = ConversationHandler(
         entry_points=[CommandHandler("link", link_command)],
@@ -2797,6 +2886,7 @@ def build_app() -> Application:
     app.add_handler(CallbackQueryHandler(handle_teacher_tools, pattern="^teacher_tools$"))
     app.add_handler(CallbackQueryHandler(handle_open_quizzes, pattern="^open_quizzes$"))
     app.add_handler(CallbackQueryHandler(handle_open_dashboard, pattern="^open_dashboard$"))
+    app.add_handler(CallbackQueryHandler(handle_upload_hint, pattern="^upload_hint$"))
     app.add_handler(CallbackQueryHandler(handle_progress, pattern="^progress$"))
     app.add_handler(CallbackQueryHandler(handle_language, pattern="^language$"))
     app.add_handler(CallbackQueryHandler(handle_language_select, pattern="^lang_"))
