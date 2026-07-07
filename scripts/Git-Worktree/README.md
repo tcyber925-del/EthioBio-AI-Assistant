@@ -26,6 +26,9 @@ The installer does two things:
 **Upgrade:** Re-run `install.sh` anytime you pull new changes — it
 automatically replaces the binary and updates the shell function.
 
+**Agent skill:** A `gt` skill is available at `~/.opencode/skills/gt/SKILL.md`
+for AI agents. Agents will auto-load it when worktree tasks are detected.
+
 ## Usage
 
 ### This Project (EthioBio AI Assistant)
