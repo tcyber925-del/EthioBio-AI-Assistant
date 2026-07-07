@@ -265,22 +265,10 @@ gt_cmd_opencode() {
   local worktrees_dir
   worktrees_dir="$(gt_config_get "$config_file" ".worktrees_dir // \".worktrees\"")"
   local target="$root/$worktrees_dir/$name"
-  local opencode_config
-  opencode_config="$(gt_config_get "$config_file" ".opencode_config // \"opencode.jsonc\"")"
-
-  if ! git -C "$target" rev-parse --git-dir &>/dev/null 2>&1; then
-    echo "Worktree $name not found at $target" >&2
-    exit 1
-  fi
-
   local cd_target
   cd_target="$(realpath "$target")"
 
-  if [[ -f "$cd_target/$opencode_config" ]]; then
-    cd "$cd_target" && opencode --config "$opencode_config"
-  else
-    cd "$cd_target" && opencode
-  fi
+  cd "$cd_target" && opencode
 
   echo "Exited opencode in $name worktree"
 }
