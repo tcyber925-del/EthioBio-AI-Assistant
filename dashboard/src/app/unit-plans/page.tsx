@@ -17,6 +17,12 @@ interface UnitPlan {
   grade_level: number; days: number; created_at: string
 }
 
+interface Classroom {
+  id: string
+  name: string
+  grade_level: number
+}
+
 export default function UnitPlansPage() {
   const router = useRouter()
   const [items, setItems] = useState<UnitPlan[]>([])
@@ -29,6 +35,8 @@ export default function UnitPlansPage() {
   const [genDays, setGenDays] = useState(5)
   const [genDuration, setGenDuration] = useState(40)
   const [selectedModel, setSelectedModel] = useState('')
+  const [classrooms, setClassrooms] = useState<Classroom[]>([])
+  const [selectedClassroomId, setSelectedClassroomId] = useState('')
   const [genExitTicket, setGenExitTicket] = useState(false)
   const [genDifferentiation, setGenDifferentiation] = useState(false)
   const [genDiagrams, setGenDiagrams] = useState(false)
@@ -38,7 +46,6 @@ export default function UnitPlansPage() {
   const [genStatus, setGenStatus] = useState<'success' | 'error' | null>(null)
   const [genResult, setGenResult] = useState<any>(null)
   const t = useTranslations('unit_plans')
-  const tc = useTranslations('common')
 
   const fetchPlans = async () => {
     setLoading(true)
@@ -53,9 +60,19 @@ export default function UnitPlansPage() {
     }
   }
 
+  const fetchClassrooms = async () => {
+    try {
+      const data = await fetchWithAuth('/api/teacher/classrooms')
+      setClassrooms(data || [])
+    } catch (err) {
+      console.error('Failed to fetch classrooms', err)
+    }
+  }
+
   useEffect(() => {
     if (!isAuthenticated()) { router.push('/login'); return }
     fetchPlans()
+    fetchClassrooms()
   }, [router])
 
   const createUnitPlan = async () => {
@@ -77,6 +94,7 @@ export default function UnitPlansPage() {
           generate_differentiation: genDifferentiation,
           generate_diagram_suggestions: genDiagrams,
           generate_misconception_activities: genMisconceptions,
+          classroom_id: selectedClassroomId || null,
         }),
       }, 180000)
       setShowModal(false)
@@ -189,6 +207,13 @@ export default function UnitPlansPage() {
                 <label className="text-sm text-foreground-muted block mb-1">{t('grade_level')}</label>
                 <select value={genGrade} onChange={e => setGenGrade(Number(e.target.value))} className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
                   {[7, 8, 9, 10, 11, 12].map(g => <option key={g} value={g}>Grade {g}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm text-foreground-muted block mb-1">{t('classroom_context')}</label>
+                <select value={selectedClassroomId} onChange={e => setSelectedClassroomId(e.target.value)} className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+                  <option value="">{t('classroom_reference_only')}</option>
+                  {classrooms.map(c => <option key={c.id} value={c.id}>{c.name} (Grade {c.grade_level})</option>)}
                 </select>
               </div>
               <div>

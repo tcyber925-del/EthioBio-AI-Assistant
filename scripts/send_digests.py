@@ -87,7 +87,8 @@ async def main():
                 freq_am = "ዕለታዊ" if prefs.digest_frequency == "daily" else "ሳምንታዊ"
                 subject_am = f"{freq_am} የባዮሎጂ እድገት ማጠቃለያ"
                 subject = subject_am if lang == "am" else subject_en
-                await send_email(prefs.email, subject, html)
+                if not await send_email(prefs.email, subject, html):
+                    logger.warning("digest_email_skipped", user_id=prefs.user_id, subject=subject)
 
             except Exception as e:
                 logger.error("digest_failed", user_id=prefs.user_id, error=str(e))

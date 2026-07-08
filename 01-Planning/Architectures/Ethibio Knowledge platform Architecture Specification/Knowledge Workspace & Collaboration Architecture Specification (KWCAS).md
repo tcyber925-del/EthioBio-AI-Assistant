@@ -33,7 +33,7 @@ A Workspace is where AI understands:
 
 **Version:** 1.0
 
-**Status:** Proposed Architecture
+**Status:** Approved & Implemented (As-Built)
 
 **Depends on:**
 
@@ -574,12 +574,18 @@ At this point, we've completed a coherent architecture suite:
 
 Together, these define the platform's knowledge subsystem from organization and governance through processing, retrieval, and AI reasoning.
 
-## My recommendation before implementation PRDs
+---
 
-I would add **one final cross-cutting architecture document** before writing implementation PRDs:
+# 20. As-Built Workspace Collaboration Reference (As of July 2026 Implementation)
 
-> **Knowledge API & Service Contract Specification (KASCS)**
+During execution, the workspace collaboration concepts were implemented with the following specifications:
 
-This document would define the service boundaries, API contracts, events, message schemas, error models, authentication, authorization, idempotency, pagination, versioning, and integration contracts between all of the services we've designed. It effectively becomes the "interface specification" for the subsystem, allowing backend, frontend, and AI-agent development to proceed in parallel with minimal integration risk.
+### 20.1 Workspace Context Header (`X-Workspace-Id`)
+To prevent token-refresh latency when teachers switch between classrooms, the workspace identity context is passed as a standalone HTTP header `X-Workspace-Id` instead of embedding it directly in the user's JWT. The frontend client library intercepts calls and injects this header automatically from local storage state variables.
 
-Once KASCS is complete, I believe the architecture will be mature enough to produce implementation PRDs that coding agents can execute independently while remaining aligned with the overall platform design.
+### 20.2 Classroom Binding & Seeding
+The new `workspaces` table contains a nullable `class_group_id` foreign key mapped to the existing `ClassGroup` schema. Seeding logic parses `ClassGroup` values to automatically establish the primary classroom workspace and populate member roles.
+
+### 20.3 Local Storage Platform MVP
+Raw documents uploaded to workspaces are stored on the local filesystem grouped securely under `./data/storage/{workspace_id}/{ko_id}/{filename}`. A unified `StorageAdapter` interface mediates file access, providing clean migration pathways to AWS S3 or MinIO.
+

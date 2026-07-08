@@ -1,0 +1,27 @@
+{
+  "worktrees_dir": ".worktrees",
+  "default_branch": "main",
+  "opencode_config": "opencode.jsonc",
+  "worktrees": {
+    "agents": {
+      "branch": "main",
+      "auto_attach": true
+    },
+    "backend": {
+      "branch": "ethibio-knowledge-platform",
+      "auto_attach": true
+    },
+    "bot": {
+      "branch": "main",
+      "auto_attach": true
+    },
+    "frontend": {
+      "branch": "main",
+      "auto_attach": true
+    },
+    "memory-timeline": {
+      "branch": "feat/memory-timeline-misconceptions",
+      "auto_attach": true
+    }
+  }
+}

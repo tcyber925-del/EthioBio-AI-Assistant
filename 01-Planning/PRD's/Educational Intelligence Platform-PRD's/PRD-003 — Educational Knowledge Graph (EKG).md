@@ -19,7 +19,7 @@ Everything after this becomes an intelligence application built on top of these 
 # PRD-003 — Educational Knowledge Graph (EKG)
 
 **Project:** EthioBio AI Platform
-**Status:** Planned
+**Status:** Approved & Implemented (As-Built)
 **Priority:** CRITICAL
 **Type:** Core Intelligence Architecture
 **Dependencies:**

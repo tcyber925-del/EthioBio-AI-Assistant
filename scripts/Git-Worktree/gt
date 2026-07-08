@@ -1,0 +1,356 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+GT_VERSION="0.1.0"
+
+# ---------------------------------------------------------------------------
+# Config helpers
+# ---------------------------------------------------------------------------
+
+gt_find_root() {
+  local dir="${1:-$PWD}"
+  while [[ "$dir" != "/" ]]; do
+    if [[ -f "$dir/.gt/config.json" ]]; then
+      # If this dir is itself a git worktree (.git is a file, not dir),
+      # skip it and keep walking up to the real project root
+      if [[ -f "$dir/.git" ]]; then
+        dir="$(dirname "$dir")"
+        continue
+      fi
+      echo "$dir"
+      return 0
+    fi
+    dir="$(dirname "$dir")"
+  done
+  echo ""
+  return 1
+}
+
+gt_config_get() {
+  local config_file="$1"
+  local key="$2"
+  if command -v jq &>/dev/null; then
+    jq -r "$key" "$config_file"
+  elif command -v python3 &>/dev/null; then
+    python3 -c "import json,sys; print(json.load(sys.stdin)$key)" < "$config_file"
+  else
+    echo "ERROR: need jq or python3 to parse config" >&2
+    return 1
+  fi
+}
+
+gt_config_set() {
+  local config_file="$1"
+  local script="$2"
+  local tmp
+  tmp="$(mktemp)"
+  if command -v python3 &>/dev/null; then
+    python3 -c "
+import json, sys
+with open('$config_file') as f: c = json.load(f)
+$script
+json.dump(c, sys.stdout, indent=2)
+" > "$tmp" && mv "$tmp" "$config_file"
+  elif command -v jq &>/dev/null; then
+    echo "WARNING: jq config modifications not supported, edit $config_file manually" >&2
+    return 1
+  else
+    echo "ERROR: need python3 to modify config" >&2
+    return 1
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Help / usage
+# ---------------------------------------------------------------------------
+
+gt_usage() {
+  cat <<EOF
+gt — Git Worktree Orchestrator v$GT_VERSION
+
+Usage: gt <command> [options]
+
+Commands:
+  list       List all worktrees
+  switch     Switch to a worktree (use shell function for automatic cd)
+  create     Create a new worktree
+  remove     Remove a worktree
+  opencode   Launch opencode in a worktree
+  init       Bootstrap .gt/config.json
+  help       Show this help
+
+Options:
+  --help, -h  Show help for a command
+  --version   Show version
+EOF
+}
+
+# ---------------------------------------------------------------------------
+# Subcommands
+# ---------------------------------------------------------------------------
+
+gt_cmd_list() {
+  local root
+  root="$(gt_find_root)" || { echo "Not in a gt project" >&2; exit 1; }
+  local config_file="$root/.gt/config.json"
+  local worktrees_dir
+  worktrees_dir="$(gt_config_get "$config_file" ".worktrees_dir // \".worktrees\"")"
+
+  echo "Worktrees for $(basename "$root")"
+  printf "  %-20s %-35s %-10s %s\n" "Name" "Branch" "Status" "Path"
+
+  local keys
+  if command -v jq &>/dev/null; then
+    keys="$(jq -r '.worktrees | keys[]' "$config_file")"
+  else
+    keys="$(python3 -c "import json,sys; c=json.load(sys.stdin); print('\n'.join(c['worktrees'].keys()))" < "$config_file")"
+  fi
+
+  while IFS= read -r name; do
+    [[ -z "$name" ]] && continue
+    local branch path status
+    branch="$(gt_config_get "$config_file" ".worktrees[\"$name\"].branch")"
+    path="$root/$worktrees_dir/$name"
+    if git -C "$path" rev-parse --git-dir &>/dev/null 2>&1; then
+      if git -C "$path" diff --quiet 2>/dev/null; then
+        status="clean"
+      else
+        status="DIRTY"
+      fi
+    else
+      status="missing"
+    fi
+    printf "  %-20s %-35s %-10s %s\n" "$name" "$branch" "$status" "$path"
+  done <<< "$keys"
+}
+
+gt_cmd_switch() {
+  local name=""
+  local opencode_mode=false
+  for arg in "$@"; do
+    if [[ "$arg" == "--opencode" || "$arg" == "-o" ]]; then
+      opencode_mode=true
+    elif [[ -z "$name" ]]; then
+      name="$arg"
+    fi
+  done
+
+  [[ -z "$name" ]] && { echo "Usage: gt switch <name> [--opencode|-o]" >&2; exit 1; }
+
+  local root
+  root="$(gt_find_root)" || { echo "Not in a gt project" >&2; exit 1; }
+
+  # Special case: "root" or "." goes back to project root
+  if [[ "$name" == "root" || "$name" == "." ]]; then
+    echo "$root"
+    return 0
+  fi
+  local config_file="$root/.gt/config.json"
+  local worktrees_dir
+  worktrees_dir="$(gt_config_get "$config_file" ".worktrees_dir // \".worktrees\"")"
+  local branch auto_attach
+  branch="$(gt_config_get "$config_file" ".worktrees[\"$name\"].branch // \"$name\"")"
+  auto_attach="$(gt_config_get "$config_file" ".worktrees[\"$name\"].auto_attach // false")"
+
+  local target="$root/$worktrees_dir/$name"
+
+  if ! git -C "$target" rev-parse --git-dir &>/dev/null 2>&1 && [[ "$auto_attach" == "true" ]]; then
+    echo "Creating worktree $name → $branch in $target"
+    git -C "$root" worktree add "$target" "$branch" 2>/dev/null || {
+      local default_branch
+      default_branch="$(gt_config_get "$config_file" ".default_branch // \"main\"")"
+      git -C "$root" worktree add -b "$name" "$target" "$default_branch"
+    }
+  fi
+
+  if ! git -C "$target" rev-parse --git-dir &>/dev/null 2>&1; then
+    echo "Worktree $name not found at $target" >&2
+    exit 1
+  fi
+
+  if [[ "$auto_attach" == "true" ]]; then
+    git -C "$root" worktree prune
+  fi
+
+  echo "$target"
+
+  if $opencode_mode; then
+    gt_cmd_opencode "$name"
+  fi
+}
+
+gt_cmd_create() {
+  local name=""
+  local branch=""
+  local no_config=false
+  for arg in "$@"; do
+    if [[ "$arg" == "--no-config" ]]; then
+      no_config=true
+    elif [[ -z "$name" ]]; then
+      name="$arg"
+    elif [[ -z "$branch" ]]; then
+      branch="$arg"
+    fi
+  done
+
+  [[ -z "$name" ]] && { echo "Usage: gt create <name> [branch] [--no-config]" >&2; exit 1; }
+
+  local root
+  root="$(gt_find_root)" || { echo "Not in a gt project" >&2; exit 1; }
+  local config_file="$root/.gt/config.json"
+  local worktrees_dir
+  worktrees_dir="$(gt_config_get "$config_file" ".worktrees_dir // \".worktrees\"")"
+  local default_branch
+  default_branch="$(gt_config_get "$config_file" ".default_branch // \"main\"")"
+
+  local target="$root/$worktrees_dir/$name"
+  [[ -z "$branch" ]] && branch="$name"
+
+  if git -C "$root" rev-parse --verify "$branch" &>/dev/null 2>&1; then
+    git -C "$root" worktree add "$target" "$branch"
+  else
+    git -C "$root" worktree add -b "$branch" "$target" "$default_branch"
+  fi
+
+  if ! $no_config; then
+    gt_config_set "$config_file" \
+      "c['worktrees']['$name'] = {'branch': '$branch', 'auto_attach': True}"
+    echo "Added $name to .gt/config.json"
+  fi
+
+  echo "Created worktree $name → $branch at $target"
+}
+
+gt_cmd_remove() {
+  local name=""
+  local force=false
+  for arg in "$@"; do
+    if [[ "$arg" == "--force" || "$arg" == "-f" ]]; then
+      force=true
+    elif [[ -z "$name" ]]; then
+      name="$arg"
+    fi
+  done
+
+  [[ -z "$name" ]] && { echo "Usage: gt remove <name> [--force|-f]" >&2; exit 1; }
+
+  local root
+  root="$(gt_find_root)" || { echo "Not in a gt project" >&2; exit 1; }
+  local config_file="$root/.gt/config.json"
+  local worktrees_dir
+  worktrees_dir="$(gt_config_get "$config_file" ".worktrees_dir // \".worktrees\"")"
+  local target="$root/$worktrees_dir/$name"
+
+  if ! git -C "$target" rev-parse --git-dir &>/dev/null 2>&1; then
+    echo "Worktree $name not found at $target" >&2
+    exit 1
+  fi
+
+  if ! $force && ! git -C "$target" diff --quiet 2>/dev/null; then
+    echo "Worktree $name has uncommitted changes. Use --force to remove anyway." >&2
+    exit 1
+  fi
+
+  if $force; then
+    git -C "$root" worktree remove "$target" --force
+  else
+    git -C "$root" worktree remove "$target"
+  fi
+
+  gt_config_set "$config_file" "c['worktrees'].pop('$name', None)"
+  echo "Removed worktree $name"
+}
+
+gt_cmd_opencode() {
+  local name="${1:-}"
+  [[ -z "$name" ]] && { echo "Usage: gt opencode <name>" >&2; exit 1; }
+
+  local root
+  root="$(gt_find_root)" || { echo "Not in a gt project" >&2; exit 1; }
+  local config_file="$root/.gt/config.json"
+  local worktrees_dir
+  worktrees_dir="$(gt_config_get "$config_file" ".worktrees_dir // \".worktrees\"")"
+  local target="$root/$worktrees_dir/$name"
+  local cd_target
+  cd_target="$(realpath "$target")"
+
+  cd "$cd_target" && opencode
+
+  echo "Exited opencode in $name worktree"
+}
+
+gt_cmd_init() {
+  local auto_detect=false
+  for arg in "$@"; do [[ "$arg" == "--auto-detect" ]] && auto_detect=true; done
+
+  local root
+  root="$(gt_find_root 2>/dev/null)" || root="$PWD"
+  local config_dir="$root/.gt"
+  local config_file="$config_dir/config.json"
+
+  mkdir -p "$config_dir"
+
+  if [[ -f "$config_file" ]]; then
+    echo "Config already exists at $config_file" >&2
+    exit 1
+  fi
+
+  if $auto_detect; then
+    local worktrees_dir=".worktrees"
+    local json="{"
+    json="$json\n  \"worktrees_dir\": \"$worktrees_dir\","
+    json="$json\n  \"default_branch\": \"main\","
+    json="$json\n  \"opencode_config\": \"opencode.jsonc\","
+    json="$json\n  \"worktrees\": {"
+
+    local first=true
+    while IFS= read -r line; do
+      local wt_path wt_branch wt_name
+      wt_path="$(echo "$line" | awk '{print $1}')"
+      wt_branch="$(echo "$line" | awk -F'[' '{print $2}' | tr -d ']' 2>/dev/null || echo "main")"
+      [[ -z "$wt_branch" ]] && wt_branch="main"
+      wt_name="$(basename "$wt_path")"
+      if $first; then
+        first=false
+      else
+        json="$json,"
+      fi
+      json="$json\n    \"$wt_name\": { \"branch\": \"$wt_branch\", \"auto_attach\": true }"
+    done < <(git -C "$root" worktree list 2>/dev/null | grep -v "^$(realpath "$root" 2>/dev/null || echo "$root")")
+
+    json="$json\n  }"
+    json="$json\n}"
+
+    echo -e "$json" | python3 -m json.tool > "$config_file" 2>/dev/null || echo -e "$json" > "$config_file"
+  else
+    echo '{ "worktrees_dir": ".worktrees", "default_branch": "main", "worktrees": {} }' > "$config_file"
+    echo "Created minimal $config_file"
+    echo "Edit it to add worktrees or re-run with --auto-detect"
+  fi
+
+  echo "Created $config_file"
+}
+
+# ---------------------------------------------------------------------------
+# Dispatch
+# ---------------------------------------------------------------------------
+
+cmd="${1:-help}"
+shift 2>/dev/null || true
+
+case "$cmd" in
+  list|switch|create|remove|opencode|init)
+    "gt_cmd_$cmd" "$@"
+    ;;
+  help|--help|-h)
+    gt_usage
+    ;;
+  --version|-v)
+    echo "gt v$GT_VERSION"
+    ;;
+  *)
+    echo "Unknown command: $cmd" >&2
+    gt_usage
+    exit 1
+    ;;
+esac

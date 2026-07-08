@@ -335,6 +335,13 @@ def _roman_to_int(s: str) -> int:
     return total
 
 
+def _derive_topic_from_unit(unit_str: str) -> str:
+    """Extract topic from unit string, e.g. 'Unit 3: Biochemical Molecules' -> 'Biochemical Molecules'."""
+    if ":" in unit_str:
+        return unit_str.split(":", 1)[1].strip()
+    return unit_str
+
+
 def _extract_topic(text: str) -> str:
     """Extract topic/section heading from text."""
     patterns = [
@@ -741,7 +748,7 @@ async def process_file(
             "unit": chunk.get("unit", "") or "",
             "section": chunk.get("section", "") or "",
             "subtopic": chunk.get("subtopic", "") or "",
-            "topic": chunk.get("topic", "") or "",
+            "topic": chunk.get("topic", "") or _derive_topic_from_unit(chunk.get("unit", "")),
             "heading": chunk.get("heading", "") or chunk["text"][:80],
             "page_number": chunk.get("page_number", 0) or 0,
             "chunk_index": i,

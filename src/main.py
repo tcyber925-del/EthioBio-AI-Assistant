@@ -41,6 +41,7 @@ from src.api import (
     users,
     workspace,
 )
+from src.api import memory as memory_api
 from src.api.graph import router as graph_router
 from src.api.intelligence.continue_learning_router import (
     router as continue_learning_router,
@@ -244,6 +245,7 @@ app.include_router(continue_learning_router)
 app.include_router(recovery.router)
 app.include_router(notifications.router)
 app.include_router(memory_router)
+app.include_router(memory_api.router)
 app.include_router(misconceptions.router)
 app.include_router(activity.router)
 app.include_router(knowledge.router)

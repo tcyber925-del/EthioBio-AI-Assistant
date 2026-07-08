@@ -78,3 +78,5 @@ This file is kept under ~120 lines. When adding a module, create a file in `.ope
 - `README.md` — API endpoints, full setup guide
 - `.env.example` — all env vars
 - `docker-compose.yml` — service topology (postgres+pgvector, redis, ollama with GPU)
+- `scripts/Git-Worktree/README.md` — `gt` worktree orchestrator docs
+- `~/.opencode/skills/gt/SKILL.md` — `gt` agent skill (auto-loaded for worktree tasks)
