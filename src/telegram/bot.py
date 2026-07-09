@@ -2549,7 +2549,11 @@ async def assignments_command(update: Update, context):
     api_base = settings.api_base_url
     user_id = update.effective_user.id
     async with httpx.AsyncClient(timeout=30.0) as client:
-        user_resp = await client.get(f"{api_base}/users/by_telegram/{user_id}")
+        try:
+            user_resp = await client.get(f"{api_base}/users/by_telegram/{user_id}")
+        except httpx.RequestError:
+            await _reply_long(update, "❌ Could not reach the server. Please try again later.")
+            return
         if user_resp.status_code != 200:
             await _reply_long(update, "❌ You need to /start first.")
             return
@@ -2557,14 +2561,26 @@ async def assignments_command(update: Update, context):
         role = user_data.get("role", "student")
 
         if role in ("admin", "teacher"):
-            ws_resp = await client.get(f"{api_base}/api/v1/workspaces/?user_id={user_data['id']}")
+            try:
+                ws_resp = await client.get(f"{api_base}/api/v1/workspaces/?user_id={user_data['id']}")
+            except httpx.RequestError:
+                await _reply_long(update, "❌ Could not reach the server. Please try again later.")
+                return
             if ws_resp.status_code != 200 or not ws_resp.json():
                 await _reply_long(update, "No workspace found. Create one in the dashboard first.")
                 return
             ws_id = ws_resp.json()[0]["id"]
-            resp = await client.get(f"{api_base}/api/v1/assignments/?workspace_id={ws_id}")
+            try:
+                resp = await client.get(f"{api_base}/api/v1/assignments/?workspace_id={ws_id}")
+            except httpx.RequestError:
+                await _reply_long(update, "❌ Could not reach the server. Please try again later.")
+                return
         else:
-            resp = await client.get(f"{api_base}/api/v1/assignments/my?student_id={user_data['id']}")
+            try:
+                resp = await client.get(f"{api_base}/api/v1/assignments/my?student_id={user_data['id']}")
+            except httpx.RequestError:
+                await _reply_long(update, "❌ Could not reach the server. Please try again later.")
+                return
 
         if resp.status_code != 200:
             await _reply_long(update, "❌ Failed to load assignments.")
@@ -2599,16 +2615,24 @@ async def submit_command(update: Update, context):
         return
 
     async with httpx.AsyncClient(timeout=30.0) as client:
-        user_resp = await client.get(f"{api_base}/users/by_telegram/{update.effective_user.id}")
+        try:
+            user_resp = await client.get(f"{api_base}/users/by_telegram/{update.effective_user.id}")
+        except httpx.RequestError:
+            await _reply_long(update, "❌ Could not reach the server. Please try again later.")
+            return
         if user_resp.status_code != 200:
             await _reply_long(update, "❌ You need to /start first.")
             return
         user_data = user_resp.json()
 
-        resp = await client.post(
-            f"{api_base}/api/v1/assignments/{assignment_id}/submissions?student_id={user_data['id']}",
-            json={"content_text": answer},
-        )
+        try:
+            resp = await client.post(
+                f"{api_base}/api/v1/assignments/{assignment_id}/submissions?student_id={user_data['id']}",
+                json={"content_text": answer},
+            )
+        except httpx.RequestError:
+            await _reply_long(update, "❌ Could not reach the server. Please try again later.")
+            return
         if resp.status_code == 201:
             await _reply_long(update, "✅ Your answer has been submitted successfully!")
         elif resp.status_code == 404:
