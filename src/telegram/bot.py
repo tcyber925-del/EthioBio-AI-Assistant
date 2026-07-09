@@ -2640,7 +2640,11 @@ async def handle_document_upload(update: Update, context):
     api_base = settings.api_base_url
 
     async with httpx.AsyncClient(timeout=30.0) as client:
-        user_resp = await client.get(f"{api_base}/users/by_telegram/{user_id}")
+        try:
+            user_resp = await client.get(f"{api_base}/users/by_telegram/{user_id}")
+        except httpx.RequestError:
+            await _reply_long(update, "❌ Could not reach the server. Please try again later.")
+            return
         if user_resp.status_code != 200:
             await _reply_long(update, "❌ You need to /start first.")
             return
@@ -2650,7 +2654,11 @@ async def handle_document_upload(update: Update, context):
             await _reply_long(update, "❌ Only teachers and admins can upload materials.")
             return
 
-        ws_resp = await client.get(f"{api_base}/api/v1/workspaces/?user_id={user_data['id']}")
+        try:
+            ws_resp = await client.get(f"{api_base}/api/v1/workspaces/?user_id={user_data['id']}")
+        except httpx.RequestError:
+            await _reply_long(update, "❌ Could not reach the server. Please try again later.")
+            return
         if ws_resp.status_code != 200 or not ws_resp.json():
             await _reply_long(update, "❌ No workspace found. Create one in the dashboard first.")
             return
@@ -2659,7 +2667,11 @@ async def handle_document_upload(update: Update, context):
     status_msg = await update.message.reply_text("⏳ Downloading and processing your file...")
 
     file = await update.message.effective_attachment.get_file()
-    file_bytes = await file.download_as_bytearray()
+    try:
+        file_bytes = await file.download_as_bytearray()
+    except Exception:
+        await status_msg.edit_text("❌ Failed to download the file. Please try again.")
+        return
 
     await status_msg.edit_text("⏳ Uploading to knowledge platform...")
 
@@ -2672,11 +2684,15 @@ async def handle_document_upload(update: Update, context):
             "owner_id": user_data["id"],
             "title": title,
         }
-        resp = await client.post(
-            f"{api_base}/api/v1/knowledge/upload",
-            files=files,
-            params=params,
-        )
+        try:
+            resp = await client.post(
+                f"{api_base}/api/v1/knowledge/upload",
+                files=files,
+                params=params,
+            )
+        except httpx.RequestError:
+            await status_msg.edit_text("❌ Upload failed. Could not reach the server.")
+            return
 
     if resp.status_code == 201:
         ko_id = resp.json().get("id", "")
@@ -2696,12 +2712,9 @@ async def handle_document_upload(update: Update, context):
 async def handle_upload_hint(update: Update, context):
     query = update.callback_query
     await query.answer()
+    lang = _lang(context)
     await query.message.reply_text(
-        "📎 *Upload Material*\n\n"
-        "Send me a file and I'll upload it to your workspace for processing.\n\n"
-        "Accepted formats: `pdf`, `docx`, `txt`, `md`\n"
-        "Maximum size: 20 MB\n\n"
-        "Just drag and drop or attach a file directly in this chat.",
+        t("upload.hint", lang),
         parse_mode="Markdown",
     )
 
