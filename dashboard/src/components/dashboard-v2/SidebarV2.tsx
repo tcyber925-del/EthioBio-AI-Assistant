@@ -23,6 +23,7 @@ import {
   MessageSquare,
   Cpu,
   GitFork,
+  Upload,
 } from 'lucide-react'
 import { DnaIcon } from './BioIcon'
 import { useLocale } from 'next-intl'
@@ -75,6 +76,16 @@ const NAV_STRUCTURE: NavSection[] = [
       { label: 'School', href: '/school', icon: Shield, roles: ['admin'] },
       { label: 'Recovery', href: '/recovery', icon: Activity, roles: ['admin', 'teacher'] },
       { label: 'Interventions', href: '/intervention-analytics', icon: BarChart3, roles: ['admin', 'teacher'] },
+    ],
+  },
+  {
+    section: 'Workspace',
+    items: [
+      { label: 'Dashboard', href: '/workspace', icon: LayoutDashboard, roles: ['admin', 'teacher'] },
+      { label: 'Browse', href: '/workspace/browse', icon: BookOpen, roles: ['admin', 'teacher'] },
+      { label: 'Upload', href: '/workspace/upload', icon: Upload, roles: ['admin', 'teacher'] },
+      { label: 'Search', href: '/workspace/search', icon: Search, roles: ['admin', 'teacher'] },
+      { label: 'Processing', href: '/workspace/processing', icon: Activity, roles: ['admin', 'teacher'] },
     ],
   },
   {

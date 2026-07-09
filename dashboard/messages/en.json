@@ -20,7 +20,12 @@
     "grade_curriculum": "Grade 9-12 curriculum",
     "language": "Language",
     "english": "English",
-    "amharic": "Amharic"
+    "amharic": "Amharic",
+    "workspace": "Workspace",
+    "workspace_browse": "Browse",
+    "workspace_upload": "Upload",
+    "workspace_search": "Search",
+    "workspace_processing": "Processing"
   },
   "login": {
     "title": "EthioBio AI Assistant",

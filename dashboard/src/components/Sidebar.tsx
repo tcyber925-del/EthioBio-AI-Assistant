@@ -1,6 +1,6 @@
 'use client'
 
-import { Activity, BarChart3, BookOpen, ClipboardCheck, FileText, GraduationCap, Home, LogOut, MessageSquare, School, Shield, User, Users, Globe } from 'lucide-react'
+import { Activity, BarChart3, BookOpen, ClipboardCheck, FileText, GraduationCap, Home, LayoutDashboard, LogOut, MessageSquare, School, Search, Shield, Upload, User, Users, Globe } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
@@ -40,6 +40,11 @@ export default function Sidebar() {
     { href: '/monitoring', icon: BarChart3, roles: ['admin'] },
     { href: '/diagrams', icon: BarChart3, roles: ['admin', 'teacher', 'student', 'parent'] },
     { href: '/ask', icon: MessageSquare, roles: ['admin', 'teacher', 'student', 'parent'] },
+    { href: '/workspace', icon: LayoutDashboard, roles: ['admin', 'teacher'] },
+    { href: '/workspace/browse', icon: BookOpen, roles: ['admin', 'teacher'] },
+    { href: '/workspace/upload', icon: Upload, roles: ['admin', 'teacher'] },
+    { href: '/workspace/search', icon: Search, roles: ['admin', 'teacher'] },
+    { href: '/workspace/processing', icon: Activity, roles: ['admin', 'teacher'] },
   ]
 
   const linkLabel = (href: string) => {
@@ -57,6 +62,11 @@ export default function Sidebar() {
       '/monitoring': t('monitoring'),
       '/diagrams': t('diagrams'),
       '/ask': t('ask'),
+      '/workspace': t('workspace'),
+      '/workspace/browse': t('workspace_browse'),
+      '/workspace/upload': t('workspace_upload'),
+      '/workspace/search': t('workspace_search'),
+      '/workspace/processing': t('workspace_processing'),
     }
     return map[href] || ''
   }
@@ -103,7 +113,7 @@ export default function Sidebar() {
       <nav className="flex-1 p-3 space-y-1">
         {links.map(link => {
           const Icon = link.icon
-          const active = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href))
+          const active = pathname === link.href || (link.href !== '/' && link.href !== '/workspace' && pathname.startsWith(link.href))
           return (
             <Link
               key={link.href}

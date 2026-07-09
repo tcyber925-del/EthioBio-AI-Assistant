@@ -20,7 +20,12 @@
     "grade_curriculum": "ከ9-12 ክፍል ሥርዓተ ትምህርት",
     "language": "ቋንቋ",
     "english": "እንግሊዝኛ",
-    "amharic": "አማርኛ"
+    "amharic": "አማርኛ",
+    "workspace": "የስራ ቦታ",
+    "workspace_browse": "አስስ",
+    "workspace_upload": "ስቀል",
+    "workspace_search": "ፈልግ",
+    "workspace_processing": "በሂደት ላይ"
   },
   "login": {
     "title": "EthioBio AI ረዳት",
