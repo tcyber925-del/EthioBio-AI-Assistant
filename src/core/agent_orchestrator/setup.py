@@ -2,10 +2,15 @@ from __future__ import annotations
 
 import structlog
 
+from src.agents.curriculum_agent import CurriculumAgent
 from src.agents.diagnostic_assessment import DiagnosticAgent
 from src.agents.diagram import DiagramAgent
+from src.agents.forecast_agent import ForecastAgent
+from src.agents.intervention_agent import InterventionAgent
 from src.agents.lesson_planner import LessonPlannerAgent
+from src.agents.misconception_agent import MisconceptionAgent
 from src.agents.quiz import QuizAgent
+from src.agents.research_agent import ResearchAgent
 from src.agents.safety import SafetyAgent
 from src.agents.student_progress import StudentProgressAgent
 from src.agents.translator import TranslatorAgent
@@ -86,6 +91,41 @@ def build_registry(
         agent=progress, name="student_progress_agent",
         description="Analyzes student progress and generates insights",
         capabilities=[AgentCapability(name="student_progress", description="Analyze progress")],
+    ))
+
+    curriculum = CurriculumAgent(llm_router=router)
+    registry.register(AgentRegistration(
+        agent=curriculum, name="curriculum_agent",
+        description="Sequences curriculum content and pacing",
+        capabilities=[AgentCapability(name="curriculum_planning", description="Plan curriculum")],
+    ))
+
+    forecast = ForecastAgent(llm_router=router)
+    registry.register(AgentRegistration(
+        agent=forecast, name="forecast_agent",
+        description="Forecasts student performance and identifies at-risk students",
+        capabilities=[AgentCapability(name="performance_forecast", description="Forecast performance")],
+    ))
+
+    intervention = InterventionAgent(llm_router=router)
+    registry.register(AgentRegistration(
+        agent=intervention, name="intervention_agent",
+        description="Selects and evaluates educational interventions",
+        capabilities=[AgentCapability(name="intervention_analysis", description="Analyze interventions")],
+    ))
+
+    misconception = MisconceptionAgent(llm_router=router)
+    registry.register(AgentRegistration(
+        agent=misconception, name="misconception_agent",
+        description="Detects and analyzes student misconceptions",
+        capabilities=[AgentCapability(name="misconception_detection", description="Detect misconceptions")],
+    ))
+
+    research = ResearchAgent(llm_router=router)
+    registry.register(AgentRegistration(
+        agent=research, name="research_agent",
+        description="Searches and summarizes educational research",
+        capabilities=[AgentCapability(name="research_synthesis", description="Synthesize research")],
     ))
 
     logger.info("agent_registry_built", count=len(registry.list_agents()))
