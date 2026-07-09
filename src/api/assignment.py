@@ -1,6 +1,7 @@
 import structlog
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from src.api.auth import get_current_user
 from src.core.assignment import AssignmentService
 from src.core.assignment.models import (
     Assignment,
@@ -10,7 +11,7 @@ from src.core.assignment.models import (
     UpdateAssignment,
     UpdateSubmission,
 )
-from src.database.models import AssignmentStatus
+from src.database.models import AssignmentStatus, User
 from src.database.session import async_session_factory
 
 logger = structlog.get_logger()
@@ -27,8 +28,8 @@ def _get_service() -> AssignmentService:
 
 
 @router.post("/", response_model=Assignment, status_code=201)
-async def create_assignment(data: NewAssignment, teacher_id: str = Query(...)):
-    return await _get_service().create(data, teacher_id)
+async def create_assignment(data: NewAssignment, current_user: User = Depends(get_current_user)):
+    return await _get_service().create(data, str(current_user.id))
 
 
 @router.get("/", response_model=list[Assignment])
@@ -82,17 +83,17 @@ async def delete_assignment(assignment_id: str):
 async def submit_assignment(
     assignment_id: str,
     data: NewSubmission,
-    student_id: str = Query(...),
+    current_user: User = Depends(get_current_user),
 ):
-    result = await _get_service().submit(assignment_id, student_id, data)
+    result = await _get_service().submit(assignment_id, str(current_user.id), data)
     if result is None:
         raise HTTPException(status_code=404, detail="Assignment not found or max attempts exceeded")
     return result
 
 
 @router.get("/submissions/my", response_model=list[Submission])
-async def my_submissions(student_id: str = Query(...)):
-    return await _get_service().list_my_submissions(student_id)
+async def my_submissions(current_user: User = Depends(get_current_user)):
+    return await _get_service().list_my_submissions(str(current_user.id))
 
 
 @router.get("/{assignment_id}/submissions", response_model=list[Submission])

@@ -35,6 +35,7 @@ def teacher_tools_keyboard(language: str = "en"):
         [InlineKeyboardButton(t("copilot_chat", language), callback_data="copilot")],
         [InlineKeyboardButton(t("create_lesson_plan", language), callback_data="lesson_plan")],
         [InlineKeyboardButton(t("review_quizzes", language), callback_data="open_quizzes")],
+        [InlineKeyboardButton(t("upload_material", language), callback_data="upload_hint")],
         [InlineKeyboardButton(t("open_dashboard", language), callback_data="open_dashboard")],
         [InlineKeyboardButton(t("back_to_menu", language), callback_data="menu")],
     ]

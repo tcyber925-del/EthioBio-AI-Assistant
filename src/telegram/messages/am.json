@@ -164,6 +164,10 @@
   "ask_another": "ሌላ ጠይቅ",
   "create_lesson_plan": "📋 የትምህርት እቅድ ፍጠር",
   "review_quizzes": "📄 ፈተናዎችን አስተካክል",
+  "upload_material": "📎 ቁሳቁስ ስቀል",
+  "upload": {
+    "hint": "📎 *ቁሳቁስ ስቀል*\n\nፋይል ይላኩና ወደ የስራ ቦታዎ እሰቅላለሁ።\n\nተቀባይነት ያላቸው ቅርፀቶች፦ `pdf`, `docx`, `txt`, `md`\nከፍተኛ መጠን፦ 20 ሜባ\n\nፋይሉን በቀጥታ በዚህ ቻት ውስጥ ይላኩ።"
+  },
   "open_dashboard": "📈 ዳሽቦርድ ክፈት",
   "view_recovery": "የማገገሚያ እቅድ",
   "view_progress": "📊 እድገት",

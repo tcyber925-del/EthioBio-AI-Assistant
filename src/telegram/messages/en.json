@@ -164,6 +164,10 @@
   "ask_another": "Ask Another",
   "create_lesson_plan": "📋 Create Lesson Plan",
   "review_quizzes": "📄 Review Quizzes",
+  "upload_material": "📎 Upload Material",
+  "upload": {
+    "hint": "📎 *Upload Material*\n\nSend me a file and I'll upload it to your workspace for processing.\n\nAccepted formats: `pdf`, `docx`, `txt`, `md`\nMaximum size: 20 MB\n\nJust drag and drop or attach a file directly in this chat."
+  },
   "open_dashboard": "📈 Open Dashboard",
   "view_recovery": "Recovery Plan",
   "view_progress": "📊 Progress",

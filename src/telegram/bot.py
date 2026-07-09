@@ -147,7 +147,7 @@ async def register_parent(update: Update, context):
                 select(User).where(
                     User.email == email,
                     User.role == UserRole.parent,
-                    User.is_active == True,
+                    User.is_active.is_(True),
                 )
             )
             user = result.scalar_one_or_none()
@@ -178,7 +178,7 @@ async def list_children(update: Update, context):
             user_result = await session.execute(
                 select(User).where(
                     User.telegram_id == telegram_id,
-                    User.is_active == True,
+                    User.is_active.is_(True),
                 )
             )
             user = user_result.scalar_one_or_none()
@@ -327,7 +327,7 @@ async def child_progress(update: Update, context):
             user_result = await session.execute(
                 select(User).where(
                     User.telegram_id == telegram_id,
-                    User.is_active == True,
+                    User.is_active.is_(True),
                 )
             )
             user = user_result.scalar_one_or_none()
@@ -1171,7 +1171,7 @@ async def _fetch_recovery_notifications(user_id, session):
         select(RecoveryNotification)
         .where(
             RecoveryNotification.user_id == user_id,
-            RecoveryNotification.is_read == False,
+            RecoveryNotification.is_read.is_(False),
         )
         .order_by(RecoveryNotification.created_at.desc())
         .limit(5)
@@ -2354,7 +2354,7 @@ async def link_command(update: Update, context):
                 select(User).where(
                     User.email == email,
                     User.role == UserRole.teacher,
-                    User.is_active == True,
+                    User.is_active.is_(True),
                 )
             )
             teacher = result.scalar_one_or_none()
@@ -2410,7 +2410,7 @@ async def handle_link_otp(update: Update, context):
                 select(User).where(
                     User.email == email,
                     User.role == UserRole.teacher,
-                    User.is_active == True,
+                    User.is_active.is_(True),
                 )
             )
             teacher_user = teacher.scalar_one_or_none()
@@ -2549,7 +2549,11 @@ async def assignments_command(update: Update, context):
     api_base = settings.api_base_url
     user_id = update.effective_user.id
     async with httpx.AsyncClient(timeout=30.0) as client:
-        user_resp = await client.get(f"{api_base}/users/by_telegram/{user_id}")
+        try:
+            user_resp = await client.get(f"{api_base}/users/by_telegram/{user_id}")
+        except httpx.RequestError:
+            await _reply_long(update, "❌ Could not reach the server. Please try again later.")
+            return
         if user_resp.status_code != 200:
             await _reply_long(update, "❌ You need to /start first.")
             return
@@ -2557,14 +2561,26 @@ async def assignments_command(update: Update, context):
         role = user_data.get("role", "student")
 
         if role in ("admin", "teacher"):
-            ws_resp = await client.get(f"{api_base}/api/v1/workspaces/?user_id={user_data['id']}")
+            try:
+                ws_resp = await client.get(f"{api_base}/api/v1/workspaces/?user_id={user_data['id']}")
+            except httpx.RequestError:
+                await _reply_long(update, "❌ Could not reach the server. Please try again later.")
+                return
             if ws_resp.status_code != 200 or not ws_resp.json():
                 await _reply_long(update, "No workspace found. Create one in the dashboard first.")
                 return
             ws_id = ws_resp.json()[0]["id"]
-            resp = await client.get(f"{api_base}/api/v1/assignments/?workspace_id={ws_id}")
+            try:
+                resp = await client.get(f"{api_base}/api/v1/assignments/?workspace_id={ws_id}")
+            except httpx.RequestError:
+                await _reply_long(update, "❌ Could not reach the server. Please try again later.")
+                return
         else:
-            resp = await client.get(f"{api_base}/api/v1/assignments/my?student_id={user_data['id']}")
+            try:
+                resp = await client.get(f"{api_base}/api/v1/assignments/my?student_id={user_data['id']}")
+            except httpx.RequestError:
+                await _reply_long(update, "❌ Could not reach the server. Please try again later.")
+                return
 
         if resp.status_code != 200:
             await _reply_long(update, "❌ Failed to load assignments.")
@@ -2599,22 +2615,132 @@ async def submit_command(update: Update, context):
         return
 
     async with httpx.AsyncClient(timeout=30.0) as client:
-        user_resp = await client.get(f"{api_base}/users/by_telegram/{update.effective_user.id}")
+        try:
+            user_resp = await client.get(f"{api_base}/users/by_telegram/{update.effective_user.id}")
+        except httpx.RequestError:
+            await _reply_long(update, "❌ Could not reach the server. Please try again later.")
+            return
         if user_resp.status_code != 200:
             await _reply_long(update, "❌ You need to /start first.")
             return
         user_data = user_resp.json()
 
-        resp = await client.post(
-            f"{api_base}/api/v1/assignments/{assignment_id}/submissions?student_id={user_data['id']}",
-            json={"content_text": answer},
-        )
+        try:
+            resp = await client.post(
+                f"{api_base}/api/v1/assignments/{assignment_id}/submissions?student_id={user_data['id']}",
+                json={"content_text": answer},
+            )
+        except httpx.RequestError:
+            await _reply_long(update, "❌ Could not reach the server. Please try again later.")
+            return
         if resp.status_code == 201:
             await _reply_long(update, "✅ Your answer has been submitted successfully!")
         elif resp.status_code == 404:
             await _reply_long(update, "❌ Assignment not found or max attempts exceeded.")
         else:
             await _reply_long(update, "❌ Submission failed. Please try again later.")
+
+
+ALLOWED_UPLOAD_EXTENSIONS = {".pdf", ".docx", ".txt", ".md"}
+MAX_UPLOAD_SIZE = 20 * 1024 * 1024
+
+
+async def handle_document_upload(update: Update, context):
+    doc = update.message.document
+    if not doc:
+        return
+
+    file_name = doc.file_name or ""
+    ext = "." + file_name.rsplit(".", 1)[-1].lower() if "." in file_name else ""
+    if ext not in ALLOWED_UPLOAD_EXTENSIONS:
+        await _reply_long(update, f"❌ Unsupported file format `{ext}`. Accepted: pdf, docx, txt, md")
+        return
+
+    if doc.file_size and doc.file_size > MAX_UPLOAD_SIZE:
+        await _reply_long(update, "❌ File too large. Maximum size is 20 MB.")
+        return
+
+    user_id = update.effective_user.id
+    api_base = settings.api_base_url
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            user_resp = await client.get(f"{api_base}/users/by_telegram/{user_id}")
+        except httpx.RequestError:
+            await _reply_long(update, "❌ Could not reach the server. Please try again later.")
+            return
+        if user_resp.status_code != 200:
+            await _reply_long(update, "❌ You need to /start first.")
+            return
+        user_data = user_resp.json()
+
+        if user_data.get("role") not in ("admin", "teacher"):
+            await _reply_long(update, "❌ Only teachers and admins can upload materials.")
+            return
+
+        try:
+            ws_resp = await client.get(f"{api_base}/api/v1/workspaces/?user_id={user_data['id']}")
+        except httpx.RequestError:
+            await _reply_long(update, "❌ Could not reach the server. Please try again later.")
+            return
+        if ws_resp.status_code != 200 or not ws_resp.json():
+            await _reply_long(update, "❌ No workspace found. Create one in the dashboard first.")
+            return
+        workspace_id = ws_resp.json()[0]["id"]
+
+    status_msg = await update.message.reply_text("⏳ Downloading and processing your file...")
+
+    file = await update.message.effective_attachment.get_file()
+    try:
+        file_bytes = await file.download_as_bytearray()
+    except Exception:
+        await status_msg.edit_text("❌ Failed to download the file. Please try again.")
+        return
+
+    await status_msg.edit_text("⏳ Uploading to knowledge platform...")
+
+    title = file_name.rsplit(".", 1)[0] if "." in file_name else file_name
+
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        files = {"file": (file_name, file_bytes, doc.mime_type or "application/octet-stream")}
+        params = {
+            "workspace_id": workspace_id,
+            "owner_id": user_data["id"],
+            "title": title,
+        }
+        try:
+            resp = await client.post(
+                f"{api_base}/api/v1/knowledge/upload",
+                files=files,
+                params=params,
+            )
+        except httpx.RequestError:
+            await status_msg.edit_text("❌ Upload failed. Could not reach the server.")
+            return
+
+    if resp.status_code == 201:
+        ko_id = resp.json().get("id", "")
+        await status_msg.edit_text(
+            f"✅ *File uploaded successfully!*\n\n"
+            f"📄 `{file_name}`\n"
+            f"🆔 `{ko_id}`\n\n"
+            f"It will be processed and indexed shortly.",
+            parse_mode="Markdown",
+        )
+    else:
+        await status_msg.edit_text(
+            f"❌ Upload failed (HTTP {resp.status_code}). Please try again later."
+        )
+
+
+async def handle_upload_hint(update: Update, context):
+    query = update.callback_query
+    await query.answer()
+    lang = _lang(context)
+    await query.message.reply_text(
+        t("upload.hint", lang),
+        parse_mode="Markdown",
+    )
 
 
 def build_app() -> Application:
@@ -2646,6 +2772,7 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("child_progress", child_progress))
     app.add_handler(CommandHandler("assignments", assignments_command))
     app.add_handler(CommandHandler("submit", submit_command))
+    app.add_handler(MessageHandler(filters.Document, handle_document_upload))
 
     link_handler = ConversationHandler(
         entry_points=[CommandHandler("link", link_command)],
@@ -2797,6 +2924,7 @@ def build_app() -> Application:
     app.add_handler(CallbackQueryHandler(handle_teacher_tools, pattern="^teacher_tools$"))
     app.add_handler(CallbackQueryHandler(handle_open_quizzes, pattern="^open_quizzes$"))
     app.add_handler(CallbackQueryHandler(handle_open_dashboard, pattern="^open_dashboard$"))
+    app.add_handler(CallbackQueryHandler(handle_upload_hint, pattern="^upload_hint$"))
     app.add_handler(CallbackQueryHandler(handle_progress, pattern="^progress$"))
     app.add_handler(CallbackQueryHandler(handle_language, pattern="^language$"))
     app.add_handler(CallbackQueryHandler(handle_language_select, pattern="^lang_"))
