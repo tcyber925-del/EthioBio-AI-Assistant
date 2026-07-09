@@ -63,7 +63,7 @@ Provide a JSON response with:
         # Parse JSON string from LLM result. In a real system, you might want strict structured outputs.
         try:
             return json.loads(result["content"])
-        except Exception:
+        except json.JSONDecodeError:
             return {
                 "effectiveness_score": 5,
                 "lessons_learned": "Failed to parse reflection. Raw output: " + result["content"],

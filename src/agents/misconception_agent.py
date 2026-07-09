@@ -62,7 +62,7 @@ Provide a JSON response with:
         
         try:
             return json.loads(result["content"])
-        except Exception:
+        except json.JSONDecodeError:
             return {
                 "diagnosis_accuracy": 5,
                 "lessons_learned": "Failed to parse reflection. Raw output: " + result["content"],

@@ -147,7 +147,7 @@ async def register_parent(update: Update, context):
                 select(User).where(
                     User.email == email,
                     User.role == UserRole.parent,
-                    User.is_active == True,
+                    User.is_active.is_(True),
                 )
             )
             user = result.scalar_one_or_none()
@@ -178,7 +178,7 @@ async def list_children(update: Update, context):
             user_result = await session.execute(
                 select(User).where(
                     User.telegram_id == telegram_id,
-                    User.is_active == True,
+                    User.is_active.is_(True),
                 )
             )
             user = user_result.scalar_one_or_none()
@@ -327,7 +327,7 @@ async def child_progress(update: Update, context):
             user_result = await session.execute(
                 select(User).where(
                     User.telegram_id == telegram_id,
-                    User.is_active == True,
+                    User.is_active.is_(True),
                 )
             )
             user = user_result.scalar_one_or_none()
@@ -1171,7 +1171,7 @@ async def _fetch_recovery_notifications(user_id, session):
         select(RecoveryNotification)
         .where(
             RecoveryNotification.user_id == user_id,
-            RecoveryNotification.is_read == False,
+            RecoveryNotification.is_read.is_(False),
         )
         .order_by(RecoveryNotification.created_at.desc())
         .limit(5)
@@ -2354,7 +2354,7 @@ async def link_command(update: Update, context):
                 select(User).where(
                     User.email == email,
                     User.role == UserRole.teacher,
-                    User.is_active == True,
+                    User.is_active.is_(True),
                 )
             )
             teacher = result.scalar_one_or_none()
@@ -2410,7 +2410,7 @@ async def handle_link_otp(update: Update, context):
                 select(User).where(
                     User.email == email,
                     User.role == UserRole.teacher,
-                    User.is_active == True,
+                    User.is_active.is_(True),
                 )
             )
             teacher_user = teacher.scalar_one_or_none()
@@ -2618,7 +2618,7 @@ async def submit_command(update: Update, context):
 
 
 ALLOWED_UPLOAD_EXTENSIONS = {".pdf", ".docx", ".txt", ".md"}
-MAX_UPLOAD_SIZE = 50 * 1024 * 1024
+MAX_UPLOAD_SIZE = 20 * 1024 * 1024
 
 
 async def handle_document_upload(update: Update, context):
@@ -2626,13 +2626,14 @@ async def handle_document_upload(update: Update, context):
     if not doc:
         return
 
-    ext = "." + doc.file_name.rsplit(".", 1)[-1].lower() if "." in doc.file_name else ""
+    file_name = doc.file_name or ""
+    ext = "." + file_name.rsplit(".", 1)[-1].lower() if "." in file_name else ""
     if ext not in ALLOWED_UPLOAD_EXTENSIONS:
         await _reply_long(update, f"❌ Unsupported file format `{ext}`. Accepted: pdf, docx, txt, md")
         return
 
     if doc.file_size and doc.file_size > MAX_UPLOAD_SIZE:
-        await _reply_long(update, "❌ File too large. Maximum size is 50 MB.")
+        await _reply_long(update, "❌ File too large. Maximum size is 20 MB.")
         return
 
     user_id = update.effective_user.id
@@ -2662,10 +2663,10 @@ async def handle_document_upload(update: Update, context):
 
     await status_msg.edit_text("⏳ Uploading to knowledge platform...")
 
-    title = doc.file_name.rsplit(".", 1)[0]
+    title = file_name.rsplit(".", 1)[0] if "." in file_name else file_name
 
     async with httpx.AsyncClient(timeout=120.0) as client:
-        files = {"file": (doc.file_name, file_bytes, doc.mime_type or "application/octet-stream")}
+        files = {"file": (file_name, file_bytes, doc.mime_type or "application/octet-stream")}
         params = {
             "workspace_id": workspace_id,
             "owner_id": user_data["id"],
@@ -2681,7 +2682,7 @@ async def handle_document_upload(update: Update, context):
         ko_id = resp.json().get("id", "")
         await status_msg.edit_text(
             f"✅ *File uploaded successfully!*\n\n"
-            f"📄 `{doc.file_name}`\n"
+            f"📄 `{file_name}`\n"
             f"🆔 `{ko_id}`\n\n"
             f"It will be processed and indexed shortly.",
             parse_mode="Markdown",
@@ -2699,7 +2700,7 @@ async def handle_upload_hint(update: Update, context):
         "📎 *Upload Material*\n\n"
         "Send me a file and I'll upload it to your workspace for processing.\n\n"
         "Accepted formats: `pdf`, `docx`, `txt`, `md`\n"
-        "Maximum size: 50 MB\n\n"
+        "Maximum size: 20 MB\n\n"
         "Just drag and drop or attach a file directly in this chat.",
         parse_mode="Markdown",
     )

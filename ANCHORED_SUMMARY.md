@@ -1,6 +1,6 @@
 # Anchored Summary — PR #59 Bug Fixes & Docker Rebuild
 
-All work is complete.
+PR #59 fixes complete. Telegram-bot rebuild pending (see Remaining section).
 
 ## Completed
 
