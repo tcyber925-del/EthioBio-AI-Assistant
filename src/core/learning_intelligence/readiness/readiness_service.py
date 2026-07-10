@@ -113,9 +113,9 @@ class ReadinessService:
                 all_risk_topics.append(topic)
 
         if topic_readiness_list:
-            overall_readiness = sum(
-                tr.readiness_score for tr in topic_readiness_list
-            ) / len(topic_readiness_list)
+            overall_readiness = sum(tr.readiness_score for tr in topic_readiness_list) / len(
+                topic_readiness_list
+            )
         else:
             overall_readiness = 0.0
 
@@ -145,10 +145,16 @@ class ReadinessService:
                 tr.forgetting_risk = forgetting_risks[tr.topic].forgetting_risk
 
         projected_score, confidence = self._score_calculator.calculate(
-            profile, forgetting_risks, stabilities, snapshot,
+            profile,
+            forgetting_risks,
+            stabilities,
+            snapshot,
         )
         interventions = self._intervention_planner.plan(
-            snapshot, profile, forgetting_risks, stabilities,
+            snapshot,
+            profile,
+            forgetting_risks,
+            stabilities,
         )
 
         profile.projected_exam_score = projected_score

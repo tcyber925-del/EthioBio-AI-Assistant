@@ -1,6 +1,6 @@
+import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
-import asyncio
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -43,8 +43,17 @@ def mock_router():
 @pytest.fixture
 def mock_retriever():
     retriever = MagicMock()
-    retriever.retrieve = AsyncMock(return_value=[
-        {"content": "Test curriculum content", "metadata": {"topic": "Cell Biology", "grade_level": 10}, "score": 0.95, "id": "1"}
-    ])
-    retriever.format_context.return_value = "[Source 1] Topic: Cell Biology | Grade: 10\nTest curriculum content"
+    retriever.retrieve = AsyncMock(
+        return_value=[
+            {
+                "content": "Test curriculum content",
+                "metadata": {"topic": "Cell Biology", "grade_level": 10},
+                "score": 0.95,
+                "id": "1",
+            }
+        ]
+    )
+    retriever.format_context.return_value = (
+        "[Source 1] Topic: Cell Biology | Grade: 10\nTest curriculum content"
+    )
     return retriever

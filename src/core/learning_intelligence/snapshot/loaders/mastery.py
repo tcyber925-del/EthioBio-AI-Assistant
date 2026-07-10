@@ -7,9 +7,7 @@ from src.database.models import StudentMastery
 
 
 async def load_mastery(session: AsyncSession, user_id: UUID) -> dict | None:
-    result = await session.execute(
-        select(StudentMastery).where(StudentMastery.user_id == user_id)
-    )
+    result = await session.execute(select(StudentMastery).where(StudentMastery.user_id == user_id))
     masteries = result.scalars().all()
     if not masteries:
         return None

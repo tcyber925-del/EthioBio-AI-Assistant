@@ -63,7 +63,11 @@ class QuizAgent(BaseAgent):
         # Retrieve curriculum context to ground questions
         filter_obj = RetrievalFilter(grade_level=grade_level)
         results = await self.adapter.search(query=topic, n_results=5, filter_obj=filter_obj)
-        context = self.adapter.format_context(results) if results else f"Grade {grade_level} biology curriculum - {topic}"
+        context = (
+            self.adapter.format_context(results)
+            if results
+            else f"Grade {grade_level} biology curriculum - {topic}"
+        )
         system_prompt = QUIZ_SYSTEM_PROMPT.replace("{context}", context)
 
         weak_topic_block = ""
@@ -91,11 +95,17 @@ STUDENT WEAK TOPICS (focus on these):
             mild = [wt for wt in weak_topics if wt["severity"] == "mild"]
             hints = []
             if critical:
-                hints.append(f"Focus on EASY questions for critical topics ({', '.join(w['topic'] for w in critical)})")
+                hints.append(
+                    f"Focus on EASY questions for critical topics ({', '.join(w['topic'] for w in critical)})"
+                )
             if moderate:
-                hints.append(f"Use MIXED difficulty for moderate topics ({', '.join(w['topic'] for w in moderate)})")
+                hints.append(
+                    f"Use MIXED difficulty for moderate topics ({', '.join(w['topic'] for w in moderate)})"
+                )
             if mild:
-                hints.append(f"Include MEDIUM/HARD questions for mild topics ({', '.join(w['topic'] for w in mild)})")
+                hints.append(
+                    f"Include MEDIUM/HARD questions for mild topics ({', '.join(w['topic'] for w in mild)})"
+                )
             if hints:
                 diff_instruction = " ".join(hints)
 

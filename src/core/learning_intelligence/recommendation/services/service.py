@@ -55,13 +55,15 @@ class RecommendationService:
         readiness_profile = None
         try:
             readiness_profile = await self._readiness_service.get_readiness(
-                session, user_id,
+                session,
+                user_id,
             )
         except Exception:
             logger.warning("readiness_fetch_failed", user_id=user_id)
 
         recommendations = await self._engine.generate(
-            snapshot, user_id,
+            snapshot,
+            user_id,
             readiness_profile=readiness_profile,
             session=session,
         )

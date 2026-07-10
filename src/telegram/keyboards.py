@@ -4,13 +4,40 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 def lesson_features_keyboard(features: dict | None = None, language: str = "en"):
     f = features or {}
-    check = lambda key: "✅" if f.get(key, False) else "⬜"
+
+    def check(key):
+        return "✅" if f.get(key, False) else "⬜"
+
     buttons = [
-        [InlineKeyboardButton(f"{check('exit_ticket')} {t('lesson.feature_exit_ticket', language)}", callback_data="lesson_feature_exit_ticket")],
-        [InlineKeyboardButton(f"{check('differentiation')} {t('lesson.feature_differentiation', language)}", callback_data="lesson_feature_differentiation")],
-        [InlineKeyboardButton(f"{check('diagram_suggestions')} {t('lesson.feature_diagrams', language)}", callback_data="lesson_feature_diagrams")],
-        [InlineKeyboardButton(f"{check('misconception_activities')} {t('lesson.feature_misconceptions', language)}", callback_data="lesson_feature_misconceptions")],
-        [InlineKeyboardButton(t("lesson.features_done", language), callback_data="lesson_features_done")],
+        [
+            InlineKeyboardButton(
+                f"{check('exit_ticket')} {t('lesson.feature_exit_ticket', language)}",
+                callback_data="lesson_feature_exit_ticket",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                f"{check('differentiation')} {t('lesson.feature_differentiation', language)}",
+                callback_data="lesson_feature_differentiation",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                f"{check('diagram_suggestions')} {t('lesson.feature_diagrams', language)}",
+                callback_data="lesson_feature_diagrams",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                f"{check('misconception_activities')} {t('lesson.feature_misconceptions', language)}",  # noqa: E501
+                callback_data="lesson_feature_misconceptions",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t("lesson.features_done", language), callback_data="lesson_features_done"
+            )
+        ],
         [InlineKeyboardButton(t("back", language), callback_data="menu")],
     ]
     return InlineKeyboardMarkup(buttons)
@@ -66,7 +93,12 @@ def grade_keyboard(callback_prefix: str = "grade", language: str = "en"):
     buttons = []
     row = []
     for grade in range(7, 13):
-        row.append(InlineKeyboardButton(t("common.grade_label", language, grade=grade), callback_data=f"{callback_prefix}_{grade}"))
+        row.append(
+            InlineKeyboardButton(
+                t("common.grade_label", language, grade=grade),
+                callback_data=f"{callback_prefix}_{grade}",
+            )
+        )
         if len(row) == 3:
             buttons.append(row)
             row = []
@@ -113,7 +145,9 @@ def quiz_result_keyboard(language: str = "en") -> InlineKeyboardMarkup:
 
 
 def back_keyboard(language: str = "en"):
-    return InlineKeyboardMarkup([[InlineKeyboardButton(t("back_to_menu", language), callback_data="menu")]])
+    return InlineKeyboardMarkup(
+        [[InlineKeyboardButton(t("back_to_menu", language), callback_data="menu")]]
+    )
 
 
 def model_providers_keyboard(models: list[dict]) -> list[list[InlineKeyboardButton]]:
@@ -129,7 +163,9 @@ def model_providers_keyboard(models: list[dict]) -> list[list[InlineKeyboardButt
     return buttons
 
 
-def provider_models_keyboard(models: list[dict], active_model: str) -> list[list[InlineKeyboardButton]]:
+def provider_models_keyboard(
+    models: list[dict], active_model: str
+) -> list[list[InlineKeyboardButton]]:
     """Build inline keyboard for models.
     Models are pre-filtered by provider. Uses index-based callback_data
     to stay within Telegram's 64-byte limit."""
@@ -138,7 +174,9 @@ def provider_models_keyboard(models: list[dict], active_model: str) -> list[list
         check = "✓ " if m["id"] == active_model else ""
         label = f"{check}{m['name']}"
         buttons.append([InlineKeyboardButton(label, callback_data=f"m:{i}")])
-    buttons.append([InlineKeyboardButton("← Back to Providers", callback_data="model:back_providers")])
+    buttons.append(
+        [InlineKeyboardButton("← Back to Providers", callback_data="model:back_providers")]
+    )
     return buttons
 
 
@@ -161,8 +199,16 @@ def hint_keyboard(hint_level: int = 0, reveal_answer: bool = False, language: st
         next_hint = hint_level + 1
         buttons = []
         if next_hint <= 3:
-            labels = {1: t("broad_hint", language), 2: t("specific_hint", language), 3: t("strong_hint", language)}
-            buttons.append([InlineKeyboardButton(labels[next_hint], callback_data=f"hint_{next_hint}")])
-        buttons.append([InlineKeyboardButton(t("reveal_answer", language), callback_data="reveal_answer")])
+            labels = {
+                1: t("broad_hint", language),
+                2: t("specific_hint", language),
+                3: t("strong_hint", language),
+            }
+            buttons.append(
+                [InlineKeyboardButton(labels[next_hint], callback_data=f"hint_{next_hint}")]
+            )
+        buttons.append(
+            [InlineKeyboardButton(t("reveal_answer", language), callback_data="reveal_answer")]
+        )
         buttons.append([InlineKeyboardButton(t("back_to_menu", language), callback_data="menu")])
     return InlineKeyboardMarkup(buttons)

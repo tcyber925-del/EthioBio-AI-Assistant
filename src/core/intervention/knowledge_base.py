@@ -23,22 +23,28 @@ class InterventionKnowledgeBase:
         mastery_after = None
         if intervention.topic:
             before = await session.execute(
-                select(StudentMastery).where(
+                select(StudentMastery)
+                .where(
                     StudentMastery.user_id == intervention.user_id,
                     StudentMastery.topic == intervention.topic,
                     StudentMastery.created_at < intervention.assigned_at,
-                ).order_by(StudentMastery.created_at.desc()).limit(1)
+                )
+                .order_by(StudentMastery.created_at.desc())
+                .limit(1)
             )
             before_rec = before.scalar_one_or_none()
             if before_rec:
                 mastery_before = before_rec.average_score
 
             after = await session.execute(
-                select(StudentMastery).where(
+                select(StudentMastery)
+                .where(
                     StudentMastery.user_id == intervention.user_id,
                     StudentMastery.topic == intervention.topic,
                     StudentMastery.created_at > intervention.assigned_at,
-                ).order_by(StudentMastery.created_at.desc()).limit(1)
+                )
+                .order_by(StudentMastery.created_at.desc())
+                .limit(1)
             )
             after_rec = after.scalar_one_or_none()
             if after_rec:
@@ -123,9 +129,8 @@ class InterventionKnowledgeBase:
         return {
             "total_entries": len(rows),
             "average_score": round(
-                sum(r.effectiveness_score for r in rows) / len(rows), 1,
+                sum(r.effectiveness_score for r in rows) / len(rows),
+                1,
             ),
-            "by_type": {
-                k: round(sum(v) / len(v), 1) for k, v in by_type.items()
-            },
+            "by_type": {k: round(sum(v) / len(v), 1) for k, v in by_type.items()},
         }

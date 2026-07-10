@@ -137,8 +137,12 @@ class TestCertifyRelease:
 
     def test_certification_result_dataclass(self):
         result = CertificationResult(
-            passed=True, level="gold", score=0.85,
-            checks={"thing": True}, failures=[], generated_at="now",
+            passed=True,
+            level="gold",
+            score=0.85,
+            checks={"thing": True},
+            failures=[],
+            generated_at="now",
         )
         assert result.passed
         assert result.level == "gold"

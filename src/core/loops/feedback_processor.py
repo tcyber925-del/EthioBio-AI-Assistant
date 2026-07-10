@@ -2,6 +2,7 @@
 
 Converts missing_information and coverage analysis into targeted
 retrieval directives for the next iteration."""
+
 import logging
 
 logger = logging.getLogger(__name__)

@@ -50,7 +50,8 @@ class TestStyleTransferEndpoint:
         assert result.prompt == "style it"
         mock_render.assert_called_once_with("<svg/>")
         mock_gen.image_to_image.assert_awaited_once_with(
-            prompt="style it", input_image=b"png_bytes",
+            prompt="style it",
+            input_image=b"png_bytes",
         )
 
     @patch("src.api.diagram.render_svg_to_png")

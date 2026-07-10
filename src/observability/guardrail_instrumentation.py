@@ -109,4 +109,5 @@ def _record_guardrail_metrics(
 
 def _is_async(func):
     import asyncio
+
     return asyncio.iscoroutinefunction(func)

@@ -76,9 +76,7 @@ async def generate_schedule(
         )
         schedule = existing.scalar_one_or_none()
 
-        interval_days, ease_factor = calculate_next_interval(
-            mastery.average_score, 0, 2.5, 0
-        )
+        interval_days, ease_factor = calculate_next_interval(mastery.average_score, 0, 2.5, 0)
         next_review = datetime.now(timezone.utc) + timedelta(days=interval_days)
 
         if schedule:
@@ -101,11 +99,13 @@ async def generate_schedule(
             )
             session.add(schedule)
 
-        created.append({
-            "topic": mastery.topic,
-            "interval_days": interval_days,
-            "next_review_at": next_review,
-        })
+        created.append(
+            {
+                "topic": mastery.topic,
+                "interval_days": interval_days,
+                "next_review_at": next_review,
+            }
+        )
 
     await session.commit()
     return created
@@ -196,7 +196,10 @@ async def update_review(
     schedule.mastery_score = new_score
 
     interval_days, ease_factor = calculate_next_interval(
-        new_score, schedule.interval_days, schedule.ease_factor, schedule.review_count,
+        new_score,
+        schedule.interval_days,
+        schedule.ease_factor,
+        schedule.review_count,
     )
     schedule.interval_days = interval_days
     schedule.ease_factor = ease_factor

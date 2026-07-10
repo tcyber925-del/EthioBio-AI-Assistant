@@ -39,8 +39,18 @@ async def test_retriever_retrieve(mock_router, mock_retriever):
 async def test_format_context():
     retriever = Retriever()
     docs = [
-        {"content": "Cell theory states...", "metadata": {"topic": "Cell Biology", "grade_level": 10}, "score": 0.95, "id": "1"},
-        {"content": "Mitosis is...", "metadata": {"topic": "Cell Division", "grade_level": 11}, "score": 0.90, "id": "2"},
+        {
+            "content": "Cell theory states...",
+            "metadata": {"topic": "Cell Biology", "grade_level": 10},
+            "score": 0.95,
+            "id": "1",
+        },
+        {
+            "content": "Mitosis is...",
+            "metadata": {"topic": "Cell Division", "grade_level": 11},
+            "score": 0.90,
+            "id": "2",
+        },
     ]
     context = retriever.format_context(docs)
     assert "[Source 1]" in context

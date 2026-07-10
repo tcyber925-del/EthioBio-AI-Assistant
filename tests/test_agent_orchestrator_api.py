@@ -42,10 +42,13 @@ async def test_list_capabilities(client):
 @pytest.mark.anyio
 async def test_execute_endpoint_missing_agent(client):
     async with client as ac:
-        resp = await ac.post("/agents/execute", json={
-            "task": "test task",
-            "preferred_agent": "nonexistent_agent",
-        })
+        resp = await ac.post(
+            "/agents/execute",
+            json={
+                "task": "test task",
+                "preferred_agent": "nonexistent_agent",
+            },
+        )
     assert resp.status_code == 200
     data = resp.json()
     assert "error" in data

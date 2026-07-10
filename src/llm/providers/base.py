@@ -5,6 +5,7 @@ from typing import TypedDict
 
 class UsageInfo(TypedDict, total=False):
     """Token usage information from a chat response."""
+
     total_tokens: int
     prompt_tokens: int
     completion_tokens: int
@@ -13,6 +14,7 @@ class UsageInfo(TypedDict, total=False):
 @dataclass
 class ProviderInfo:
     """Metadata about a provider and its available models."""
+
     name: str
     provider_type: str  # "ollama", "openai", "anthropic", "openai-compatible"
     base_url: str
@@ -24,6 +26,7 @@ class ProviderInfo:
 @dataclass
 class ChatResponse:
     """Unified response from any provider."""
+
     content: str
     model: str
     usage: UsageInfo

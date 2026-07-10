@@ -17,9 +17,7 @@ async def load_gamification(session: AsyncSession, user_id: UUID) -> dict | None
         return None
 
     days_since_active = (
-        (datetime.now(timezone.utc) - gam.last_active_date).days
-        if gam.last_active_date
-        else 999
+        (datetime.now(timezone.utc) - gam.last_active_date).days if gam.last_active_date else 999
     )
     recency = max(0.0, 1.0 - days_since_active / 30.0)
     streak_factor = min(1.0, gam.current_streak / 14.0)

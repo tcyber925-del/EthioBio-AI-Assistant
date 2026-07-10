@@ -91,31 +91,17 @@ async def generate_lesson_plan(
         await session.commit()
 
         exit_ticket = (
-            [ExitTicketQuestion(**q) for q in exit_ticket_data]
-            if exit_ticket_data
-            else None
+            [ExitTicketQuestion(**q) for q in exit_ticket_data] if exit_ticket_data else None
         )
-        differentiation = (
-            [DifferentiationActivity(**d) for d in diff_data]
-            if diff_data
-            else None
-        )
+        differentiation = [DifferentiationActivity(**d) for d in diff_data] if diff_data else None
         diagram_suggestions = (
-            [DiagramSuggestion(**d) for d in diagram_data]
-            if diagram_data
-            else None
+            [DiagramSuggestion(**d) for d in diagram_data] if diagram_data else None
         )
         misconception_activities = (
-            [MisconceptionActivity(**a) for a in mc_activity_data]
-            if mc_activity_data
-            else None
+            [MisconceptionActivity(**a) for a in mc_activity_data] if mc_activity_data else None
         )
 
-        periods = (
-            [Period(**p) for p in periods_data]
-            if periods_data
-            else None
-        )
+        periods = [Period(**p) for p in periods_data] if periods_data else None
 
         return LessonPlanResponse(
             id=db_plan.id,
@@ -151,9 +137,7 @@ async def rate_lesson_plan(
     rating_data: LessonPlanRatingRequest,
     session: AsyncSession = Depends(get_session),
 ):
-    result = await session.execute(
-        select(LessonPlan).where(LessonPlan.id == plan_id)
-    )
+    result = await session.execute(select(LessonPlan).where(LessonPlan.id == plan_id))
     plan = result.scalar_one_or_none()
     if not plan:
         raise HTTPException(status_code=404, detail="Lesson plan not found")
@@ -165,46 +149,46 @@ async def rate_lesson_plan(
     await session.commit()
 
     return LessonPlanResponse(
-            id=plan.id,
-            objective=plan.objective,
-            prior_knowledge=plan.prior_knowledge,
-            explanation=plan.explanation,
-            activities=plan.activities if isinstance(plan.activities, list) else [],
-            assessment=plan.assessment or "",
-            homework=plan.homework,
-            teacher_notes=plan.teacher_notes,
-            model_used=plan.model_used or "",
-            classroom_id=plan.classroom_id,
-            rating=plan.rating,
-            feedback=plan.feedback,
-            used_in_class=plan.used_in_class,
-            created_at=plan.created_at.isoformat() if plan.created_at else None,
-            periods=(
-                [Period(**p) for p in plan.periods]
-                if (plan.periods and isinstance(plan.periods, list))
-                else None
-            ),
-            exit_ticket=(
-                [ExitTicketQuestion(**q) for q in plan.exit_ticket]
-                if (plan.exit_ticket and isinstance(plan.exit_ticket, list))
-                else None
-            ),
-            differentiation=(
-                [DifferentiationActivity(**d) for d in plan.differentiation]
-                if (plan.differentiation and isinstance(plan.differentiation, list))
-                else None
-            ),
-            diagram_suggestions=(
-                [DiagramSuggestion(**d) for d in plan.diagram_suggestions]
-                if (plan.diagram_suggestions and isinstance(plan.diagram_suggestions, list))
-                else None
-            ),
-            misconception_activities=(
-                [MisconceptionActivity(**a) for a in plan.misconception_activities]
-                if (plan.misconception_activities and isinstance(plan.misconception_activities, list))
-                else None
-            ),
-        )
+        id=plan.id,
+        objective=plan.objective,
+        prior_knowledge=plan.prior_knowledge,
+        explanation=plan.explanation,
+        activities=plan.activities if isinstance(plan.activities, list) else [],
+        assessment=plan.assessment or "",
+        homework=plan.homework,
+        teacher_notes=plan.teacher_notes,
+        model_used=plan.model_used or "",
+        classroom_id=plan.classroom_id,
+        rating=plan.rating,
+        feedback=plan.feedback,
+        used_in_class=plan.used_in_class,
+        created_at=plan.created_at.isoformat() if plan.created_at else None,
+        periods=(
+            [Period(**p) for p in plan.periods]
+            if (plan.periods and isinstance(plan.periods, list))
+            else None
+        ),
+        exit_ticket=(
+            [ExitTicketQuestion(**q) for q in plan.exit_ticket]
+            if (plan.exit_ticket and isinstance(plan.exit_ticket, list))
+            else None
+        ),
+        differentiation=(
+            [DifferentiationActivity(**d) for d in plan.differentiation]
+            if (plan.differentiation and isinstance(plan.differentiation, list))
+            else None
+        ),
+        diagram_suggestions=(
+            [DiagramSuggestion(**d) for d in plan.diagram_suggestions]
+            if (plan.diagram_suggestions and isinstance(plan.diagram_suggestions, list))
+            else None
+        ),
+        misconception_activities=(
+            [MisconceptionActivity(**a) for a in plan.misconception_activities]
+            if (plan.misconception_activities and isinstance(plan.misconception_activities, list))
+            else None
+        ),
+    )
 
 
 @router.get("/{plan_id}", response_model=LessonPlanResponse)
@@ -212,9 +196,7 @@ async def get_lesson_plan(
     plan_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
 ):
-    result = await session.execute(
-        select(LessonPlan).where(LessonPlan.id == plan_id)
-    )
+    result = await session.execute(select(LessonPlan).where(LessonPlan.id == plan_id))
     plan = result.scalar_one_or_none()
     if not plan:
         raise HTTPException(status_code=404, detail="Lesson plan not found")
@@ -416,7 +398,10 @@ async def generate_unit_plan(
                     else None
                 ),
                 misconception_activities=(
-                    [MisconceptionActivity(**a) for a in lesson_data.get("misconception_activities")]
+                    [
+                        MisconceptionActivity(**a)
+                        for a in lesson_data.get("misconception_activities")
+                    ]
                     if lesson_data.get("misconception_activities")
                     else None
                 ),
@@ -488,9 +473,7 @@ async def get_unit_plan(
             raise HTTPException(status_code=404, detail="Unit plan not found")
 
         result = await session.execute(
-            select(LessonPlan)
-            .where(LessonPlan.unit_id == unit_id)
-            .order_by(LessonPlan.day_index)
+            select(LessonPlan).where(LessonPlan.unit_id == unit_id).order_by(LessonPlan.day_index)
         )
         day_lessons_db = result.scalars().all()
 
@@ -532,7 +515,10 @@ async def get_unit_plan(
                         ),
                         misconception_activities=(
                             [MisconceptionActivity(**a) for a in dl.misconception_activities]
-                            if (dl.misconception_activities and isinstance(dl.misconception_activities, list))
+                            if (
+                                dl.misconception_activities
+                                and isinstance(dl.misconception_activities, list)
+                            )
                             else None
                         ),
                     ),

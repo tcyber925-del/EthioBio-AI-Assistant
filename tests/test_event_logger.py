@@ -1,6 +1,6 @@
 """Tests for EventLogger schema validation and subscriber registry."""
 
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
@@ -18,9 +18,14 @@ def logger():
 
 def test_schema_registry_has_known_types():
     expected = {
-        "session_started", "quiz_completed", "lesson_viewed",
-        "recovery_task_done", "misconception_detected",
-        "xp_awarded", "streak_updated", "achievement_unlocked",
+        "session_started",
+        "quiz_completed",
+        "lesson_viewed",
+        "recovery_task_done",
+        "misconception_detected",
+        "xp_awarded",
+        "streak_updated",
+        "achievement_unlocked",
     }
     assert set(SCHEMA_REGISTRY) == expected
 

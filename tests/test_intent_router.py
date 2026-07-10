@@ -44,9 +44,7 @@ class TestIntentRouter:
         assert confidence > 0
 
     async def test_assessment_creation_intent(self):
-        intent, confidence, reason = await self.router.classify(
-            "Generate a quiz on genetics"
-        )
+        intent, confidence, reason = await self.router.classify("Generate a quiz on genetics")
         assert intent == "assessment_creation"
         assert confidence > 0
 

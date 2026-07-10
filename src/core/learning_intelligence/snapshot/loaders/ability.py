@@ -7,9 +7,7 @@ from src.database.models import StudentAbility
 
 
 async def load_ability(session: AsyncSession, user_id: UUID) -> dict | None:
-    result = await session.execute(
-        select(StudentAbility).where(StudentAbility.user_id == user_id)
-    )
+    result = await session.execute(select(StudentAbility).where(StudentAbility.user_id == user_id))
     abilities = result.scalars().all()
     if not abilities:
         return None

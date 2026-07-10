@@ -23,6 +23,7 @@ class AlertThreshold:
 
     def check(self) -> bool:
         import time
+
         now = time.time()
         if now - self._last_fired < self.cooldown_seconds:
             return False

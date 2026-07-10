@@ -20,18 +20,18 @@ def init_otel() -> None:
     Call once at application startup. Configures the TracerProvider with
     OTLP exporter (or no-op if endpoint is not set).
     """
-    resource = Resource.create({
-        "service.name": settings.otel_service_name,
-        "service.version": "1.1.0",
-    })
+    resource = Resource.create(
+        {
+            "service.name": settings.otel_service_name,
+            "service.version": "1.1.0",
+        }
+    )
     provider = TracerProvider(resource=resource)
 
     if settings.otel_endpoint:
         exporter = OTLPSpanExporter(endpoint=settings.otel_endpoint)
         processor = (
-            SimpleSpanProcessor(exporter)
-            if settings.debug
-            else BatchSpanProcessor(exporter)
+            SimpleSpanProcessor(exporter) if settings.debug else BatchSpanProcessor(exporter)
         )
         provider.add_span_processor(processor)
 

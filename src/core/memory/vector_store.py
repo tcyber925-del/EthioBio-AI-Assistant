@@ -19,6 +19,7 @@ class MemoryVectorStore:
     def _get_client(self):
         if self._client is None:
             import chromadb
+
             os.makedirs(self.persist_directory, exist_ok=True)
             self._client = chromadb.PersistentClient(path=self.persist_directory)
         return self._client
@@ -33,8 +34,11 @@ class MemoryVectorStore:
         return self._collection
 
     async def add_memory(
-        self, embedding: list[float], text: str,
-        metadata: dict, memory_id: str,
+        self,
+        embedding: list[float],
+        text: str,
+        metadata: dict,
+        memory_id: str,
     ):
         collection = self._get_collection()
         collection.add(
@@ -46,8 +50,10 @@ class MemoryVectorStore:
         logger.info("memory_vector_added", memory_id=memory_id)
 
     async def search(
-        self, query_embedding: list[float],
-        n_results: int = 5, where: dict | None = None,
+        self,
+        query_embedding: list[float],
+        n_results: int = 5,
+        where: dict | None = None,
     ) -> list[dict]:
         collection = self._get_collection()
         results = collection.query(
@@ -58,13 +64,14 @@ class MemoryVectorStore:
         retrieved = []
         if results["documents"]:
             for i in range(len(results["documents"][0])):
-                retrieved.append({
-                    "id": results["ids"][0][i] if results["ids"] else "",
-                    "content": results["documents"][0][i],
-                    "metadata": results["metadatas"][0][i] if results["metadatas"] else {},
-                    "score": 1.0 - results["distances"][0][i]
-                    if results["distances"] else 0.0,
-                })
+                retrieved.append(
+                    {
+                        "id": results["ids"][0][i] if results["ids"] else "",
+                        "content": results["documents"][0][i],
+                        "metadata": results["metadatas"][0][i] if results["metadatas"] else {},
+                        "score": 1.0 - results["distances"][0][i] if results["distances"] else 0.0,
+                    }
+                )
         return retrieved
 
     async def delete_memory(self, memory_id: str):

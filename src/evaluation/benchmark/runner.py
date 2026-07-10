@@ -67,7 +67,8 @@ class BenchmarkRunner:
             group_baselines = {}
             for r in group_results:
                 group_baselines[r.scenario_id] = RegressionDetector.generate_baseline(
-                    r.metrics, self.regression_tolerance,
+                    r.metrics,
+                    self.regression_tolerance,
                 )
             filepath = baselines_path / f"{group}.json"
             with open(filepath, "w") as f:
@@ -90,8 +91,7 @@ class BenchmarkRunner:
         scenarios_to_run = self.scenarios
         if filters:
             scenarios_to_run = [
-                s for s in self.scenarios
-                if any(t in s.get("tags", []) for t in filters)
+                s for s in self.scenarios if any(t in s.get("tags", []) for t in filters)
             ]
 
         results: list[ScenarioResult] = []
@@ -110,23 +110,27 @@ class BenchmarkRunner:
                     "requires_teacher_review": state.get("requires_teacher_review", False),
                 }
 
-                results.append(ScenarioResult(
-                    scenario_id=scenario["id"],
-                    question=scenario["question"],
-                    passed=True,
-                    metrics=metrics,
-                    duration_ms=duration_ms,
-                ))
+                results.append(
+                    ScenarioResult(
+                        scenario_id=scenario["id"],
+                        question=scenario["question"],
+                        passed=True,
+                        metrics=metrics,
+                        duration_ms=duration_ms,
+                    )
+                )
             except Exception as e:
                 duration_ms = (time.time() - start) * 1000
                 logger.error("scenario %s failed: %s", scenario["id"], e)
-                results.append(ScenarioResult(
-                    scenario_id=scenario["id"],
-                    question=scenario["question"],
-                    passed=False,
-                    error=str(e),
-                    duration_ms=duration_ms,
-                ))
+                results.append(
+                    ScenarioResult(
+                        scenario_id=scenario["id"],
+                        question=scenario["question"],
+                        passed=False,
+                        error=str(e),
+                        duration_ms=duration_ms,
+                    )
+                )
 
         if update_baselines:
             self._save_baselines(results)
@@ -147,16 +151,20 @@ class BenchmarkRunner:
         if results:
             agg = {
                 "avg_hallucination_rate": round(
-                    sum(r.metrics.get("hallucination_rate", 0) for r in results) / total, 3,
+                    sum(r.metrics.get("hallucination_rate", 0) for r in results) / total,
+                    3,
                 ),
                 "avg_groundedness": round(
-                    sum(r.metrics.get("groundedness_score", 0) for r in results) / total, 3,
+                    sum(r.metrics.get("groundedness_score", 0) for r in results) / total,
+                    3,
                 ),
                 "avg_coverage": round(
-                    sum(r.metrics.get("coverage_score", 0) for r in results) / total, 3,
+                    sum(r.metrics.get("coverage_score", 0) for r in results) / total,
+                    3,
                 ),
                 "avg_duration_ms": round(
-                    sum(r.duration_ms for r in results) / total, 1,
+                    sum(r.duration_ms for r in results) / total,
+                    1,
                 ),
             }
 

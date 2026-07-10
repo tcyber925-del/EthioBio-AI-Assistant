@@ -101,12 +101,16 @@ class TestAgentRegistry:
         q_cap = AgentCapability(name="quiz_generation", description="Quiz")
         a_cap = AgentCapability(name="assessment", description="Assessment")
         q_reg = AgentRegistration(
-            agent="q", name="quiz_agent",
-            description="", capabilities=[q_cap],
+            agent="q",
+            name="quiz_agent",
+            description="",
+            capabilities=[q_cap],
         )
         a_reg = AgentRegistration(
-            agent="a", name="assess_agent",
-            description="", capabilities=[a_cap],
+            agent="a",
+            name="assess_agent",
+            description="",
+            capabilities=[a_cap],
         )
         registry.register(q_reg)
         registry.register(a_reg)
@@ -123,8 +127,10 @@ class TestAgentRegistry:
         registry = AgentRegistry()
         cap = AgentCapability(name="quiz_generation", description="Quiz")
         reg = AgentRegistration(
-            agent="q", name="quiz_agent",
-            description="", capabilities=[cap],
+            agent="q",
+            name="quiz_agent",
+            description="",
+            capabilities=[cap],
         )
         registry.register(reg)
 
@@ -136,8 +142,10 @@ class TestAgentRegistry:
         registry = AgentRegistry()
         cap = AgentCapability(name="quiz_generation", description="Quiz")
         reg = AgentRegistration(
-            agent="q", name="quiz_agent",
-            description="", capabilities=[cap],
+            agent="q",
+            name="quiz_agent",
+            description="",
+            capabilities=[cap],
         )
         registry.register(reg)
 
@@ -146,19 +154,34 @@ class TestAgentRegistry:
 
     def test_list_agents(self):
         registry = AgentRegistry()
-        registry.register(AgentRegistration(
-            agent="a", name="a1", description="", capabilities=[],
-        ))
-        registry.register(AgentRegistration(
-            agent="b", name="a2", description="", capabilities=[],
-        ))
+        registry.register(
+            AgentRegistration(
+                agent="a",
+                name="a1",
+                description="",
+                capabilities=[],
+            )
+        )
+        registry.register(
+            AgentRegistration(
+                agent="b",
+                name="a2",
+                description="",
+                capabilities=[],
+            )
+        )
         assert len(registry.list_agents()) == 2
 
     def test_unregister(self):
         registry = AgentRegistry()
-        registry.register(AgentRegistration(
-            agent="x", name="x", description="", capabilities=[],
-        ))
+        registry.register(
+            AgentRegistration(
+                agent="x",
+                name="x",
+                description="",
+                capabilities=[],
+            )
+        )
         registry.unregister("x")
         assert registry.get("x") is None
 
@@ -166,8 +189,12 @@ class TestAgentRegistry:
         registry = AgentRegistry()
         c1 = AgentCapability(name="a", description="A")
         c2 = AgentCapability(name="b", description="B")
-        registry.register(AgentRegistration(
-            agent="x", name="x",
-            description="", capabilities=[c1, c2],
-        ))
+        registry.register(
+            AgentRegistration(
+                agent="x",
+                name="x",
+                description="",
+                capabilities=[c1, c2],
+            )
+        )
         assert len(registry.all_capabilities()) == 2

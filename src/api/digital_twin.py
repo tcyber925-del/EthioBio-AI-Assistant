@@ -158,31 +158,37 @@ def _build_risk_indicators(twin: StudentDigitalTwin) -> list[dict]:
     for topic, patterns in mc.get("topics", {}).items():
         for pattern in patterns:
             if pattern.get("severity") in ("misconception", "persistent_misconception"):
-                indicators.append({
-                    "topic": topic,
-                    "type": "misconception",
-                    "severity": pattern.get("severity", "medium"),
-                    "detail": pattern.get("pattern", "")[:100],
-                })
+                indicators.append(
+                    {
+                        "topic": topic,
+                        "type": "misconception",
+                        "severity": pattern.get("severity", "medium"),
+                        "detail": pattern.get("pattern", "")[:100],
+                    }
+                )
 
     rt = twin.retention_state or {}
     for topic, data in rt.get("topics", {}).items():
         if isinstance(data, dict) and data.get("forgetting_risk") == "high":
-            indicators.append({
-                "topic": topic,
-                "type": "retention",
-                "severity": "high",
-                "detail": f"No review in {data.get('days_since_review', '?')} days",
-            })
+            indicators.append(
+                {
+                    "topic": topic,
+                    "type": "retention",
+                    "severity": "high",
+                    "detail": f"No review in {data.get('days_since_review', '?')} days",
+                }
+            )
 
     rd = twin.readiness_state or {}
     for topic, data in rd.get("topics", {}).items():
         if isinstance(data, dict) and data.get("risk_level") == "high":
-            indicators.append({
-                "topic": topic,
-                "type": "readiness",
-                "severity": "high",
-                "detail": f"Readiness score: {data.get('readiness_score', 0)}",
-            })
+            indicators.append(
+                {
+                    "topic": topic,
+                    "type": "readiness",
+                    "severity": "high",
+                    "detail": f"Readiness score: {data.get('readiness_score', 0)}",
+                }
+            )
 
     return indicators

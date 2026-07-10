@@ -48,8 +48,7 @@ async def load_memory(session: AsyncSession, user_id: UUID) -> dict | None:
     )
     semantic_facts = semantic_result.scalars().all()
     semantic_data = [
-        {"key": f.fact_key, "value": f.fact_value, "category": f.category}
-        for f in semantic_facts
+        {"key": f.fact_key, "value": f.fact_value, "category": f.category} for f in semantic_facts
     ]
 
     return {

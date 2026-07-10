@@ -33,12 +33,28 @@ class TestWeakGeneticsJourney:
         state.rewritten_queries = ["DNA replication steps", "common DNA replication misconceptions"]
         state.query_groups = {"curriculum": ["DNA replication"], "learner_profile": ["weak areas"]}
         state.retrieved_chunks = [
-            {"content": "DNA replication occurs during S phase", "score": 0.92, "source": "curriculum"},  # noqa: E501
-            {"content": "Common misconception: DNA polymerase creates new strands", "score": 0.88, "source": "misconceptions"},  # noqa: E501
+            {
+                "content": "DNA replication occurs during S phase",
+                "score": 0.92,
+                "source": "curriculum",
+            },  # noqa: E501
+            {
+                "content": "Common misconception: DNA polymerase creates new strands",
+                "score": 0.88,
+                "source": "misconceptions",
+            },  # noqa: E501
         ]
         state.evidence_items = [
-            {"id": "e1", "content": "DNA helicase unwinds the double helix", "source": "curriculum"},  # noqa: E501
-            {"id": "e2", "content": "DNA polymerase adds complementary nucleotides", "source": "curriculum"},  # noqa: E501
+            {
+                "id": "e1",
+                "content": "DNA helicase unwinds the double helix",
+                "source": "curriculum",
+            },  # noqa: E501
+            {
+                "id": "e2",
+                "content": "DNA polymerase adds complementary nucleotides",
+                "source": "curriculum",
+            },  # noqa: E501
         ]
         state.coverage_score = 0.85
         state.draft = "DNA replication begins when helicase unwinds the double helix..."
@@ -46,7 +62,10 @@ class TestWeakGeneticsJourney:
         state.safe = True
         state.status = "completed"
 
-        assert state.user_message == "I keep failing genetics quizzes. Help me understand DNA replication."  # noqa: E501
+        assert (
+            state.user_message
+            == "I keep failing genetics quizzes. Help me understand DNA replication."
+        )  # noqa: E501
         assert state.requires_planning is True
         assert len(state.subtasks) == 2
         assert len(state.rewritten_queries) >= 2
@@ -72,9 +91,7 @@ class TestWeakGeneticsJourney:
             "- Grade Level: 8\n- Severity: critical"
         )
         state.misconception_detected = True
-        state.misconception_correction = (
-            "Mitosis produces two identical daughter cells — not four."
-        )
+        state.misconception_correction = "Mitosis produces two identical daughter cells — not four."
         state.draft = "Let's fix this. Mitosis produces two identical cells, not four..."
         state.groundedness_score = 0.88
         state.status = "completed"

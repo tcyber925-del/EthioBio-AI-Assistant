@@ -160,12 +160,14 @@ class VectorStoreAdapter:
 
         retrieved = []
         for i in range(len(results["documents"])):
-            retrieved.append(RetrievalResult(
-                content=results["documents"][i],
-                metadata=results["metadatas"][i] if i < len(results["metadatas"]) else {},
-                score=1.0 - results["distances"][i] if i < len(results["distances"]) else 0.0,
-                source_id=results["ids"][i] if i < len(results["ids"]) else "",
-            ))
+            retrieved.append(
+                RetrievalResult(
+                    content=results["documents"][i],
+                    metadata=results["metadatas"][i] if i < len(results["metadatas"]) else {},
+                    score=1.0 - results["distances"][i] if i < len(results["distances"]) else 0.0,
+                    source_id=results["ids"][i] if i < len(results["ids"]) else "",
+                )
+            )
 
         logger.info("adapter_search_dense", query_preview=query[:50], results=len(retrieved))
         return retrieved
@@ -188,16 +190,16 @@ class VectorStoreAdapter:
 
         retrieved = []
         for i in range(len(results["documents"])):
-            retrieved.append({
-                "content": results["documents"][i],
-                "metadata": results["metadatas"][i] if i < len(results["metadatas"]) else {},
-                "dense_score": (
-                    1.0 - results["distances"][i]
-                    if i < len(results["distances"])
-                    else 0.0
-                ),
-                "doc_id": results["ids"][i] if i < len(results["ids"]) else "",
-            })
+            retrieved.append(
+                {
+                    "content": results["documents"][i],
+                    "metadata": results["metadatas"][i] if i < len(results["metadatas"]) else {},
+                    "dense_score": (
+                        1.0 - results["distances"][i] if i < len(results["distances"]) else 0.0
+                    ),
+                    "doc_id": results["ids"][i] if i < len(results["ids"]) else "",
+                }
+            )
         return retrieved
 
     def _bm25_search_raw(
@@ -221,12 +223,14 @@ class VectorStoreAdapter:
         retrieved = []
         for r in bm25_results:
             doc_text = self.bm25_index.get_document_text(r["index"])
-            retrieved.append({
-                "content": doc_text,
-                "metadata": r.get("metadata", {}),
-                "bm25_score": r["score"],
-                "doc_id": r["doc_id"],
-            })
+            retrieved.append(
+                {
+                    "content": doc_text,
+                    "metadata": r.get("metadata", {}),
+                    "bm25_score": r["score"],
+                    "doc_id": r["doc_id"],
+                }
+            )
         return retrieved
 
     def _merge_results(
@@ -262,8 +266,7 @@ class VectorStoreAdapter:
 
         for doc_id, doc in doc_map.items():
             doc["score"] = (
-                self.dense_weight * doc["dense_score"]
-                + self.bm25_weight * doc["bm25_score"]
+                self.dense_weight * doc["dense_score"] + self.bm25_weight * doc["bm25_score"]
             )
 
         merged = sorted(doc_map.values(), key=lambda x: x["score"], reverse=True)

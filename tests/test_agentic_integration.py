@@ -10,7 +10,6 @@ import pytest
 
 from src.graph.orchestrator import run_graph
 
-
 _ROUTE_RESPONSE = {
     "content": '{"intent": "tutor", "confidence": 0.95}',
     "model": "ollama/test",
@@ -127,6 +126,7 @@ class TestPipelineMonitoring:
 
         trace.start_node("orchestrator")
         import time
+
         time.sleep(0.01)
         duration = trace.end_node("orchestrator")
 
@@ -171,7 +171,9 @@ class TestEvidenceGraphIntegration:
             retrieved_by="search_fanout",
         )
 
-        evidence_id = await graph.add(evidence, internal_session_id="00000000-0000-0000-0000-000000000001")
+        evidence_id = await graph.add(
+            evidence, internal_session_id="00000000-0000-0000-0000-000000000001"
+        )
 
         assert evidence_id is not None
         mock_session.add.assert_called_once()
@@ -219,10 +221,7 @@ class TestClaimVerifierIntegration:
         """Should extract claims from response."""
         from src.graph.nodes.claim_verifier import extract_claims_simple
 
-        response = (
-            "DNA is a double helix structure. "
-            "It contains four nucleotide bases: A, T, G, C."
-        )
+        response = "DNA is a double helix structure. It contains four nucleotide bases: A, T, G, C."
 
         claims = extract_claims_simple(response)
 

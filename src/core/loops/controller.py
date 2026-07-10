@@ -1,6 +1,7 @@
 """Iterative retrieval loop controller.
 
 Evaluates 3 stopping criteria and returns a LoopDecision."""
+
 import logging
 from dataclasses import dataclass
 

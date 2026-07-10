@@ -60,8 +60,7 @@ class SemanticDetector:
                     {
                         "role": "system",
                         "content": (
-                            "You are an educational misconception analyst. "
-                            "Output only valid JSON."
+                            "You are an educational misconception analyst. Output only valid JSON."
                         ),
                     },
                     {"role": "user", "content": prompt},

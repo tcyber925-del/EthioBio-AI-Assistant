@@ -29,7 +29,11 @@ KNOWN_MISCONCEPTIONS = [
         "severity": "misconception",
         "related_objectives": ["Cell organelles", "Cellular respiration", "Photosynthesis"],
         "recommended_strategies": ["Labeled diagram", "Venn diagram comparison"],
-        "detection_patterns": ["plants don't have mitochondria", "plant cells lack mitochondria", "no mitochondria in plants"],
+        "detection_patterns": [
+            "plants don't have mitochondria",
+            "plant cells lack mitochondria",
+            "no mitochondria in plants",
+        ],
         "grade_level": 9,
     },
     {
@@ -50,7 +54,11 @@ KNOWN_MISCONCEPTIONS = [
         "severity": "misconception",
         "related_objectives": ["Gene expression", "DNA location", "Cell differentiation"],
         "recommended_strategies": ["Concept mapping", "Gene expression simulation"],
-        "detection_patterns": ["genes only in reproductive", "genes only in sex cells", "only gametes have genes"],
+        "detection_patterns": [
+            "genes only in reproductive",
+            "genes only in sex cells",
+            "only gametes have genes",
+        ],
         "grade_level": 10,
     },
     {
@@ -60,7 +68,11 @@ KNOWN_MISCONCEPTIONS = [
         "severity": "misunderstanding",
         "related_objectives": ["Dominant vs recessive", "Allele frequency", "Population genetics"],
         "recommended_strategies": ["Punnett square practice", "Population example analysis"],
-        "detection_patterns": ["dominant is more common", "dominant means more frequent", "dominant allele is common"],
+        "detection_patterns": [
+            "dominant is more common",
+            "dominant means more frequent",
+            "dominant allele is common",
+        ],
         "grade_level": 10,
     },
     {
@@ -70,7 +82,11 @@ KNOWN_MISCONCEPTIONS = [
         "severity": "misunderstanding",
         "related_objectives": ["Mutation types", "Genetic variation", "Evolution"],
         "recommended_strategies": ["Mutation case studies", "Beneficial mutation examples"],
-        "detection_patterns": ["mutations are always bad", "all mutations are harmful", "mutation is always negative"],
+        "detection_patterns": [
+            "mutations are always bad",
+            "all mutations are harmful",
+            "mutation is always negative",
+        ],
         "grade_level": 10,
     },
     {
@@ -91,7 +107,11 @@ KNOWN_MISCONCEPTIONS = [
         "severity": "misconception",
         "related_objectives": ["Common ancestry", "Evolutionary trees", "Hominid evolution"],
         "recommended_strategies": ["Phylogenetic tree analysis", "Timeline comparison"],
-        "detection_patterns": ["humans evolved from monkeys", "humans came from apes", "evolved from monkeys"],
+        "detection_patterns": [
+            "humans evolved from monkeys",
+            "humans came from apes",
+            "evolved from monkeys",
+        ],
         "grade_level": 10,
     },
     {
@@ -101,7 +121,12 @@ KNOWN_MISCONCEPTIONS = [
         "severity": "misconception",
         "related_objectives": ["Natural selection", "Adaptation", "Evolutionary theory"],
         "recommended_strategies": ["Branching tree exercise", "Adaptation case studies"],
-        "detection_patterns": ["evolution progresses", "evolution moves toward", "evolution is linear", "more complex over time"],
+        "detection_patterns": [
+            "evolution progresses",
+            "evolution moves toward",
+            "evolution is linear",
+            "more complex over time",
+        ],
         "grade_level": 10,
     },
     {
@@ -111,7 +136,12 @@ KNOWN_MISCONCEPTIONS = [
         "severity": "misconception",
         "related_objectives": ["Natural selection mechanism", "Population genetics"],
         "recommended_strategies": ["Generation simulation", "Population vs individual comparison"],
-        "detection_patterns": ["individual can evolve", "organisms evolve during", "evolve in their lifetime", "adapt and evolve the same"],
+        "detection_patterns": [
+            "individual can evolve",
+            "organisms evolve during",
+            "evolve in their lifetime",
+            "adapt and evolve the same",
+        ],
         "grade_level": 10,
     },
     # Cellular Respiration & Photosynthesis
@@ -122,7 +152,11 @@ KNOWN_MISCONCEPTIONS = [
         "severity": "persistent_misconception",
         "related_objectives": ["Cellular respiration", "Gas exchange", "Mitochondria function"],
         "recommended_strategies": ["Concept conflict activity", "Two-meanings exercise"],
-        "detection_patterns": ["respiration only in lungs", "respiration happens in lungs", "breathing is respiration"],
+        "detection_patterns": [
+            "respiration only in lungs",
+            "respiration happens in lungs",
+            "breathing is respiration",
+        ],
         "grade_level": 9,
     },
     {
@@ -132,7 +166,11 @@ KNOWN_MISCONCEPTIONS = [
         "severity": "persistent_misconception",
         "related_objectives": ["Photosynthesis", "Cellular respiration", "Plant metabolism"],
         "recommended_strategies": ["24-hour cycle diagram", "Experiment evidence"],
-        "detection_patterns": ["plants only photosynthesize", "plants don't respire", "plants only do photosynthesis"],
+        "detection_patterns": [
+            "plants only photosynthesize",
+            "plants don't respire",
+            "plants only do photosynthesis",
+        ],
         "grade_level": 9,
     },
     {
@@ -141,8 +179,15 @@ KNOWN_MISCONCEPTIONS = [
         "explanation": "Plants produce their own food through photosynthesis using sunlight, water, and carbon dioxide. Soil provides minerals and water but not energy-rich food molecules.",
         "severity": "misunderstanding",
         "related_objectives": ["Photosynthesis process", "Plant nutrition", "Autotrophs"],
-        "recommended_strategies": ["Historical experiment demonstration", "Mass experiment analysis"],
-        "detection_patterns": ["plants get food from soil", "plants eat soil", "food comes from soil"],
+        "recommended_strategies": [
+            "Historical experiment demonstration",
+            "Mass experiment analysis",
+        ],
+        "detection_patterns": [
+            "plants get food from soil",
+            "plants eat soil",
+            "food comes from soil",
+        ],
         "grade_level": 9,
     },
     # Human Biology
@@ -153,7 +198,11 @@ KNOWN_MISCONCEPTIONS = [
         "severity": "misunderstanding",
         "related_objectives": ["Circulatory system", "Heart function", "Gas exchange"],
         "recommended_strategies": ["Circulation pathway diagram", "Color-coding exercise"],
-        "detection_patterns": ["arteries always carry oxygen", "all arteries have oxygenated", "arteries carry only oxygen"],
+        "detection_patterns": [
+            "arteries always carry oxygen",
+            "all arteries have oxygenated",
+            "arteries carry only oxygen",
+        ],
         "grade_level": 10,
     },
     {
@@ -173,7 +222,11 @@ KNOWN_MISCONCEPTIONS = [
         "severity": "knowledge_gap",
         "related_objectives": ["Taste perception", "Sensory receptors"],
         "recommended_strategies": ["Taste experiment", "Myth-busting comparison"],
-        "detection_patterns": ["tongue map", "different parts of tongue taste", "sweet taste bud location"],
+        "detection_patterns": [
+            "tongue map",
+            "different parts of tongue taste",
+            "sweet taste bud location",
+        ],
         "grade_level": 9,
     },
     # Ecology
@@ -184,7 +237,11 @@ KNOWN_MISCONCEPTIONS = [
         "severity": "misunderstanding",
         "related_objectives": ["Ecological concepts", "Habitat vs niche", "Ecosystem interactions"],
         "recommended_strategies": ["Address vs profession analogy", "Niche analysis activity"],
-        "detection_patterns": ["habitat and niche are same", "habitat is the same as niche", "niche equals habitat"],
+        "detection_patterns": [
+            "habitat and niche are same",
+            "habitat is the same as niche",
+            "niche equals habitat",
+        ],
         "grade_level": 9,
     },
     {
@@ -194,7 +251,11 @@ KNOWN_MISCONCEPTIONS = [
         "severity": "misunderstanding",
         "related_objectives": ["Population dynamics", "Carrying capacity", "Ecosystem balance"],
         "recommended_strategies": ["Population simulation", "Case study analysis"],
-        "detection_patterns": ["prey will grow forever", "without predators prey unlimited", "remove predators prey explodes"],
+        "detection_patterns": [
+            "prey will grow forever",
+            "without predators prey unlimited",
+            "remove predators prey explodes",
+        ],
         "grade_level": 10,
     },
     {
@@ -204,14 +265,30 @@ KNOWN_MISCONCEPTIONS = [
         "severity": "misconception",
         "related_objectives": ["Energy flow", "Trophic levels", "Nutrient cycling"],
         "recommended_strategies": ["Energy pyramid construction", "Flow vs cycle diagram"],
-        "detection_patterns": ["energy is recycled", "energy gets reused", "energy cycles in ecosystem"],
+        "detection_patterns": [
+            "energy is recycled",
+            "energy gets reused",
+            "energy cycles in ecosystem",
+        ],
         "grade_level": 10,
     },
 ]
 
 MISCONCEPTION_SEVERITIES = {
-    "knowledge_gap": {"label": "Knowledge Gap", "rank": 1, "description": "Student lacks information"},
-    "misunderstanding": {"label": "Misunderstanding", "rank": 2, "description": "Partial understanding with gaps"},
+    "knowledge_gap": {
+        "label": "Knowledge Gap",
+        "rank": 1,
+        "description": "Student lacks information",
+    },
+    "misunderstanding": {
+        "label": "Misunderstanding",
+        "rank": 2,
+        "description": "Partial understanding with gaps",
+    },
     "misconception": {"label": "Misconception", "rank": 3, "description": "Incorrect mental model"},
-    "persistent_misconception": {"label": "Persistent Misconception", "rank": 4, "description": "Repeated over time, highest severity"},
+    "persistent_misconception": {
+        "label": "Persistent Misconception",
+        "rank": 4,
+        "description": "Repeated over time, highest severity",
+    },
 }

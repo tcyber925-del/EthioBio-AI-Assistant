@@ -92,6 +92,7 @@ def test_weak_topic_detail_with_misconceptions():
 
 def test_weak_topics_response_schema():
     from uuid import UUID
+
     detail = WeakTopicDetail(
         topic="Cell Biology",
         grade_level=10,
@@ -159,7 +160,9 @@ async def test_get_weak_topics_returns_filtered():
 
     mastery_result = MagicMock()
     mastery_result.scalars.return_value.all.return_value = [
-        mock_mastery_1, mock_mastery_2, mock_mastery_3,
+        mock_mastery_1,
+        mock_mastery_2,
+        mock_mastery_3,
     ]
 
     mis_result = MagicMock()

@@ -105,7 +105,6 @@ class SemanticFactManager:
 
     async def get_count(self, db: AsyncSession) -> int:
         from sqlalchemy import func
-        result = await db.execute(
-            select(func.count(SemanticFact.id)).where(SemanticFact.is_active)
-        )
+
+        result = await db.execute(select(func.count(SemanticFact.id)).where(SemanticFact.is_active))
         return result.scalar() or 0

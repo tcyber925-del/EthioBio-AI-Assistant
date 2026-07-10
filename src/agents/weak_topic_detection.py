@@ -68,12 +68,14 @@ async def analyze_quiz_attempt(attempt: QuizAttempt, session: AsyncSession) -> N
         if is_correct:
             topic_correct[topic] += 1
         else:
-            topic_wrong[topic].append({
-                "question_id": q_id,
-                "user_answer": user_answer,
-                "correct_answer": correct_answer,
-                "question_type": question.question_type,
-            })
+            topic_wrong[topic].append(
+                {
+                    "question_id": q_id,
+                    "user_answer": user_answer,
+                    "correct_answer": correct_answer,
+                    "question_type": question.question_type,
+                }
+            )
 
     quiz_obj = await session.get(Quiz, attempt.quiz_id)
     unit = quiz_obj.topic if quiz_obj else None
@@ -83,8 +85,9 @@ async def analyze_quiz_attempt(attempt: QuizAttempt, session: AsyncSession) -> N
         total_q = topic_total[topic]
         correct = topic_correct.get(topic, 0)
         pct = (correct / total_q * 100) if total_q > 0 else 0
-        await _update_mastery(attempt.user_id, topic, pct, total_q, correct,
-                              unit, grade_level, attempt, session)
+        await _update_mastery(
+            attempt.user_id, topic, pct, total_q, correct, unit, grade_level, attempt, session
+        )
 
         if topic_wrong.get(topic):
             await _detect_misconceptions(attempt.user_id, topic, topic_wrong[topic], session)
@@ -92,9 +95,17 @@ async def analyze_quiz_attempt(attempt: QuizAttempt, session: AsyncSession) -> N
     await _update_student_profile_weak_areas(attempt.user_id, session)
 
 
-async def _update_mastery(user_id: Any, topic: str, pct: float, total_questions: int,
-                           correct_count: int, unit: Any, grade_level: int,
-                           attempt: QuizAttempt, session: AsyncSession) -> None:
+async def _update_mastery(
+    user_id: Any,
+    topic: str,
+    pct: float,
+    total_questions: int,
+    correct_count: int,
+    unit: Any,
+    grade_level: int,
+    attempt: QuizAttempt,
+    session: AsyncSession,
+) -> None:
     result = await session.execute(
         select(StudentMastery).where(
             StudentMastery.user_id == user_id,
@@ -160,14 +171,17 @@ async def _update_mastery(user_id: Any, topic: str, pct: float, total_questions:
         improvement = round(mastery.average_score - old_score, 1)
         if improvement >= 5:
             await _generate_improvement_notification(
-                user_id=user_id, topic=topic, event_type="mastery_improvement",
+                user_id=user_id,
+                topic=topic,
+                event_type="mastery_improvement",
                 improvement_pct=improvement,
                 message=(
                     f"Great progress in {topic}! Your mastery improved from "
                     f"{old_score:.0f}% to {mastery.average_score:.0f}% (+{improvement:.0f}%). "
                     f"Keep up the excellent work!"
                 ),
-                old_value=old_score, new_value=mastery.average_score,
+                old_value=old_score,
+                new_value=mastery.average_score,
                 session=session,
             )
         if old_severity and mastery.severity != old_severity:
@@ -176,21 +190,24 @@ async def _update_mastery(user_id: Any, topic: str, pct: float, total_questions:
             new_rank = severity_rank.get(mastery.severity, 0)
             if new_rank > old_rank:
                 await _generate_improvement_notification(
-                    user_id=user_id, topic=topic, event_type="severity_upgrade",
+                    user_id=user_id,
+                    topic=topic,
+                    event_type="severity_upgrade",
                     improvement_pct=improvement if improvement >= 0 else None,
                     message=(
                         f"Excellent work! Your understanding of {topic} has improved "
                         f"from {old_severity} to {mastery.severity}. "
                         f"You're making great progress!"
                     ),
-                    old_value=old_rank, new_value=new_rank,
+                    old_value=old_rank,
+                    new_value=new_rank,
                     session=session,
                 )
 
 
-async def _detect_misconceptions(user_id: Any, topic: str,
-                                  wrong_details: list[dict[str, Any]],
-                                  session: AsyncSession) -> None:
+async def _detect_misconceptions(
+    user_id: Any, topic: str, wrong_details: list[dict[str, Any]], session: AsyncSession
+) -> None:
     wrong_group: dict[tuple[str, str], list[str]] = {}
     for detail in wrong_details:
         key = (detail["user_answer"].strip().lower(), detail["correct_answer"].strip().lower())
@@ -253,7 +270,8 @@ async def _detect_misconceptions(user_id: Any, topic: str,
             else:
                 pattern.severity = kb.compute_severity(pattern.frequency)
             pattern.confidence = kb.compute_confidence(
-                pattern.frequency, matched_kb,
+                pattern.frequency,
+                matched_kb,
                 kb.get_severity(pattern.severity)["rank"],
             )
         else:
@@ -263,12 +281,12 @@ async def _detect_misconceptions(user_id: Any, topic: str,
                 user_id=user_id,
                 topic=topic,
                 pattern_type="wrong_answer",
-                pattern_description=(
-                    f"Student answers '{user_ans}' instead of '{correct_ans}'"
-                ),
+                pattern_description=(f"Student answers '{user_ans}' instead of '{correct_ans}'"),
                 severity=severity_key,
                 confidence=kb.compute_confidence(
-                    1, matched_kb, kb.get_severity(severity_key)["rank"],
+                    1,
+                    matched_kb,
+                    kb.get_severity(severity_key)["rank"],
                 ),
                 frequency=1,
                 common_wrong_answer=user_ans,
@@ -321,8 +339,13 @@ async def _update_student_profile_weak_areas(user_id: Any, session: AsyncSession
 
 
 async def record_mastery_history(
-    user_id: Any, topic: str, unit: str | None, grade_level: int,
-    session: AsyncSession, source: str = "quiz", source_id: Any = None,
+    user_id: Any,
+    topic: str,
+    unit: str | None,
+    grade_level: int,
+    session: AsyncSession,
+    source: str = "quiz",
+    source_id: Any = None,
     old_score: float | None = None,
 ) -> None:
     result = await session.execute(
@@ -354,21 +377,29 @@ async def record_mastery_history(
         improvement = round(mastery.average_score - old_score, 1)
         if improvement >= 5:
             await _generate_improvement_notification(
-                user_id=user_id, topic=topic, event_type="mastery_improvement",
+                user_id=user_id,
+                topic=topic,
+                event_type="mastery_improvement",
                 improvement_pct=improvement,
                 message=(
                     f"Great progress in {topic}! Your mastery improved from "
                     f"{old_score:.0f}% to {mastery.average_score:.0f}% (+{improvement:.0f}%). "
                     f"Keep up the excellent work!"
                 ),
-                old_value=old_score, new_value=mastery.average_score,
+                old_value=old_score,
+                new_value=mastery.average_score,
                 session=session,
             )
 
 
 async def _generate_improvement_notification(
-    user_id: Any, topic: str, event_type: str, improvement_pct: float | None,
-    message: str, old_value: float | None = None, new_value: float | None = None,
+    user_id: Any,
+    topic: str,
+    event_type: str,
+    improvement_pct: float | None,
+    message: str,
+    old_value: float | None = None,
+    new_value: float | None = None,
     session: AsyncSession = None,
 ) -> None:
     notification = RecoveryNotification(
@@ -415,16 +446,18 @@ async def get_weak_topics(user_id: Any, session: AsyncSession) -> list[dict[str,
             for p in misconceptions
             if p.topic == m.topic
         ]
-        weak.append({
-            "topic": m.topic,
-            "unit": m.unit or "",
-            "grade_level": m.grade_level,
-            "average_score": m.average_score,
-            "attempt_count": m.attempt_count,
-            "severity": m.severity,
-            "confidence": m.confidence,
-            "misconceptions": topic_misconceptions,
-            "last_assessed_at": m.last_assessed_at,
-        })
+        weak.append(
+            {
+                "topic": m.topic,
+                "unit": m.unit or "",
+                "grade_level": m.grade_level,
+                "average_score": m.average_score,
+                "attempt_count": m.attempt_count,
+                "severity": m.severity,
+                "confidence": m.confidence,
+                "misconceptions": topic_misconceptions,
+                "last_assessed_at": m.last_assessed_at,
+            }
+        )
 
     return weak

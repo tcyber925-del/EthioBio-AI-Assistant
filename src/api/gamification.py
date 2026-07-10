@@ -38,15 +38,60 @@ RECOVERY_MILESTONE_THRESHOLDS = {3: 30, 5: 50, 10: 100, 15: 150}
 STREAK_BONUS_THRESHOLDS = {7: 20, 14: 50, 21: 100, 30: 200}
 
 ACHIEVEMENT_DEFINITIONS = {
-    "first_quiz": {"title": "First Steps", "description": "Complete your first quiz", "icon": "🎯", "condition": "quiz_count >= 1"},
-    "quiz_master": {"title": "Quiz Master", "description": "Complete 10 quizzes", "icon": "📚", "condition": "quiz_count >= 10"},
-    "perfect_score": {"title": "Perfect Score", "description": "Get 100% on any quiz", "icon": "💯", "condition": "perfect_quiz >= 1"},
-    "streak_3": {"title": "Streak Starter", "description": "Maintain a 3-day streak", "icon": "🔥", "condition": "streak >= 3"},
-    "streak_7": {"title": "Dedicated", "description": "Maintain a 7-day streak", "icon": "🔥", "condition": "streak >= 7"},
-    "streak_30": {"title": "Scholar", "description": "Maintain a 30-day streak", "icon": "🏅", "condition": "streak >= 30"},
-    "xp_1000": {"title": "XP Hunter", "description": "Earn 1000 total XP", "icon": "⭐", "condition": "xp >= 1000"},
-    "level_5": {"title": "Biology Expert", "description": "Reach Level 5", "icon": "🧬", "condition": "level >= 5"},
-    "level_10": {"title": "Master Biologist", "description": "Reach Level 10", "icon": "👑", "condition": "level >= 10"},
+    "first_quiz": {
+        "title": "First Steps",
+        "description": "Complete your first quiz",
+        "icon": "🎯",
+        "condition": "quiz_count >= 1",
+    },
+    "quiz_master": {
+        "title": "Quiz Master",
+        "description": "Complete 10 quizzes",
+        "icon": "📚",
+        "condition": "quiz_count >= 10",
+    },
+    "perfect_score": {
+        "title": "Perfect Score",
+        "description": "Get 100% on any quiz",
+        "icon": "💯",
+        "condition": "perfect_quiz >= 1",
+    },
+    "streak_3": {
+        "title": "Streak Starter",
+        "description": "Maintain a 3-day streak",
+        "icon": "🔥",
+        "condition": "streak >= 3",
+    },
+    "streak_7": {
+        "title": "Dedicated",
+        "description": "Maintain a 7-day streak",
+        "icon": "🔥",
+        "condition": "streak >= 7",
+    },
+    "streak_30": {
+        "title": "Scholar",
+        "description": "Maintain a 30-day streak",
+        "icon": "🏅",
+        "condition": "streak >= 30",
+    },
+    "xp_1000": {
+        "title": "XP Hunter",
+        "description": "Earn 1000 total XP",
+        "icon": "⭐",
+        "condition": "xp >= 1000",
+    },
+    "level_5": {
+        "title": "Biology Expert",
+        "description": "Reach Level 5",
+        "icon": "🧬",
+        "condition": "level >= 5",
+    },
+    "level_10": {
+        "title": "Master Biologist",
+        "description": "Reach Level 10",
+        "icon": "👑",
+        "condition": "level >= 10",
+    },
 }
 
 
@@ -56,7 +101,7 @@ async def update_streak(user_id, session):
 
     if gam.last_active_date is not None:
         lad = gam.last_active_date
-        last = lad.date() if hasattr(lad, 'date') else lad
+        last = lad.date() if hasattr(lad, "date") else lad
         delta = (today - last).days
         if delta == 0:
             return gam, 0
@@ -76,7 +121,9 @@ async def update_streak(user_id, session):
     bonus_xp = STREAK_BONUS_THRESHOLDS.get(gam.current_streak, 0)
     if bonus_xp:
         _, _, _ = await award_xp(
-            user_id, "daily_streak_bonus", bonus_xp,
+            user_id,
+            "daily_streak_bonus",
+            bonus_xp,
             {"streak": gam.current_streak, "bonus_type": f"{gam.current_streak}_day_streak"},
             session,
         )
@@ -192,11 +239,13 @@ async def award_xp_endpoint(
         gam, event, level_up = await award_xp(
             request.user_id, request.source, request.amount, request.event_metadata, session
         )
-        new_achs = await check_achievements(request.user_id, gam, session)
+        await check_achievements(request.user_id, gam, session)
         await session.commit()
 
         events = await _get_recent_events(request.user_id, session)
-        return await _build_profile(gam, request.user_id, events, level_up=level_up, session=session)
+        return await _build_profile(
+            gam, request.user_id, events, level_up=level_up, session=session
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -206,9 +255,7 @@ async def award_xp_endpoint(
 
 
 @router.get("/profile/{user_id}", response_model=GamificationProfileResponse)
-async def get_gamification_profile(
-    user_id, session: AsyncSession = Depends(get_session)
-):
+async def get_gamification_profile(user_id, session: AsyncSession = Depends(get_session)):
     try:
         gam = await ensure_gamification(user_id, session)
         events = await _get_recent_events(user_id, session)
@@ -227,7 +274,7 @@ async def record_activity(
 ):
     try:
         gam, streak = await update_streak(request.user_id, session)
-        new_achs = await check_achievements(request.user_id, gam, session)
+        await check_achievements(request.user_id, gam, session)
         await session.commit()
         events = await _get_recent_events(request.user_id, session)
         return await _build_profile(gam, request.user_id, events, session=session)
@@ -240,9 +287,7 @@ async def record_activity(
 
 
 @router.get("/events/{user_id}", response_model=list[XpEventResponse])
-async def get_xp_events(
-    user_id, session: AsyncSession = Depends(get_session)
-):
+async def get_xp_events(user_id, session: AsyncSession = Depends(get_session)):
     try:
         events = await _get_recent_events(user_id, session, limit=50)
         return events
@@ -252,9 +297,7 @@ async def get_xp_events(
 
 
 @router.get("/achievements/{user_id}", response_model=list[AchievementResponse])
-async def get_user_achievements_endpoint(
-    user_id, session: AsyncSession = Depends(get_session)
-):
+async def get_user_achievements_endpoint(user_id, session: AsyncSession = Depends(get_session)):
     try:
         return await get_user_achievements(user_id, session)
     except Exception as e:
@@ -282,6 +325,7 @@ async def _get_recent_events(user_id, session, limit=10):
 
 async def _build_profile(gam, user_id, events, level_up=False, session=None):
     from src.schemas.gamification import progress_pct, xp_for_next_level
+
     achievements = []
     new_achievements = []
     recovery_progress = None
@@ -307,6 +351,7 @@ async def _build_profile(gam, user_id, events, level_up=False, session=None):
 
 async def _get_recovery_progress(user_id, session):
     from src.schemas.gamification import RecoveryProgressResponse
+
     try:
         plans_result = await session.execute(
             select(RecoveryPlan)

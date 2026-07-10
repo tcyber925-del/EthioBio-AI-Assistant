@@ -105,9 +105,7 @@ def _extract_caption(doc, figure: object, max_distance: int = 3) -> str:
         # Search again by matching the figure's label string.
         fig_label = getattr(figure, "label", None)
         if fig_label:
-            fig_str = str(
-                fig_label.value if hasattr(fig_label, "value") else fig_label
-            ).lower()
+            fig_str = str(fig_label.value if hasattr(fig_label, "value") else fig_label).lower()
             for i, item in enumerate(doc.body):
                 item_label = getattr(item, "label", None)
                 if not item_label:
@@ -172,16 +170,18 @@ def extract_figures_from_pdf(
         output_path.parent.mkdir(parents=True, exist_ok=True)
         cropped.save(str(output_path), "JPEG", quality=JPEG_QUALITY)
 
-        extracted.append({
-            "image_path": str(output_path),
-            "grade": grade,
-            "pdf_stem": pdf_stem,
-            "fig_num": fig_num,
-            "page_num": page_num,
-            "caption": caption,
-            "unit": unit,
-            "topic": topic,
-        })
+        extracted.append(
+            {
+                "image_path": str(output_path),
+                "grade": grade,
+                "pdf_stem": pdf_stem,
+                "fig_num": fig_num,
+                "page_num": page_num,
+                "caption": caption,
+                "unit": unit,
+                "topic": topic,
+            }
+        )
         logger.info("extracted_figure path=%s grade=%s page=%s", output_path, grade, page_num)
 
     return extracted

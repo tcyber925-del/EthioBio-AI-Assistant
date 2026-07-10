@@ -12,6 +12,7 @@ def _get_or_create_sentence_transformer():
     if _sentence_transformer_model is None:
         try:
             from sentence_transformers import SentenceTransformer
+
             _sentence_transformer_model = SentenceTransformer("all-MiniLM-L6-v2")
             logger.info("sentence_transformer_loaded")
         except ImportError:
@@ -42,7 +43,9 @@ class Embedder:
 
         return await self.router.generate_embedding(text)
 
-    async def embed_batch(self, texts: list[str], batch_size: int = 16, use_ollama: bool = False) -> list[list[float]]:
+    async def embed_batch(
+        self, texts: list[str], batch_size: int = 16, use_ollama: bool = False
+    ) -> list[list[float]]:
         if use_ollama or self._force_ollama:
             results = []
             for text in texts:

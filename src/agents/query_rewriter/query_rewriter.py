@@ -113,9 +113,7 @@ class QueryRewriterAgent(BaseAgent):
         coverage = float(parsed.get("coverage_score", FALLBACK_COVERAGE))
         coverage = max(0.0, min(1.0, coverage))
 
-        heuristic_coverage = self._calculate_heuristic_coverage(
-            rewritten, subtasks
-        )
+        heuristic_coverage = self._calculate_heuristic_coverage(rewritten, subtasks)
         if heuristic_coverage is not None:
             coverage = min(coverage, heuristic_coverage)
 

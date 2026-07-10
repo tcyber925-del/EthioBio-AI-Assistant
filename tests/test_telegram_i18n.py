@@ -1,9 +1,7 @@
 import json
 from pathlib import Path
 
-import pytest
-
-from src.telegram.i18n import t, _messages, _get
+from src.telegram.i18n import _get, _messages, t
 
 
 def _clear_cache():
@@ -28,7 +26,9 @@ def test_en_and_am_have_same_keys():
 
     en_keys = extract_keys(en)
     am_keys = extract_keys(am)
-    assert en_keys == am_keys, f"Key mismatch. Missing in am: {en_keys - am_keys}. Extra in am: {am_keys - en_keys}"
+    assert en_keys == am_keys, (
+        f"Key mismatch. Missing in am: {en_keys - am_keys}. Extra in am: {am_keys - en_keys}"
+    )
 
 
 def test_t_returns_flat_key():

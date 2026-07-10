@@ -149,8 +149,7 @@ def benchmark_groundedness_calculation():
     from src.graph.nodes.claim_verifier import Claim, calculate_groundedness
 
     claims = [
-        Claim(text=f"claim_{i}", claim_type="fact", is_grounded=i % 2 == 0)
-        for i in range(10)
+        Claim(text=f"claim_{i}", claim_type="fact", is_grounded=i % 2 == 0) for i in range(10)
     ]
 
     calculate_groundedness(claims)
@@ -159,8 +158,7 @@ def benchmark_groundedness_calculation():
 def benchmark_chunk_deduplication():
     """Benchmark chunk deduplication."""
     chunks = [
-        {"content": f"Chunk {i % 10} content here for testing", "score": 0.8}
-        for i in range(100)
+        {"content": f"Chunk {i % 10} content here for testing", "score": 0.8} for i in range(100)
     ]
     seen = set()
     for chunk in chunks:
@@ -171,10 +169,7 @@ def benchmark_chunk_deduplication():
 
 def benchmark_chunk_ranking():
     """Benchmark chunk ranking."""
-    chunks = [
-        {"content": f"Chunk {i}", "score": i * 0.1}
-        for i in range(100)
-    ]
+    chunks = [{"content": f"Chunk {i}", "score": i * 0.1} for i in range(100)]
     ranked = sorted(chunks, key=lambda x: x.get("score", 0), reverse=True)
     _ = ranked[:15]
 
@@ -266,9 +261,7 @@ class TestPerformanceBenchmarks:
     def test_chunk_deduplication_benchmark(self):
         """Benchmark chunk deduplication."""
         suite = BenchmarkSuite()
-        result = suite.run(
-            "chunk_deduplication", benchmark_chunk_deduplication, iterations=1000
-        )
+        result = suite.run("chunk_deduplication", benchmark_chunk_deduplication, iterations=1000)
 
         assert result.mean_duration_ms < 5.0
         print(f"ChunkDedup: mean={result.mean_duration_ms:.3f}ms")
@@ -312,9 +305,6 @@ class TestPerformanceBenchmarks:
 
         print("\n=== Benchmark Summary ===")
         for bench in summary["benchmarks"]:
-            print(
-                f"{bench['name']}: mean={bench['mean_ms']:.3f}ms, "
-                f"p95={bench['p95_ms']:.3f}ms"
-            )
+            print(f"{bench['name']}: mean={bench['mean_ms']:.3f}ms, p95={bench['p95_ms']:.3f}ms")
 
         assert summary["total_benchmarks"] == 6

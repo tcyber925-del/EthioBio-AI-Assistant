@@ -31,7 +31,9 @@ class ForecastingEngine:
         self.session = session
 
     async def forecast_all(
-        self, user_id: UUID, weeks_ahead: int = 4,
+        self,
+        user_id: UUID,
+        weeks_ahead: int = 4,
     ) -> dict:
         mastery = await self._forecast_mastery(user_id, weeks_ahead)
         retention = await self._forecast_retention(user_id, weeks_ahead)
@@ -49,7 +51,9 @@ class ForecastingEngine:
         }
 
     async def _forecast_mastery(
-        self, user_id: UUID, weeks_ahead: int,
+        self,
+        user_id: UUID,
+        weeks_ahead: int,
     ) -> list[dict]:
         result = await self.session.execute(
             select(TopicMasteryHistory)
@@ -63,23 +67,27 @@ class ForecastingEngine:
             topic = row.topic
             if topic not in topics:
                 topics[topic] = []
-            topics[topic].append({
-                "score": row.average_score,
-                "recorded_at": _naive(row.recorded_at),
-            })
+            topics[topic].append(
+                {
+                    "score": row.average_score,
+                    "recorded_at": _naive(row.recorded_at),
+                }
+            )
 
         forecasts = []
         for topic, history in topics.items():
             if len(history) < 2:
                 current = history[-1]["score"] if history else 0.0
-                forecasts.append({
-                    "topic": topic,
-                    "current": current,
-                    "projected": current,
-                    "trend": "stable",
-                    "confidence": "low",
-                    "data_points": len(history),
-                })
+                forecasts.append(
+                    {
+                        "topic": topic,
+                        "current": current,
+                        "projected": current,
+                        "trend": "stable",
+                        "confidence": "low",
+                        "data_points": len(history),
+                    }
+                )
                 continue
 
             now = _now()
@@ -99,9 +107,11 @@ class ForecastingEngine:
                 sum_tt += t * t
                 sum_ts += t * s
 
-            slope = (n * sum_ts - sum_t * sum_s) / (n * sum_tt - sum_t * sum_t) if (
-                n * sum_tt - sum_t * sum_t != 0
-            ) else 0.0
+            slope = (
+                (n * sum_ts - sum_t * sum_s) / (n * sum_tt - sum_t * sum_t)
+                if (n * sum_tt - sum_t * sum_t != 0)
+                else 0.0
+            )
 
             current_score = recent[-1]["score"]
             projected = current_score + slope * weeks_ahead
@@ -122,19 +132,23 @@ class ForecastingEngine:
             else:
                 confidence = "low"
 
-            forecasts.append({
-                "topic": topic,
-                "current": round(current_score, 2),
-                "projected": round(projected, 2),
-                "trend": trend,
-                "confidence": confidence,
-                "data_points": len(history),
-            })
+            forecasts.append(
+                {
+                    "topic": topic,
+                    "current": round(current_score, 2),
+                    "projected": round(projected, 2),
+                    "trend": trend,
+                    "confidence": confidence,
+                    "data_points": len(history),
+                }
+            )
 
         return sorted(forecasts, key=lambda f: f["topic"])
 
     async def _forecast_retention(
-        self, user_id: UUID, weeks_ahead: int,
+        self,
+        user_id: UUID,
+        weeks_ahead: int,
     ) -> list[dict]:
         result = await self.session.execute(
             select(SpacedRepetitionSchedule).where(
@@ -148,22 +162,24 @@ class ForecastingEngine:
         for row in rows:
             last = _naive(row.last_reviewed_at)
             if not last:
-                forecasts.append({
-                    "topic": row.topic,
-                    "current": row.mastery_score,
-                    "projected": max(0.0, row.mastery_score * 0.85),
-                    "retention_rate": "declining",
-                    "confidence": "low",
-                })
+                forecasts.append(
+                    {
+                        "topic": row.topic,
+                        "current": row.mastery_score,
+                        "projected": max(0.0, row.mastery_score * 0.85),
+                        "retention_rate": "declining",
+                        "confidence": "low",
+                    }
+                )
                 continue
 
             days_since = (now - last).days
             decay = 1.0 - (days_since / (row.interval_days or 7)) * 0.3
             decay = max(0.0, min(1.0, decay))
 
-            projected_decay = 1.0 - (
-                (days_since + weeks_ahead * 7) / (row.interval_days or 7)
-            ) * 0.3
+            projected_decay = (
+                1.0 - ((days_since + weeks_ahead * 7) / (row.interval_days or 7)) * 0.3
+            )
             projected_decay = max(0.0, min(1.0, projected_decay))
 
             projected = row.mastery_score * projected_decay
@@ -175,18 +191,22 @@ class ForecastingEngine:
             elif projected > current + 0.05:
                 rate = "improving"
 
-            forecasts.append({
-                "topic": row.topic,
-                "current": round(current, 2),
-                "projected": round(projected, 2),
-                "retention_rate": rate,
-                "confidence": "medium" if row.review_count >= 3 else "low",
-            })
+            forecasts.append(
+                {
+                    "topic": row.topic,
+                    "current": round(current, 2),
+                    "projected": round(projected, 2),
+                    "retention_rate": rate,
+                    "confidence": "medium" if row.review_count >= 3 else "low",
+                }
+            )
 
         return sorted(forecasts, key=lambda f: f["topic"])
 
     async def _forecast_readiness(
-        self, user_id: UUID, weeks_ahead: int,
+        self,
+        user_id: UUID,
+        weeks_ahead: int,
         mastery_forecast: list[dict],
     ) -> dict:
         result = await self.session.execute(
@@ -207,18 +227,20 @@ class ForecastingEngine:
             current_mastery = mf.get("current", 0.5)
             projected_mastery = mf.get("projected", current_mastery)
 
-            current = (ability * 0.6 + current_mastery * 0.4)
-            projected = (ability * 0.6 + projected_mastery * 0.4)
+            current = ability * 0.6 + current_mastery * 0.4
+            projected = ability * 0.6 + projected_mastery * 0.4
 
             total_current += current
             total_projected += projected
             count += 1
 
-            topic_readiness.append({
-                "topic": topic,
-                "current": round(current, 2),
-                "projected": round(projected, 2),
-            })
+            topic_readiness.append(
+                {
+                    "topic": topic,
+                    "current": round(current, 2),
+                    "projected": round(projected, 2),
+                }
+            )
 
         overall_current = round(total_current / count, 2) if count else 0.0
         overall_projected = round(total_projected / count, 2) if count else 0.0
@@ -232,7 +254,8 @@ class ForecastingEngine:
         }
 
     async def _forecast_risk(
-        self, user_id: UUID,
+        self,
+        user_id: UUID,
         mastery_forecast: list[dict],
         retention_forecast: list[dict],
         readiness_forecast: dict,
@@ -240,51 +263,58 @@ class ForecastingEngine:
         risks = []
         retention_map = {f["topic"]: f for f in retention_forecast}
 
-        readiness_topics = {
-            r["topic"]: r for r in readiness_forecast.get("topic", [])
-        }
+        readiness_topics = {r["topic"]: r for r in readiness_forecast.get("topic", [])}
 
         for mf in mastery_forecast:
             topic = mf["topic"]
             projected = mf["projected"]
             if projected < 0.5:
-                risks.append({
-                    "topic": topic,
-                    "type": "mastery_decline",
-                    "severity": "high" if projected < 0.3 else "medium",
-                    "current": mf["current"],
-                    "projected": projected,
-                    "detail": f"Mastery projected to drop to {round(projected * 100)}%",
-                })
+                risks.append(
+                    {
+                        "topic": topic,
+                        "type": "mastery_decline",
+                        "severity": "high" if projected < 0.3 else "medium",
+                        "current": mf["current"],
+                        "projected": projected,
+                        "detail": f"Mastery projected to drop to {round(projected * 100)}%",
+                    }
+                )
 
             rf = retention_map.get(topic, {})
             retention_projected = rf.get("projected", 1.0)
             if retention_projected < 0.5:
-                risks.append({
-                    "topic": topic,
-                    "type": "retention_loss",
-                    "severity": "high" if retention_projected < 0.3 else "medium",
-                    "current": rf.get("current", 1.0),
-                    "projected": retention_projected,
-                    "detail": f"Retention projected at {round(retention_projected * 100)}%",
-                })
+                risks.append(
+                    {
+                        "topic": topic,
+                        "type": "retention_loss",
+                        "severity": "high" if retention_projected < 0.3 else "medium",
+                        "current": rf.get("current", 1.0),
+                        "projected": retention_projected,
+                        "detail": f"Retention projected at {round(retention_projected * 100)}%",
+                    }
+                )
 
             rd = readiness_topics.get(topic, {})
             readiness_projected = rd.get("projected", 1.0)
             if readiness_projected < 0.5:
-                risks.append({
-                    "topic": topic,
-                    "type": "readiness_gap",
-                    "severity": "high" if readiness_projected < 0.3 else "medium",
-                    "current": rd.get("current", 1.0),
-                    "projected": readiness_projected,
-                    "detail": f"Readiness projected at {round(readiness_projected * 100)}%",
-                })
+                risks.append(
+                    {
+                        "topic": topic,
+                        "type": "readiness_gap",
+                        "severity": "high" if readiness_projected < 0.3 else "medium",
+                        "current": rd.get("current", 1.0),
+                        "projected": readiness_projected,
+                        "detail": f"Readiness projected at {round(readiness_projected * 100)}%",
+                    }
+                )
 
         return sorted(risks, key=lambda r: (0 if r["severity"] == "high" else 1, r["topic"]))
 
     async def forecast_mastery_topic(
-        self, user_id: UUID, topic: str, weeks_ahead: int = 4,
+        self,
+        user_id: UUID,
+        topic: str,
+        weeks_ahead: int = 4,
     ) -> dict:
         all_mastery = await self._forecast_mastery(user_id, weeks_ahead)
         for f in all_mastery:

@@ -258,7 +258,9 @@ async def get_prerequisite_misconception_gaps(
 ):
     try:
         return await graph_integrator.get_prerequisite_gaps(
-            user_id=user_id, topic=topic, db=db,
+            user_id=user_id,
+            topic=topic,
+            db=db,
         )
     except Exception as e:
         logger.error("prerequisite_gaps_error", error=str(e))
@@ -272,7 +274,8 @@ async def get_misconception_cascade(
 ):
     try:
         return await graph_integrator.get_misconception_cascade(
-            user_id=user_id, db=db,
+            user_id=user_id,
+            db=db,
         )
     except Exception as e:
         logger.error("misconception_cascade_error", error=str(e))
@@ -286,7 +289,8 @@ async def get_topic_misconception_weights(
 ):
     try:
         return await graph_integrator.get_topic_misconception_weight(
-            db=db, grade_level=grade_level,
+            db=db,
+            grade_level=grade_level,
         )
     except Exception as e:
         logger.error("topic_weights_error", error=str(e))
@@ -396,9 +400,7 @@ async def get_classroom_misconception_heatmap(
         total_students=data["total_students"],
         students_with_misconceptions=data["students_with_misconceptions"],
         total_unresolved_patterns=data["total_unresolved_patterns"],
-        by_topic=[
-            ClassroomMisconceptionTopic(**t) for t in data["by_topic"]
-        ],
+        by_topic=[ClassroomMisconceptionTopic(**t) for t in data["by_topic"]],
         improvement_trend=data["improvement_trend"],
         generated_at=data["generated_at"],
     )

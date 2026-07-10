@@ -198,6 +198,7 @@ class TestInterventionServiceComputeEffectiveness:
         confidence_row.one_or_none.return_value = (0, None, None)
 
         from unittest.mock import AsyncMock
+
         # ensure we have enough slots for all execute calls from helpers + kb store
         catch_all = MagicMock()
         catch_all.scalar_one_or_none.return_value = None
@@ -207,14 +208,14 @@ class TestInterventionServiceComputeEffectiveness:
 
         mock_exec = AsyncMock()
         mock_exec.side_effect = [
-            mastery_before,          # _get_mastery_change: before
-            mastery_after,           # _get_mastery_change: after
-            scalar_result,           # _get_readiness_change: before (wrapped, fails -> 0.0)
-            scalar_result,           # _get_readiness_change: after (wrapped, fails -> 0.0)
-            fetch_result,            # _get_retention_change: stability (wrapped, fails -> 0.0)
-            count_result,            # _get_misconception_reduction: before_count
-            count_result,            # _get_misconception_reduction: after_count
-            *([catch_all] * 10),     # kb store + confidence + any extras
+            mastery_before,  # _get_mastery_change: before
+            mastery_after,  # _get_mastery_change: after
+            scalar_result,  # _get_readiness_change: before (wrapped, fails -> 0.0)
+            scalar_result,  # _get_readiness_change: after (wrapped, fails -> 0.0)
+            fetch_result,  # _get_retention_change: stability (wrapped, fails -> 0.0)
+            count_result,  # _get_misconception_reduction: before_count
+            count_result,  # _get_misconception_reduction: after_count
+            *([catch_all] * 10),  # kb store + confidence + any extras
         ]
         return mock_exec
 
@@ -338,12 +339,16 @@ class TestInterventionServiceGetAnalytics:
 
     async def test_computes_correct_aggregations(self, service, mock_session):
         r1 = make_assignment(
-            status="completed", intervention_type="REVIEW_TOPIC",
-            topic="Bio", effectiveness_score=70.0,
+            status="completed",
+            intervention_type="REVIEW_TOPIC",
+            topic="Bio",
+            effectiveness_score=70.0,
         )
         r2 = make_assignment(
-            status="completed", intervention_type="REVIEW_TOPIC",
-            topic="Bio", effectiveness_score=90.0,
+            status="completed",
+            intervention_type="REVIEW_TOPIC",
+            topic="Bio",
+            effectiveness_score=90.0,
         )
         r3 = make_assignment(status="active", intervention_type="TAKE_QUIZ")
         r4 = make_assignment(status="planned", intervention_type="TUTOR_SESSION")
@@ -362,16 +367,22 @@ class TestInterventionServiceGetAnalytics:
 
     async def test_effectiveness_by_type_and_topic(self, service, mock_session):
         r1 = make_assignment(
-            status="completed", intervention_type="REVIEW_TOPIC",
-            topic="Bio", effectiveness_score=70.0,
+            status="completed",
+            intervention_type="REVIEW_TOPIC",
+            topic="Bio",
+            effectiveness_score=70.0,
         )
         r2 = make_assignment(
-            status="completed", intervention_type="REVIEW_TOPIC",
-            topic="Genetics", effectiveness_score=90.0,
+            status="completed",
+            intervention_type="REVIEW_TOPIC",
+            topic="Genetics",
+            effectiveness_score=90.0,
         )
         r3 = make_assignment(
-            status="completed", intervention_type="TAKE_QUIZ",
-            topic="Bio", effectiveness_score=80.0,
+            status="completed",
+            intervention_type="TAKE_QUIZ",
+            topic="Bio",
+            effectiveness_score=80.0,
         )
         records = [r1, r2, r3]
         result_proxy = MagicMock()

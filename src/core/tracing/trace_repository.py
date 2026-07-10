@@ -145,9 +145,7 @@ class TraceRepository:
         session = await self._get_session()
         try:
             cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
-            result = await session.execute(
-                delete(AgentTrace).where(AgentTrace.start_time < cutoff)
-            )
+            result = await session.execute(delete(AgentTrace).where(AgentTrace.start_time < cutoff))
             await session.commit()
             count = result.rowcount
             logger.info("cleanup_old_traces", count=count, max_age_days=max_age_days)

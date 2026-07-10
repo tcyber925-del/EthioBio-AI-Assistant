@@ -122,7 +122,10 @@ class ContextAssembler:
             return ""
 
     async def _format_misconceptions(
-        self, user_id, topic: str | None, db: AsyncSession,
+        self,
+        user_id,
+        topic: str | None,
+        db: AsyncSession,
     ) -> str:
         try:
             from src.database.models import MisconceptionPattern
@@ -156,7 +159,9 @@ class ContextAssembler:
                 results = await self.retrieval.search_by_topic(topic, user_id=str(user_id))
             else:
                 results = await self.retrieval.search(
-                    "educational history", n_results=3, user_id=str(user_id),
+                    "educational history",
+                    n_results=3,
+                    user_id=str(user_id),
                 )
             if not results:
                 return ""
@@ -176,7 +181,10 @@ class ContextAssembler:
             return ""
 
     async def _format_cross_session(
-        self, user_id, topic: str | None, db: AsyncSession,
+        self,
+        user_id,
+        topic: str | None,
+        db: AsyncSession,
     ) -> str:
         if not user_id:
             return ""

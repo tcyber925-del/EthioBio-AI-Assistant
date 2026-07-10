@@ -24,10 +24,12 @@ def test_build_vision_messages_includes_image():
 def test_parse_labels_valid_json():
     from scripts.label_textbook_diagrams import _parse_labels_from_response
 
-    raw = json.dumps([
-        {"id": "1", "text": "Nucleus", "x": 0.5, "y": 0.3},
-        {"id": "2", "text": "Cell membrane", "x": 0.2, "y": 0.8},
-    ])
+    raw = json.dumps(
+        [
+            {"id": "1", "text": "Nucleus", "x": 0.5, "y": 0.3},
+            {"id": "2", "text": "Cell membrane", "x": 0.2, "y": 0.8},
+        ]
+    )
     result = _parse_labels_from_response(raw)
     assert len(result) == 2
     assert result[0]["text"] == "Nucleus"
@@ -52,10 +54,12 @@ async def test_try_model_with_fallback_success_first():
     from scripts.label_textbook_diagrams import _try_model_with_fallback
 
     router = AsyncMock()
-    router.route = AsyncMock(return_value={
-        "content": json.dumps([{"id": "1", "text": "Nucleus", "x": 0.5, "y": 0.3}]),
-        "model": "openrouter/openai/gpt-4o",
-    })
+    router.route = AsyncMock(
+        return_value={
+            "content": json.dumps([{"id": "1", "text": "Nucleus", "x": 0.5, "y": 0.3}]),
+            "model": "openrouter/openai/gpt-4o",
+        }
+    )
 
     messages = [{"role": "user", "content": "test"}]
     labels, model_used = await _try_model_with_fallback(router, messages)
@@ -81,10 +85,12 @@ async def test_label_diagram_dry_run():
     from scripts.label_textbook_diagrams import label_diagram
 
     router = AsyncMock()
-    router.route = AsyncMock(return_value={
-        "content": json.dumps([{"id": "1", "text": "Nucleus", "x": 0.5, "y": 0.3}]),
-        "model": "openrouter/openai/gpt-4o",
-    })
+    router.route = AsyncMock(
+        return_value={
+            "content": json.dumps([{"id": "1", "text": "Nucleus", "x": 0.5, "y": 0.3}]),
+            "model": "openrouter/openai/gpt-4o",
+        }
+    )
 
     result = await label_diagram(
         image_path="nonexistent.jpg",

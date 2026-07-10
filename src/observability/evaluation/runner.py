@@ -17,12 +17,14 @@ def load_dataset(path: Path) -> list[dict]:
             continue
         parts = line.split("|||")
         if len(parts) >= 3:
-            cases.append({
-                "label": parts[0].strip(),
-                "query": parts[1].strip(),
-                "response": parts[2].strip(),
-                "context": parts[3].strip() if len(parts) > 3 else "",
-            })
+            cases.append(
+                {
+                    "label": parts[0].strip(),
+                    "query": parts[1].strip(),
+                    "response": parts[2].strip(),
+                    "context": parts[3].strip() if len(parts) > 3 else "",
+                }
+            )
     return cases
 
 

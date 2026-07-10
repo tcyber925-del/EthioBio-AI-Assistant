@@ -1,4 +1,4 @@
-"""TutorContextAdapter — orchestrates snapshot, profile, recommendations, strategy into one package."""
+"""TutorContextAdapter — orchestrates snapshot, profile, recommendations, strategy into one package."""  # noqa: E501
 
 from typing import Optional
 from uuid import UUID
@@ -79,12 +79,15 @@ class TutorContextAdapter:
             readiness_context = None
 
         profile = self._profile_builder.build_profile(
-            snapshot, current_topic,
+            snapshot,
+            current_topic,
             readiness_context=readiness_context,
         )
         recommendations = await self._recommendation_service.get_recommendations(session, user_id)
         strategy = self._strategy_selector.select(
-            profile, snapshot, recommendations,
+            profile,
+            snapshot,
+            recommendations,
             readiness_context=readiness_context,
             current_topic=current_topic,
         )

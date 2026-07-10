@@ -1,9 +1,3 @@
-import base64
-
-import numpy as np
-import pytest
-from PIL import Image
-
 from src.schemas.diagram import ImageValidationRequest, ImageValidationResponse
 from src.services.svg_validator import SvgImageValidator
 
@@ -18,7 +12,7 @@ class TestSvgImageValidator:
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
             '<rect width="100" height="100" fill="white"/>'
             '<circle cx="50" cy="50" r="30" fill="black"/>'
-            '</svg>'
+            "</svg>"
         )
         ref = SvgImageValidator()._render_svg(svg)
         assert ref is not None
@@ -30,12 +24,12 @@ class TestSvgImageValidator:
         svg1 = (
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
             '<rect width="100" height="100" fill="white"/>'
-            '</svg>'
+            "</svg>"
         )
         svg2 = (
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
             '<rect width="100" height="100" fill="black"/>'
-            '</svg>'
+            "</svg>"
         )
         ref = SvgImageValidator()._render_svg(svg2)
         assert ref is not None
@@ -53,7 +47,7 @@ class TestSvgImageValidator:
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
             '<rect width="100" height="100" fill="gray"/>'
             '<circle cx="50" cy="50" r="20" fill="black"/>'
-            '</svg>'
+            "</svg>"
         )
         ref = SvgImageValidator()._render_svg(svg)
         assert ref is not None

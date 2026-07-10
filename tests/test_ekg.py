@@ -7,7 +7,7 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.core.knowledge_graph import GraphReasoningEngine, RelationshipBuilder
-from src.database.models import Base, CurriculumTopic, TopicPrerequisite
+from src.database.models import Base, CurriculumTopic
 
 builder = RelationshipBuilder()
 engine = GraphReasoningEngine()
@@ -215,9 +215,7 @@ async def test_chain_depth_limit(db_session, topics):
         prerequisite_topic_id=topics["cell_structure"].id,
     )
 
-    chain = await engine.get_prerequisite_chain(
-        db_session, topics["cell_biology"].id, max_depth=0
-    )
+    chain = await engine.get_prerequisite_chain(db_session, topics["cell_biology"].id, max_depth=0)
     assert len(chain) == 0
 
 

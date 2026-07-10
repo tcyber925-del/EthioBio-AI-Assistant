@@ -115,7 +115,10 @@ class WorkspaceService:
             return True
 
     async def add_member(
-        self, workspace_id: str, user_id: str, role: WorkspaceRole = WorkspaceRole.member,
+        self,
+        workspace_id: str,
+        user_id: str,
+        role: WorkspaceRole = WorkspaceRole.member,
         invited_by: str | None = None,
     ) -> WorkspaceMember:
         async with self._session_factory() as db:
@@ -174,7 +177,9 @@ class WorkspaceService:
             await db.commit()
             logger.info(
                 "workspace_member_role_updated",
-                workspace_id=workspace_id, user_id=user_id, role=role.value,
+                workspace_id=workspace_id,
+                user_id=user_id,
+                role=role.value,
             )
             return True
 

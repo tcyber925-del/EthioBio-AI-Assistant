@@ -29,11 +29,20 @@ def _mock_cache(data: list[dict] | None = None):
 
 class TestRecommendationService:
     async def test_cache_hit_returns_cached(self):
-        cached = {"recommendations": [{
-            "id": "rec_test_0", "action_type": "review_topic", "topic": "Genetics",
-            "priority_score": 0.5, "reason": "test", "explanation": "test",
-            "generated_at": "2026-06-01T00:00:00", "metadata": {},
-        }]}
+        cached = {
+            "recommendations": [
+                {
+                    "id": "rec_test_0",
+                    "action_type": "review_topic",
+                    "topic": "Genetics",
+                    "priority_score": 0.5,
+                    "reason": "test",
+                    "explanation": "test",
+                    "generated_at": "2026-06-01T00:00:00",
+                    "metadata": {},
+                }
+            ]
+        }
         cache = _mock_cache(cached)
         svc = RecommendationService(
             snapshot_service=_mock_snapshot_service(

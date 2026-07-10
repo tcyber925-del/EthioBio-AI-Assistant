@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
@@ -13,8 +13,10 @@ class TestAutoLabelSchemas:
 
     def test_auto_label_response(self):
         from src.schemas.diagram import DiagramLabel
+
         resp = AutoLabelResponse(
-            diagram_id=str(uuid4()), caption="Cell diagram",
+            diagram_id=str(uuid4()),
+            caption="Cell diagram",
             labels_count=3,
             labels=[DiagramLabel(id="l1", text="Nucleus", x=10, y=20)],
         )
@@ -34,13 +36,14 @@ class TestAutoLabelEndpoint:
         MockRouter.return_value = mock_router
 
         mock_agent = AsyncMock()
-        mock_agent.generate = AsyncMock(return_value={
-            "labels": [{"id": "l1", "text": "Nucleus", "x": 10, "y": 20}],
-        })
+        mock_agent.generate = AsyncMock(
+            return_value={
+                "labels": [{"id": "l1", "text": "Nucleus", "x": 10, "y": 20}],
+            }
+        )
         MockAgent.return_value = mock_agent
 
         from src.api.diagram import auto_label_textbook_diagram
-        from sqlalchemy.ext.asyncio import AsyncSession
 
         mock_session = AsyncMock()
         mock_diagram = AsyncMock()
@@ -57,13 +60,16 @@ class TestAutoLabelEndpoint:
         assert isinstance(result, AutoLabelResponse)
         assert result.labels_count == 1
         mock_agent.generate.assert_awaited_once()
-        assert mock_diagram.ground_truth_labels == {"labels": [{"id": "l1", "text": "Nucleus", "x": 10, "y": 20}]}
+        assert mock_diagram.ground_truth_labels == {
+            "labels": [{"id": "l1", "text": "Nucleus", "x": 10, "y": 20}]
+        }
 
     @patch("src.api.diagram.ModelRouter")
     @patch("src.api.diagram.DiagramAgent")
     async def test_auto_label_not_found(self, MockAgent, MockRouter):
-        from src.api.diagram import auto_label_textbook_diagram
         from fastapi import HTTPException
+
+        from src.api.diagram import auto_label_textbook_diagram
 
         mock_session = AsyncMock()
         mock_session.get = AsyncMock(return_value=None)

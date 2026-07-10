@@ -4,7 +4,17 @@ from uuid import UUID
 from src.schemas.base import SchemaModel
 
 LEVEL_THRESHOLDS = [
-    0, 100, 250, 500, 1000, 1750, 2750, 4000, 5500, 7500, 10000,
+    0,
+    100,
+    250,
+    500,
+    1000,
+    1750,
+    2750,
+    4000,
+    5500,
+    7500,
+    10000,
 ]
 
 

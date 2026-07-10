@@ -9,15 +9,21 @@ from src.schemas.diagram import SketchToDiagramResponse
 class TestSketchToDiagramSchemas:
     def test_sketch_response_minimal(self):
         resp = SketchToDiagramResponse(
-            image_base64="AAAA", topic="cell", prompt="enhance",
+            image_base64="AAAA",
+            topic="cell",
+            prompt="enhance",
         )
         assert resp.topic == "cell"
         assert resp.width == 800
 
     def test_sketch_response_full(self):
         resp = SketchToDiagramResponse(
-            image_base64="AAAA", topic="dna", prompt="clean",
-            model_used="@cf/test", width=1024, height=768,
+            image_base64="AAAA",
+            topic="dna",
+            prompt="clean",
+            model_used="@cf/test",
+            width=1024,
+            height=768,
         )
         assert resp.model_used == "@cf/test"
         assert resp.width == 1024
@@ -54,7 +60,8 @@ class TestSketchToDiagramEndpoint:
         encoded_expected = base64.b64encode(b"enhanced_image_bytes").decode("utf-8")
         assert result.image_base64 == encoded_expected
         mock_gen.image_to_image.assert_awaited_once_with(
-            prompt="make it clean", input_image=b"fake_image_bytes",
+            prompt="make it clean",
+            input_image=b"fake_image_bytes",
         )
 
     @patch("src.api.diagram.CloudflareImageGenerator")
@@ -66,6 +73,7 @@ class TestSketchToDiagramEndpoint:
                 return b""
 
         from fastapi import HTTPException
+
         with pytest.raises(HTTPException) as exc:
             await sketch_to_diagram(file=FakeFile(), topic="bio")  # type: ignore
         assert exc.value.status_code == 400

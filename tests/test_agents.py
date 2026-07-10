@@ -107,7 +107,8 @@ async def test_lesson_plan_with_exit_ticket(mock_router):
     ]
 
     result = await agent.generate(
-        grade_level=10, topic="Mitosis",
+        grade_level=10,
+        topic="Mitosis",
         generate_exit_ticket=True,
     )
     assert result["objective"] == "Understand mitosis"
@@ -132,7 +133,8 @@ async def test_lesson_plan_with_differentiation(mock_router):
     ]
 
     result = await agent.generate(
-        grade_level=10, topic="Photosynthesis",
+        grade_level=10,
+        topic="Photosynthesis",
         generate_differentiation=True,
     )
     assert result["objective"] == "Understand photosynthesis"
@@ -160,7 +162,8 @@ async def test_lesson_plan_with_diagram_suggestions(mock_router):
     ]
 
     result = await agent.generate(
-        grade_level=10, topic="Cell Organelles",
+        grade_level=10,
+        topic="Cell Organelles",
         generate_diagram_suggestions=True,
     )
     assert result["objective"] == "Identify cell organelles"
@@ -187,13 +190,18 @@ async def test_lesson_plan_with_misconception_activities(mock_router):
     classroom_context = {
         "misconceptions": {
             "by_topic": [
-                {"topic": "Plant Respiration", "top_pattern": "Plants do not respire", "affected_students": 12},
+                {
+                    "topic": "Plant Respiration",
+                    "top_pattern": "Plants do not respire",
+                    "affected_students": 12,
+                },
             ],
         },
     }
 
     result = await agent.generate(
-        grade_level=10, topic="Plant Respiration",
+        grade_level=10,
+        topic="Plant Respiration",
         generate_misconception_activities=True,
         classroom_context=classroom_context,
     )
@@ -212,22 +220,39 @@ async def test_lesson_plan_all_features(mock_router):
             "content": '{"objective": "Learn genetics", "prior_knowledge": "Cell division", "explanation": "DNA structure and function", "activities": [{"name": "DNA model", "duration_minutes": 20, "description": "Build DNA model", "type": "group"}], "assessment": "DNA quiz", "homework": "Review notes", "teacher_notes": "Prepare materials"}',
             "model": "ollama/test",
         },
-        {"content": '[{"question_type": "true_false", "question_text": "DNA is single-stranded", "options": ["True", "False"], "correct_answer": "False", "explanation": "DNA is double-stranded"}]', "model": "ollama/test"},
-        {"content": '[{"group": "support", "description": "Label DNA components", "duration_minutes": 10}, {"group": "standard", "description": "Describe DNA replication", "duration_minutes": 10}, {"group": "advanced", "description": "Explain mutation effects", "duration_minutes": 10}]', "model": "ollama/test"},
-        {"content": '[{"title": "DNA Double Helix", "description": "Structure of DNA", "diagram_type": "labeling"}]', "model": "ollama/test"},
-        {"content": '[{"misconception": "Genes only exist in reproductive cells", "activity_name": "Concept Conflict", "description": "Challenge misconception with evidence", "duration_minutes": 12, "activity_type": "concept_conflict"}]', "model": "ollama/test"},
+        {
+            "content": '[{"question_type": "true_false", "question_text": "DNA is single-stranded", "options": ["True", "False"], "correct_answer": "False", "explanation": "DNA is double-stranded"}]',
+            "model": "ollama/test",
+        },
+        {
+            "content": '[{"group": "support", "description": "Label DNA components", "duration_minutes": 10}, {"group": "standard", "description": "Describe DNA replication", "duration_minutes": 10}, {"group": "advanced", "description": "Explain mutation effects", "duration_minutes": 10}]',
+            "model": "ollama/test",
+        },
+        {
+            "content": '[{"title": "DNA Double Helix", "description": "Structure of DNA", "diagram_type": "labeling"}]',
+            "model": "ollama/test",
+        },
+        {
+            "content": '[{"misconception": "Genes only exist in reproductive cells", "activity_name": "Concept Conflict", "description": "Challenge misconception with evidence", "duration_minutes": 12, "activity_type": "concept_conflict"}]',
+            "model": "ollama/test",
+        },
     ]
 
     classroom_context = {
         "misconceptions": {
             "by_topic": [
-                {"topic": "Genetics", "top_pattern": "Genes only exist in reproductive cells", "affected_students": 8},
+                {
+                    "topic": "Genetics",
+                    "top_pattern": "Genes only exist in reproductive cells",
+                    "affected_students": 8,
+                },
             ],
         },
     }
 
     result = await agent.generate(
-        grade_level=10, topic="Genetics",
+        grade_level=10,
+        topic="Genetics",
         generate_exit_ticket=True,
         generate_differentiation=True,
         generate_diagram_suggestions=True,
@@ -258,11 +283,22 @@ async def test_lesson_plan_with_classroom_context(mock_router):
             "total_students": 45,
             "classroom_health": 72.5,
             "readiness_distribution": {"low": 8, "medium": 22, "high": 15},
-            "risk_students": [{"student_id": "abc", "readiness_score": 35, "risk_level": "high", "risk_factors": ["low_mastery"]}],
+            "risk_students": [
+                {
+                    "student_id": "abc",
+                    "readiness_score": 35,
+                    "risk_level": "high",
+                    "risk_factors": ["low_mastery"],
+                }
+            ],
         },
         "misconceptions": {
             "by_topic": [
-                {"topic": "Ecology", "top_pattern": "Producers don\'t need energy", "affected_students": 10},
+                {
+                    "topic": "Ecology",
+                    "top_pattern": "Producers don't need energy",
+                    "affected_students": 10,
+                },
             ],
         },
         "prerequisite_gaps": [
@@ -274,7 +310,8 @@ async def test_lesson_plan_with_classroom_context(mock_router):
     }
 
     result = await agent.generate(
-        grade_level=10, topic="Ecology",
+        grade_level=10,
+        topic="Ecology",
         classroom_context=classroom_context,
     )
     assert result["objective"] == "Learn ecology"
@@ -299,9 +336,24 @@ def test_derive_activities_from_periods():
     from src.agents.lesson_planner import _derive_activities_from_periods
 
     periods = [
-        {"name": "Opening", "duration_minutes": 5, "description": "Warm-up", "activity_type": "teacher_led"},
-        {"name": "Direct Instruction", "duration_minutes": 15, "description": "Lecture", "activity_type": "teacher_led"},
-        {"name": "Guided Practice", "duration_minutes": 10, "description": "Group work", "activity_type": "group"},
+        {
+            "name": "Opening",
+            "duration_minutes": 5,
+            "description": "Warm-up",
+            "activity_type": "teacher_led",
+        },
+        {
+            "name": "Direct Instruction",
+            "duration_minutes": 15,
+            "description": "Lecture",
+            "activity_type": "teacher_led",
+        },
+        {
+            "name": "Guided Practice",
+            "duration_minutes": 10,
+            "description": "Group work",
+            "activity_type": "group",
+        },
     ]
 
     activities = _derive_activities_from_periods(periods)
@@ -379,7 +431,7 @@ async def test_safety_review(mock_router):
     }
 
     result = await agent.review("Mitosis is the process of cell division.")
-    assert result["safe"] == True
+    assert result["safe"]
     assert result["score"] > 0.9
 
 
@@ -543,6 +595,7 @@ async def test_tutor_agent_misconception_fields_socratic(mock_router, mock_retri
 @pytest.mark.asyncio
 async def test_tutor_agent_normal_prompt_has_misconception_directive():
     from src.agents.tutor_agent import TUTOR_SYSTEM_PROMPT
+
     assert "conceptual error" in TUTOR_SYSTEM_PROMPT
     assert "gently point it out" in TUTOR_SYSTEM_PROMPT
     assert "never condescending" in TUTOR_SYSTEM_PROMPT
@@ -551,6 +604,7 @@ async def test_tutor_agent_normal_prompt_has_misconception_directive():
 @pytest.mark.asyncio
 async def test_tutor_agent_socratic_prompt_has_misconception_directive():
     from src.agents.tutor_agent import SOCRATIC_SYSTEM_PROMPT
+
     assert "conceptual error" in SOCRATIC_SYSTEM_PROMPT
     assert "gently correct" in SOCRATIC_SYSTEM_PROMPT
     assert "never condescending" in SOCRATIC_SYSTEM_PROMPT
@@ -558,6 +612,7 @@ async def test_tutor_agent_socratic_prompt_has_misconception_directive():
 
 def test_graph_node_prompt_has_misconception_directive():
     from src.graph.nodes.tutor import SOCRATIC_SYSTEM_PROMPT, SYSTEM_PROMPT
+
     assert "conceptual error" in SYSTEM_PROMPT
     assert "conceptual error" in SOCRATIC_SYSTEM_PROMPT
     assert "gently" in SYSTEM_PROMPT
@@ -566,6 +621,7 @@ def test_graph_node_prompt_has_misconception_directive():
 
 def test_schema_misconception_fields():
     from src.schemas.chat import TutorRequest, TutorResponse
+
     req = TutorRequest(user_id=uuid4(), question="test")
     assert hasattr(req, "misconception_detected")
     assert hasattr(req, "misconception_correction")
@@ -581,6 +637,7 @@ def test_schema_misconception_fields():
 @pytest.mark.asyncio
 async def test_detect_misconception_detects_correction():
     from src.agents.tutor_agent import detect_misconception
+
     response = (
         "That's not quite right. Mitochondria are not involved in photosynthesis."
         " They are the powerhouse of the cell."
@@ -593,10 +650,8 @@ async def test_detect_misconception_detects_correction():
 @pytest.mark.asyncio
 async def test_detect_misconception_no_false_positive():
     from src.agents.tutor_agent import detect_misconception
-    response = (
-        "Great question! Photosynthesis occurs in the chloroplasts"
-        " of plant cells."
-    )
+
+    response = "Great question! Photosynthesis occurs in the chloroplasts of plant cells."
     detected, _ = detect_misconception(response)
     assert detected is False
 
@@ -604,6 +659,7 @@ async def test_detect_misconception_no_false_positive():
 @pytest.mark.asyncio
 async def test_detect_misconception_common_misconception():
     from src.agents.tutor_agent import detect_misconception
+
     response = (
         "That's a common misconception. Evolution is not about individuals adapting,"
         " but about populations changing over generations through natural selection."
@@ -616,6 +672,7 @@ async def test_detect_misconception_common_misconception():
 @pytest.mark.asyncio
 async def test_detect_misconception_youre_confusing():
     from src.agents.tutor_agent import detect_misconception
+
     response = (
         "I think you're confusing mitosis with meiosis."
         " Mitosis produces identical daughter cells, while meiosis produces gametes."
@@ -674,12 +731,17 @@ async def test_tutor_agent_misconception_not_detected_for_normal(mock_router, mo
 
 def test_state_misconception_fields():
     from src.graph.state import AgentState, GraphOutput
+
     state = AgentState()
     assert state.misconception_detected is False
     assert state.misconception_correction == ""
     output = GraphOutput(
-        answer="test", model_used="test", confidence=0.9,
-        sources=[], status="ok", requires_teacher_review=False,
+        answer="test",
+        model_used="test",
+        confidence=0.9,
+        sources=[],
+        status="ok",
+        requires_teacher_review=False,
     )
     assert output.misconception_detected is False
     assert output.misconception_correction == ""
@@ -687,6 +749,7 @@ def test_state_misconception_fields():
 
 def test_diagram_validate_labels_all_correct():
     from src.agents.diagram import validate_labels
+
     correct = [
         {"id": "l1", "text": "Mitochondrion", "x": 100, "y": 100},
         {"id": "l2", "text": "Nucleus", "x": 200, "y": 200},
@@ -704,6 +767,7 @@ def test_diagram_validate_labels_all_correct():
 
 def test_diagram_validate_labels_some_incorrect():
     from src.agents.diagram import validate_labels
+
     correct = [
         {"id": "l1", "text": "Mitochondrion", "x": 100, "y": 100},
         {"id": "l2", "text": "Nucleus", "x": 200, "y": 200},
@@ -722,6 +786,7 @@ def test_diagram_validate_labels_some_incorrect():
 
 def test_diagram_validate_labels_case_insensitive():
     from src.agents.diagram import validate_labels
+
     correct = [
         {"id": "l1", "text": "Mitochondrion", "x": 100, "y": 100},
     ]
@@ -734,6 +799,7 @@ def test_diagram_validate_labels_case_insensitive():
 
 def test_diagram_validate_labels_unknown_id():
     from src.agents.diagram import validate_labels
+
     correct = [
         {"id": "l1", "text": "Mitochondrion", "x": 100, "y": 100},
     ]
@@ -749,6 +815,7 @@ def test_diagram_validate_labels_unknown_id():
 
 def test_diagram_validate_labels_whitespace_handling():
     from src.agents.diagram import validate_labels
+
     correct = [
         {"id": "l1", "text": "Cell Membrane", "x": 100, "y": 100},
     ]
@@ -761,6 +828,7 @@ def test_diagram_validate_labels_whitespace_handling():
 
 def test_diagram_validate_labels_empty_submitted():
     from src.agents.diagram import validate_labels
+
     correct = [
         {"id": "l1", "text": "Mitochondrion", "x": 100, "y": 100},
     ]
@@ -773,10 +841,12 @@ async def test_diagram_generate_prompt_difficulty():
     from src.agents.diagram import DiagramAgent
 
     router = AsyncMock()
-    router.route = AsyncMock(return_value={
-        "content": '{"title": "Test", "diagram_svg": "<svg></svg>", "labels": []}',
-        "model": "test",
-    })
+    router.route = AsyncMock(
+        return_value={
+            "content": '{"title": "Test", "diagram_svg": "<svg></svg>", "labels": []}',
+            "model": "test",
+        }
+    )
 
     agent = DiagramAgent(llm_router=router)
 
@@ -876,10 +946,12 @@ async def test_diagram_generate_with_preferred_model():
     from src.agents.diagram import DiagramAgent
 
     router = AsyncMock()
-    router.route = AsyncMock(return_value={
-        "content": '{"title": "Test", "diagram_svg": "<svg></svg>", "labels": []}',
-        "model": "openrouter/openai/gpt-4o",
-    })
+    router.route = AsyncMock(
+        return_value={
+            "content": '{"title": "Test", "diagram_svg": "<svg></svg>", "labels": []}',
+            "model": "openrouter/openai/gpt-4o",
+        }
+    )
 
     agent = DiagramAgent(llm_router=router)
     result = await agent.generate(
@@ -898,10 +970,12 @@ async def test_diagram_generate_default_model_when_none():
     from src.agents.diagram import DiagramAgent
 
     router = AsyncMock()
-    router.route = AsyncMock(return_value={
-        "content": '{"title": "Test", "diagram_svg": "<svg></svg>", "labels": []}',
-        "model": "ollama/tinyllama",
-    })
+    router.route = AsyncMock(
+        return_value={
+            "content": '{"title": "Test", "diagram_svg": "<svg></svg>", "labels": []}',
+            "model": "ollama/tinyllama",
+        }
+    )
 
     agent = DiagramAgent(llm_router=router)
     result = await agent.generate(
@@ -926,9 +1000,17 @@ async def test_quiz_generation_with_weak_topics(mock_router):
     }
 
     weak_topics = [
-        {"topic": "Cell Biology", "unit": "Unit 1", "grade_level": 10,
-         "average_score": 35.0, "attempt_count": 2, "severity": "critical",
-         "confidence": 0.67, "misconceptions": [], "last_assessed_at": None},
+        {
+            "topic": "Cell Biology",
+            "unit": "Unit 1",
+            "grade_level": 10,
+            "average_score": 35.0,
+            "attempt_count": 2,
+            "severity": "critical",
+            "confidence": 0.67,
+            "misconceptions": [],
+            "last_assessed_at": None,
+        },
     ]
 
     result = await agent.generate(
@@ -960,19 +1042,43 @@ async def test_quiz_generation_weak_topics_difficulty_adaptation(mock_router):
     }
 
     weak_critical = [
-        {"topic": "Cell Biology", "unit": "Unit 1", "grade_level": 10,
-         "average_score": 30.0, "attempt_count": 1, "severity": "critical",
-         "confidence": 0.33, "misconceptions": [], "last_assessed_at": None},
+        {
+            "topic": "Cell Biology",
+            "unit": "Unit 1",
+            "grade_level": 10,
+            "average_score": 30.0,
+            "attempt_count": 1,
+            "severity": "critical",
+            "confidence": 0.33,
+            "misconceptions": [],
+            "last_assessed_at": None,
+        },
     ]
     weak_moderate = [
-        {"topic": "Cell Biology", "unit": "Unit 1", "grade_level": 10,
-         "average_score": 55.0, "attempt_count": 2, "severity": "moderate",
-         "confidence": 0.67, "misconceptions": [], "last_assessed_at": None},
+        {
+            "topic": "Cell Biology",
+            "unit": "Unit 1",
+            "grade_level": 10,
+            "average_score": 55.0,
+            "attempt_count": 2,
+            "severity": "moderate",
+            "confidence": 0.67,
+            "misconceptions": [],
+            "last_assessed_at": None,
+        },
     ]
     weak_mild = [
-        {"topic": "Cell Biology", "unit": "Unit 1", "grade_level": 10,
-         "average_score": 70.0, "attempt_count": 3, "severity": "mild",
-         "confidence": 1.0, "misconceptions": [], "last_assessed_at": None},
+        {
+            "topic": "Cell Biology",
+            "unit": "Unit 1",
+            "grade_level": 10,
+            "average_score": 70.0,
+            "attempt_count": 3,
+            "severity": "mild",
+            "confidence": 1.0,
+            "misconceptions": [],
+            "last_assessed_at": None,
+        },
     ]
 
     await agent.generate(grade_level=10, topic="Cell Biology", weak_topics=weak_critical)
@@ -1026,10 +1132,12 @@ async def test_unit_plan_generation(mock_router):
     )
 
     agent = UnitPlannerAgent(llm_router=mock_router)
-    agent._call_llm = AsyncMock(return_value={
-        "content": outline_json,
-        "model": "ollama/test",
-    })
+    agent._call_llm = AsyncMock(
+        return_value={
+            "content": outline_json,
+            "model": "ollama/test",
+        }
+    )
 
     mock_router.route.return_value = {
         "content": lesson_json,
@@ -1065,10 +1173,12 @@ async def test_unit_plan_outline_fallback(mock_router):
     )
 
     agent = UnitPlannerAgent(llm_router=mock_router)
-    agent._call_llm = AsyncMock(return_value={
-        "content": "invalid json here",
-        "model": "ollama/test",
-    })
+    agent._call_llm = AsyncMock(
+        return_value={
+            "content": "invalid json here",
+            "model": "ollama/test",
+        }
+    )
 
     mock_router.route.return_value = {
         "content": lesson_json,

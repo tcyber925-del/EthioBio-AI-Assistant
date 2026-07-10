@@ -325,7 +325,8 @@ class TestLearnerProfileBuilder:
             mastery_by_topic={"Genetics": {"severity": "moderate", "average_score": 0.55}},
         )
         result_with = builder.build_profile(
-            snapshot, current_topic="Genetics",
+            snapshot,
+            current_topic="Genetics",
             readiness_context={
                 "risk_topics": [],
                 "overall_readiness": 80.0,

@@ -36,13 +36,12 @@ def _readiness_profile(
     return ExamReadinessProfile(
         user_id=uuid4(),
         generated_at=datetime.now(timezone.utc),
-        overall_readiness=(
-            sum(topic_scores.values()) / len(topic_scores) if topic_scores else 0.0
-        ),
+        overall_readiness=(sum(topic_scores.values()) / len(topic_scores) if topic_scores else 0.0),
         readiness_band="Developing",
         topic_readiness=[
             TopicReadiness(
-                topic=t, readiness_score=s,
+                topic=t,
+                readiness_score=s,
                 risk_level="HIGH" if t in risk_topics else "LOW",
                 risk_factors=[],
                 review_status="current",

@@ -27,8 +27,7 @@ class InterventionPlanner:
             misconceptions_by_topic[mc.topic] = True
 
         readiness_by_topic = {
-            tr.topic: tr.readiness_score
-            for tr in readiness_profile.topic_readiness
+            tr.topic: tr.readiness_score for tr in readiness_profile.topic_readiness
         }
 
         all_topics = set(readiness_by_topic.keys())

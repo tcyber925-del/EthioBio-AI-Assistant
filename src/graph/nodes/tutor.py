@@ -36,7 +36,7 @@ def _detect_misconception(response_text: str) -> tuple[bool, str]:
     response_lower = response_text.lower()
     for indicator in MISCONCEPTION_INDICATORS:
         if indicator in response_lower:
-            sentences = re.split(r'(?<=[.!?])\s+', response_text)
+            sentences = re.split(r"(?<=[.!?])\s+", response_text)
             for i, sentence in enumerate(sentences):
                 if indicator in sentence.lower():
                     correction = sentence.strip()
@@ -46,6 +46,7 @@ def _detect_misconception(response_text: str) -> tuple[bool, str]:
                         correction = correction[:297] + "..."
                     return True, correction
     return False, ""
+
 
 SYSTEM_PROMPT = """You are EthioBio Tutor, an AI biology tutor for Ethiopian middle and high school students (Grades 7-12).
 The curriculum is in English. Follow language instructions provided in the user message.
@@ -195,11 +196,13 @@ class TutorNode:
             system += "Your previous response contained claims that could not be verified against the provided evidence. "
             system += "Please revise the response to fix the following ungrounded claims:\n"
             for i, claim in enumerate(state.ungrounded_claims, 1):
-                system += f"\n{i}. \"{claim}\""
+                system += f'\n{i}. "{claim}"'
             system += "\n\nEnsure EVERY claim in your response is directly supported by the provided evidence. "
             system += "Remove or rephrase any claim you cannot support with a verbatim quote from the curriculum context."
 
-        user_message = f"[Grade{grade_context}] {lang_context}\n\nStudent question: {state.user_message}"
+        user_message = (
+            f"[Grade{grade_context}] {lang_context}\n\nStudent question: {state.user_message}"
+        )
 
         history = truncate_messages(state.messages, budget=3000)
         messages = [
@@ -208,7 +211,9 @@ class TutorNode:
             {"role": "user", "content": user_message},
         ]
 
-        result = await self.router.route(messages, request_type="tutor", temperature=0.7, max_tokens=2048)
+        result = await self.router.route(
+            messages, request_type="tutor", temperature=0.7, max_tokens=2048
+        )
 
         content = result["content"]
         state.draft = content
@@ -249,6 +254,10 @@ class TutorNode:
         state.teaching_strategy = response.teaching_strategy.value
         state.citation_map = [e.model_dump() for e in response.citation_map]
         state.recommendations = response.recommendations
-        state.misconception_correction = ", ".join(response.misconceptions_addressed) if response.misconceptions_addressed else state.misconception_correction
+        state.misconception_correction = (
+            ", ".join(response.misconceptions_addressed)
+            if response.misconceptions_addressed
+            else state.misconception_correction
+        )
 
         return state

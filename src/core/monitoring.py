@@ -148,7 +148,10 @@ class PipelineMonitor:
         self._on_complete = callback
 
     async def finalize_trace(
-        self, trace_id: str, status: str, metadata: Optional[dict] = None,
+        self,
+        trace_id: str,
+        status: str,
+        metadata: Optional[dict] = None,
     ) -> None:
         """Finalize a trace, update metadata, log it, and fire on_complete."""
         trace = self.traces.get(trace_id)
@@ -190,10 +193,7 @@ class PipelineMonitor:
         Returns aggregated metrics for the last METRICS_WINDOW_SECONDS.
         """
         cutoff = time.time() - self._metrics_interval
-        recent = [
-            t for t in self.traces.values()
-            if t.start_time >= cutoff
-        ]
+        recent = [t for t in self.traces.values() if t.start_time >= cutoff]
 
         if not recent:
             return PipelineMetrics()
@@ -206,14 +206,10 @@ class PipelineMonitor:
 
         # Metric 1: Pipeline health
         completion_rate = len(completed) / max(total, 1)
-        avg_duration = (
-            sum(t.duration_ms for t in completed) / max(len(completed), 1)
-        )
+        avg_duration = sum(t.duration_ms for t in completed) / max(len(completed), 1)
 
         # Metric 2: Iterations
-        iterations_total = sum(
-            t.metadata.get("retrieval_iterations", 0) for t in completed
-        )
+        iterations_total = sum(t.metadata.get("retrieval_iterations", 0) for t in completed)
         avg_iterations = iterations_total / max(len(completed), 1)
 
         # Metric 3: Coverage scores
@@ -223,19 +219,17 @@ class PipelineMonitor:
             if "coverage_score" in t.metadata
         ]
         avg_coverage = (
-            sum(coverage_scores) / max(len(coverage_scores), 1)
-            if coverage_scores else 0.0
+            sum(coverage_scores) / max(len(coverage_scores), 1) if coverage_scores else 0.0
         )
 
         # Metric 4: Claim groundedness
         groundedness_scores = [
-            t.metadata.get("groundedness", 0.0)
-            for t in completed
-            if "groundedness" in t.metadata
+            t.metadata.get("groundedness", 0.0) for t in completed if "groundedness" in t.metadata
         ]
         avg_groundedness = (
             sum(groundedness_scores) / max(len(groundedness_scores), 1)
-            if groundedness_scores else 0.0
+            if groundedness_scores
+            else 0.0
         )
 
         hallucination_rates = [
@@ -245,24 +239,18 @@ class PipelineMonitor:
         ]
         avg_hallucination_rate = (
             sum(hallucination_rates) / max(len(hallucination_rates), 1)
-            if hallucination_rates else 0.0
+            if hallucination_rates
+            else 0.0
         )
 
-        revisions = sum(
-            1 for t in completed
-            if t.metadata.get("verdict") == "revise"
-        )
-        rejections = sum(
-            1 for t in completed
-            if t.metadata.get("verdict") == "reject"
-        )
+        revisions = sum(1 for t in completed if t.metadata.get("verdict") == "revise")
+        rejections = sum(1 for t in completed if t.metadata.get("verdict") == "reject")
         revision_rate = revisions / max(len(completed), 1)
         rejection_rate = rejections / max(len(completed), 1)
 
         # Metric 5: Teacher review
         teacher_reviews = sum(
-            1 for t in completed
-            if t.metadata.get("requires_teacher_review", False)
+            1 for t in completed if t.metadata.get("requires_teacher_review", False)
         )
         teacher_review_rate = teacher_reviews / max(len(completed), 1)
 
@@ -273,10 +261,7 @@ class PipelineMonitor:
                 if not node.endswith("_start"):
                     node_durations.setdefault(node, []).append(duration)
 
-        avg_node_duration = {
-            node: sum(durs) / len(durs)
-            for node, durs in node_durations.items()
-        }
+        avg_node_duration = {node: sum(durs) / len(durs) for node, durs in node_durations.items()}
 
         return PipelineMetrics(
             total_traces=total,
@@ -296,7 +281,8 @@ class PipelineMonitor:
             teacher_review_rate=round(teacher_review_rate, 3),
             total_teacher_reviews=teacher_reviews,
             avg_node_duration_ms={
-                k: round(v, 1) for k, v in sorted(
+                k: round(v, 1)
+                for k, v in sorted(
                     avg_node_duration.items(),
                     key=lambda x: x[1],
                     reverse=True,
@@ -307,11 +293,7 @@ class PipelineMonitor:
     def cleanup_old_traces(self, max_age_seconds: int = 3600) -> int:
         """Remove traces older than max_age_seconds."""
         cutoff = time.time() - max_age_seconds
-        to_remove = [
-            tid
-            for tid, t in self.traces.items()
-            if t.start_time < cutoff
-        ]
+        to_remove = [tid for tid, t in self.traces.items() if t.start_time < cutoff]
         for tid in to_remove:
             del self.traces[tid]
         return len(to_remove)

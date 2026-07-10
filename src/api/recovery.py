@@ -153,7 +153,9 @@ async def complete_recovery_task(
             plan.status = "completed"
 
         gam, _, level_up = await award_xp(
-            user_id, "recovery_task_completion", xp_amount,
+            user_id,
+            "recovery_task_completion",
+            xp_amount,
             {"task_id": str(task_id), "plan_id": str(plan.id), "topic": plan.topic},
             session,
         )
@@ -163,7 +165,9 @@ async def complete_recovery_task(
         if completed in RECOVERY_MILESTONE_THRESHOLDS:
             milestone_bonus = RECOVERY_MILESTONE_THRESHOLDS[completed]
             gam, _, _ = await award_xp(
-                user_id, "recovery_milestone", milestone_bonus,
+                user_id,
+                "recovery_milestone",
+                milestone_bonus,
                 {"plan_id": str(plan.id), "completed_tasks": completed, "topic": plan.topic},
                 session,
             )
@@ -181,9 +185,14 @@ async def complete_recovery_task(
         old_score = old_mastery.average_score if old_mastery else None
 
         await record_mastery_history(
-            user_id=user_id, topic=plan.topic, unit=None,
-            grade_level=0, session=session, source="task_completion",
-            source_id=task.id, old_score=old_score,
+            user_id=user_id,
+            topic=plan.topic,
+            unit=None,
+            grade_level=0,
+            session=session,
+            source="task_completion",
+            source_id=task.id,
+            old_score=old_score,
         )
 
         # Milestone email notification
@@ -194,9 +203,7 @@ async def complete_recovery_task(
             prefs = prefs_result.scalar_one_or_none()
 
             if prefs and prefs.milestone_alerts and prefs.email_verified:
-                improvement = round(
-                    plan.completed_tasks / max(plan.total_tasks, 1) * 100, 1
-                )
+                improvement = round(plan.completed_tasks / max(plan.total_tasks, 1) * 100, 1)
                 if improvement >= MILESTONE_EMAIL_THRESHOLD:
                     lang = "en"
                     user_result = await session.execute(
@@ -362,47 +369,55 @@ async def get_recovery_dashboard(user_id, session: AsyncSession = Depends(get_se
         recommendations: list[RecommendationInfo] = []
         for wt in weak_topics:
             if wt["severity"] == "critical":
-                recommendations.append(RecommendationInfo(
-                    type="generate_plan",
-                    message=(
-                        f"Generate a recovery plan for {wt['topic']}"
-                        f" (severity: critical, {wt['average_score']:.0f}% average)"
-                    ),
-                    priority="high",
-                ))
+                recommendations.append(
+                    RecommendationInfo(
+                        type="generate_plan",
+                        message=(
+                            f"Generate a recovery plan for {wt['topic']}"
+                            f" (severity: critical, {wt['average_score']:.0f}% average)"
+                        ),
+                        priority="high",
+                    )
+                )
             elif wt["severity"] == "moderate" and wt["confidence"] >= 0.5:
-                recommendations.append(RecommendationInfo(
-                    type="practice_quiz",
-                    message=(
-                        f"Practice {wt['topic']} with targeted quizzes"
-                        f" ({wt['average_score']:.0f}% average)"
-                    ),
-                    priority="medium",
-                ))
+                recommendations.append(
+                    RecommendationInfo(
+                        type="practice_quiz",
+                        message=(
+                            f"Practice {wt['topic']} with targeted quizzes"
+                            f" ({wt['average_score']:.0f}% average)"
+                        ),
+                        priority="medium",
+                    )
+                )
             if wt.get("misconceptions"):
                 for mc in wt["misconceptions"]:
                     suffix = "s" if mc["frequency"] > 1 else ""
-                    recommendations.append(RecommendationInfo(
-                        type="review_misconception",
-                        message=(
-                            f"Review '{mc['pattern_type']}' misconception"
-                            f" in {wt['topic']} ({mc['frequency']} occurrence{suffix})"
-                        ),
-                        priority="medium",
-                    ))
+                    recommendations.append(
+                        RecommendationInfo(
+                            type="review_misconception",
+                            message=(
+                                f"Review '{mc['pattern_type']}' misconception"
+                                f" in {wt['topic']} ({mc['frequency']} occurrence{suffix})"
+                            ),
+                            priority="medium",
+                        )
+                    )
 
         if recommendations:
             for plan_resp in plan_responses:
                 if plan_resp.status == "active":
-                    recommendations.append(RecommendationInfo(
-                        type="continue_plan",
-                        message=(
-                            f"Continue {plan_resp.topic} recovery plan"
-                            f" ({plan_resp.completed_tasks}/{plan_resp.total_tasks}"
-                            f" tasks completed)"
-                        ),
-                        priority="medium",
-                    ))
+                    recommendations.append(
+                        RecommendationInfo(
+                            type="continue_plan",
+                            message=(
+                                f"Continue {plan_resp.topic} recovery plan"
+                                f" ({plan_resp.completed_tasks}/{plan_resp.total_tasks}"
+                                f" tasks completed)"
+                            ),
+                            priority="medium",
+                        )
+                    )
 
         recommendations.sort(key=lambda r: {"high": 0, "medium": 1, "low": 2}[r.priority])
 
@@ -479,7 +494,8 @@ async def get_due_reviews_endpoint(user_id, session: AsyncSession = Depends(get_
 
 @router.post("/schedule/generate/{user_id}", response_model=SpacedRepetitionGenerateResponse)
 async def generate_spaced_repetition_schedule(
-    user_id, session: AsyncSession = Depends(get_session),
+    user_id,
+    session: AsyncSession = Depends(get_session),
 ):
     try:
         items = await generate_schedule(user_id, session)
@@ -494,8 +510,9 @@ async def generate_spaced_repetition_schedule(
 
 
 @router.post("/schedule/review", response_model=SpacedRepetitionReviewResponse)
-async def spaced_repetition_review(request: SpacedRepetitionReviewRequest,
-                                   session: AsyncSession = Depends(get_session)):
+async def spaced_repetition_review(
+    request: SpacedRepetitionReviewRequest, session: AsyncSession = Depends(get_session)
+):
     try:
         result = await update_review(request.user_id, request.topic, request.new_score, session)
         if not result:
@@ -527,8 +544,7 @@ async def get_recovery_notifications(
         notifications = result.scalars().all()
 
         unread_result = await session.execute(
-            select(RecoveryNotification)
-            .where(
+            select(RecoveryNotification).where(
                 RecoveryNotification.user_id == user_id,
                 RecoveryNotification.is_read == False,  # noqa: E712
             )
@@ -589,8 +605,7 @@ async def mark_all_notifications_read(
 ):
     try:
         result = await session.execute(
-            select(RecoveryNotification)
-            .where(
+            select(RecoveryNotification).where(
                 RecoveryNotification.user_id == user_id,
                 RecoveryNotification.is_read == False,  # noqa: E712
             )

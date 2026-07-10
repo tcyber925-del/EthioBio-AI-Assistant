@@ -16,6 +16,7 @@ from src.api import (
     agent_orchestrator,
     assignment,
     auth,
+    bookmark,
     chat,
     collection,
     diagnostic,
@@ -53,6 +54,7 @@ from src.core.memory.router import router as memory_router
 from src.core.monitoring import pipeline_monitor
 from src.core.tracing import TraceRepository
 from src.database.session import async_session_factory, close_db, init_db
+from src.guardrails.input.middleware import add_rate_limit_middleware
 from src.llm.router import ModelRouter
 from src.schemas.common import HealthResponse
 
@@ -140,10 +142,17 @@ async def lifespan(app: FastAPI):
 
     if _health_registry:
         guardrail_modules = [
-            "rate_limiter", "input_sanitizer", "prompt_injection",
-            "conversation_context", "toxicity", "topic_enforcer",
-            "pii_scanner", "tool_guard", "safety_node",
-            "claim_verifier", "hallucination_detector",
+            "rate_limiter",
+            "input_sanitizer",
+            "prompt_injection",
+            "conversation_context",
+            "toxicity",
+            "topic_enforcer",
+            "pii_scanner",
+            "tool_guard",
+            "safety_node",
+            "claim_verifier",
+            "hallucination_detector",
         ]
         for name in guardrail_modules:
             _health_registry.register(name)
@@ -154,9 +163,7 @@ async def lifespan(app: FastAPI):
         await _save_trace_from_pipeline(trace, repo)
         asyncio.create_task(_evaluate_trace(trace))
 
-    pipeline_monitor.set_on_complete(
-        lambda trace: asyncio.create_task(_on_trace_complete(trace))
-    )
+    pipeline_monitor.set_on_complete(lambda trace: asyncio.create_task(_on_trace_complete(trace)))
 
     _pipeline_consumer_task = None
     try:
@@ -206,7 +213,6 @@ app = FastAPI(
 )
 
 _redis = Redis.from_url(settings.redis_url)
-from src.guardrails.input.middleware import add_rate_limit_middleware
 add_rate_limit_middleware(app, _redis)
 
 _dev_origins = [
@@ -253,6 +259,7 @@ app.include_router(retrieval_router)
 app.include_router(workspace.router)
 app.include_router(collection.router)
 app.include_router(assignment.router)
+app.include_router(bookmark.router)
 app.include_router(agent_orchestrator.router)
 app.include_router(auth.router)
 

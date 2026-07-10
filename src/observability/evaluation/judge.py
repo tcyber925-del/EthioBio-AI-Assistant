@@ -17,9 +17,7 @@ class LLMJudge:
         self, dimension: EvalDimension, question: str, response: str, context: str = ""
     ) -> dict:
         user_prompt = (
-            f"Question: {question}\n\n"
-            f"Response: {response}\n\n"
-            f"Context: {context}" if context else ""
+            f"Question: {question}\n\nResponse: {response}\n\nContext: {context}" if context else ""
         )
         messages = [
             {"role": "system", "content": dimension.system_prompt},

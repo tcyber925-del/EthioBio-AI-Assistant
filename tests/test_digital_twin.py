@@ -81,12 +81,12 @@ class TestTwinBuilder:
         mastery_q.scalars.return_value.all.return_value = [mastery]
 
         mock_session.execute.side_effect = [
-            empty,       # _build_knowledge
-            mastery_q,   # _build_mastery
-            empty,       # _build_misconceptions
-            empty,       # _build_retention
-            empty,       # _build_readiness
-            empty,       # _build_intervention
+            empty,  # _build_knowledge
+            mastery_q,  # _build_mastery
+            empty,  # _build_misconceptions
+            empty,  # _build_retention
+            empty,  # _build_readiness
+            empty,  # _build_intervention
         ]
 
         builder = TwinBuilder(mock_session)
@@ -111,12 +111,12 @@ class TestTwinBuilder:
         retention_q.scalars.return_value.all.return_value = [srs]
 
         mock_session.execute.side_effect = [
-            empty,        # _build_knowledge
-            empty,        # _build_mastery
-            empty,        # _build_misconceptions
+            empty,  # _build_knowledge
+            empty,  # _build_mastery
+            empty,  # _build_misconceptions
             retention_q,  # _build_retention
-            empty,        # _build_readiness
-            empty,        # _build_intervention
+            empty,  # _build_readiness
+            empty,  # _build_intervention
         ]
 
         builder = TwinBuilder(mock_session)
@@ -145,7 +145,7 @@ class TestTwinBuilder:
         mock_session.execute.side_effect = [
             empty,  # _build_knowledge
             empty,  # _build_mastery
-            mc_q,   # _build_misconceptions
+            mc_q,  # _build_misconceptions
             empty,  # _build_retention
             empty,  # _build_readiness
             empty,  # _build_intervention
@@ -175,7 +175,7 @@ class TestTwinBuilder:
             empty,  # _build_misconceptions
             empty,  # _build_retention
             empty,  # _build_readiness
-            ev_q,   # _build_intervention
+            ev_q,  # _build_intervention
         ]
 
         builder = TwinBuilder(mock_session)

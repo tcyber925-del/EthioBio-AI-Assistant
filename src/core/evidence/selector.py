@@ -114,9 +114,7 @@ def score_evidence(
     return min(1.0, max(0.0, total))
 
 
-def greedy_select(
-    scored: list[ScoredEvidence], max_records: int
-) -> list[ScoredEvidence]:
+def greedy_select(scored: list[ScoredEvidence], max_records: int) -> list[ScoredEvidence]:
     """Greedy selection with diversity constraint.
 
     Picks highest-scored item first, then penalizes subsequent items
@@ -201,16 +199,18 @@ class EvidenceSelector:
             for eid in evidence_ids:
                 evidence = await self.graph.get(eid)
                 if evidence:
-                    evidence_items.append({
-                        "id": str(evidence.id),
-                        "content": evidence.content,
-                        "source": evidence.source_type,
-                        "source_type": evidence.source_type,
-                        "source_name": evidence.source_name,
-                        "score": evidence.confidence,
-                        "retrieval_score": evidence.retrieval_score,
-                        "rerank_score": evidence.rerank_score,
-                    })
+                    evidence_items.append(
+                        {
+                            "id": str(evidence.id),
+                            "content": evidence.content,
+                            "source": evidence.source_type,
+                            "source_type": evidence.source_type,
+                            "source_name": evidence.source_name,
+                            "score": evidence.confidence,
+                            "retrieval_score": evidence.retrieval_score,
+                            "rerank_score": evidence.rerank_score,
+                        }
+                    )
         else:
             # Without a graph, use IDs as-is (passthrough mode)
             return evidence_ids[:MAX_EVIDENCE_RECORDS]
@@ -219,9 +219,7 @@ class EvidenceSelector:
             return [item["id"] for item in evidence_items]
 
         # Question words for coverage scoring
-        question_words = {
-            w.lower() for w in question.split() if len(w) > 3
-        } if question else set()
+        question_words = {w.lower() for w in question.split() if len(w) > 3} if question else set()
 
         # Score each evidence item
         scored: list[ScoredEvidence] = []
@@ -232,17 +230,19 @@ class EvidenceSelector:
                 question_words=question_words,
                 already_selected_sources=set(),
             )
-            scored.append(ScoredEvidence(
-                index=i,
-                evidence_id=item["id"],
-                content=item.get("content", ""),
-                source_type=item.get("source_type", "unknown"),
-                source_name=item.get("source_name", item.get("source", "unknown")),
-                retrieval_score=item.get("retrieval_score", 0.5),
-                rerank_score=item.get("rerank_score", 0.5),
-                confidence=item.get("confidence", item.get("score", 0.5)),
-                selection_score=score,
-            ))
+            scored.append(
+                ScoredEvidence(
+                    index=i,
+                    evidence_id=item["id"],
+                    content=item.get("content", ""),
+                    source_type=item.get("source_type", "unknown"),
+                    source_name=item.get("source_name", item.get("source", "unknown")),
+                    retrieval_score=item.get("retrieval_score", 0.5),
+                    rerank_score=item.get("rerank_score", 0.5),
+                    confidence=item.get("confidence", item.get("score", 0.5)),
+                    selection_score=score,
+                )
+            )
 
         # Heuristic: greedy selection with diversity
         selected = greedy_select(scored, MAX_EVIDENCE_RECORDS)
@@ -251,9 +251,7 @@ class EvidenceSelector:
         if self.router and len(selected) >= 2:
             top_two_diff = abs(selected[0].selection_score - selected[1].selection_score)
             if top_two_diff < 0.05:
-                llm_result = await self._rank_with_llm(
-                    selected[:5], question
-                )
+                llm_result = await self._rank_with_llm(selected[:5], question)
                 if llm_result:
                     return llm_result
 

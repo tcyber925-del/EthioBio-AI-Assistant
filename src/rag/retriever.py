@@ -42,12 +42,16 @@ class Retriever:
 
         retrieved = []
         for i in range(len(results["documents"])):
-            retrieved.append({
-                "content": results["documents"][i],
-                "metadata": results["metadatas"][i] if i < len(results["metadatas"]) else {},
-                "score": 1.0 - results["distances"][i] if i < len(results["distances"]) else 0.0,
-                "id": results["ids"][i] if i < len(results["ids"]) else "",
-            })
+            retrieved.append(
+                {
+                    "content": results["documents"][i],
+                    "metadata": results["metadatas"][i] if i < len(results["metadatas"]) else {},
+                    "score": 1.0 - results["distances"][i]
+                    if i < len(results["distances"])
+                    else 0.0,
+                    "id": results["ids"][i] if i < len(results["ids"]) else "",
+                }
+            )
 
         if not retrieved and topic:
             logger.warning(
@@ -64,12 +68,18 @@ class Retriever:
             )
             retrieved = []
             for i in range(len(results["documents"])):
-                retrieved.append({
-                    "content": results["documents"][i],
-                    "metadata": results["metadatas"][i] if i < len(results["metadatas"]) else {},
-                    "score": 1.0 - results["distances"][i] if i < len(results["distances"]) else 0.0,
-                    "id": results["ids"][i] if i < len(results["ids"]) else "",
-                })
+                retrieved.append(
+                    {
+                        "content": results["documents"][i],
+                        "metadata": results["metadatas"][i]
+                        if i < len(results["metadatas"])
+                        else {},
+                        "score": 1.0 - results["distances"][i]
+                        if i < len(results["distances"])
+                        else 0.0,
+                        "id": results["ids"][i] if i < len(results["ids"]) else "",
+                    }
+                )
 
         logger.info("retrieved_documents", count=len(retrieved), query_preview=query[:50])
         return retrieved
@@ -99,7 +109,7 @@ class Retriever:
             sections.append(f"{header}\n{doc['content']}")
 
         citation_instruction = (
-            "IMPORTANT: When answering, cite the source for each key point using this exact format:\n"
+            "IMPORTANT: When answering, cite the source for each key point using this exact format:\n"  # noqa: E501
             "(Grade X, Unit Y: Title, p. Z)\n"
             "Example: (Grade 10, Unit 3: Biochemical Molecules, p. 77)\n\n"
         )

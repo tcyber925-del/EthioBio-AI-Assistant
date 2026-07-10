@@ -79,8 +79,9 @@ async def test_generate_plan_success(agent, mock_router):
         }
     ]
 
-    with patch("src.agents.recovery_agent.get_weak_topics",
-                new=AsyncMock(return_value=weak_topics)):
+    with patch(
+        "src.agents.recovery_agent.get_weak_topics", new=AsyncMock(return_value=weak_topics)
+    ):
         with patch.object(session, "add"):
             session.flush = AsyncMock()
             session.commit = AsyncMock()
@@ -187,8 +188,9 @@ async def test_generate_plan_json_parse_error(agent, mock_router):
         }
     ]
 
-    with patch("src.agents.recovery_agent.get_weak_topics",
-                new=AsyncMock(return_value=weak_topics)):
+    with patch(
+        "src.agents.recovery_agent.get_weak_topics", new=AsyncMock(return_value=weak_topics)
+    ):
         result = await agent.generate_plan(user_id="test-user", session=session)
 
     assert result["plan"] is None
@@ -212,8 +214,9 @@ async def test_generate_plan_with_topic_filter_no_match(agent, mock_router):
         }
     ]
 
-    with patch("src.agents.recovery_agent.get_weak_topics",
-                new=AsyncMock(return_value=weak_topics)):
+    with patch(
+        "src.agents.recovery_agent.get_weak_topics", new=AsyncMock(return_value=weak_topics)
+    ):
         result = await agent.generate_plan(
             user_id="test-user", session=session, topic_filter="Genetics"
         )

@@ -24,8 +24,16 @@ class TestStudyPlanJourney:
         )
         state.requires_planning = True
         state.subtasks = [
-            {"id": "plan_1", "type": "curriculum", "objective": "Identify weak topics from learner profile"},  # noqa: E501
-            {"id": "plan_2", "type": "recommendation", "objective": "Generate study recommendations"},  # noqa: E501
+            {
+                "id": "plan_1",
+                "type": "curriculum",
+                "objective": "Identify weak topics from learner profile",
+            },  # noqa: E501
+            {
+                "id": "plan_2",
+                "type": "recommendation",
+                "objective": "Generate study recommendations",
+            },  # noqa: E501
             {"id": "plan_3", "type": "curriculum", "objective": "Retrieve content for weak topics"},  # noqa: E501
         ]
         state.learner_profile_block = (
@@ -33,10 +41,16 @@ class TestStudyPlanJourney:
             "- Grade Level: 10\n- Exam: upcoming"
         )
         state.retrieved_chunks = [
-            {"content": "Genetics: DNA structure, replication, and protein synthesis",
-             "score": 0.93, "source": "curriculum"},
-            {"content": "Cell Division: Mitosis stages and their significance",
-             "score": 0.91, "source": "curriculum"},
+            {
+                "content": "Genetics: DNA structure, replication, and protein synthesis",
+                "score": 0.93,
+                "source": "curriculum",
+            },
+            {
+                "content": "Cell Division: Mitosis stages and their significance",
+                "score": 0.91,
+                "source": "curriculum",
+            },
         ]
         state.draft = (
             "Here's your study plan:\n1. Start with DNA structure (2 days)\n"

@@ -1,6 +1,5 @@
 """Tests for the guardrail instrumentation decorator."""
 
-
 import pytest
 
 from src.observability.guardrail_instrumentation import (
@@ -125,6 +124,7 @@ class TestObserveGuardrailDecorator:
 
     def test_int_result_not_triggered(self):
         """Integer return should not be considered triggered."""
+
         @observe_guardrail(module="m", guardrail_type="output")
         def returns_int():
             return 42
@@ -133,6 +133,7 @@ class TestObserveGuardrailDecorator:
 
     def test_sanitize_type_return_not_triggered(self):
         """String return from sanitize should not be considered triggered."""
+
         @observe_guardrail(module="input_sanitizer", guardrail_type="input")
         def sanitize(text: str) -> str:
             return text.strip()

@@ -68,9 +68,7 @@ class CloudflareImageGenerator:
             payload["steps"] = steps
         response = await self.client.post(url, headers=self._headers(), json=payload)
         if response.status_code != 200:
-            raise RuntimeError(
-                f"Cloudflare API error {response.status_code}: {response.text}"
-            )
+            raise RuntimeError(f"Cloudflare API error {response.status_code}: {response.text}")
         return self._extract_image(response)
 
     async def image_to_image(
@@ -89,7 +87,5 @@ class CloudflareImageGenerator:
         payload = {"prompt": prompt, "image_b64": base64.b64encode(raw_bytes).decode("utf-8")}
         response = await self.client.post(url, headers=self._headers(), json=payload)
         if response.status_code != 200:
-            raise RuntimeError(
-                f"Cloudflare API error {response.status_code}: {response.text}"
-            )
+            raise RuntimeError(f"Cloudflare API error {response.status_code}: {response.text}")
         return self._extract_image(response)

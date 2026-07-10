@@ -95,9 +95,7 @@ async def create_classroom(
     await session.flush()
 
     if body.student_ids:
-        await _enroll_students(
-            session, class_group.id, body.student_ids
-        )
+        await _enroll_students(session, class_group.id, body.student_ids)
 
     await session.commit()
     return {
@@ -136,9 +134,7 @@ async def get_classroom_roster(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    class_group = await _verify_teacher_owns_classroom(
-        session, classroom_id, current_user.id
-    )
+    class_group = await _verify_teacher_owns_classroom(session, classroom_id, current_user.id)
     if not class_group.students:
         return ClassroomRoster(
             id=class_group.id,
@@ -185,14 +181,10 @@ async def enroll_students(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    await _verify_teacher_owns_classroom(
-        session, classroom_id, current_user.id
-    )
+    await _verify_teacher_owns_classroom(session, classroom_id, current_user.id)
 
     if not body.student_ids:
-        raise HTTPException(
-            status_code=400, detail="student_ids list is empty"
-        )
+        raise HTTPException(status_code=400, detail="student_ids list is empty")
 
     for sid in body.student_ids:
         existing = await session.execute(
@@ -220,12 +212,8 @@ async def get_classroom_overview(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    await _verify_teacher_owns_classroom(
-        session, classroom_id, current_user.id
-    )
-    profile = await teacher_service.get_classroom_overview(
-        session, classroom_id
-    )
+    await _verify_teacher_owns_classroom(session, classroom_id, current_user.id)
+    profile = await teacher_service.get_classroom_overview(session, classroom_id)
     return profile
 
 
@@ -235,12 +223,8 @@ async def get_risk_students(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    await _verify_teacher_owns_classroom(
-        session, classroom_id, current_user.id
-    )
-    profile = await teacher_service.get_classroom_overview(
-        session, classroom_id
-    )
+    await _verify_teacher_owns_classroom(session, classroom_id, current_user.id)
+    profile = await teacher_service.get_classroom_overview(session, classroom_id)
     return profile.risk_students
 
 
@@ -250,12 +234,8 @@ async def get_interventions(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    await _verify_teacher_owns_classroom(
-        session, classroom_id, current_user.id
-    )
-    profile = await teacher_service.get_classroom_overview(
-        session, classroom_id
-    )
+    await _verify_teacher_owns_classroom(session, classroom_id, current_user.id)
+    profile = await teacher_service.get_classroom_overview(session, classroom_id)
     return profile.intervention_candidates
 
 
@@ -265,12 +245,8 @@ async def get_mastery_heatmap(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    await _verify_teacher_owns_classroom(
-        session, classroom_id, current_user.id
-    )
-    profile = await teacher_service.get_classroom_overview(
-        session, classroom_id
-    )
+    await _verify_teacher_owns_classroom(session, classroom_id, current_user.id)
+    profile = await teacher_service.get_classroom_overview(session, classroom_id)
     return profile.mastery_heatmap
 
 

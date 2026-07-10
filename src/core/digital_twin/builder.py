@@ -44,8 +44,10 @@ class TwinBuilder:
         active_dimensions = sum(1 for d in dims if d and isinstance(d, dict))
         total_possible = len(dims)
         overall_health = (
-            "healthy" if active_dimensions >= total_possible * 0.8
-            else "attention" if active_dimensions >= total_possible * 0.5
+            "healthy"
+            if active_dimensions >= total_possible * 0.8
+            else "attention"
+            if active_dimensions >= total_possible * 0.5
             else "critical"
         )
 
@@ -69,8 +71,9 @@ class TwinBuilder:
         twin.updated_at = now
 
         await self.session.flush()
-        logger.info("twin_rebuilt", user_id=str(user_id),
-                     health=overall_health, confidence=confidence)
+        logger.info(
+            "twin_rebuilt", user_id=str(user_id), health=overall_health, confidence=confidence
+        )
         return twin
 
     async def _build_knowledge(self, user_id: UUID) -> dict | None:
@@ -110,9 +113,9 @@ class TwinBuilder:
                 "average": round(sum(scores) / len(scores), 2) if scores else 0.0,
                 "data_points": len(scores),
             }
-        overall = round(
-            sum(m["current"] for m in mastery.values()) / len(mastery), 2
-        ) if mastery else 0.0
+        overall = (
+            round(sum(m["current"] for m in mastery.values()) / len(mastery), 2) if mastery else 0.0
+        )
         return {"overall": overall, "topics": mastery}
 
     async def _build_misconceptions(self, user_id: UUID) -> dict | None:
@@ -142,9 +145,7 @@ class TwinBuilder:
 
     async def _build_retention(self, user_id: UUID) -> dict | None:
         result = await self.session.execute(
-            select(SpacedRepetitionSchedule).where(
-                SpacedRepetitionSchedule.user_id == user_id
-            )
+            select(SpacedRepetitionSchedule).where(SpacedRepetitionSchedule.user_id == user_id)
         )
         rows = result.scalars().all()
         if not rows:
@@ -154,15 +155,8 @@ class TwinBuilder:
         high_risk = 0
         for r in rows:
             last = _naive(r.last_reviewed_at)
-            days_since = (
-                (now - last).days
-                if last else 999
-            )
-            risk = (
-                "high" if days_since > 30
-                else "medium" if days_since > 14
-                else "low"
-            )
+            days_since = (now - last).days if last else 999
+            risk = "high" if days_since > 30 else "medium" if days_since > 14 else "low"
             if risk == "high":
                 high_risk += 1
             topics[r.topic] = {
@@ -174,9 +168,7 @@ class TwinBuilder:
             }
 
         if topics:
-            total = sum(
-                float(t["mastery"]) for t in topics.values()
-            )
+            total = sum(float(t["mastery"]) for t in topics.values())
             overall = round(total / len(topics), 2)
         else:
             overall = 0.0
@@ -200,18 +192,16 @@ class TwinBuilder:
         for topic, ability in abilities.items():
             m = mastery_topics.get(topic, {})
             score = ability * 0.6 + m.get("current", 0.5) * 0.4
-            risk_level = (
-                "high" if score < 0.4
-                else "medium" if score < 0.7
-                else "low"
-            )
+            risk_level = "high" if score < 0.4 else "medium" if score < 0.7 else "low"
             topics[topic] = {
                 "readiness_score": round(score, 2),
                 "risk_level": risk_level,
             }
-        overall = round(
-            sum(t["readiness_score"] for t in topics.values()) / len(topics), 2
-        ) if topics else 0.0
+        overall = (
+            round(sum(t["readiness_score"] for t in topics.values()) / len(topics), 2)
+            if topics
+            else 0.0
+        )
         return {"overall": overall, "topics": topics}
 
     async def _build_intervention(self, user_id: UUID) -> dict | None:
@@ -236,8 +226,10 @@ class TwinBuilder:
 
 def _compute_confidence(dimensions: list[dict | None]) -> float:
     populated = sum(
-        1 for d in dimensions
-        if d and isinstance(d, dict)
+        1
+        for d in dimensions
+        if d
+        and isinstance(d, dict)
         and (d.get("topics") or d.get("total_attempts", 0) > 0 or d.get("total", 0) > 0)
     )
     total = len([d for d in dimensions if d is not None])

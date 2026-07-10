@@ -74,12 +74,16 @@ async def graph_chat(request: GraphChatRequest, db: AsyncSession = Depends(get_s
         conversation_messages: list[dict] = []
         if request.user_id:
             mem_session = await session_manager.get_or_create_active_session(
-                request.user_id, topic=request.topic, db=db,
+                request.user_id,
+                topic=request.topic,
+                db=db,
             )
             conversation_messages = session_manager.get_messages(mem_session)
             if request.socratic_mode and request.topic:
                 socratic_state_rec = await socratic_manager.get_state(
-                    request.user_id, request.topic, db,
+                    request.user_id,
+                    request.topic,
+                    db,
                 )
 
         memory_context = ""
@@ -93,20 +97,26 @@ async def graph_chat(request: GraphChatRequest, db: AsyncSession = Depends(get_s
                     "tutoring_mode": mem_session.tutoring_mode,
                     "educational_context": mem_session.educational_context,
                     "unresolved_questions": mem_session.unresolved_questions,
-                } if mem_session else None,
+                }
+                if mem_session
+                else None,
                 socratic_state={
                     "socratic_stage": socratic_state_rec.socratic_stage,
                     "current_focus": socratic_state_rec.current_focus,
                     "student_understanding": socratic_state_rec.student_understanding,
                     "conceptual_gaps": socratic_state_rec.conceptual_gaps,
-                } if socratic_state_rec else None,
+                }
+                if socratic_state_rec
+                else None,
             )
 
         learner_profile_block = ""
         if request.user_id:
             try:
                 package = await context_adapter.build(
-                    db, request.user_id, current_topic=request.topic,
+                    db,
+                    request.user_id,
+                    current_topic=request.topic,
                 )
                 learner_profile_block = package.formatted_block
             except Exception:
@@ -163,14 +173,17 @@ async def graph_chat(request: GraphChatRequest, db: AsyncSession = Depends(get_s
 
             mem_session.unresolved_questions = [
                 getattr(result, attr, "")
-                for attr in ("guiding_question",) if getattr(result, "guiding_question", "")
+                for attr in ("guiding_question",)
+                if getattr(result, "guiding_question", "")
             ]
             await session_manager.heartbeat(mem_session.session_id, db)
 
         if request.user_id:
             await event_logger.log(
-                request.user_id, "tutor_interaction",
-                topic=request.topic, db=db,
+                request.user_id,
+                "tutor_interaction",
+                topic=request.topic,
+                db=db,
             )
 
         xp_awarded = 0
@@ -180,8 +193,11 @@ async def graph_chat(request: GraphChatRequest, db: AsyncSession = Depends(get_s
             await update_streak(request.user_id, db)
             xp_amount = XP_SOURCES.get("tutor_interaction", 5)
             gam, _, level_up = await award_xp(
-                request.user_id, "tutor_interaction", xp_amount,
-                {"question_topic": request.topic or ""}, db,
+                request.user_id,
+                "tutor_interaction",
+                xp_amount,
+                {"question_topic": request.topic or ""},
+                db,
             )
             xp_awarded = xp_amount
             new_level = gam.level if level_up else 0

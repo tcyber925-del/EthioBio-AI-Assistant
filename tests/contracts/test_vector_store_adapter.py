@@ -39,10 +39,12 @@ def test_retrieval_filter_to_chroma_where():
     """to_chroma_where produces correct filter dict."""
     filt = RetrievalFilter(grade_level=8, topic="Cell Biology")
     where = filt.to_chroma_where()
-    assert where == {"$and": [
-        {"grade_level": {"$eq": 8}},
-        {"topic": {"$eq": "Cell Biology"}},
-    ]}
+    assert where == {
+        "$and": [
+            {"grade_level": {"$eq": 8}},
+            {"topic": {"$eq": "Cell Biology"}},
+        ]
+    }
 
 
 def test_retrieval_filter_empty_returns_none():

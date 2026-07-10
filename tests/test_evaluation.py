@@ -21,6 +21,7 @@ def test_gold_set_exists():
 
 def test_ragas_module_imports():
     from src.evaluation.ragas_test import _heuristic_eval, evaluate_with_ragas, load_gold_set
+
     assert callable(evaluate_with_ragas)
     assert callable(load_gold_set)
     assert callable(_heuristic_eval)
@@ -44,6 +45,7 @@ async def test_heuristic_evaluation():
 
 def test_gold_set_default():
     from src.evaluation.ragas_test import _default_gold_set
+
     items = _default_gold_set()
     assert len(items) >= 7, "Default gold set should have at least 7 items"
     types = {i["type"] for i in items}

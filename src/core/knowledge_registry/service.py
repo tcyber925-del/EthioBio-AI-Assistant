@@ -133,27 +133,17 @@ class KnowledgeRegistry:
             query = select(KnowledgeObjectModel).where(KnowledgeObjectModel.deleted_at.is_(None))
 
             if kf.workspace_id:
-                query = query.where(
-                    KnowledgeObjectModel.workspace_id == UUID(kf.workspace_id)
-                )
+                query = query.where(KnowledgeObjectModel.workspace_id == UUID(kf.workspace_id))
             if kf.collection_id:
-                query = query.where(
-                    KnowledgeObjectModel.collection_id == UUID(kf.collection_id)
-                )
+                query = query.where(KnowledgeObjectModel.collection_id == UUID(kf.collection_id))
             if kf.lifecycle_states:
                 query = query.where(
-                    KnowledgeObjectModel.lifecycle_state.in_(
-                        [s.value for s in kf.lifecycle_states]
-                    )
+                    KnowledgeObjectModel.lifecycle_state.in_([s.value for s in kf.lifecycle_states])
                 )
             if kf.enrichment_status:
-                query = query.where(
-                    KnowledgeObjectModel.enrichment_status == kf.enrichment_status
-                )
+                query = query.where(KnowledgeObjectModel.enrichment_status == kf.enrichment_status)
             if kf.search:
-                query = query.where(
-                    KnowledgeObjectModel.title.ilike(f"%{kf.search}%")
-                )
+                query = query.where(KnowledgeObjectModel.title.ilike(f"%{kf.search}%"))
 
             query = query.order_by(KnowledgeObjectModel.created_at.desc())
             query = query.offset(kf.offset).limit(kf.limit)
@@ -175,9 +165,7 @@ class KnowledgeRegistry:
             from_state = LifecycleState(row.lifecycle_state)
             to_state = transition.to_state
             if to_state not in _VALID_TRANSITIONS.get(from_state, set()):
-                raise ValueError(
-                    f"Invalid transition from {from_state} to {to_state}"
-                )
+                raise ValueError(f"Invalid transition from {from_state} to {to_state}")
 
             old_state = row.lifecycle_state
             row.lifecycle_state = to_state.value

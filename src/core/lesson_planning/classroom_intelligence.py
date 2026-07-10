@@ -83,11 +83,13 @@ class ClassroomIntelligenceService:
         topic: str | None = None,
     ) -> dict:
         classroom = await self._teacher_service.get_classroom_overview(
-            self._session, classroom_id,
+            self._session,
+            classroom_id,
         )
 
         misconceptions = await self._misconception_profiler.get_classroom_heatmap(
-            classroom_id, self._session,
+            classroom_id,
+            self._session,
         )
 
         student_ids = await self.get_student_ids(classroom_id)
@@ -97,7 +99,8 @@ class ClassroomIntelligenceService:
 
         if topic:
             prerequisite_gaps = await self._get_prerequisite_gaps(
-                topic, student_ids,
+                topic,
+                student_ids,
             )
 
             strategies = await self._kb.query(
@@ -106,14 +109,16 @@ class ClassroomIntelligenceService:
                 min_effectiveness=60.0,
             )
             seen_types: set[str] = set()
-            for s in (strategies or []):
+            for s in strategies or []:
                 stype = s.intervention_type
                 if stype and stype not in seen_types:
                     seen_types.add(stype)
-                    best_strategies.append({
-                        "type": stype,
-                        "avg_effectiveness": round(s.effectiveness_score, 1),
-                    })
+                    best_strategies.append(
+                        {
+                            "type": stype,
+                            "avg_effectiveness": round(s.effectiveness_score, 1),
+                        }
+                    )
 
         return {
             "classroom_id": str(classroom_id),

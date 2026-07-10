@@ -23,23 +23,16 @@ class KnowledgeBaseService:
         logger.info("knowledge_base_seeded", count=len(entries))
         return len(entries)
 
-    async def classify(
-        self, session: AsyncSession, topic: str, wrong_answer: str
-    ) -> dict | None:
+    async def classify(self, session: AsyncSession, topic: str, wrong_answer: str) -> dict | None:
         text_lower = wrong_answer.lower()
-        stmt = select(MisconceptionKnowledgeEntry).where(
-            MisconceptionKnowledgeEntry.topic == topic
-        )
+        stmt = select(MisconceptionKnowledgeEntry).where(MisconceptionKnowledgeEntry.topic == topic)
         result = await session.execute(stmt)
         entries = result.scalars().all()
 
         best_match = None
         best_pattern_count = 0
         for entry in entries:
-            matches = sum(
-                1 for p in (entry.detection_patterns or [])
-                if p.lower() in text_lower
-            )
+            matches = sum(1 for p in (entry.detection_patterns or []) if p.lower() in text_lower)
             if matches > best_pattern_count:
                 best_pattern_count = matches
                 best_match = entry

@@ -36,17 +36,12 @@ class MasteryStabilityPredictor:
                 recovery_progress = plan.progress_pct / 100.0
 
             mastery_component = mastery_score / 100.0 * 0.4
-            uncertainty_component = (
-                clamp(1.0 - ability_uncertainty / 3.0, 0.0, 1.0) * 0.3
-            )
+            uncertainty_component = clamp(1.0 - ability_uncertainty / 3.0, 0.0, 1.0) * 0.3
             review_component = clamp(review_count / 10.0, 0.0, 1.0) * 0.2
             recovery_component = recovery_progress * 0.1
 
             stability = clamp(
-                mastery_component
-                + uncertainty_component
-                + review_component
-                + recovery_component,
+                mastery_component + uncertainty_component + review_component + recovery_component,
                 0.0,
                 1.0,
             )

@@ -117,12 +117,16 @@ class TestBuildClassroomProfile:
 
     def test_interventions_collected_and_sorted(self):
         service = TeacherService()
+
         def intv(topic, priority, impact, reason):
             return Intervention(
-                topic=topic, priority=priority,
+                topic=topic,
+                priority=priority,
                 action_type="REVIEW_TOPIC",
-                estimated_impact=impact, reason=reason,
+                estimated_impact=impact,
+                reason=reason,
             )
+
         ints_1 = [intv("genetics", 0.8, 30, "low mastery")]
         ints_2 = [intv("cell_division", 0.9, 40, "low score")]
         profiles = [
@@ -143,8 +147,10 @@ class TestBuildClassroomProfile:
 
         def tr(topic, score, level="LOW", factors=None):
             return TopicReadiness(
-                topic=topic, readiness_score=score,
-                risk_level=level, risk_factors=factors or [],
+                topic=topic,
+                readiness_score=score,
+                risk_level=level,
+                risk_factors=factors or [],
                 review_status="current",
             )
 
@@ -208,7 +214,5 @@ class TestGetClassroomOverview:
         mock_readiness.get_readiness.side_effect = ValueError("DB error")
 
         service = TeacherService(readiness_service=mock_readiness)
-        result = await service._safe_fetch_readiness(
-            AsyncMock(), uuid4()
-        )
+        result = await service._safe_fetch_readiness(AsyncMock(), uuid4())
         assert result is None

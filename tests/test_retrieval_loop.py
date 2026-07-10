@@ -1,4 +1,5 @@
 """Tests for the RetrievalLoopController."""
+
 from dataclasses import dataclass, field
 
 import pytest
@@ -259,7 +260,10 @@ async def test_sufficient_context_node_delegates_to_controller():
     result = await node(state)
 
     assert result.termination_reason in (
-        "CONTINUE", "MAX_ITERATIONS", "NO_PROGRESS", "NO_NEW_EVIDENCE"
+        "CONTINUE",
+        "MAX_ITERATIONS",
+        "NO_PROGRESS",
+        "NO_NEW_EVIDENCE",
     )
     assert result.retrieval_iterations == 1
     assert result.retrieval_feedback is not None

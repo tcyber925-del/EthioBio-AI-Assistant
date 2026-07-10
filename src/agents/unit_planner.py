@@ -82,12 +82,14 @@ class UnitPlannerAgent(BaseAgent):
                 generate_misconception_activities=generate_misconception_activities,
             )
 
-            lessons.append({
-                "day_index": day_num,
-                "subtopic": subtopic,
-                "objective": day_entry.get("objective", ""),
-                "lesson": result,
-            })
+            lessons.append(
+                {
+                    "day_index": day_num,
+                    "subtopic": subtopic,
+                    "objective": day_entry.get("objective", ""),
+                    "lesson": result,
+                }
+            )
 
         return {
             "unit_title": unit_title,

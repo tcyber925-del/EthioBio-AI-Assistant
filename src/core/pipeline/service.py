@@ -70,6 +70,7 @@ class PipelineOrchestrator:
             self._embedder = embedder
         else:
             from src.rag.embedder import Embedder
+
             self._embedder = Embedder()
         self._vector_store = vector_store
         self._session_factory = session_factory
@@ -108,9 +109,7 @@ class PipelineOrchestrator:
         limit_bytes = max_file_size_mb * 1024 * 1024
         if size > limit_bytes:
             size_mb = size / 1024 / 1024
-            raise ValidationError(
-                f"File exceeds {max_file_size_mb}MB limit ({size_mb:.1f}MB)"
-            )
+            raise ValidationError(f"File exceeds {max_file_size_mb}MB limit ({size_mb:.1f}MB)")
 
         content = await _read_file_async(file_path)
         content_hash = hashlib.sha256(content).hexdigest()
@@ -118,23 +117,27 @@ class PipelineOrchestrator:
         if self._session_factory:
             async with self._session_factory() as db:
                 existing = (
-                    await db.execute(
-                        select(KnowledgeObjectModel).where(
-                            KnowledgeObjectModel.content_hash == content_hash,
-                            KnowledgeObjectModel.workspace_id.isnot(None),
-                            KnowledgeObjectModel.deleted_at.is_(None),
-                            KnowledgeObjectModel.lifecycle_state.in_(
-                                [
-                                    s.value
-                                    for s in (
-                                        LifecycleState.PUBLISHED,
-                                        LifecycleState.ACTIVE,
-                                    )
-                                ]
-                            ),
+                    (
+                        await db.execute(
+                            select(KnowledgeObjectModel).where(
+                                KnowledgeObjectModel.content_hash == content_hash,
+                                KnowledgeObjectModel.workspace_id.isnot(None),
+                                KnowledgeObjectModel.deleted_at.is_(None),
+                                KnowledgeObjectModel.lifecycle_state.in_(
+                                    [
+                                        s.value
+                                        for s in (
+                                            LifecycleState.PUBLISHED,
+                                            LifecycleState.ACTIVE,
+                                        )
+                                    ]
+                                ),
+                            )
                         )
                     )
-                ).scalars().first()
+                    .scalars()
+                    .first()
+                )
                 if existing is not None:
                     msg = (
                         f"Duplicate content — matches existing KO {existing.id} "
@@ -247,6 +250,7 @@ def _extract_pdf_text_sync(path: Path) -> str:
 def _extract_docx_text(path: Path) -> str:
     try:
         from docx import Document
+
         doc = Document(str(path))
         return "\n\n".join(p.text for p in doc.paragraphs if p.text.strip())
     except ImportError:

@@ -26,13 +26,15 @@ def structural_check(
         eids = entry.get("evidence_ids", [])
         missing = [eid for eid in eids if eid not in valid_ids]
         supported = len(missing) == 0
-        assessments.append(ClaimAssessment(
-            response_segment=entry.get("response_segment", ""),
-            evidence_ids=eids,
-            supported=supported,
-            confidence=1.0 if supported else 0.0,
-            reason="" if supported else f"evidence_id(s) not found: {missing}",
-        ))
+        assessments.append(
+            ClaimAssessment(
+                response_segment=entry.get("response_segment", ""),
+                evidence_ids=eids,
+                supported=supported,
+                confidence=1.0 if supported else 0.0,
+                reason="" if supported else f"evidence_id(s) not found: {missing}",
+            )
+        )
 
     total = len(assessments)
     supported_count = sum(1 for a in assessments if a.supported)

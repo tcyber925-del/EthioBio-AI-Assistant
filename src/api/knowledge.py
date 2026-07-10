@@ -22,6 +22,8 @@ from src.core.knowledge_registry.models import (
     LifecycleTransition,
     NewKnowledgeObject,
     SearchResult,
+)
+from src.core.knowledge_registry.models import (
     TextMatch as KOTextMatch,
 )
 from src.core.pipeline import PipelineOrchestrator
@@ -51,6 +53,7 @@ def _get_producer() -> RedisStreamProducer | None:
         try:
             from src.config import settings
             from src.core.event_infrastructure import RedisStreamProducer
+
             _producer = RedisStreamProducer(settings.redis_url)
         except Exception:
             logger.warning("redis_producer_unavailable, falling back to inline pipeline")

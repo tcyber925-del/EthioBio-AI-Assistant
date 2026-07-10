@@ -52,7 +52,9 @@ class Submission(BaseModel):
     student_id: str
     storage_key: str | None = None
     content_text: str | None = None
-    status: Literal["submitted", "under_review", "revision_requested", "reviewed", "completed"] = "submitted"
+    status: Literal["submitted", "under_review", "revision_requested", "reviewed", "completed"] = (
+        "submitted"
+    )
     ai_feedback: dict = {}
     teacher_feedback: dict = {}
     grade: float | None = None
@@ -75,7 +77,9 @@ class NewSubmission(BaseModel):
 
 
 class UpdateSubmission(BaseModel):
-    status: Literal["submitted", "under_review", "revision_requested", "reviewed", "completed"] | None = None
+    status: (
+        Literal["submitted", "under_review", "revision_requested", "reviewed", "completed"] | None
+    ) = None
     ai_feedback: dict | None = None
     teacher_feedback: dict | None = None
     grade: float | None = None

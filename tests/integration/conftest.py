@@ -44,12 +44,14 @@ def mock_session_factory(mock_db_session):
 def mock_llm_router():
     """Returns an AsyncMock ModelRouter with canned responses."""
     router = AsyncMock()
-    router.route = AsyncMock(return_value={
-        "content": "Mock LLM response for testing.",
-        "model": "mock-model",
-        "usage": {"total_tokens": 50, "prompt_tokens": 30, "completion_tokens": 20},
-        "provider": "mock",
-    })
+    router.route = AsyncMock(
+        return_value={
+            "content": "Mock LLM response for testing.",
+            "model": "mock-model",
+            "usage": {"total_tokens": 50, "prompt_tokens": 30, "completion_tokens": 20},
+            "provider": "mock",
+        }
+    )
     router.generate_embedding = AsyncMock(return_value=[0.1] * 384)
     return router
 

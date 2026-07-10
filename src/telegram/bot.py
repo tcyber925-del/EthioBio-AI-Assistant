@@ -1,5 +1,6 @@
 import random
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import httpx
 import structlog
@@ -61,13 +62,26 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 
 logger = structlog.get_logger()
 
-from datetime import datetime, timedelta, timezone
-
-TUTOR, QUIZ_TYPE, QUIZ_GRADE, QUIZ_TOPIC, QUIZ_ANSWERING, LESSON_GRADE, LESSON_FEATURES, LESSON_TOPIC, TUTOR_GRADE, DIAGRAM_GRADE, DIAGRAM_TOPIC, LINK_OTP, COPILOT = range(13)
+(
+    TUTOR,
+    QUIZ_TYPE,
+    QUIZ_GRADE,
+    QUIZ_TOPIC,
+    QUIZ_ANSWERING,
+    LESSON_GRADE,
+    LESSON_FEATURES,
+    LESSON_TOPIC,
+    TUTOR_GRADE,
+    DIAGRAM_GRADE,
+    DIAGRAM_TOPIC,
+    LINK_OTP,
+    COPILOT,
+) = range(13)
 
 
 async def _db_try(action, fallback=None):
     import asyncio
+
     try:
         return await asyncio.wait_for(action(), timeout=5.0)
     except Exception as e:
@@ -81,36 +95,45 @@ def _lang(context) -> str:
 
 async def _try_register_user(telegram_id: int):
     from sqlalchemy import select
+
     async def _register():
         factory = async_session_factory()
         async with factory() as session:
             result = await session.execute(select(User).where(User.telegram_id == telegram_id))
             user = result.scalar_one_or_none()
             if not user:
-                user = User(telegram_id=telegram_id, role=UserRole.student, language_preference="en")
+                user = User(
+                    telegram_id=telegram_id, role=UserRole.student, language_preference="en"
+                )
                 session.add(user)
                 await session.flush()
                 profile = StudentProfile(user_id=user.id)
                 session.add(profile)
                 await session.commit()
+
     await _db_try(_register)
 
 
 async def start(update: Update, context):
     await _try_register_user(update.effective_user.id)
     if "language" not in context.user_data:
+
         async def _load_lang():
             from sqlalchemy import select
 
             from src.database.models import User
+
             factory = async_session_factory()
             async with factory() as session:
                 result = await session.execute(
-                    select(User.language_preference).where(User.telegram_id == update.effective_user.id)
+                    select(User.language_preference).where(
+                        User.telegram_id == update.effective_user.id
+                    )
                 )
                 row = result.scalar_one_or_none()
                 if row:
                     context.user_data["language"] = row
+
         await _db_try(_load_lang)
     socratic = context.user_data.get("socratic_mode", False)
     await update.message.reply_text(
@@ -152,20 +175,15 @@ async def register_parent(update: Update, context):
             )
             user = result.scalar_one_or_none()
             if not user:
-                await update.message.reply_text(
-                    t("parent.no_account", _lang(context))
-                )
+                await update.message.reply_text(t("parent.no_account", _lang(context)))
                 return
             if user.telegram_id and user.telegram_id != update.effective_user.id:
-                await update.message.reply_text(
-                    t("parent.already_linked", _lang(context))
-                )
+                await update.message.reply_text(t("parent.already_linked", _lang(context)))
                 return
             user.telegram_id = update.effective_user.id
             await session.commit()
-            await update.message.reply_text(
-                t("parent.linked", _lang(context))
-            )
+            await update.message.reply_text(t("parent.linked", _lang(context)))
+
     await _db_try(_link)
 
 
@@ -183,9 +201,7 @@ async def list_children(update: Update, context):
             )
             user = user_result.scalar_one_or_none()
             if not user or user.role != UserRole.parent:
-                await update.message.reply_text(
-                    t("parent.need_register", _lang(context))
-                )
+                await update.message.reply_text(t("parent.need_register", _lang(context)))
                 return
 
             children_result = await session.execute(
@@ -208,23 +224,25 @@ async def list_children(update: Update, context):
                 profile = profile_result.scalar_one_or_none()
                 grade = child.grade_level or (profile.grade_level if profile else None)
                 name = child.email or f"Student {str(child.id)[:8]}"
-                lines.append(
-                    f"👤 {name} "
-                    f"{f'(Grade {grade})' if grade else ''}"
+                lines.append(f"👤 {name} {f'(Grade {grade})' if grade else ''}")
+                keyboard.append(
+                    [
+                        InlineKeyboardButton(
+                            f"🔍 {name}",
+                            callback_data=f"parent_child_{child.id}",
+                        )
+                    ]
                 )
-                keyboard.append([
-                    InlineKeyboardButton(
-                        f"🔍 {name}",
-                        callback_data=f"parent_child_{child.id}",
-                    )
-                ])
-            keyboard.append([InlineKeyboardButton(t("back_to_menu", _lang(context)), callback_data="menu")])
+            keyboard.append(
+                [InlineKeyboardButton(t("back_to_menu", _lang(context)), callback_data="menu")]
+            )
 
             await update.message.reply_text(
                 "\n".join(lines),
                 parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup(keyboard),
             )
+
     await _db_try(_fetch)
 
 
@@ -254,9 +272,11 @@ async def _send_child_progress(session, child_id, telegram_id, update, query=Non
     )
     gam = gam_result.scalar_one_or_none()
 
-    score = sum(
-        r.correct / max(r.total, 1) * 100 for r in recent_quizzes
-    ) / max(len(recent_quizzes), 1) if recent_quizzes else 0
+    score = (
+        sum(r.correct / max(r.total, 1) * 100 for r in recent_quizzes) / max(len(recent_quizzes), 1)
+        if recent_quizzes
+        else 0
+    )
 
     name = child.email or f"Student {str(child.id)[:8]}"
     lines = [f"<b>📚 {name}'s Progress</b>\n"]
@@ -278,14 +298,23 @@ async def _send_child_progress(session, child_id, telegram_id, update, query=Non
             lines.append(f"• Quiz — {pct:.0f}% ({date_str})")
 
     keyboard = [
-        [InlineKeyboardButton(t("parent.weekly_summary", _lang(context)), callback_data=f"parent_summary_{child.id}")],
+        [
+            InlineKeyboardButton(
+                t("parent.weekly_summary", _lang(context)),
+                callback_data=f"parent_summary_{child.id}",
+            )
+        ],
         [InlineKeyboardButton(t("parent.back_children", _lang(context)), callback_data="children")],
     ]
     reply = "\n".join(lines)
     if query:
-        await query.edit_message_text(reply, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.edit_message_text(
+            reply, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(keyboard)
+        )
     else:
-        await update.message.reply_text(reply, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(keyboard))
+        await update.message.reply_text(
+            reply, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(keyboard)
+        )
 
 
 async def handle_parent_child_progress(update: Update, context):
@@ -314,7 +343,10 @@ async def handle_parent_child_progress(update: Update, context):
                 await query.edit_message_text(t("parent.no_child", _lang(context)))
                 return
 
-            await _send_child_progress(session, child_id, update.effective_user.id, update, query, context)
+            await _send_child_progress(
+                session, child_id, update.effective_user.id, update, query, context
+            )
+
     await _db_try(_fetch)
 
 
@@ -347,7 +379,9 @@ async def child_progress(update: Update, context):
                 return
 
             if len(children) == 1:
-                await _send_child_progress(session, str(children[0].id), telegram_id, update, context=context)
+                await _send_child_progress(
+                    session, str(children[0].id), telegram_id, update, context=context
+                )
                 return
 
             keyboard = []
@@ -356,9 +390,9 @@ async def child_progress(update: Update, context):
                 name = child.email or f"Student {str(child.id)[:8]}"
                 grade = child.grade_level or ""
                 lines.append(f"👤 {name} {f'(Grade {grade})' if grade else ''}")
-                keyboard.append([
-                    InlineKeyboardButton(f"🔍 {name}", callback_data=f"parent_child_{child.id}")
-                ])
+                keyboard.append(
+                    [InlineKeyboardButton(f"🔍 {name}", callback_data=f"parent_child_{child.id}")]
+                )
             keyboard.append([InlineKeyboardButton("← Back to Menu", callback_data="menu")])
 
             await update.message.reply_text(
@@ -366,6 +400,7 @@ async def child_progress(update: Update, context):
                 parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup(keyboard),
             )
+
     await _db_try(_fetch)
 
 
@@ -410,8 +445,7 @@ async def handle_parent_summary(update: Update, context):
             week_start = week_end - timedelta(days=7)
 
             records_result = await session.execute(
-                select(ProgressRecord)
-                .where(
+                select(ProgressRecord).where(
                     ProgressRecord.student_id == child.id,
                     ProgressRecord.created_at >= week_start,
                     ProgressRecord.created_at <= week_end,
@@ -421,6 +455,7 @@ async def handle_parent_summary(update: Update, context):
 
             from src.agents.parent_summary import ParentSummaryAgent
             from src.llm.router import ModelRouter
+
             agent = ParentSummaryAgent(ModelRouter())
             summary = await agent.generate_summary(
                 student_name=child.email or "Student",
@@ -440,10 +475,18 @@ async def handle_parent_summary(update: Update, context):
             await query.edit_message_text(
                 text,
                 parse_mode="HTML",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton(t("parent.back_progress", _lang(context)), callback_data=f"parent_child_{child_id}")],
-                ]),
+                reply_markup=InlineKeyboardMarkup(
+                    [
+                        [
+                            InlineKeyboardButton(
+                                t("parent.back_progress", _lang(context)),
+                                callback_data=f"parent_child_{child_id}",
+                            )
+                        ],
+                    ]
+                ),
             )
+
     await _db_try(_fetch)
 
 
@@ -456,13 +499,18 @@ async def handle_children_back(update: Update, context):
 async def help_command(update: Update, context):
     await update.message.reply_text(
         t("help.text", _lang(context)),
-        reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
+        reply_markup=main_menu_keyboard(
+            context.user_data.get("socratic_mode", False), language=_lang(context)
+        ),
     )
 
 
 async def cancel(update: Update, context):
     context.user_data.clear()
-    await update.message.reply_text(t("common.cancelled", _lang(context)), reply_markup=main_menu_keyboard(language=_lang(context)))
+    await update.message.reply_text(
+        t("common.cancelled", _lang(context)),
+        reply_markup=main_menu_keyboard(language=_lang(context)),
+    )
     return ConversationHandler.END
 
 
@@ -474,7 +522,12 @@ async def grade_command(update: Update, context):
             context.user_data["grade_level"] = grade
             await update.message.reply_text(t("grade.set", _lang(context), grade=grade))
             return
-    await update.message.reply_text(t("grade.usage", _lang(context)), reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
+    await update.message.reply_text(
+        t("grade.usage", _lang(context)),
+        reply_markup=main_menu_keyboard(
+            context.user_data.get("socratic_mode", False), language=_lang(context)
+        ),
+    )
 
 
 async def language_command(update: Update, context):
@@ -482,9 +535,14 @@ async def language_command(update: Update, context):
     lang_map = {"en": "English", "am": "Amharic", "both": "Bilingual"}
     if args and args[0] in lang_map:
         context.user_data["language"] = args[0]
-        await update.message.reply_text(t("language.set_cmd", _lang(context), name=lang_map[args[0]]))
+        await update.message.reply_text(
+            t("language.set_cmd", _lang(context), name=lang_map[args[0]])
+        )
     else:
-        await update.message.reply_text(t("language.usage", _lang(context)), reply_markup=language_keyboard(language=_lang(context)))
+        await update.message.reply_text(
+            t("language.usage", _lang(context)),
+            reply_markup=language_keyboard(language=_lang(context)),
+        )
 
 
 async def reveal_command(update: Update, context):
@@ -492,7 +550,9 @@ async def reveal_command(update: Update, context):
     if not question:
         await update.message.reply_text(
             t("tutor.no_question", _lang(context)),
-            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
+            reply_markup=main_menu_keyboard(
+                context.user_data.get("socratic_mode", False), language=_lang(context)
+            ),
         )
         return
     hint_level = context.user_data.get("hint_level", 0)
@@ -501,14 +561,19 @@ async def reveal_command(update: Update, context):
     try:
         telegram_id = update.effective_user.id if update.effective_user else None
         async with async_session_factory()() as _mem_db:
-            memory_user_id, memory_session_id, memory_context, conversation_messages = await _build_memory_context(
-                telegram_id,
-                context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
-                _mem_db,
-            ) if telegram_id else (None, None, "", [])
+            memory_user_id, memory_session_id, memory_context, conversation_messages = (
+                await _build_memory_context(
+                    telegram_id,
+                    context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
+                    _mem_db,
+                )
+                if telegram_id
+                else (None, None, "", [])
+            )
 
             result = await run_graph(
-                user_message=question, user_id=memory_user_id,
+                user_message=question,
+                user_id=memory_user_id,
                 grade_level=context.user_data.get("grade_level"),
                 language=context.user_data.get("language", "en"),
                 socratic_mode=False,
@@ -521,12 +586,18 @@ async def reveal_command(update: Update, context):
 
             if memory_user_id and memory_session_id:
                 try:
-                    mem_session = (await _mem_db.execute(
-                        select(MemorySession).where(MemorySession.session_id == memory_session_id)
-                    )).scalar_one_or_none()
+                    mem_session = (
+                        await _mem_db.execute(
+                            select(MemorySession).where(
+                                MemorySession.session_id == memory_session_id
+                            )
+                        )
+                    ).scalar_one_or_none()
                     if mem_session:
                         conversation_messages.append({"role": "user", "content": question})
-                        conversation_messages.append({"role": "assistant", "content": result.answer})
+                        conversation_messages.append(
+                            {"role": "assistant", "content": result.answer}
+                        )
                         SessionManager().set_messages(mem_session, conversation_messages[-20:])
                         await CrossSessionRecall().record_turns(
                             user_id=memory_user_id,
@@ -539,10 +610,13 @@ async def reveal_command(update: Update, context):
                 except Exception as e:
                     logger.warning("memory_turns_save_error", error=str(e))
 
-        attempt_msg = t("tutor.hint_usage", _lang(context), count=hint_level) if hint_level > 0 else ""
+        attempt_msg = (
+            t("tutor.hint_usage", _lang(context), count=hint_level) if hint_level > 0 else ""
+        )
         response = result.answer + attempt_msg
         await _reply_long(
-            update.message, response,
+            update.message,
+            response,
             reply_markup=hint_keyboard(hint_level, True, language=_lang(context)),
             parse_mode="HTML",
         )
@@ -550,7 +624,9 @@ async def reveal_command(update: Update, context):
         logger.error("reveal_command_error", error=str(e))
         await update.message.reply_text(
             t("common.error", _lang(context)),
-            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
+            reply_markup=main_menu_keyboard(
+                context.user_data.get("socratic_mode", False), language=_lang(context)
+            ),
         )
 
 
@@ -558,8 +634,13 @@ async def socratic_command(update: Update, context):
     current = context.user_data.get("socratic_mode", False)
     context.user_data["socratic_mode"] = not current
     await update.message.reply_text(
-        t("tutor.socratic_on" if context.user_data["socratic_mode"] else "tutor.socratic_off", _lang(context)),
-        reply_markup=main_menu_keyboard(context.user_data["socratic_mode"], language=_lang(context)),
+        t(
+            "tutor.socratic_on" if context.user_data["socratic_mode"] else "tutor.socratic_off",
+            _lang(context),
+        ),
+        reply_markup=main_menu_keyboard(
+            context.user_data["socratic_mode"], language=_lang(context)
+        ),
     )
 
 
@@ -569,7 +650,9 @@ async def hint_command(update: Update, context):
     if reveal:
         await update.message.reply_text(
             t("tutor.hint_revealed", _lang(context)),
-            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
+            reply_markup=main_menu_keyboard(
+                context.user_data.get("socratic_mode", False), language=_lang(context)
+            ),
         )
         return
     next_level = hint_level + 1
@@ -584,25 +667,31 @@ async def hint_command(update: Update, context):
     if not question:
         await update.message.reply_text(
             t("tutor.no_question", _lang(context)),
-            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
+            reply_markup=main_menu_keyboard(
+                context.user_data.get("socratic_mode", False), language=_lang(context)
+            ),
         )
         return
     await update.message.reply_text(t("tutor.hint_level", _lang(context), level=next_level))
     try:
         telegram_id = update.effective_user.id if update.effective_user else None
         async with async_session_factory()() as _mem_db:
-            memory_user_id, memory_session_id, memory_context, conversation_messages = await _build_memory_context(
-                telegram_id,
-                context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
-                _mem_db,
-            ) if telegram_id else (None, None, "", [])
+            memory_user_id, memory_session_id, memory_context, conversation_messages = (
+                await _build_memory_context(
+                    telegram_id,
+                    context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
+                    _mem_db,
+                )
+                if telegram_id
+                else (None, None, "", [])
+            )
 
             learner_profile_block = (
-                await _build_learner_profile(memory_user_id, _mem_db)
-                if memory_user_id else ""
+                await _build_learner_profile(memory_user_id, _mem_db) if memory_user_id else ""
             )
             result = await run_graph(
-                user_message=question, user_id=memory_user_id,
+                user_message=question,
+                user_id=memory_user_id,
                 grade_level=context.user_data.get("grade_level"),
                 language=context.user_data.get("language", "en"),
                 socratic_mode=False,
@@ -616,9 +705,11 @@ async def hint_command(update: Update, context):
 
         if memory_user_id and memory_session_id:
             try:
-                mem_session = (await _mem_db.execute(
-                    select(MemorySession).where(MemorySession.session_id == memory_session_id)
-                )).scalar_one_or_none()
+                mem_session = (
+                    await _mem_db.execute(
+                        select(MemorySession).where(MemorySession.session_id == memory_session_id)
+                    )
+                ).scalar_one_or_none()
                 if mem_session:
                     conversation_messages.append({"role": "user", "content": question})
                     conversation_messages.append({"role": "assistant", "content": result.answer})
@@ -638,7 +729,8 @@ async def hint_command(update: Update, context):
         if result.misconception_detected:
             response += t("tutor.misconception", _lang(context))
         await _reply_long(
-            update.message, response,
+            update.message,
+            response,
             reply_markup=hint_keyboard(next_level, False, language=_lang(context)),
             parse_mode="HTML",
         )
@@ -646,7 +738,9 @@ async def hint_command(update: Update, context):
         logger.error("hint_command_error", error=str(e))
         await update.message.reply_text(
             t("common.error", _lang(context)),
-            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
+            reply_markup=main_menu_keyboard(
+                context.user_data.get("socratic_mode", False), language=_lang(context)
+            ),
         )
 
 
@@ -660,19 +754,24 @@ async def ask_command(update: Update, context):
         try:
             telegram_id = update.effective_user.id if update.effective_user else None
             async with async_session_factory()() as _mem_db:
-                memory_user_id, memory_session_id, memory_context, conversation_messages = await _build_memory_context(
-                    telegram_id,
-                    context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
-                    _mem_db,
-                ) if telegram_id else (None, None, "", [])
+                memory_user_id, memory_session_id, memory_context, conversation_messages = (
+                    await _build_memory_context(
+                        telegram_id,
+                        context.user_data.get("tutor_grade")
+                        or context.user_data.get("grade_level"),
+                        _mem_db,
+                    )
+                    if telegram_id
+                    else (None, None, "", [])
+                )
 
                 socratic = context.user_data.get("socratic_mode", False)
                 learner_profile_block = (
-                    await _build_learner_profile(memory_user_id, _mem_db)
-                    if memory_user_id else ""
+                    await _build_learner_profile(memory_user_id, _mem_db) if memory_user_id else ""
                 )
                 result = await run_graph(
-                    user_message=question, user_id=memory_user_id,
+                    user_message=question,
+                    user_id=memory_user_id,
                     grade_level=context.user_data.get("grade_level"),
                     language=context.user_data.get("language", "en"),
                     socratic_mode=socratic,
@@ -685,12 +784,18 @@ async def ask_command(update: Update, context):
 
                 if memory_user_id and memory_session_id:
                     try:
-                        mem_session = (await _mem_db.execute(
-                            select(MemorySession).where(MemorySession.session_id == memory_session_id)
-                        )).scalar_one_or_none()
+                        mem_session = (
+                            await _mem_db.execute(
+                                select(MemorySession).where(
+                                    MemorySession.session_id == memory_session_id
+                                )
+                            )
+                        ).scalar_one_or_none()
                         if mem_session:
                             conversation_messages.append({"role": "user", "content": question})
-                            conversation_messages.append({"role": "assistant", "content": result.answer})
+                            conversation_messages.append(
+                                {"role": "assistant", "content": result.answer}
+                            )
                             SessionManager().set_messages(mem_session, conversation_messages[-20:])
                             await CrossSessionRecall().record_turns(
                                 user_id=memory_user_id,
@@ -706,7 +811,9 @@ async def ask_command(update: Update, context):
             if result.misconception_detected:
                 response += t("tutor.misconception", _lang(context))
             if result.sources:
-                response += t("tutor.sources", _lang(context), sources=", ".join(result.sources[:3]))
+                response += t(
+                    "tutor.sources", _lang(context), sources=", ".join(result.sources[:3])
+                )
             if telegram_id:
                 await _save_tutor_rewards(telegram_id, context)
                 xp_awarded = context.user_data.get("last_xp_awarded", 0)
@@ -719,13 +826,29 @@ async def ask_command(update: Update, context):
                 notifications = context.user_data.pop("last_notifications", None)
                 if notifications:
                     response += "\n\n" + "\n".join(notifications)
-            reply_markup = hint_keyboard(0, False, language=_lang(context)) if socratic else main_menu_keyboard(socratic, language=_lang(context))
-            await _reply_long(update.message, response, reply_markup=reply_markup, parse_mode="HTML")
+            reply_markup = (
+                hint_keyboard(0, False, language=_lang(context))
+                if socratic
+                else main_menu_keyboard(socratic, language=_lang(context))
+            )
+            await _reply_long(
+                update.message, response, reply_markup=reply_markup, parse_mode="HTML"
+            )
         except Exception as e:
             logger.error("ask_command_error", error=str(e))
-            await update.message.reply_text(t("common.error", _lang(context)), reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
+            await update.message.reply_text(
+                t("common.error", _lang(context)),
+                reply_markup=main_menu_keyboard(
+                    context.user_data.get("socratic_mode", False), language=_lang(context)
+                ),
+            )
     else:
-        await update.message.reply_text(t("common.usage_ask", _lang(context)), reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
+        await update.message.reply_text(
+            t("common.usage_ask", _lang(context)),
+            reply_markup=main_menu_keyboard(
+                context.user_data.get("socratic_mode", False), language=_lang(context)
+            ),
+        )
 
 
 async def quiz_command(update: Update, context):
@@ -740,10 +863,18 @@ async def quiz_command(update: Update, context):
             topic = " ".join(args)
     if 7 <= grade <= 12:
         context.user_data["quiz_grade"] = grade
-        await update.message.reply_text(t("quiz.quiz_type_prompt", _lang(context)), reply_markup=quiz_type_keyboard(language=_lang(context)))
+        await update.message.reply_text(
+            t("quiz.quiz_type_prompt", _lang(context)),
+            reply_markup=quiz_type_keyboard(language=_lang(context)),
+        )
         return QUIZ_TYPE
     else:
-        await update.message.reply_text(t("quiz.usage", _lang(context)), reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
+        await update.message.reply_text(
+            t("quiz.usage", _lang(context)),
+            reply_markup=main_menu_keyboard(
+                context.user_data.get("socratic_mode", False), language=_lang(context)
+            ),
+        )
         return ConversationHandler.END
 
 
@@ -754,7 +885,12 @@ async def menu(update: Update, context):
         await query.edit_message_reply_markup(reply_markup=None)
     except Exception:
         pass
-    await query.message.reply_text(t("common.choose_option", _lang(context)), reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
+    await query.message.reply_text(
+        t("common.choose_option", _lang(context)),
+        reply_markup=main_menu_keyboard(
+            context.user_data.get("socratic_mode", False), language=_lang(context)
+        ),
+    )
 
 
 async def _get_user_role(telegram_id: int) -> str | None:
@@ -764,6 +900,7 @@ async def _get_user_role(telegram_id: int) -> str | None:
             result = await session.execute(select(User).where(User.telegram_id == telegram_id))
             user = result.scalar_one_or_none()
             return user.role.value if user else None
+
     return await _db_try(_fetch)
 
 
@@ -774,7 +911,10 @@ async def handle_teacher_tools(update: Update, context):
     if role != "teacher":
         await query.message.reply_text(t("copilot.not_linked", _lang(context)))
         return
-    await query.message.reply_text(t("common.teacher_tools", _lang(context)), reply_markup=teacher_tools_keyboard(language=_lang(context)))
+    await query.message.reply_text(
+        t("common.teacher_tools", _lang(context)),
+        reply_markup=teacher_tools_keyboard(language=_lang(context)),
+    )
 
 
 async def handle_open_quizzes(update: Update, context):
@@ -839,7 +979,12 @@ async def end_conversation(update: Update, context):
         await query.edit_message_reply_markup(reply_markup=None)
     except Exception:
         pass
-    await query.message.reply_text(t("common.choose_option", _lang(context)), reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
+    await query.message.reply_text(
+        t("common.choose_option", _lang(context)),
+        reply_markup=main_menu_keyboard(
+            context.user_data.get("socratic_mode", False), language=_lang(context)
+        ),
+    )
     return ConversationHandler.END
 
 
@@ -853,16 +998,22 @@ async def _build_memory_context(telegram_id: int, topic: str | None, db):
     if not user:
         return None, None, "", []
     mem_session = await session_mgr.get_or_create_active_session(
-        user.id, topic=topic, db=db,
+        user.id,
+        topic=topic,
+        db=db,
     )
     ctx = await assembler.assemble(
-        user_id=user.id, topic=topic, db=db,
+        user_id=user.id,
+        topic=topic,
+        db=db,
         session_state={
             "active_topic": mem_session.active_topic,
             "tutoring_mode": mem_session.tutoring_mode,
             "educational_context": mem_session.educational_context,
             "unresolved_questions": mem_session.unresolved_questions,
-        } if mem_session else None,
+        }
+        if mem_session
+        else None,
         socratic_state=None,
     )
     messages = session_mgr.get_messages(mem_session) if mem_session else []
@@ -895,8 +1046,14 @@ async def handle_question(update: Update, context):
         telegram_id = update.effective_user.id if update.effective_user else None
         async with async_session_factory()() as _mem_db:
             if telegram_id:
-                memory_user_id, memory_session_id, memory_context, conversation_messages = await _build_memory_context(
-                    telegram_id, context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
+                (
+                    memory_user_id,
+                    memory_session_id,
+                    memory_context,
+                    conversation_messages,
+                ) = await _build_memory_context(
+                    telegram_id,
+                    context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
                     _mem_db,
                 )
             else:
@@ -906,12 +1063,13 @@ async def handle_question(update: Update, context):
             hint_level = context.user_data.get("hint_level", 0)
             reveal = context.user_data.get("reveal_answer", False)
             learner_profile_block = (
-                await _build_learner_profile(memory_user_id, _mem_db)
-                if memory_user_id else ""
+                await _build_learner_profile(memory_user_id, _mem_db) if memory_user_id else ""
             )
             result = await run_graph(
-                user_message=question, user_id=memory_user_id,
-                grade_level=context.user_data.pop("tutor_grade", None) or context.user_data.get("grade_level"),
+                user_message=question,
+                user_id=memory_user_id,
+                grade_level=context.user_data.pop("tutor_grade", None)
+                or context.user_data.get("grade_level"),
                 language=context.user_data.get("language", "en"),
                 socratic_mode=socratic,
                 hint_level=hint_level,
@@ -925,12 +1083,18 @@ async def handle_question(update: Update, context):
 
             if memory_user_id and memory_session_id:
                 try:
-                    mem_session = (await _mem_db.execute(
-                        select(MemorySession).where(MemorySession.session_id == memory_session_id)
-                    )).scalar_one_or_none()
+                    mem_session = (
+                        await _mem_db.execute(
+                            select(MemorySession).where(
+                                MemorySession.session_id == memory_session_id
+                            )
+                        )
+                    ).scalar_one_or_none()
                     if mem_session:
                         conversation_messages.append({"role": "user", "content": question})
-                        conversation_messages.append({"role": "assistant", "content": result.answer})
+                        conversation_messages.append(
+                            {"role": "assistant", "content": result.answer}
+                        )
                         SessionManager().set_messages(mem_session, conversation_messages[-20:])
                         await CrossSessionRecall().record_turns(
                             user_id=memory_user_id,
@@ -960,15 +1124,36 @@ async def handle_question(update: Update, context):
             notifications = context.user_data.pop("last_notifications", None)
             if notifications:
                 response += "\n\n" + "\n".join(notifications)
-        reply_markup = hint_keyboard(hint_level, reveal, language=_lang(context)) if socratic else main_menu_keyboard(socratic, language=_lang(context))
+        reply_markup = (
+            hint_keyboard(hint_level, reveal, language=_lang(context))
+            if socratic
+            else main_menu_keyboard(socratic, language=_lang(context))
+        )
         await _reply_long(thinking_msg, response, reply_markup=reply_markup, parse_mode="HTML")
 
-        diagram_keywords = frozenset([
-            "diagram", "draw", "label", "structure", "parts", "organ",
-            "cell", "heart", "flower", "photosynthesis", "mitosis",
-            "meiosis", "dna", "chromosome", "neuron", "eye", "ear",
-            "leaf", "flower",
-        ])
+        diagram_keywords = frozenset(
+            [
+                "diagram",
+                "draw",
+                "label",
+                "structure",
+                "parts",
+                "organ",
+                "cell",
+                "heart",
+                "flower",
+                "photosynthesis",
+                "mitosis",
+                "meiosis",
+                "dna",
+                "chromosome",
+                "neuron",
+                "eye",
+                "ear",
+                "leaf",
+                "flower",
+            ]
+        )
         if any(kw in question.lower() for kw in diagram_keywords):
             try:
                 from src.agents.diagram_tutor_integration import (
@@ -976,7 +1161,10 @@ async def handle_question(update: Update, context):
                 )
                 from src.utils.svg_render import render_svg_to_png
                 from telegram import InputFile
-                tutor_grade = context.user_data.get("tutor_grade") or context.user_data.get("grade_level")
+
+                tutor_grade = context.user_data.get("tutor_grade") or context.user_data.get(
+                    "grade_level"
+                )
                 diagram_data = await generate_tutor_diagram(
                     question=question,
                     topic=question,
@@ -987,7 +1175,7 @@ async def handle_question(update: Update, context):
                     png_bytes = render_svg_to_png(diagram_data["diagram_svg"], 800, 600)
                     await update.message.reply_photo(
                         photo=InputFile(png_bytes, filename="diagram.png"),
-                        caption=f"📐 {diagram_data.get('diagram_title', diagram_data.get('title', ''))}",
+                        caption=f"📐 {diagram_data.get('diagram_title', diagram_data.get('title', ''))}",  # noqa: E501
                     )
             except Exception as e:
                 logger.warning("tutor_diagram_bot_failed", error=str(e)[:200])
@@ -996,22 +1184,32 @@ async def handle_question(update: Update, context):
         try:
             await thinking_msg.edit_text(
                 t("common.error_try_again", _lang(context)),
-                reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
+                reply_markup=main_menu_keyboard(
+                    context.user_data.get("socratic_mode", False), language=_lang(context)
+                ),
             )
         except Exception:
             pass
         return ConversationHandler.END
 
     from src.database.models import MessageThread
+
     async def _save():
         factory = async_session_factory()
         async with factory() as session:
-            session.add(MessageThread(
-                user_id=None, channel="telegram",
-                messages=[{"role": "user", "content": question}, {"role": "assistant", "content": result.answer}],
-                topic="biology_question",
-            ))
+            session.add(
+                MessageThread(
+                    user_id=None,
+                    channel="telegram",
+                    messages=[
+                        {"role": "user", "content": question},
+                        {"role": "assistant", "content": result.answer},
+                    ],
+                    topic="biology_question",
+                )
+            )
             await session.commit()
+
     await _db_try(_save)
 
     return ConversationHandler.END
@@ -1020,16 +1218,26 @@ async def handle_question(update: Update, context):
 async def handle_quiz_start(update: Update, context):
     query = update.callback_query
     await query.answer()
-    await query.message.reply_text(t("quiz.quiz_type_prompt", _lang(context)), reply_markup=quiz_type_keyboard(language=_lang(context)))
+    await query.message.reply_text(
+        t("quiz.quiz_type_prompt", _lang(context)),
+        reply_markup=quiz_type_keyboard(language=_lang(context)),
+    )
     return QUIZ_TYPE
 
 
 async def handle_quiz_type(update: Update, context):
     query = update.callback_query
     await query.answer()
-    type_map = {"quiztype_mc": "multiple_choice", "quiztype_tf": "true_false", "quiztype_mixed": "mixed"}
+    type_map = {
+        "quiztype_mc": "multiple_choice",
+        "quiztype_tf": "true_false",
+        "quiztype_mixed": "mixed",
+    }
     context.user_data["quiz_type"] = type_map.get(query.data, "multiple_choice")
-    await query.edit_message_text(t("quiz.grade_prompt", _lang(context)), reply_markup=grade_keyboard("quiz_grade", language=_lang(context)))
+    await query.edit_message_text(
+        t("quiz.grade_prompt", _lang(context)),
+        reply_markup=grade_keyboard("quiz_grade", language=_lang(context)),
+    )
     return QUIZ_GRADE
 
 
@@ -1077,29 +1285,43 @@ async def handle_quiz_topic(update: Update, context):
 
     except Exception as e:
         logger.error("quiz_error", error=str(e))
-        await update.message.reply_text(t("quiz.error", _lang(context)), reply_markup=main_menu_keyboard(language=_lang(context)))
+        await update.message.reply_text(
+            t("quiz.error", _lang(context)),
+            reply_markup=main_menu_keyboard(language=_lang(context)),
+        )
         return ConversationHandler.END
 
     return QUIZ_ANSWERING
 
 
-async def _reply_long(update_or_msg_or_query, text: str, reply_markup=None, parse_mode=None, max_len: int = 4096, force_new=False):
+async def _reply_long(
+    update_or_msg_or_query,
+    text: str,
+    reply_markup=None,
+    parse_mode=None,
+    max_len: int = 4096,
+    force_new=False,
+):
     """Split text into chunks and send as multiple messages if needed."""
     html_text = sanitize_for_telegram(format_for_telegram(text)) if parse_mode == "HTML" else text
     plain_text = strip_markdown(text) if parse_mode == "HTML" else text
 
     for i in range(0, len(html_text), max_len):
-        chunk = html_text[i:i + max_len]
-        plain_chunk = plain_text[i:i + max_len] if parse_mode == "HTML" else chunk
+        chunk = html_text[i : i + max_len]
+        plain_chunk = plain_text[i : i + max_len] if parse_mode == "HTML" else chunk
         if i == 0:
-            if not force_new and hasattr(update_or_msg_or_query, 'edit_text'):
+            if not force_new and hasattr(update_or_msg_or_query, "edit_text"):
                 try:
-                    await update_or_msg_or_query.edit_text(chunk, reply_markup=reply_markup, parse_mode=parse_mode)
+                    await update_or_msg_or_query.edit_text(
+                        chunk, reply_markup=reply_markup, parse_mode=parse_mode
+                    )
                     continue
                 except Exception:
                     pass
             try:
-                await update_or_msg_or_query.reply_text(chunk, reply_markup=reply_markup, parse_mode=parse_mode)
+                await update_or_msg_or_query.reply_text(
+                    chunk, reply_markup=reply_markup, parse_mode=parse_mode
+                )
             except Exception as e:
                 if "parse" in str(e).lower():
                     logger.warning("html_parse_failed", error=str(e))
@@ -1127,7 +1349,15 @@ async def _send_quiz_question(update: Update, context, msg=None, new_message=Fal
 
     q = qs[idx]
     qtype = q.get("question_type", "multiple_choice")
-    text = t("quiz.question", _lang(context), title=session.get('title', 'Quiz'), current=idx+1, total=session.get('total', len(qs)), qtype=qtype.replace('_',' '), qtext=q['question_text'])
+    text = t(
+        "quiz.question",
+        _lang(context),
+        title=session.get("title", "Quiz"),
+        current=idx + 1,
+        total=session.get("total", len(qs)),
+        qtype=qtype.replace("_", " "),
+        qtext=q["question_text"],
+    )
 
     if qtype == "multiple_choice" and q.get("options"):
         letters = ["A", "B", "C", "D", "E", "F"]
@@ -1149,9 +1379,13 @@ async def _send_quiz_question(update: Update, context, msg=None, new_message=Fal
         reply_markup = quiz_next_keyboard(language=_lang(context))
 
     if msg:
-        await _reply_long(msg, text, reply_markup=reply_markup, parse_mode="HTML", force_new=new_message)
+        await _reply_long(
+            msg, text, reply_markup=reply_markup, parse_mode="HTML", force_new=new_message
+        )
     else:
-        await _reply_long(update.effective_message, text, reply_markup=reply_markup, parse_mode="HTML")
+        await _reply_long(
+            update.effective_message, text, reply_markup=reply_markup, parse_mode="HTML"
+        )
 
 
 def _calculate_quiz_xp(pct: int) -> int:
@@ -1167,6 +1401,7 @@ async def _fetch_recovery_notifications(user_id, session):
     from sqlalchemy import select
 
     from src.database.models import RecoveryNotification
+
     result = await session.execute(
         select(RecoveryNotification)
         .where(
@@ -1182,13 +1417,20 @@ async def _fetch_recovery_notifications(user_id, session):
 async def _format_notification_messages(notifications):
     messages = []
     for n in notifications:
-        icon = "📈" if n.event_type == "mastery_improvement" else "🎯" if n.event_type == "severity_upgrade" else "🎉"
+        icon = (
+            "📈"
+            if n.event_type == "mastery_improvement"
+            else "🎯"
+            if n.event_type == "severity_upgrade"
+            else "🎉"
+        )
         messages.append(f"{icon} {n.message}")
     return messages
 
 
 async def _save_quiz_rewards(telegram_id, correct, total, context):
     from sqlalchemy import select
+
     async def _save():
         factory = async_session_factory()
         async with factory() as session:
@@ -1199,7 +1441,9 @@ async def _save_quiz_rewards(telegram_id, correct, total, context):
             pct = round(correct / max(total, 1) * 100)
             xp_amount = _calculate_quiz_xp(pct)
             meta = {"correct": correct, "total": total, "source": "telegram_bot"}
-            gam_result, _, level_up = await award_xp(user.id, "quiz_completion", xp_amount, meta, session)
+            gam_result, _, level_up = await award_xp(
+                user.id, "quiz_completion", xp_amount, meta, session
+            )
             await update_streak(user.id, session)
             await check_achievements(user.id, gam_result, session)
             await session.commit()
@@ -1208,7 +1452,10 @@ async def _save_quiz_rewards(telegram_id, correct, total, context):
             context.user_data["last_new_level"] = gam_result.level
             notifications = await _fetch_recovery_notifications(user.id, session)
             if notifications:
-                context.user_data["last_notifications"] = await _format_notification_messages(notifications)
+                context.user_data["last_notifications"] = await _format_notification_messages(
+                    notifications
+                )
+
     await _db_try(_save)
 
 
@@ -1216,6 +1463,7 @@ async def _save_tutor_rewards(telegram_id, context):
     from sqlalchemy import select
 
     from src.api.gamification import XP_SOURCES
+
     async def _save():
         factory = async_session_factory()
         async with factory() as session:
@@ -1225,7 +1473,9 @@ async def _save_tutor_rewards(telegram_id, context):
                 return
             xp_amount = XP_SOURCES.get("tutor_interaction", 5)
             meta = {"source": "telegram_bot"}
-            gam_result, _, level_up = await award_xp(user.id, "tutor_interaction", xp_amount, meta, session)
+            gam_result, _, level_up = await award_xp(
+                user.id, "tutor_interaction", xp_amount, meta, session
+            )
             await update_streak(user.id, session)
             await check_achievements(user.id, gam_result, session)
             await session.commit()
@@ -1234,7 +1484,10 @@ async def _save_tutor_rewards(telegram_id, context):
             context.user_data["last_new_level"] = gam_result.level
             notifications = await _fetch_recovery_notifications(user.id, session)
             if notifications:
-                context.user_data["last_notifications"] = await _format_notification_messages(notifications)
+                context.user_data["last_notifications"] = await _format_notification_messages(
+                    notifications
+                )
+
     await _db_try(_save)
 
 
@@ -1265,7 +1518,7 @@ async def _show_quiz_result(update: Update, context, msg=None):
     lines.append("")
     for i, q in enumerate(qs):
         icon = "✅" if i < len(ans) and ans[i] == q.get("correct_answer", "") else "❌"
-        lines.append(f"{icon} Q{i+1}: {q.get('question_text', '')[:50]}")
+        lines.append(f"{icon} Q{i + 1}: {q.get('question_text', '')[:50]}")
     text = "\n".join(lines)
 
     dest = msg or update.effective_message
@@ -1274,6 +1527,7 @@ async def _show_quiz_result(update: Update, context, msg=None):
         from sqlalchemy import select
 
         from src.database.models import RecoveryPlan
+
         telegram_id = update.effective_user.id if update.effective_user else None
         if telegram_id:
             factory = async_session_factory()
@@ -1282,16 +1536,24 @@ async def _show_quiz_result(update: Update, context, msg=None):
                 user = result.scalar_one_or_none()
                 if user:
                     plans_result = await session.execute(
-                        select(RecoveryPlan).where(
+                        select(RecoveryPlan)
+                        .where(
                             RecoveryPlan.user_id == user.id,
                             RecoveryPlan.status == "active",
-                        ).limit(1)
+                        )
+                        .limit(1)
                     )
                     plan = plans_result.scalar_one_or_none()
                     if plan:
                         from telegram import InlineKeyboardButton
-                        recovery_row = [InlineKeyboardButton(t("view_recovery", _lang(context)), callback_data="recovery_view")]
+
+                        recovery_row = [
+                            InlineKeyboardButton(
+                                t("view_recovery", _lang(context)), callback_data="recovery_view"
+                            )
+                        ]
                         from telegram import InlineKeyboardMarkup
+
                         new_buttons = list(reply_markup.inline_keyboard) + [tuple(recovery_row)]
                         reply_markup = InlineKeyboardMarkup(new_buttons)
     except Exception:
@@ -1321,7 +1583,9 @@ async def handle_quiz_answer(update: Update, context):
             opt_idx = letters.index(selected)
             chosen = q["options"][opt_idx]
             chosen_text = chosen.split(") ")[-1] if ") " in chosen else chosen
-            correct_text = correct_answer.split(") ")[-1] if ") " in correct_answer else correct_answer
+            correct_text = (
+                correct_answer.split(") ")[-1] if ") " in correct_answer else correct_answer
+            )
             is_correct = chosen_text.strip().lower() == correct_text.strip().lower()
         except (ValueError, IndexError):
             is_correct = False
@@ -1371,7 +1635,9 @@ async def handle_quiz_short_answer(update: Update, context):
     if qtype != "short_answer":
         msg = "Please use the buttons below to answer."
         if q.get("options"):
-            await update.message.reply_text(msg, reply_markup=answer_options_keyboard(q["options"], language=_lang(context)))
+            await update.message.reply_text(
+                msg, reply_markup=answer_options_keyboard(q["options"], language=_lang(context))
+            )
         else:
             await update.message.reply_text(msg)
         return QUIZ_ANSWERING
@@ -1392,7 +1658,9 @@ async def handle_quiz_short_answer(update: Update, context):
     if q.get("explanation"):
         feedback += f"\n\n<i>{q['explanation'][:200]}</i>"
 
-    await update.message.reply_text(feedback, reply_markup=quiz_next_keyboard(language=_lang(context)), parse_mode="HTML")
+    await update.message.reply_text(
+        feedback, reply_markup=quiz_next_keyboard(language=_lang(context)), parse_mode="HTML"
+    )
     return QUIZ_ANSWERING
 
 
@@ -1437,7 +1705,10 @@ async def handle_quiz_retry(update: Update, context):
 async def handle_lesson_start(update: Update, context):
     query = update.callback_query
     await query.answer()
-    await query.message.reply_text(t("lesson.grade_prompt", _lang(context)), reply_markup=grade_keyboard("lesson_grade", language=_lang(context)))
+    await query.message.reply_text(
+        t("lesson.grade_prompt", _lang(context)),
+        reply_markup=grade_keyboard("lesson_grade", language=_lang(context)),
+    )
     return LESSON_GRADE
 
 
@@ -1455,7 +1726,9 @@ async def handle_lesson_grade(update: Update, context):
     }
     await query.edit_message_text(
         t("lesson.features_prompt", _lang(context), grade=grade),
-        reply_markup=lesson_features_keyboard(context.user_data["lesson_features"], language=_lang(context)),
+        reply_markup=lesson_features_keyboard(
+            context.user_data["lesson_features"], language=_lang(context)
+        ),
     )
     return LESSON_FEATURES
 
@@ -1498,7 +1771,8 @@ async def handle_lesson_topic(update: Update, context):
         router_llm = ModelRouter()
         agent = LessonPlannerAgent(llm_router=router_llm)
         result = await agent.generate(
-            grade_level=grade, topic=topic,
+            grade_level=grade,
+            topic=topic,
             generate_exit_ticket=features.get("exit_ticket", False),
             generate_differentiation=features.get("differentiation", False),
             generate_diagram_suggestions=features.get("diagram_suggestions", False),
@@ -1533,11 +1807,23 @@ async def handle_lesson_topic(update: Update, context):
             response += "\n\n🔬 Misconception Activities:"
             for a in result["misconception_activities"][:2]:
                 response += f"\n• {a['activity_name']}"
-        await _reply_long(update.message, response, reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)), parse_mode="HTML")
+        await _reply_long(
+            update.message,
+            response,
+            reply_markup=main_menu_keyboard(
+                context.user_data.get("socratic_mode", False), language=_lang(context)
+            ),
+            parse_mode="HTML",
+        )
         await router_llm.close()
     except Exception as e:
         logger.error("lesson_error", error=str(e))
-        await update.message.reply_text(t("lesson.error", _lang(context)), reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
+        await update.message.reply_text(
+            t("lesson.error", _lang(context)),
+            reply_markup=main_menu_keyboard(
+                context.user_data.get("socratic_mode", False), language=_lang(context)
+            ),
+        )
 
     return ConversationHandler.END
 
@@ -1581,9 +1867,11 @@ async def handle_diagram_topic(update: Update, context):
 
         png_bytes = render_svg_to_png(svg, width=800, height=600)
 
-        label_lines = "\n".join(
-            f"{i + 1}. {label['text']}" for i, label in enumerate(labels)
-        ) if labels else t("diagram.no_labels", lang)
+        label_lines = (
+            "\n".join(f"{i + 1}. {label['text']}" for i, label in enumerate(labels))
+            if labels
+            else t("diagram.no_labels", lang)
+        )
 
         caption = (
             f"📐 {title}\n"
@@ -1636,6 +1924,7 @@ async def _save_diagram_rewards(telegram_id, context):
     from sqlalchemy import select
 
     from src.api.gamification import XP_SOURCES
+
     async def _save():
         factory = async_session_factory()
         async with factory() as session:
@@ -1646,7 +1935,11 @@ async def _save_diagram_rewards(telegram_id, context):
             xp_amount = XP_SOURCES.get("diagram_completion", 10)
             meta = {"source": "telegram_bot"}
             gam_result, _, level_up = await award_xp(
-                user.id, "diagram_completion", xp_amount, meta, session,
+                user.id,
+                "diagram_completion",
+                xp_amount,
+                meta,
+                session,
             )
             await update_streak(user.id, session)
             await check_achievements(user.id, gam_result, session)
@@ -1654,6 +1947,7 @@ async def _save_diagram_rewards(telegram_id, context):
             context.user_data["last_xp_awarded"] = xp_amount
             context.user_data["last_level_up"] = level_up
             context.user_data["last_new_level"] = gam_result.level
+
     await _db_try(_save)
 
 
@@ -1674,23 +1968,41 @@ async def handle_progress(update: Update, context):
             await query.edit_message_reply_markup(reply_markup=None)
         except Exception:
             pass
-        await query.message.reply_text(text, reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
+        await query.message.reply_text(
+            text,
+            reply_markup=main_menu_keyboard(
+                context.user_data.get("socratic_mode", False), language=_lang(context)
+            ),
+        )
     else:
-        await update.message.reply_text(text, reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)))
+        await update.message.reply_text(
+            text,
+            reply_markup=main_menu_keyboard(
+                context.user_data.get("socratic_mode", False), language=_lang(context)
+            ),
+        )
 
 
 async def handle_language(update: Update, context):
     query = update.callback_query
     await query.answer()
-    await query.message.reply_text(t("choose_language", _lang(context)), reply_markup=language_keyboard(language=_lang(context)))
+    await query.message.reply_text(
+        t("choose_language", _lang(context)),
+        reply_markup=language_keyboard(language=_lang(context)),
+    )
 
 
 async def handle_language_select(update: Update, context):
     query = update.callback_query
     await query.answer()
-    lang_map = {"lang_en": ("en", "English"), "lang_am": ("am", "Amharic"), "lang_both": ("both", "Bilingual")}
+    lang_map = {
+        "lang_en": ("en", "English"),
+        "lang_am": ("am", "Amharic"),
+        "lang_both": ("both", "Bilingual"),
+    }
     code, name = lang_map.get(query.data, ("en", "English"))
     context.user_data["language"] = code
+
     async def _sync_language():
         async with httpx.AsyncClient() as client:
             api_base = settings.api_base_url
@@ -1698,10 +2010,13 @@ async def handle_language_select(update: Update, context):
                 f"{api_base}/users/{update.effective_user.id}/language",
                 params={"language": code},
             )
+
     await _db_try(_sync_language)
     await query.message.reply_text(
         t("language.set", _lang(context), name=name),
-        reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
+        reply_markup=main_menu_keyboard(
+            context.user_data.get("socratic_mode", False), language=_lang(context)
+        ),
     )
 
 
@@ -1715,7 +2030,10 @@ async def handle_socratic_toggle(update: Update, context):
     except Exception:
         pass
     await query.message.reply_text(
-        t("tutor.socratic_on" if context.user_data["socratic_mode"] else "tutor.socratic_off", _lang(context)),
+        t(
+            "tutor.socratic_on" if context.user_data["socratic_mode"] else "tutor.socratic_off",
+            _lang(context),
+        ),
         reply_markup=main_menu_keyboard(not current, language=_lang(context)),
     )
 
@@ -1732,7 +2050,10 @@ async def model_command(update: Update, context):
         )
     except Exception as e:
         logger.error("model_command_error", error=str(e))
-        await update.message.reply_text(t("model.no_models", _lang(context)), reply_markup=main_menu_keyboard(language=_lang(context)))
+        await update.message.reply_text(
+            t("model.no_models", _lang(context)),
+            reply_markup=main_menu_keyboard(language=_lang(context)),
+        )
 
 
 async def handle_model_selection(update: Update, context):
@@ -1746,7 +2067,10 @@ async def handle_model_selection(update: Update, context):
             await query.edit_message_reply_markup(reply_markup=None)
         except Exception:
             pass
-        await query.message.reply_text(t("common.main_menu", _lang(context)), reply_markup=main_menu_keyboard(language=_lang(context)))
+        await query.message.reply_text(
+            t("common.main_menu", _lang(context)),
+            reply_markup=main_menu_keyboard(language=_lang(context)),
+        )
         return
 
     if data == "model:back_providers":
@@ -1764,7 +2088,10 @@ async def handle_model_selection(update: Update, context):
             )
         except Exception as e:
             logger.error("model_providers_error", error=str(e))
-            await query.message.reply_text(t("model.no_providers", _lang(context)), reply_markup=main_menu_keyboard(language=_lang(context)))
+            await query.message.reply_text(
+                t("model.no_providers", _lang(context)),
+                reply_markup=main_menu_keyboard(language=_lang(context)),
+            )
         return
 
     if data == "model:refresh":
@@ -1783,11 +2110,14 @@ async def handle_model_selection(update: Update, context):
             )
         except Exception as e:
             logger.error("model_refresh_error", error=str(e))
-            await query.message.reply_text(t("model.refresh_failed", _lang(context)), reply_markup=main_menu_keyboard(language=_lang(context)))
+            await query.message.reply_text(
+                t("model.refresh_failed", _lang(context)),
+                reply_markup=main_menu_keyboard(language=_lang(context)),
+            )
         return
 
     if data.startswith("model:provider:"):
-        provider = data[len("model:provider:"):]
+        provider = data[len("model:provider:") :]
         try:
             async with httpx.AsyncClient() as client:
                 resp = await client.get(f"{api_base}/models")
@@ -1806,7 +2136,10 @@ async def handle_model_selection(update: Update, context):
             )
         except Exception as e:
             logger.error("model_provider_models_error", error=str(e))
-            await query.message.reply_text(t("model.no_models", _lang(context)), reply_markup=main_menu_keyboard(language=_lang(context)))
+            await query.message.reply_text(
+                t("model.no_models", _lang(context)),
+                reply_markup=main_menu_keyboard(language=_lang(context)),
+            )
         return
 
     if data.startswith("m:"):
@@ -1832,7 +2165,10 @@ async def handle_model_selection(update: Update, context):
             )
         except Exception as e:
             logger.error("model_set_error", error=str(e))
-            await query.message.reply_text(t("model.set_failed", _lang(context), model=model_id), reply_markup=main_menu_keyboard(language=_lang(context)))
+            await query.message.reply_text(
+                t("model.set_failed", _lang(context), model=model_id),
+                reply_markup=main_menu_keyboard(language=_lang(context)),
+            )
         return
 
 
@@ -1848,7 +2184,9 @@ async def handle_hint(update: Update, context):
             pass
         await query.message.reply_text(
             t("tutor.hint_revealed", _lang(context)),
-            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
+            reply_markup=main_menu_keyboard(
+                context.user_data.get("socratic_mode", False), language=_lang(context)
+            ),
         )
         return
     question = context.user_data.get("ask_question", "")
@@ -1859,22 +2197,31 @@ async def handle_hint(update: Update, context):
             pass
         await query.message.reply_text(
             t("tutor.no_question", _lang(context)),
-            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
+            reply_markup=main_menu_keyboard(
+                context.user_data.get("socratic_mode", False), language=_lang(context)
+            ),
         )
         return
     context.user_data["hint_level"] = hint_level
-    hint_msg = await query.message.reply_text(t("tutor.hint_level", _lang(context), level=hint_level))
+    hint_msg = await query.message.reply_text(
+        t("tutor.hint_level", _lang(context), level=hint_level)
+    )
     try:
         telegram_id = update.effective_user.id if update.effective_user else None
         async with async_session_factory()() as _mem_db:
-            memory_user_id, memory_session_id, memory_context, conversation_messages = await _build_memory_context(
-                telegram_id,
-                context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
-                _mem_db,
-            ) if telegram_id else (None, None, "", [])
+            memory_user_id, memory_session_id, memory_context, conversation_messages = (
+                await _build_memory_context(
+                    telegram_id,
+                    context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
+                    _mem_db,
+                )
+                if telegram_id
+                else (None, None, "", [])
+            )
 
             result = await run_graph(
-                user_message=question, user_id=memory_user_id,
+                user_message=question,
+                user_id=memory_user_id,
                 grade_level=context.user_data.get("grade_level"),
                 language=context.user_data.get("language", "en"),
                 socratic_mode=context.user_data.get("socratic_mode", False),
@@ -1887,9 +2234,11 @@ async def handle_hint(update: Update, context):
 
         if memory_user_id and memory_session_id:
             try:
-                mem_session = (await _mem_db.execute(
-                    select(MemorySession).where(MemorySession.session_id == memory_session_id)
-                )).scalar_one_or_none()
+                mem_session = (
+                    await _mem_db.execute(
+                        select(MemorySession).where(MemorySession.session_id == memory_session_id)
+                    )
+                ).scalar_one_or_none()
                 if mem_session:
                     conversation_messages.append({"role": "user", "content": question})
                     conversation_messages.append({"role": "assistant", "content": result.answer})
@@ -1909,7 +2258,8 @@ async def handle_hint(update: Update, context):
         if result.misconception_detected:
             response += t("tutor.misconception", _lang(context))
         await _reply_long(
-            hint_msg, response,
+            hint_msg,
+            response,
             reply_markup=hint_keyboard(hint_level, False, language=_lang(context)),
             parse_mode="HTML",
         )
@@ -1917,7 +2267,9 @@ async def handle_hint(update: Update, context):
         logger.error("hint_callback_error", error=str(e))
         await hint_msg.edit_text(
             t("common.error", _lang(context)),
-            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
+            reply_markup=main_menu_keyboard(
+                context.user_data.get("socratic_mode", False), language=_lang(context)
+            ),
         )
 
 
@@ -1932,7 +2284,9 @@ async def handle_reveal_answer(update: Update, context):
             pass
         await query.message.reply_text(
             t("tutor.no_question", _lang(context)),
-            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
+            reply_markup=main_menu_keyboard(
+                context.user_data.get("socratic_mode", False), language=_lang(context)
+            ),
         )
         return
     hint_level = context.user_data.get("hint_level", 0)
@@ -1941,14 +2295,19 @@ async def handle_reveal_answer(update: Update, context):
     try:
         telegram_id = update.effective_user.id if update.effective_user else None
         async with async_session_factory()() as _mem_db:
-            memory_user_id, memory_session_id, memory_context, conversation_messages = await _build_memory_context(
-                telegram_id,
-                context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
-                _mem_db,
-            ) if telegram_id else (None, None, "", [])
+            memory_user_id, memory_session_id, memory_context, conversation_messages = (
+                await _build_memory_context(
+                    telegram_id,
+                    context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
+                    _mem_db,
+                )
+                if telegram_id
+                else (None, None, "", [])
+            )
 
             result = await run_graph(
-                user_message=question, user_id=memory_user_id,
+                user_message=question,
+                user_id=memory_user_id,
                 grade_level=context.user_data.get("grade_level"),
                 language=context.user_data.get("language", "en"),
                 socratic_mode=False,
@@ -1961,12 +2320,18 @@ async def handle_reveal_answer(update: Update, context):
 
             if memory_user_id and memory_session_id:
                 try:
-                    mem_session = (await _mem_db.execute(
-                        select(MemorySession).where(MemorySession.session_id == memory_session_id)
-                    )).scalar_one_or_none()
+                    mem_session = (
+                        await _mem_db.execute(
+                            select(MemorySession).where(
+                                MemorySession.session_id == memory_session_id
+                            )
+                        )
+                    ).scalar_one_or_none()
                     if mem_session:
                         conversation_messages.append({"role": "user", "content": question})
-                        conversation_messages.append({"role": "assistant", "content": result.answer})
+                        conversation_messages.append(
+                            {"role": "assistant", "content": result.answer}
+                        )
                         SessionManager().set_messages(mem_session, conversation_messages[-20:])
                         await CrossSessionRecall().record_turns(
                             user_id=memory_user_id,
@@ -1979,10 +2344,13 @@ async def handle_reveal_answer(update: Update, context):
                 except Exception as e:
                     logger.warning("memory_turns_save_error", error=str(e))
 
-        attempt_msg = t("tutor.hint_usage", _lang(context), count=hint_level) if hint_level > 0 else ""
+        attempt_msg = (
+            t("tutor.hint_usage", _lang(context), count=hint_level) if hint_level > 0 else ""
+        )
         response = result.answer + attempt_msg
         await _reply_long(
-            reveal_msg, response,
+            reveal_msg,
+            response,
             reply_markup=hint_keyboard(hint_level, True, language=_lang(context)),
             parse_mode="HTML",
         )
@@ -1990,7 +2358,9 @@ async def handle_reveal_answer(update: Update, context):
         logger.error("reveal_answer_error", error=str(e))
         await reveal_msg.edit_text(
             t("common.error", _lang(context)),
-            reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
+            reply_markup=main_menu_keyboard(
+                context.user_data.get("socratic_mode", False), language=_lang(context)
+            ),
         )
 
 
@@ -1999,6 +2369,7 @@ async def handle_general_message(update: Update, context):
     try:
         router = ModelRouter()
         from src.agents.orchestrator import OrchestratorAgent
+
         orchestrator = OrchestratorAgent(llm_router=router)
         intent = await orchestrator.classify_intent(message_text)
         await router.close()
@@ -2007,16 +2378,20 @@ async def handle_general_message(update: Update, context):
             return await handle_question(update, context)
         elif intent["intent"] in ("quiz", "lesson_plan"):
             await update.message.reply_text(
-                f"I understood: \"{intent['intent']}\" (confidence: {intent['confidence']:.0%})\n\n"
+                f'I understood: "{intent["intent"]}" (confidence: {intent["confidence"]:.0%})\n\n'
                 f"Use the 📝 Quiz or 📋 Lesson Plan buttons in the menu.",
-                reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
+                reply_markup=main_menu_keyboard(
+                    context.user_data.get("socratic_mode", False), language=_lang(context)
+                ),
             )
             return ConversationHandler.END
         else:
             await update.message.reply_text(
-                f"I understood: \"{intent['intent']}\" (confidence: {intent['confidence']:.0%})\n\n"
+                f'I understood: "{intent["intent"]}" (confidence: {intent["confidence"]:.0%})\n\n'
                 f"Use the menu buttons to access specific features.",
-                reply_markup=main_menu_keyboard(context.user_data.get("socratic_mode", False), language=_lang(context)),
+                reply_markup=main_menu_keyboard(
+                    context.user_data.get("socratic_mode", False), language=_lang(context)
+                ),
             )
             return ConversationHandler.END
     except Exception as e:
@@ -2041,13 +2416,16 @@ async def recovery_command(update: Update, context):
     async def _handle():
         factory = async_session_factory()
         async with factory() as session:
-            result = await session.execute(select(User).where(User.telegram_id == update.effective_user.id))
+            result = await session.execute(
+                select(User).where(User.telegram_id == update.effective_user.id)
+            )
             user = result.scalar_one_or_none()
             if not user:
                 await _reply_long(update, "❌ You need to /start first to use this command.")
                 return
 
             from src.database.models import RecoveryPlan, RecoveryTask
+
             plans_result = await session.execute(
                 select(RecoveryPlan)
                 .where(RecoveryPlan.user_id == user.id, RecoveryPlan.status == "active")
@@ -2056,30 +2434,46 @@ async def recovery_command(update: Update, context):
             plans = list(plans_result.scalars().all())
 
             if not plans:
-                await _reply_long(update, t("recovery.no_plans", _lang(context)), parse_mode="Markdown")
+                await _reply_long(
+                    update, t("recovery.no_plans", _lang(context)), parse_mode="Markdown"
+                )
                 return
 
             from src.agents.weak_topic_detection import get_weak_topics
+
             weak_topics = await get_weak_topics(user.id, session)
 
             lines = ["📋 *Recovery Plans*"]
             if weak_topics:
                 lines.append(f"\n🔍 *Weak Topics:* {len(weak_topics)} identified")
                 for wt in weak_topics[:3]:
-                    icon = "🔴" if wt["severity"] == "critical" else "🟡" if wt["severity"] == "moderate" else "🔵"
+                    icon = (
+                        "🔴"
+                        if wt["severity"] == "critical"
+                        else "🟡"
+                        if wt["severity"] == "moderate"
+                        else "🔵"
+                    )
                     lines.append(f"{icon} {wt['topic']} — {wt['average_score']:.0f}%")
 
             from src.api.gamification import _get_recovery_progress
+
             rp = await _get_recovery_progress(user.id, session)
             if rp:
-                lines.append(f"\n📊 *Overall Progress:* {rp.completed_tasks}/{rp.total_tasks} tasks ({rp.overall_progress_pct:.0f}%)")
+                lines.append(
+                    f"\n📊 *Overall Progress:* {rp.completed_tasks}/{rp.total_tasks} tasks ({rp.overall_progress_pct:.0f}%)"  # noqa: E501
+                )
 
             for plan in plans:
                 progress_pct = round(plan.completed_tasks / max(plan.total_tasks, 1) * 100, 1)
                 lines.append(f"\n*Plan: {plan.topic}*")
-                lines.append(f"Progress: {plan.completed_tasks}/{plan.total_tasks} ({progress_pct:.0f}%)")
+                lines.append(
+                    f"Progress: {plan.completed_tasks}/{plan.total_tasks} ({progress_pct:.0f}%)"
+                )
                 tasks_result = await session.execute(
-                    select(RecoveryTask).where(RecoveryTask.plan_id == plan.id).order_by(RecoveryTask.created_at)
+                    select(RecoveryTask)
+                    .where(RecoveryTask.plan_id == plan.id)
+                    .order_by(RecoveryTask.created_at)
                 )
                 tasks = list(tasks_result.scalars().all())
                 for task in tasks:
@@ -2106,7 +2500,9 @@ async def handle_recovery_complete_task(update: Update, context):
     async def _handle():
         factory = async_session_factory()
         async with factory() as session:
-            result = await session.execute(select(User).where(User.telegram_id == update.effective_user.id))
+            result = await session.execute(
+                select(User).where(User.telegram_id == update.effective_user.id)
+            )
             user = result.scalar_one_or_none()
             if not user:
                 await query.edit_message_text(t("recovery.user_not_found", _lang(context)))
@@ -2120,7 +2516,9 @@ async def handle_recovery_complete_task(update: Update, context):
                 await query.edit_message_text(t("recovery.task_not_found", _lang(context)))
                 return
             if task.is_completed:
-                await query.edit_message_text(t("recovery.task_done", _lang(context), title=task.title), parse_mode="Markdown")
+                await query.edit_message_text(
+                    t("recovery.task_done", _lang(context), title=task.title), parse_mode="Markdown"
+                )
                 return
 
             task.is_completed = True
@@ -2135,7 +2533,9 @@ async def handle_recovery_complete_task(update: Update, context):
                 plan.status = "completed"
 
             gam, _, level_up = await award_xp(
-                user.id, "recovery_task_completion", xp_amount,
+                user.id,
+                "recovery_task_completion",
+                xp_amount,
                 {"task_id": str(task_id), "plan_id": str(plan.id), "topic": plan.topic},
                 session,
             )
@@ -2144,7 +2544,9 @@ async def handle_recovery_complete_task(update: Update, context):
             if completed in RECOVERY_MILESTONE_THRESHOLDS:
                 milestone_bonus = RECOVERY_MILESTONE_THRESHOLDS[completed]
                 await award_xp(
-                    user.id, "recovery_milestone", milestone_bonus,
+                    user.id,
+                    "recovery_milestone",
+                    milestone_bonus,
                     {"plan_id": str(plan.id), "completed_tasks": completed, "topic": plan.topic},
                     session,
                 )
@@ -2174,27 +2576,42 @@ async def progress_command(update: Update, context):
     async def _handle():
         factory = async_session_factory()
         async with factory() as session:
-            result = await session.execute(select(User).where(User.telegram_id == update.effective_user.id))
+            result = await session.execute(
+                select(User).where(User.telegram_id == update.effective_user.id)
+            )
             user = result.scalar_one_or_none()
             if not user:
                 await _reply_long(update, t("progress.need_start", _lang(context)))
                 return
 
             from src.agents.weak_topic_detection import get_weak_topics
+
             weak_topics = await get_weak_topics(user.id, session)
 
             if not weak_topics:
-                await _reply_long(update, t("progress.no_weak", _lang(context)), parse_mode="Markdown")
+                await _reply_long(
+                    update, t("progress.no_weak", _lang(context)), parse_mode="Markdown"
+                )
                 return
 
             lines = ["📊 *Mastery Progress*"]
             for wt in sorted(weak_topics, key=lambda x: x["average_score"]):
                 bar_len = max(1, int(wt["average_score"] / 10))
                 bar = "█" * bar_len + "░" * (10 - bar_len)
-                icon = "🔴" if wt["average_score"] < 40 else "🟡" if wt["average_score"] < 60 else "🟢" if wt["average_score"] < 80 else "💚"
+                icon = (
+                    "🔴"
+                    if wt["average_score"] < 40
+                    else "🟡"
+                    if wt["average_score"] < 60
+                    else "🟢"
+                    if wt["average_score"] < 80
+                    else "💚"
+                )
                 lines.append(f"\n{icon} *{wt['topic']}*")
                 lines.append(f"`{bar}` {wt['average_score']:.0f}%")
-                lines.append(f"Confidence: {wt['confidence']*100:.0f}% | Attempts: {wt['attempt_count']}")
+                lines.append(
+                    f"Confidence: {wt['confidence'] * 100:.0f}% | Attempts: {wt['attempt_count']}"
+                )
 
             await _reply_long(update, "\n".join(lines), parse_mode="Markdown")
 
@@ -2223,30 +2640,58 @@ async def settings_command(update: Update, context):
 
             milestone = "✅ On" if prefs and prefs.milestone_alerts else "⬜ Off"
             reminders = "✅ On" if prefs and prefs.review_reminders else "⬜ Off"
-            digest = (prefs.digest_frequency.capitalize() if prefs else "Never")
+            digest = prefs.digest_frequency.capitalize() if prefs else "Never"
 
-            text = t("settings.text", _lang(context), milestone=milestone, reminder=reminders, digest=digest)
+            text = t(
+                "settings.text",
+                _lang(context),
+                milestone=milestone,
+                reminder=reminders,
+                digest=digest,
+            )
 
             buttons = []
             row = []
             if prefs and prefs.milestone_alerts:
-                row.append(InlineKeyboardButton("📊 Disable Milestones", callback_data="settings_toggle_milestone"))
+                row.append(
+                    InlineKeyboardButton(
+                        "📊 Disable Milestones", callback_data="settings_toggle_milestone"
+                    )
+                )
             else:
-                row.append(InlineKeyboardButton("📊 Enable Milestones", callback_data="settings_toggle_milestone"))
+                row.append(
+                    InlineKeyboardButton(
+                        "📊 Enable Milestones", callback_data="settings_toggle_milestone"
+                    )
+                )
             buttons.append(row)
             row2 = []
             if prefs and prefs.review_reminders:
-                row2.append(InlineKeyboardButton("🔔 Disable Reminders", callback_data="settings_toggle_reminders"))
+                row2.append(
+                    InlineKeyboardButton(
+                        "🔔 Disable Reminders", callback_data="settings_toggle_reminders"
+                    )
+                )
             else:
-                row2.append(InlineKeyboardButton("🔔 Enable Reminders", callback_data="settings_toggle_reminders"))
+                row2.append(
+                    InlineKeyboardButton(
+                        "🔔 Enable Reminders", callback_data="settings_toggle_reminders"
+                    )
+                )
             buttons.append(row2)
-            buttons.append([
-                InlineKeyboardButton("📬 Digest: Daily", callback_data="settings_digest_daily"),
-                InlineKeyboardButton("📬 Digest: Weekly", callback_data="settings_digest_weekly"),
-            ])
-            buttons.append([
-                InlineKeyboardButton("📬 Digest: Off", callback_data="settings_digest_never"),
-            ])
+            buttons.append(
+                [
+                    InlineKeyboardButton("📬 Digest: Daily", callback_data="settings_digest_daily"),
+                    InlineKeyboardButton(
+                        "📬 Digest: Weekly", callback_data="settings_digest_weekly"
+                    ),
+                ]
+            )
+            buttons.append(
+                [
+                    InlineKeyboardButton("📬 Digest: Off", callback_data="settings_digest_never"),
+                ]
+            )
 
             await update.message.reply_text(
                 text,
@@ -2260,7 +2705,9 @@ async def settings_command(update: Update, context):
 async def email_command(update: Update, context):
     args = context.args
     if not args:
-        await update.message.reply_text(t("common.email_usage", _lang(context)), parse_mode="Markdown")
+        await update.message.reply_text(
+            t("common.email_usage", _lang(context)), parse_mode="Markdown"
+        )
         return
     email = args[0].strip()
     if "@" not in email or "." not in email:
@@ -2294,7 +2741,9 @@ async def email_command(update: Update, context):
                 session.add(prefs)
             await session.commit()
 
-        await update.message.reply_text(t("common.email_set", _lang(context), email=email), parse_mode="Markdown")
+        await update.message.reply_text(
+            t("common.email_set", _lang(context), email=email), parse_mode="Markdown"
+        )
 
     await _db_try(_handle)
 
@@ -2320,7 +2769,9 @@ async def handle_settings_toggle(update: Update, context):
             )
             prefs = prefs_result.scalar_one_or_none()
             if not prefs:
-                await query.edit_message_text("No notification preferences found. Use /settings first.")
+                await query.edit_message_text(
+                    "No notification preferences found. Use /settings first."
+                )
                 return
 
             if data == "settings_toggle_milestone":
@@ -2377,6 +2828,7 @@ async def link_command(update: Update, context):
                 t("link.otp_sent", _lang(context), code=code),
                 parse_mode="HTML",
             )
+
     await _db_try(_verify_email)
     return LINK_OTP
 
@@ -2418,9 +2870,7 @@ async def handle_link_otp(update: Update, context):
                 await update.message.reply_text(t("link.not_found", _lang(context)))
                 return
 
-            old = await session.execute(
-                select(User).where(User.telegram_id == telegram_id)
-            )
+            old = await session.execute(select(User).where(User.telegram_id == telegram_id))
             old_user = old.scalar_one_or_none()
             if old_user and old_user.id != teacher_user.id:
                 old_user.telegram_id = None
@@ -2435,6 +2885,7 @@ async def handle_link_otp(update: Update, context):
                 language=_lang(context),
             ),
         )
+
     await _db_try(_link)
     return ConversationHandler.END
 
@@ -2483,10 +2934,9 @@ async def _run_copilot(telegram_id: int, question: str) -> dict | None:
     async def _fetch_user():
         factory = async_session_factory()
         async with factory() as session:
-            result = await session.execute(
-                select(User).where(User.telegram_id == telegram_id)
-            )
+            result = await session.execute(select(User).where(User.telegram_id == telegram_id))
             return result.scalar_one_or_none()
+
     user = await _db_try(_fetch_user)
     if not user or user.role != UserRole.teacher:
         return None
@@ -2534,6 +2984,7 @@ def _format_copilot_response(result: dict, language: str) -> str:
     if evidence:
         lines.append(f"\n📋 {t('copilot.evidence_label', language)}:")
         from src.core.teacher_copilot.evidence_engine import EvidenceEngine
+
         citations = EvidenceEngine.format_citations(evidence)
         lines.append(f"<code>{citations}</code>")
 
@@ -2562,7 +3013,9 @@ async def assignments_command(update: Update, context):
 
         if role in ("admin", "teacher"):
             try:
-                ws_resp = await client.get(f"{api_base}/api/v1/workspaces/?user_id={user_data['id']}")
+                ws_resp = await client.get(
+                    f"{api_base}/api/v1/workspaces/?user_id={user_data['id']}"
+                )
             except httpx.RequestError:
                 await _reply_long(update, "❌ Could not reach the server. Please try again later.")
                 return
@@ -2577,7 +3030,9 @@ async def assignments_command(update: Update, context):
                 return
         else:
             try:
-                resp = await client.get(f"{api_base}/api/v1/assignments/my?student_id={user_data['id']}")
+                resp = await client.get(
+                    f"{api_base}/api/v1/assignments/my?student_id={user_data['id']}"
+                )
             except httpx.RequestError:
                 await _reply_long(update, "❌ Could not reach the server. Please try again later.")
                 return
@@ -2592,9 +3047,16 @@ async def assignments_command(update: Update, context):
 
         lines = ["📋 *Assignments*"]
         for a in assignments[:10]:
-            status_icon = {"draft": "📝", "published": "📢", "completed": "✅", "archived": "📦"}.get(a["status"], "📄")
+            status_icon = {
+                "draft": "📝",
+                "published": "📢",
+                "completed": "✅",
+                "archived": "📦",
+            }.get(a["status"], "📄")
             due = f" 📅 {a['due_date'][:10]}" if a.get("due_date") else ""
-            lines.append(f"\n{status_icon} *{a['title']}*\n  `{a['id']}` | {a['assignment_type']}{due}")
+            lines.append(
+                f"\n{status_icon} *{a['title']}*\n  `{a['id']}` | {a['assignment_type']}{due}"
+            )
         await _reply_long(update, "\n".join(lines), parse_mode="Markdown")
 
 
@@ -2602,7 +3064,10 @@ async def submit_command(update: Update, context):
     api_base = settings.api_base_url
     args = context.args
     if len(args) < 2:
-        await _reply_long(update, "Usage: /submit <assignment_id> <your answer>\nExample: /submit abc12345 My homework answer")
+        await _reply_long(
+            update,
+            "Usage: /submit <assignment_id> <your answer>\nExample: /submit abc12345 My homework answer",  # noqa: E501
+        )
         return
 
     assignment_id = args[0]
@@ -2653,7 +3118,9 @@ async def handle_document_upload(update: Update, context):
     file_name = doc.file_name or ""
     ext = "." + file_name.rsplit(".", 1)[-1].lower() if "." in file_name else ""
     if ext not in ALLOWED_UPLOAD_EXTENSIONS:
-        await _reply_long(update, f"❌ Unsupported file format `{ext}`. Accepted: pdf, docx, txt, md")
+        await _reply_long(
+            update, f"❌ Unsupported file format `{ext}`. Accepted: pdf, docx, txt, md"
+        )
         return
 
     if doc.file_size and doc.file_size > MAX_UPLOAD_SIZE:
@@ -2745,9 +3212,12 @@ async def handle_upload_hint(update: Update, context):
 
 def build_app() -> Application:
     from telegram.request import HTTPXRequest
+
     _request = HTTPXRequest(
-        read_timeout=60.0, write_timeout=60.0,
-        connect_timeout=30.0, pool_timeout=5.0,
+        read_timeout=60.0,
+        write_timeout=60.0,
+        connect_timeout=30.0,
+        pool_timeout=5.0,
     )
     app = Application.builder().token(settings.telegram_bot_token).request(_request).build()
 
@@ -2772,7 +3242,7 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("child_progress", child_progress))
     app.add_handler(CommandHandler("assignments", assignments_command))
     app.add_handler(CommandHandler("submit", submit_command))
-    app.add_handler(MessageHandler(filters.Document, handle_document_upload))
+    app.add_handler(MessageHandler(filters.Document.ALL, handle_document_upload))
 
     link_handler = ConversationHandler(
         entry_points=[CommandHandler("link", link_command)],
@@ -2930,7 +3400,9 @@ def build_app() -> Application:
     app.add_handler(CallbackQueryHandler(handle_language_select, pattern="^lang_"))
     app.add_handler(CallbackQueryHandler(help_command, pattern="^help$"))
     app.add_handler(CallbackQueryHandler(menu, pattern="^menu$"))
-    app.add_handler(CallbackQueryHandler(handle_recovery_complete_task, pattern=r"^recovery_complete_"))
+    app.add_handler(
+        CallbackQueryHandler(handle_recovery_complete_task, pattern=r"^recovery_complete_")
+    )
     app.add_handler(CallbackQueryHandler(handle_recovery_view, pattern="^recovery_view$"))
     app.add_handler(CallbackQueryHandler(handle_settings_toggle, pattern=r"^settings_"))
     app.add_handler(CallbackQueryHandler(handle_parent_child_progress, pattern=r"^parent_child_"))
@@ -2946,6 +3418,7 @@ async def main():
     await app.initialize()
 
     from telegram import BotCommand
+
     commands = [
         BotCommand("start", "Show menu"),
         BotCommand("help", "Show help"),
@@ -2979,11 +3452,14 @@ async def main():
         logger.info("webhook_set", url=settings.telegram_webhook_url)
     else:
         logger.info("starting_polling")
-        await app.updater.start_polling(allowed_updates=["message", "callback_query"], drop_pending_updates=True)
+        await app.updater.start_polling(
+            allowed_updates=["message", "callback_query"], drop_pending_updates=True
+        )
         await app.start()
         logger.info("bot_polling_started")
         try:
             import asyncio
+
             while True:
                 await asyncio.sleep(3600)
         except KeyboardInterrupt:
@@ -2992,4 +3468,5 @@ async def main():
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())

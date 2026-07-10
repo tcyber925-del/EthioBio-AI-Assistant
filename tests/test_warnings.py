@@ -29,16 +29,11 @@ def test_build_app_does_not_emit_unexpected_warnings(monkeypatch):
         app = bot.build_app()
 
     messages = _warning_messages(captured)
-    unexpected = [
-        m for m in messages
-        if "per_message" not in m
-    ]
+    unexpected = [m for m in messages if "per_message" not in m]
     assert not unexpected, f"Unexpected warnings: {unexpected}"
 
     handler_types = {
-        type(handler).__name__
-        for handlers in app.handlers.values()
-        for handler in handlers
+        type(handler).__name__ for handlers in app.handlers.values() for handler in handlers
     }
     assert "CommandHandler" in handler_types
     assert "ConversationHandler" in handler_types

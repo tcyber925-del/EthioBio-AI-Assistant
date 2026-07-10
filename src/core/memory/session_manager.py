@@ -15,8 +15,11 @@ SESSION_INACTIVITY_TIMEOUT_MINUTES = 30
 
 class SessionManager:
     async def get_or_create_active_session(
-        self, user_id: UUID, topic: str | None = None,
-        tutoring_mode: str = "direct", db: AsyncSession | None = None,
+        self,
+        user_id: UUID,
+        topic: str | None = None,
+        tutoring_mode: str = "direct",
+        db: AsyncSession | None = None,
     ) -> MemorySession:
         if db is None:
             raise ValueError("Database session required")
@@ -40,15 +43,15 @@ class SessionManager:
         await db.flush()
         await db.refresh(session)
 
-        logger.info("memory_session_created",
-                     user_id=str(user_id), session_id=str(session.session_id))
+        logger.info(
+            "memory_session_created", user_id=str(user_id), session_id=str(session.session_id)
+        )
         return session
 
     async def _close_expired_sessions(self, user_id: UUID, db: AsyncSession) -> None:
         cutoff = datetime.now(timezone.utc) - timedelta(minutes=SESSION_INACTIVITY_TIMEOUT_MINUTES)
         result = await db.execute(
-            select(MemorySession)
-            .where(
+            select(MemorySession).where(
                 MemorySession.user_id == user_id,
                 MemorySession.last_active_at < cutoff,
                 MemorySession.summary.is_(None),
@@ -66,7 +69,9 @@ class SessionManager:
         return session
 
     async def close_session(
-        self, session_id: UUID, db: AsyncSession,
+        self,
+        session_id: UUID,
+        db: AsyncSession,
         conversation_context: str | None = None,
     ) -> MemorySession | None:
         session = await db.get(MemorySession, session_id)
@@ -75,7 +80,9 @@ class SessionManager:
 
         summarizer = Summarizer()
         summary = await summarizer.summarize_session(
-            session, conversation_context=conversation_context, db=db,
+            session,
+            conversation_context=conversation_context,
+            db=db,
         )
         if not summary and session.summary is None:
             session.summary = ""
@@ -101,7 +108,9 @@ class SessionManager:
         session.educational_context["messages"] = messages
 
     async def get_active_session_for_user(
-        self, user_id: UUID, db: AsyncSession,
+        self,
+        user_id: UUID,
+        db: AsyncSession,
     ) -> MemorySession | None:
         return await self._find_active_session(user_id, db)
 

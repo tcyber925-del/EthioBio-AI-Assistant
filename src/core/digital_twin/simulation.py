@@ -16,7 +16,8 @@ class SimulationEngine:
         self.session = session
 
     async def simulate(
-        self, user_id: UUID,
+        self,
+        user_id: UUID,
         actions: list[dict],
         weeks_ahead: int = 4,
     ) -> dict:
@@ -70,19 +71,25 @@ class SimulationEngine:
                     if topic and mf["topic"] != topic:
                         continue
                     mf["projected"] = round(
-                        min(mf["projected"] + 0.15, 1.0), 2,
+                        min(mf["projected"] + 0.15, 1.0),
+                        2,
                     )
                     if mf["projected"] > mf["current"]:
                         mf["trend"] = "improving"
 
         # Recompute readiness with simulated mastery
         sim_readiness = await engine._forecast_readiness(
-            user_id, weeks_ahead, sim_mastery,
+            user_id,
+            weeks_ahead,
+            sim_mastery,
         )
 
         # Recompute risk with simulated forecasts
         sim_risk = await engine._forecast_risk(
-            user_id, sim_mastery, sim_retention, sim_readiness,
+            user_id,
+            sim_mastery,
+            sim_retention,
+            sim_readiness,
         )
 
         return {

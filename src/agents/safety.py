@@ -34,8 +34,7 @@ class SafetyAgent(BaseAgent):
         session: Optional[AsyncSession] = None,
     ) -> dict:
         grade_context = f" (Grade {grade_level})" if grade_level else ""
-        lang_names = {"en": "English", "am": "Amharic",
-                       "both": "English/Amharic"}
+        lang_names = {"en": "English", "am": "Amharic", "both": "English/Amharic"}
         lang_name = lang_names.get(language, "English")
         safety_prompt = SAFETY_SYSTEM_PROMPT.format(language=lang_name)
         user_message = (
@@ -54,6 +53,7 @@ class SafetyAgent(BaseAgent):
         )
 
         import json
+
         try:
             content_text = result["content"]
             if "```json" in content_text:

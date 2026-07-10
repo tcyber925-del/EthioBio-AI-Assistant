@@ -38,10 +38,7 @@ class SchoolService:
         if not class_groups:
             return self._empty_profile(school_id)
 
-        readiness_tasks = [
-            self._fetch_readiness_for_class(session, cg)
-            for cg in class_groups
-        ]
+        readiness_tasks = [self._fetch_readiness_for_class(session, cg) for cg in class_groups]
         class_results = await asyncio.gather(*readiness_tasks, return_exceptions=True)
 
         valid_classes = []
@@ -73,10 +70,7 @@ class SchoolService:
         if not class_group.students:
             return []
 
-        tasks = [
-            self._safe_fetch_readiness(session, s.id)
-            for s in class_group.students
-        ]
+        tasks = [self._safe_fetch_readiness(session, s.id) for s in class_group.students]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         profiles: list[ExamReadinessProfile] = []
@@ -130,9 +124,7 @@ class SchoolService:
                 teacher_profiles[tid] = []
 
             teacher_class_map[tid].append(cg)
-            teacher_interventions[tid] += sum(
-                len(p.recommended_interventions) for p in profiles
-            )
+            teacher_interventions[tid] += sum(len(p.recommended_interventions) for p in profiles)
             teacher_profiles[tid].extend(profiles)
             all_profiles.extend(profiles)
 
@@ -141,12 +133,14 @@ class SchoolService:
                 1 for p in profiles if p.overall_readiness < RISK_HEALTH_THRESHOLD
             )
             if health < RISK_HEALTH_THRESHOLD or class_risk_count > len(profiles) // 2:
-                class_health_map.append({
-                    "class_id": cg.id,
-                    "name": cg.name,
-                    "health": round(health, 1),
-                    "risk_student_count": class_risk_count,
-                })
+                class_health_map.append(
+                    {
+                        "class_id": cg.id,
+                        "name": cg.name,
+                        "health": round(health, 1),
+                        "risk_student_count": class_risk_count,
+                    }
+                )
 
         total_students = len(all_profiles)
         avg_health = (
@@ -171,13 +165,15 @@ class SchoolService:
             total_classrooms = len(classes)
             intv_count = teacher_interventions[tid]
             intv_rate = intv_count / total_classrooms if total_classrooms > 0 else 0.0
-            teacher_metrics.append(TeacherMetric(
-                teacher_id=tid,
-                classroom_count=total_classrooms,
-                avg_student_readiness=round(avg, 1),
-                intervention_rate=round(intv_rate, 1),
-                active_plan_count=total_classrooms,
-            ))
+            teacher_metrics.append(
+                TeacherMetric(
+                    teacher_id=tid,
+                    classroom_count=total_classrooms,
+                    avg_student_readiness=round(avg, 1),
+                    intervention_rate=round(intv_rate, 1),
+                    active_plan_count=total_classrooms,
+                )
+            )
 
         return SchoolProfile(
             school_id=school.id,
@@ -217,8 +213,7 @@ class SchoolService:
             avg_health=profile.avg_health,
             total_students=profile.total_students,
             at_risk_count=sum(
-                profile.health_distribution.get(b, 0)
-                for b in ("Critical", "Developing")
+                profile.health_distribution.get(b, 0) for b in ("Critical", "Developing")
             ),
         )
         session.add(snapshot)
@@ -242,10 +237,7 @@ class SchoolService:
                 "school_breakdown": [],
             }
 
-        tasks = [
-            self.get_school_overview(session, s.id)
-            for s in schools
-        ]
+        tasks = [self.get_school_overview(session, s.id) for s in schools]
         profiles = await asyncio.gather(*tasks, return_exceptions=True)
 
         school_data = []
@@ -263,14 +255,16 @@ class SchoolService:
                 )
                 continue
             p = profile_or_err
-            school_data.append({
-                "school_id": str(school.id),
-                "name": school.name,
-                "avg_health": p.avg_health,
-                "total_students": p.total_students,
-                "total_classrooms": p.total_classrooms,
-                "total_teachers": p.total_teachers,
-            })
+            school_data.append(
+                {
+                    "school_id": str(school.id),
+                    "name": school.name,
+                    "avg_health": p.avg_health,
+                    "total_students": p.total_students,
+                    "total_classrooms": p.total_classrooms,
+                    "total_teachers": p.total_teachers,
+                }
+            )
             all_students += p.total_students
             all_classrooms += p.total_classrooms
             all_teachers += p.total_teachers
@@ -282,8 +276,7 @@ class SchoolService:
             "total_classrooms": all_classrooms,
             "total_students": all_students,
             "avg_health": (
-                round(sum(health_scores) / len(health_scores), 1)
-                if health_scores else 0.0
+                round(sum(health_scores) / len(health_scores), 1) if health_scores else 0.0
             ),
             "school_breakdown": school_data,
         }

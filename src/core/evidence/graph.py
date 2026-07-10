@@ -154,9 +154,7 @@ class EvidenceGraph:
         """
 
         # Find internal sessions matching this external session_id
-        session_stmt = select(EvidenceSession).where(
-            EvidenceSession.session_id == session_id
-        )
+        session_stmt = select(EvidenceSession).where(EvidenceSession.session_id == session_id)
         session_result = await self.session.execute(session_stmt)
         internal_sessions = session_result.scalars().all()
 

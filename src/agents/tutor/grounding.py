@@ -2,7 +2,7 @@ import re
 
 from src.agents.tutor.models import CitationEntry
 
-CITATION_PATTERN = re.compile(r'\[id:([^\]]+)\]')
+CITATION_PATTERN = re.compile(r"\[id:([^\]]+)\]")
 
 
 def extract_citations(
@@ -20,16 +20,18 @@ def extract_citations(
         return response_text, []
 
     cleaned = CITATION_PATTERN.sub("", response_text).strip()
-    cleaned = re.sub(r'  +', " ", cleaned)
+    cleaned = re.sub(r"  +", " ", cleaned)
 
     entries: list[CitationEntry] = []
     for m in matches:
         eid = m.group(1)
         evidence = evidence_map.get(eid, {})
-        entries.append(CitationEntry(
-            response_segment="",
-            evidence_ids=[eid],
-            source_names=[evidence.get("source_name", "unknown")] if evidence else ["unknown"],
-        ))
+        entries.append(
+            CitationEntry(
+                response_segment="",
+                evidence_ids=[eid],
+                source_names=[evidence.get("source_name", "unknown")] if evidence else ["unknown"],
+            )
+        )
 
     return cleaned, entries

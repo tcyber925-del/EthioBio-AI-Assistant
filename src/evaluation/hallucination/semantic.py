@@ -7,27 +7,99 @@ from src.evaluation.hallucination.models import (
 )
 
 STOPWORDS = {
-    "a", "an", "the", "is", "are", "was", "were", "be", "been",
-    "being", "have", "has", "had", "do", "does", "did", "will",
-    "would", "could", "should", "can", "may", "might", "shall",
-    "to", "of", "in", "for", "on", "with", "at", "by", "from",
-    "as", "into", "through", "during", "before", "after", "above",
-    "below", "between", "out", "off", "over", "under", "again",
-    "further", "then", "once", "here", "there", "when", "where",
-    "why", "how", "all", "each", "every", "both", "few", "more",
-    "most", "other", "some", "such", "no", "not", "only", "own",
-    "same", "so", "than", "too", "very", "it", "its", "this",
-    "that", "these", "those",
+    "a",
+    "an",
+    "the",
+    "is",
+    "are",
+    "was",
+    "were",
+    "be",
+    "been",
+    "being",
+    "have",
+    "has",
+    "had",
+    "do",
+    "does",
+    "did",
+    "will",
+    "would",
+    "could",
+    "should",
+    "can",
+    "may",
+    "might",
+    "shall",
+    "to",
+    "of",
+    "in",
+    "for",
+    "on",
+    "with",
+    "at",
+    "by",
+    "from",
+    "as",
+    "into",
+    "through",
+    "during",
+    "before",
+    "after",
+    "above",
+    "below",
+    "between",
+    "out",
+    "off",
+    "over",
+    "under",
+    "again",
+    "further",
+    "then",
+    "once",
+    "here",
+    "there",
+    "when",
+    "where",
+    "why",
+    "how",
+    "all",
+    "each",
+    "every",
+    "both",
+    "few",
+    "more",
+    "most",
+    "other",
+    "some",
+    "such",
+    "no",
+    "not",
+    "only",
+    "own",
+    "same",
+    "so",
+    "than",
+    "too",
+    "very",
+    "it",
+    "its",
+    "this",
+    "that",
+    "these",
+    "those",
 }
 
 
 def _tokenize(text: str) -> set[str]:
-    words = re.findall(r'[a-z]+', text.lower())
+    words = re.findall(r"[a-z]+", text.lower())
     return {w for w in words if w not in STOPWORDS and len(w) > 2}
 
 
 def _heuristic_support(
-    claim_text: str, evidence_text: str, threshold: float = 0.3,
+    claim_text: str,
+    evidence_text: str,
+    threshold: float = 0.3,
 ) -> tuple[bool, float]:
     claim_tokens = _tokenize(claim_text)
     evidence_tokens = _tokenize(evidence_text)
@@ -86,13 +158,15 @@ async def semantic_check(
             content = result.get("content", "").strip().lower()
             supported = "supported" in content
             confidence = result.get("confidence", 0.5)
-            assessments.append(ClaimAssessment(
-                response_segment=segment,
-                evidence_ids=eids,
-                supported=supported,
-                confidence=confidence,
-                reason="llm_assessment" if supported else "llm_flagged",
-            ))
+            assessments.append(
+                ClaimAssessment(
+                    response_segment=segment,
+                    evidence_ids=eids,
+                    supported=supported,
+                    confidence=confidence,
+                    reason="llm_assessment" if supported else "llm_flagged",
+                )
+            )
         else:
             evidence_text = ""
             for eid in eids:
@@ -100,15 +174,19 @@ async def semantic_check(
                 if ev:
                     evidence_text += " " + ev.get("content", "")
             supported, ratio = _heuristic_support(
-                segment, evidence_text, overlap_threshold,
+                segment,
+                evidence_text,
+                overlap_threshold,
             )
-            assessments.append(ClaimAssessment(
-                response_segment=segment,
-                evidence_ids=eids,
-                supported=supported,
-                confidence=ratio,
-                reason="" if supported else "low_token_overlap",
-            ))
+            assessments.append(
+                ClaimAssessment(
+                    response_segment=segment,
+                    evidence_ids=eids,
+                    supported=supported,
+                    confidence=ratio,
+                    reason="" if supported else "low_token_overlap",
+                )
+            )
 
     total = len(assessments)
     supported_count = sum(1 for a in assessments if a.supported)

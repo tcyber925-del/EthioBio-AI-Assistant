@@ -32,7 +32,7 @@ def format_event_title(event_type: str) -> str:
 def format_event_description(event: MemoryEvent) -> str:
     t = event.topic or "General"
     meta = event.event_metadata or {}
-    
+
     if event.event_type == "quiz_completed":
         score = meta.get("score", 0)
         total = meta.get("total_questions", 0)
@@ -57,7 +57,7 @@ def format_event_description(event: MemoryEvent) -> str:
     elif event.event_type == "achievement_unlocked":
         title = meta.get("title", "achievement")
         return f"Unlocked achievement: {title}."
-    
+
     return f"Logged {event.event_type} event on topic {t}."
 
 
@@ -122,7 +122,7 @@ async def get_memory_timeline(
         )
         if misconceptions_count > 0:
             desc += f"Detected {misconceptions_count} key misconceptions."
-        
+
         items.append(
             TimelineItem(
                 id=str(summary.id),
@@ -147,7 +147,7 @@ async def get_memory_timeline(
                 type="fact",
                 timestamp=fact.created_at,
                 title="Learner Profile Update",
-                description=f"Identified learning pattern/preference: {fact.fact_key} = {fact.fact_value}.",
+                description=f"Identified learning pattern/preference: {fact.fact_key} = {fact.fact_value}.",  # noqa: E501
                 metadata={
                     "fact_key": fact.fact_key,
                     "fact_value": fact.fact_value,

@@ -147,7 +147,8 @@ Respond with valid JSON only."""
             }
         except (json.JSONDecodeError, KeyError) as e:
             logger.error(
-                "recovery_plan_parse_error", error=str(e),
+                "recovery_plan_parse_error",
+                error=str(e),
                 content=result.get("content", "")[:200],
             )
             return {"plan": None, "error": f"Failed to generate plan: {str(e)}"}

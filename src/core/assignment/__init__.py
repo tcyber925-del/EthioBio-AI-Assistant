@@ -1,9 +1,9 @@
 from src.core.assignment.models import (
     Assignment,
     NewAssignment,
-    UpdateAssignment,
-    Submission,
     NewSubmission,
+    Submission,
+    UpdateAssignment,
     UpdateSubmission,
 )
 from src.core.assignment.service import AssignmentService

@@ -9,12 +9,13 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from pydantic import ValidationError
 
-
 # ── Schema tests (src/schemas/diagram.py) ──────────────────────────────
+
 
 class TestDiagramPanelSchema:
     def test_diagram_panel_minimal(self):
         from src.schemas.diagram import DiagramPanel
+
         panel = DiagramPanel(id="panel_1", caption="Nucleus diagram", svg="<svg></svg>", labels=[])
         assert panel.id == "panel_1"
         assert panel.caption == "Nucleus diagram"
@@ -23,16 +24,19 @@ class TestDiagramPanelSchema:
 
     def test_diagram_panel_requires_id(self):
         from src.schemas.diagram import DiagramPanel
+
         with pytest.raises(ValidationError):
             DiagramPanel(caption="test", svg="<svg></svg>", labels=[])
 
     def test_diagram_panel_requires_caption(self):
         from src.schemas.diagram import DiagramPanel
+
         with pytest.raises(ValidationError):
             DiagramPanel(id="p1", svg="<svg></svg>", labels=[])
 
     def test_diagram_panel_with_labels(self):
-        from src.schemas.diagram import DiagramPanel, DiagramLabel
+        from src.schemas.diagram import DiagramLabel, DiagramPanel
+
         labels = [
             DiagramLabel(id="l1", text="Nucleus", x=100, y=200),
             DiagramLabel(id="l2", text="Membrane", x=300, y=400),
@@ -43,6 +47,7 @@ class TestDiagramPanelSchema:
 
     def test_diagram_panel_default_labels_empty(self):
         from src.schemas.diagram import DiagramPanel
+
         panel = DiagramPanel(id="p1", caption="Test", svg="<svg></svg>", labels=[])
         assert panel.labels == []
 
@@ -50,6 +55,7 @@ class TestDiagramPanelSchema:
 class TestDiagramGenerateResponseMultiPanel:
     def test_response_with_panels(self):
         from src.schemas.diagram import DiagramGenerateResponse, DiagramLabel, DiagramPanel
+
         labels = [DiagramLabel(id="l1", text="A", x=10, y=20)]
         panel = DiagramPanel(id="p1", caption="Panel 1", svg="<svg>1</svg>", labels=labels)
         resp = DiagramGenerateResponse(
@@ -66,6 +72,7 @@ class TestDiagramGenerateResponseMultiPanel:
 
     def test_response_backward_compat_single_panel_via_diagram_svg(self):
         from src.schemas.diagram import DiagramGenerateResponse, DiagramLabel
+
         labels = [DiagramLabel(id="l1", text="Nucleus", x=100, y=200)]
         resp = DiagramGenerateResponse(
             title="Test",
@@ -80,46 +87,61 @@ class TestDiagramGenerateResponseMultiPanel:
 
     def test_response_panels_defaults_empty(self):
         from src.schemas.diagram import DiagramGenerateResponse, DiagramLabel
+
         labels = [DiagramLabel(id="l1", text="A", x=10, y=20)]
         resp = DiagramGenerateResponse(
-            title="T", topic="cells", difficulty="beginner",
-            diagram_svg="<svg></svg>", labels=labels,
+            title="T",
+            topic="cells",
+            difficulty="beginner",
+            diagram_svg="<svg></svg>",
+            labels=labels,
         )
         assert resp.panels == []
 
 
 # ── Agent tests (src/agents/diagram.py) ────────────────────────────────
 
+
 class TestDetectPanelCount:
     def test_single_topic_no_connective(self):
         from src.agents.diagram import DiagramAgent
+
         agent = DiagramAgent(llm_router=MagicMock())
         count = agent.detect_panel_count("Draw a plant cell")
         assert count == 1
 
-    @pytest.mark.parametrize("prompt", [
-        "Compare plant cell and animal cell",
-        "Animal cell vs plant cell",
-        "Show external and internal structure of the heart",
-        "Mitosis and meiosis comparison",
-    ])
+    @pytest.mark.parametrize(
+        "prompt",
+        [
+            "Compare plant cell and animal cell",
+            "Animal cell vs plant cell",
+            "Show external and internal structure of the heart",
+            "Mitosis and meiosis comparison",
+        ],
+    )
     def test_two_panel_prompts(self, prompt):
         from src.agents.diagram import DiagramAgent
+
         agent = DiagramAgent(llm_router=MagicMock())
         assert agent.detect_panel_count(prompt) == 2
 
-    @pytest.mark.parametrize("prompt", [
-        "Draw the structure of DNA",
-        "Label the parts of a flower",
-        "Diagram of the digestive system",
-    ])
+    @pytest.mark.parametrize(
+        "prompt",
+        [
+            "Draw the structure of DNA",
+            "Label the parts of a flower",
+            "Diagram of the digestive system",
+        ],
+    )
     def test_single_panel_prompts(self, prompt):
         from src.agents.diagram import DiagramAgent
+
         agent = DiagramAgent(llm_router=MagicMock())
         assert agent.detect_panel_count(prompt) == 1
 
     def test_empty_prompt_defaults_one(self):
         from src.agents.diagram import DiagramAgent
+
         agent = DiagramAgent(llm_router=MagicMock())
         assert agent.detect_panel_count("") == 1
 
@@ -130,14 +152,18 @@ class TestGeneratePanel:
         from src.agents.diagram import DiagramAgent
 
         router = AsyncMock()
-        router.route = AsyncMock(return_value={
-            "content": json.dumps({
-                "title": "Panel Test",
-                "diagram_svg": "<svg viewBox='0 0 800 600'><circle cx='400' cy='300' r='50'/></svg>",
-                "labels": [{"id": "l1", "text": "Center", "x": 400, "y": 300}],
-            }),
-            "model": "test",
-        })
+        router.route = AsyncMock(
+            return_value={
+                "content": json.dumps(
+                    {
+                        "title": "Panel Test",
+                        "diagram_svg": "<svg viewBox='0 0 800 600'><circle cx='400' cy='300' r='50'/></svg>",
+                        "labels": [{"id": "l1", "text": "Center", "x": 400, "y": 300}],
+                    }
+                ),
+                "model": "test",
+            }
+        )
 
         agent = DiagramAgent(llm_router=router)
         panel = await agent.generate_panel(
@@ -159,17 +185,23 @@ class TestGeneratePanel:
         from src.agents.diagram import DiagramAgent
 
         router = AsyncMock()
-        router.route = AsyncMock(return_value={
-            "content": json.dumps({
-                "title": "Test",
-                "diagram_svg": "<svg></svg>",
-                "labels": [],
-            }),
-            "model": "test",
-        })
+        router.route = AsyncMock(
+            return_value={
+                "content": json.dumps(
+                    {
+                        "title": "Test",
+                        "diagram_svg": "<svg></svg>",
+                        "labels": [],
+                    }
+                ),
+                "model": "test",
+            }
+        )
 
         agent = DiagramAgent(llm_router=router)
-        await agent.generate_panel("test", panel_index=2, topic="cells", difficulty="beginner", grade=10)
+        await agent.generate_panel(
+            "test", panel_index=2, topic="cells", difficulty="beginner", grade=10
+        )
 
         call_args = router.route.call_args
         messages = call_args[1]["messages"]
@@ -181,13 +213,17 @@ class TestGeneratePanel:
         from src.agents.diagram import DiagramAgent
 
         router = AsyncMock()
-        router.route = AsyncMock(return_value={
-            "content": "not valid json",
-            "model": "test",
-        })
+        router.route = AsyncMock(
+            return_value={
+                "content": "not valid json",
+                "model": "test",
+            }
+        )
 
         agent = DiagramAgent(llm_router=router)
-        panel = await agent.generate_panel("test", panel_index=0, topic="cells", difficulty="beginner", grade=10)
+        panel = await agent.generate_panel(
+            "test", panel_index=0, topic="cells", difficulty="beginner", grade=10
+        )
 
         assert panel.id == "panel_0"
         assert panel.svg == "not valid json"
@@ -201,14 +237,18 @@ class TestMultiPanelGenerate:
         from src.retrieval.adapter import VectorStoreAdapter
 
         router = AsyncMock()
-        router.route = AsyncMock(return_value={
-            "content": json.dumps({
-                "title": "Cell Structure",
-                "diagram_svg": "<svg viewBox='0 0 800 600'><circle cx='400' cy='300' r='50'/></svg>",
-                "labels": [{"id": "l1", "text": "Nucleus", "x": 400, "y": 300}],
-            }),
-            "model": "test",
-        })
+        router.route = AsyncMock(
+            return_value={
+                "content": json.dumps(
+                    {
+                        "title": "Cell Structure",
+                        "diagram_svg": "<svg viewBox='0 0 800 600'><circle cx='400' cy='300' r='50'/></svg>",
+                        "labels": [{"id": "l1", "text": "Nucleus", "x": 400, "y": 300}],
+                    }
+                ),
+                "model": "test",
+            }
+        )
 
         mock_adapter = MagicMock(spec=VectorStoreAdapter)
         mock_adapter.search = AsyncMock(return_value=[])
@@ -230,14 +270,18 @@ class TestMultiPanelGenerate:
         from src.agents.diagram import DiagramAgent
 
         router = AsyncMock()
-        router.route = AsyncMock(return_value={
-            "content": json.dumps({
-                "title": "Panel Test",
-                "diagram_svg": "<svg></svg>",
-                "labels": [{"id": "l1", "text": "A", "x": 0, "y": 0}],
-            }),
-            "model": "test",
-        })
+        router.route = AsyncMock(
+            return_value={
+                "content": json.dumps(
+                    {
+                        "title": "Panel Test",
+                        "diagram_svg": "<svg></svg>",
+                        "labels": [{"id": "l1", "text": "A", "x": 0, "y": 0}],
+                    }
+                ),
+                "model": "test",
+            }
+        )
 
         agent = DiagramAgent(llm_router=router)
         result = await agent.generate(
@@ -257,16 +301,21 @@ class TestMultiPanelGenerate:
     @pytest.mark.asyncio
     async def test_two_panel_sets_master_title(self):
         router = AsyncMock()
-        router.route = AsyncMock(return_value={
-            "content": json.dumps({
-                "title": "Comparison",
-                "diagram_svg": "<svg></svg>",
-                "labels": [],
-            }),
-            "model": "test",
-        })
+        router.route = AsyncMock(
+            return_value={
+                "content": json.dumps(
+                    {
+                        "title": "Comparison",
+                        "diagram_svg": "<svg></svg>",
+                        "labels": [],
+                    }
+                ),
+                "model": "test",
+            }
+        )
 
         from src.agents.diagram import DiagramAgent
+
         agent = DiagramAgent(llm_router=router)
         result = await agent.generate(
             prompt="Plant cell vs animal cell",
@@ -279,18 +328,23 @@ class TestMultiPanelGenerate:
     @pytest.mark.asyncio
     async def test_two_panel_each_panel_calls_llm_separately(self):
         router = AsyncMock()
-        router.route = AsyncMock(return_value={
-            "content": json.dumps({
-                "title": "Panel",
-                "diagram_svg": "<svg></svg>",
-                "labels": [],
-            }),
-            "model": "test",
-        })
+        router.route = AsyncMock(
+            return_value={
+                "content": json.dumps(
+                    {
+                        "title": "Panel",
+                        "diagram_svg": "<svg></svg>",
+                        "labels": [],
+                    }
+                ),
+                "model": "test",
+            }
+        )
 
         from src.agents.diagram import DiagramAgent
+
         agent = DiagramAgent(llm_router=router)
-        result = await agent.generate(
+        await agent.generate(
             prompt="External and internal structure of the heart",
             topic="anatomy",
             difficulty="intermediate",
@@ -302,9 +356,10 @@ class TestMultiPanelGenerate:
 
 # ── API tests (src/api/diagram.py) ─────────────────────────────────────
 
+
 class TestGenerateEndpointMultiPanel:
     def test_endpoint_returns_panels_in_response(self):
-        from src.schemas.diagram import DiagramGenerateResponse, DiagramPanel, DiagramLabel
+        from src.schemas.diagram import DiagramGenerateResponse, DiagramLabel, DiagramPanel
 
         panel = DiagramPanel(
             id="panel_0",

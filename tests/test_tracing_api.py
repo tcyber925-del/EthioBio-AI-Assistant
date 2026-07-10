@@ -38,9 +38,7 @@ def mock_repo():
 @pytest.fixture
 async def client(mock_repo):
     app.dependency_overrides[get_trace_repository] = lambda: mock_repo
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
     app.dependency_overrides.clear()
 
@@ -65,26 +63,30 @@ async def test_get_nonexistent_trace(client, mock_repo):
 
 @pytest.mark.asyncio
 async def test_list_traces(client, mock_repo):
-    mock_repo.list_traces = AsyncMock(return_value=(
-        [{
-            "trace_id": "t1",
-            "start_time": datetime.now(timezone.utc).isoformat(),
-            "end_time": None,
-            "status": "completed",
-            "error": None,
-            "user_message": "q",
-            "response": "a",
-            "user_id": None,
-            "grade_level": 8,
-            "language": "en",
-            "intent": "tutor",
-            "nodes_visited": [],
-            "node_timings": {},
-            "metadata": {},
-            "duration_ms": 50.0,
-        }],
-        1,
-    ))
+    mock_repo.list_traces = AsyncMock(
+        return_value=(
+            [
+                {
+                    "trace_id": "t1",
+                    "start_time": datetime.now(timezone.utc).isoformat(),
+                    "end_time": None,
+                    "status": "completed",
+                    "error": None,
+                    "user_message": "q",
+                    "response": "a",
+                    "user_id": None,
+                    "grade_level": 8,
+                    "language": "en",
+                    "intent": "tutor",
+                    "nodes_visited": [],
+                    "node_timings": {},
+                    "metadata": {},
+                    "duration_ms": 50.0,
+                }
+            ],
+            1,
+        )
+    )
     response = await client.get("/traces?status=completed&limit=10")
     assert response.status_code == 200
     data = response.json()

@@ -1,4 +1,4 @@
-"""Learner Profile Builder — generates a learner-aware system prompt block from a LearnerSnapshot."""
+"""Learner Profile Builder — generates a learner-aware system prompt block from a LearnerSnapshot."""  # noqa: E501
 
 from dataclasses import dataclass, field
 
@@ -25,7 +25,9 @@ class LearnerProfileBuilder:
         difficulty_level = self._determine_difficulty(snapshot)
         known_misconceptions = self._find_misconceptions(snapshot, current_topic)
         profile_block = self._format_profile_block(
-            snapshot, difficulty_level, known_misconceptions,
+            snapshot,
+            difficulty_level,
+            known_misconceptions,
             readiness_context=readiness_context,
             current_topic=current_topic,
         )
@@ -84,10 +86,7 @@ class LearnerProfileBuilder:
     ) -> list[MisconceptionSummary]:
         if not current_topic:
             return []
-        return [
-            m for m in snapshot.misconceptions
-            if m.topic == current_topic and m.frequency >= 2
-        ]
+        return [m for m in snapshot.misconceptions if m.topic == current_topic and m.frequency >= 2]
 
     def _format_profile_block(
         self,

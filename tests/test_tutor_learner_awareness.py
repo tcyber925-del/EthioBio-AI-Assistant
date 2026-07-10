@@ -66,7 +66,9 @@ async def test_learner_profile_block_not_injected_when_empty(mock_router):
 @pytest.mark.asyncio
 async def test_learner_profile_in_socratic_mode(mock_router):
     node = TutorNode(mock_router)
-    profile_block = "## Learner Profile\n- Strong Topics: Cell Biology\n- Difficulty Level: PROFICIENT"
+    profile_block = (
+        "## Learner Profile\n- Strong Topics: Cell Biology\n- Difficulty Level: PROFICIENT"
+    )
     state = AgentState(
         user_message="Tell me about mitosis",
         user_id=uuid4(),

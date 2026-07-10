@@ -1,8 +1,8 @@
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 
 from src.core.tracing import TraceRepository
 
@@ -77,11 +77,21 @@ async def test_list_traces_with_filters(repo, mock_session):
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [
         MagicMock(
-            trace_id="t1", start_time=datetime.now(timezone.utc),
-            end_time=datetime.now(timezone.utc), status="completed",
-            error=None, user_message="q1", response="a1",
-            user_id=None, grade_level=8, language="en", intent="tutor",
-            nodes_visited=[], node_timings={}, event_metadata={}, duration_ms=100.0,
+            trace_id="t1",
+            start_time=datetime.now(timezone.utc),
+            end_time=datetime.now(timezone.utc),
+            status="completed",
+            error=None,
+            user_message="q1",
+            response="a1",
+            user_id=None,
+            grade_level=8,
+            language="en",
+            intent="tutor",
+            nodes_visited=[],
+            node_timings={},
+            event_metadata={},
+            duration_ms=100.0,
         ),
     ]
 
@@ -132,7 +142,6 @@ async def test_cleanup_old_traces(repo, mock_session):
 async def test_to_dict_maps_event_metadata(repo, mock_session):
     """_to_dict should map event_metadata to metadata key and format dates."""
     from datetime import datetime, timezone
-    from sqlalchemy import select
 
     now = datetime.now(timezone.utc)
     mock_obj = MagicMock(

@@ -74,12 +74,14 @@ class BM25Index:
                 continue
             if source_type and meta.get("source_type") != source_type:
                 continue
-            candidates.append({
-                "doc_id": self._doc_ids[i],
-                "score": float(score),
-                "metadata": meta,
-                "index": i,
-            })
+            candidates.append(
+                {
+                    "doc_id": self._doc_ids[i],
+                    "score": float(score),
+                    "metadata": meta,
+                    "index": i,
+                }
+            )
 
         candidates.sort(key=lambda x: x["score"], reverse=True)
         return candidates[:n_results]
@@ -117,11 +119,14 @@ class BM25Index:
     def _save(self):
         os.makedirs(os.path.dirname(self.persist_path) or ".", exist_ok=True)
         with open(self.persist_path, "wb") as f:
-            pickle.dump({
-                "corpus": self._corpus,
-                "doc_ids": self._doc_ids,
-                "metadatas": self._metadatas,
-            }, f)
+            pickle.dump(
+                {
+                    "corpus": self._corpus,
+                    "doc_ids": self._doc_ids,
+                    "metadatas": self._metadatas,
+                },
+                f,
+            )
 
     def _load(self):
         if not os.path.exists(self.persist_path):

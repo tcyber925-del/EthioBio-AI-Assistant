@@ -211,10 +211,12 @@ class TestDiagramCriticCritique:
         from src.agents.diagram_critic import DiagramCritic
 
         router = AsyncMock()
-        router.route = AsyncMock(return_value={
-            "content": json.dumps({"score": 6, "issues": ["labels unclear"]}),
-            "model": "test",
-        })
+        router.route = AsyncMock(
+            return_value={
+                "content": json.dumps({"score": 6, "issues": ["labels unclear"]}),
+                "model": "test",
+            }
+        )
         critic = DiagramCritic(llm_router=router)
         svg = (
             "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 600'>"
@@ -232,17 +234,21 @@ class TestDiagramCriticRefine:
         from src.agents.diagram_critic import DiagramCritic
 
         router = AsyncMock()
-        router.route = AsyncMock(return_value={
-            "content": json.dumps({
-                "title": "Cell",
-                "diagram_svg": (
-                    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 600'>"
-                    "<circle cx='400' cy='300' r='50'/></svg>"
+        router.route = AsyncMock(
+            return_value={
+                "content": json.dumps(
+                    {
+                        "title": "Cell",
+                        "diagram_svg": (
+                            "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 600'>"
+                            "<circle cx='400' cy='300' r='50'/></svg>"
+                        ),
+                        "labels": [],
+                    }
                 ),
-                "labels": [],
-            }),
-            "model": "test",
-        })
+                "model": "test",
+            }
+        )
         mock_adapter = MagicMock()
         mock_adapter.search = AsyncMock(return_value=[])
         agent = DiagramAgent(llm_router=router, adapter=mock_adapter)
@@ -267,18 +273,22 @@ class TestDiagramCriticRefine:
         from src.agents.diagram_critic import DiagramCritic
 
         router = AsyncMock()
-        router.route = AsyncMock(return_value={
-            "content": json.dumps({
-                "title": "Perfect Cell",
-                "diagram_svg": (
-                    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 600'>"
-                    "<circle cx='400' cy='300' r='50'/>"
-                    "<rect x='10' y='10' width='100' height='50'/></svg>"
+        router.route = AsyncMock(
+            return_value={
+                "content": json.dumps(
+                    {
+                        "title": "Perfect Cell",
+                        "diagram_svg": (
+                            "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 600'>"
+                            "<circle cx='400' cy='300' r='50'/>"
+                            "<rect x='10' y='10' width='100' height='50'/></svg>"
+                        ),
+                        "labels": [{"id": "l1", "text": "Nucleus", "x": 400, "y": 300}],
+                    }
                 ),
-                "labels": [{"id": "l1", "text": "Nucleus", "x": 400, "y": 300}],
-            }),
-            "model": "test",
-        })
+                "model": "test",
+            }
+        )
         mock_adapter = MagicMock()
         mock_adapter.search = AsyncMock(return_value=[])
         agent = DiagramAgent(llm_router=router, adapter=mock_adapter)
@@ -300,19 +310,23 @@ class TestDiagramCriticRefine:
         from src.agents.diagram_critic import DiagramCritic
 
         router = AsyncMock()
-        router.route = AsyncMock(return_value={
-            "content": json.dumps({
-                "title": "Best Cell",
-                "diagram_svg": (
-                    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 600'>"
-                    "<circle cx='400' cy='300' r='50'/>"
-                    "<rect x='10' y='10' width='100' height='50'/>"
-                    "<text x='50' y='50'>Label</text></svg>"
+        router.route = AsyncMock(
+            return_value={
+                "content": json.dumps(
+                    {
+                        "title": "Best Cell",
+                        "diagram_svg": (
+                            "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 600'>"
+                            "<circle cx='400' cy='300' r='50'/>"
+                            "<rect x='10' y='10' width='100' height='50'/>"
+                            "<text x='50' y='50'>Label</text></svg>"
+                        ),
+                        "labels": [{"id": "l1", "text": "Nucleus", "x": 400, "y": 300}],
+                    }
                 ),
-                "labels": [{"id": "l1", "text": "Nucleus", "x": 400, "y": 300}],
-            }),
-            "model": "test",
-        })
+                "model": "test",
+            }
+        )
         mock_adapter = MagicMock()
         mock_adapter.search = AsyncMock(return_value=[])
         agent = DiagramAgent(llm_router=router, adapter=mock_adapter)
@@ -335,14 +349,18 @@ class TestDiagramCriticRefine:
         from src.agents.diagram_critic import DiagramCritic
 
         router = AsyncMock()
-        router.route = AsyncMock(return_value={
-            "content": json.dumps({
-                "title": "Bad Cell",
-                "diagram_svg": "bad",
-                "labels": [{"id": "l1", "text": "Nucleus", "x": 9999, "y": 300}],
-            }),
-            "model": "test",
-        })
+        router.route = AsyncMock(
+            return_value={
+                "content": json.dumps(
+                    {
+                        "title": "Bad Cell",
+                        "diagram_svg": "bad",
+                        "labels": [{"id": "l1", "text": "Nucleus", "x": 9999, "y": 300}],
+                    }
+                ),
+                "model": "test",
+            }
+        )
         mock_adapter = MagicMock()
         mock_adapter.search = AsyncMock(return_value=[])
         agent = DiagramAgent(llm_router=router, adapter=mock_adapter)

@@ -31,6 +31,7 @@ Output ONLY valid JSON, no other text."""
 class Summarizer:
     def __init__(self, llm_router=None):
         from src.llm.router import ModelRouter
+
         self.llm = llm_router or ModelRouter()
         self.embedder = Embedder()
         self.vector_store = None
@@ -38,11 +39,13 @@ class Summarizer:
     def _get_vector_store(self):
         if self.vector_store is None:
             from src.core.memory.vector_store import MemoryVectorStore
+
             self.vector_store = MemoryVectorStore()
         return self.vector_store
 
     async def summarize_session(
-        self, session: MemorySession,
+        self,
+        session: MemorySession,
         conversation_context: str | None = None,
         db: AsyncSession | None = None,
     ) -> MemoryEducationalSummary | None:
@@ -89,14 +92,12 @@ class Summarizer:
                 start = content.find("{")
                 end = content.rfind("}")
                 if start >= 0 and end > start:
-                    data = json.loads(content[start:end + 1])
+                    data = json.loads(content[start : end + 1])
                 else:
                     logger.error("summarize_json_parse_failed", content=content[:200])
                     return None
 
-            understanding = validate_understanding_level(
-                data.get("understanding_level")
-            )
+            understanding = validate_understanding_level(data.get("understanding_level"))
             misconceptions = data.get("key_misconceptions", [])
             if not isinstance(misconceptions, list):
                 misconceptions = []
@@ -150,9 +151,12 @@ class Summarizer:
             session.summary = summary_text
             await db.flush()
 
-            logger.info("session_summarized",
-                        session_id=str(session.session_id),
-                        topic=topic, confidence=confidence)
+            logger.info(
+                "session_summarized",
+                session_id=str(session.session_id),
+                topic=topic,
+                confidence=confidence,
+            )
             return db_summary
 
         except Exception as e:

@@ -12,7 +12,10 @@ logger = structlog.get_logger()
 
 class SocraticManager:
     async def get_state(
-        self, user_id: UUID, topic: str, db: AsyncSession,
+        self,
+        user_id: UUID,
+        topic: str,
+        db: AsyncSession,
     ) -> MemorySocraticState | None:
         result = await db.execute(
             select(MemorySocraticState).where(
@@ -23,7 +26,11 @@ class SocraticManager:
         return result.scalar_one_or_none()
 
     async def update_state(
-        self, user_id: UUID, topic: str, updates: dict, db: AsyncSession,
+        self,
+        user_id: UUID,
+        topic: str,
+        updates: dict,
+        db: AsyncSession,
     ) -> MemorySocraticState:
         state = await self.get_state(user_id, topic, db)
         if state:

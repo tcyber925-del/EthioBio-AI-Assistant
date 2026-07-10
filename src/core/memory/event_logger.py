@@ -54,8 +54,7 @@ SCHEMA_REGISTRY: dict[str, dict[str, Any]] = {
 }
 
 
-class EventValidationError(ValueError):
-    ...
+class EventValidationError(ValueError): ...
 
 
 class EventLogger:
@@ -70,8 +69,11 @@ class EventLogger:
             self.subscribe(event_type, handler)
 
     async def log(
-        self, user_id: UUID, event_type: str,
-        topic: str | None = None, metadata: dict | None = None,
+        self,
+        user_id: UUID,
+        event_type: str,
+        topic: str | None = None,
+        metadata: dict | None = None,
         db: AsyncSession | None = None,
     ) -> MemoryEvent | None:
         if db is None:
@@ -100,9 +102,7 @@ class EventLogger:
             return
         for field in schema["required_fields"]:
             if field not in metadata or metadata[field] is None:
-                raise EventValidationError(
-                    f"Event '{event_type}' missing required field: {field}"
-                )
+                raise EventValidationError(f"Event '{event_type}' missing required field: {field}")
         for field, raw in metadata.items():
             expected = schema["metadata_schema"].get(field)
             if expected is None:
@@ -110,12 +110,10 @@ class EventLogger:
             allowed = expected if isinstance(expected, tuple) else (expected,)
             if not isinstance(raw, allowed):
                 raise EventValidationError(
-                    f"Event '{event_type}' field '{field}' expected {allowed}, got {type(raw).__name__}"
+                    f"Event '{event_type}' field '{field}' expected {allowed}, got {type(raw).__name__}"  # noqa: E501
                 )
 
-    async def _notify(
-        self, event_type: str, user_id: UUID, metadata: dict, event_id: UUID
-    ) -> None:
+    async def _notify(self, event_type: str, user_id: UUID, metadata: dict, event_id: UUID) -> None:
         handlers = self._subscribers.get(event_type, [])
         if not handlers:
             return

@@ -91,7 +91,7 @@ def detect_misconception(text: str) -> tuple[bool, str]:
     lower = text.lower()
     for indicator in MISCONCEPTION_INDICATORS:
         if indicator in lower:
-            sentences = re.split(r'(?<=[.!?])\s+', text)
+            sentences = re.split(r"(?<=[.!?])\s+", text)
             for i, sentence in enumerate(sentences):
                 if indicator in sentence.lower():
                     correction = sentence.strip()
@@ -138,13 +138,13 @@ class TutorAgent(BaseAgent):
                 context = self.retriever.format_context(retrieved)
                 sources = []
                 for d in retrieved:
-                    if not d.get('metadata'):
+                    if not d.get("metadata"):
                         continue
-                    meta = d['metadata']
-                    grade = meta.get('grade_level', '')
-                    unit = meta.get('unit', '')
-                    topic = meta.get('topic', '')
-                    page = meta.get('page_number', '')
+                    meta = d["metadata"]
+                    grade = meta.get("grade_level", "")
+                    unit = meta.get("unit", "")
+                    topic = meta.get("topic", "")
+                    page = meta.get("page_number", "")
                     parts = []
                     if grade:
                         parts.append(f"Grade {grade}")

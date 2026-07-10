@@ -58,9 +58,7 @@ class RetrievalStrategy(BaseModel):
     retrieval_mode: Literal["single", "multi"] = Field(
         default="single", description="'single' or 'multi'"
     )
-    parallel_execution: bool = Field(
-        default=False, description="Run sources in parallel"
-    )
+    parallel_execution: bool = Field(default=False, description="Run sources in parallel")
     expected_sources: list[str] = Field(
         default_factory=list, description="Targeted retrieval sources"
     )

@@ -26,8 +26,7 @@ class ProjectedScoreCalculator:
         overall_readiness = readiness_profile.overall_readiness
 
         ability_scores = [
-            float(d.get("ability_score", 0))
-            for d in snapshot.ability_by_topic.values()
+            float(d.get("ability_score", 0)) for d in snapshot.ability_by_topic.values()
         ]
         avg_ability = sum(ability_scores) / len(ability_scores) if ability_scores else 0.0
 
@@ -36,8 +35,7 @@ class ProjectedScoreCalculator:
 
         forgetting_values = [r.forgetting_risk for r in forgetting_risks.values()]
         avg_forgetting = (
-            sum(forgetting_values) / len(forgetting_values)
-            if forgetting_values else 0.0
+            sum(forgetting_values) / len(forgetting_values) if forgetting_values else 0.0
         )
 
         projected = (

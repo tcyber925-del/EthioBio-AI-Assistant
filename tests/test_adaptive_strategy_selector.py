@@ -24,11 +24,18 @@ from src.core.learning_intelligence.tutor.learner_profile_builder import (
 
 def _snapshot(**overrides) -> LearnerSnapshot:
     defaults = dict(
-        user_id=uuid4(), generated_at=datetime.now(timezone.utc),
-        mastery_by_topic={}, ability_by_topic={}, weak_topics=[], strong_topics=[],
-        misconceptions=[], active_recovery_plans=[], due_reviews=[],
+        user_id=uuid4(),
+        generated_at=datetime.now(timezone.utc),
+        mastery_by_topic={},
+        ability_by_topic={},
+        weak_topics=[],
+        strong_topics=[],
+        misconceptions=[],
+        active_recovery_plans=[],
+        due_reviews=[],
         educational_memory=EducationalMemorySummary(),
-        gamification=GamificationSummary(), learning_goals=[],
+        gamification=GamificationSummary(),
+        learning_goals=[],
     )
     defaults.update(overrides)
     return LearnerSnapshot(**defaults)
@@ -53,9 +60,11 @@ class TestAdaptiveStrategySelector:
     def test_misconception_remediation_when_known_misconceptions_exist(self):
         selector = AdaptiveStrategySelector()
         snapshot = _snapshot()
-        profile = _profile(misconceptions=[
-            MisconceptionSummary(topic="Genetics", pattern_type="dominant_gene", frequency=3),
-        ])
+        profile = _profile(
+            misconceptions=[
+                MisconceptionSummary(topic="Genetics", pattern_type="dominant_gene", frequency=3),
+            ]
+        )
         strategy = selector.select(profile, snapshot, [])
         assert strategy == "MISCONCEPTION_REMEDIATION"
 
@@ -73,8 +82,11 @@ class TestAdaptiveStrategySelector:
         snapshot = _snapshot(
             active_recovery_plans=[
                 RecoverySummary(
-                    topic="Cell Division", progress_pct=0.4,
-                    completed_tasks=2, total_tasks=5, status="active",
+                    topic="Cell Division",
+                    progress_pct=0.4,
+                    completed_tasks=2,
+                    total_tasks=5,
+                    status="active",
                 ),
             ],
             educational_memory=EducationalMemorySummary(confidence=0.8),
@@ -89,8 +101,10 @@ class TestAdaptiveStrategySelector:
         profile = _profile()
         recommendations = [
             LearningRecommendation(
-                id="rec_1", action_type=LearningActionType.EXAM_PRACTICE,
-                topic="Biology", reason="Exam approaching",
+                id="rec_1",
+                action_type=LearningActionType.EXAM_PRACTICE,
+                topic="Biology",
+                reason="Exam approaching",
                 generated_at=datetime.now(timezone.utc),
             ),
         ]
@@ -102,9 +116,11 @@ class TestAdaptiveStrategySelector:
         snapshot = _snapshot(
             educational_memory=EducationalMemorySummary(confidence=0.2),
         )
-        profile = _profile(misconceptions=[
-            MisconceptionSummary(topic="Genetics", pattern_type="dominant_gene", frequency=3),
-        ])
+        profile = _profile(
+            misconceptions=[
+                MisconceptionSummary(topic="Genetics", pattern_type="dominant_gene", frequency=3),
+            ]
+        )
         strategy = selector.select(profile, snapshot, [])
         assert strategy == "MISCONCEPTION_REMEDIATION"
 
@@ -114,8 +130,11 @@ class TestAdaptiveStrategySelector:
             educational_memory=EducationalMemorySummary(confidence=0.2),
             active_recovery_plans=[
                 RecoverySummary(
-                    topic="Cell Division", progress_pct=0.4,
-                    completed_tasks=2, total_tasks=5, status="active",
+                    topic="Cell Division",
+                    progress_pct=0.4,
+                    completed_tasks=2,
+                    total_tasks=5,
+                    status="active",
                 ),
             ],
         )
@@ -128,8 +147,11 @@ class TestAdaptiveStrategySelector:
         snapshot = _snapshot(
             active_recovery_plans=[
                 RecoverySummary(
-                    topic="Cell Division", progress_pct=0.4,
-                    completed_tasks=2, total_tasks=5, status="active",
+                    topic="Cell Division",
+                    progress_pct=0.4,
+                    completed_tasks=2,
+                    total_tasks=5,
+                    status="active",
                 ),
             ],
             educational_memory=EducationalMemorySummary(confidence=0.8),
@@ -137,8 +159,10 @@ class TestAdaptiveStrategySelector:
         profile = _profile()
         recommendations = [
             LearningRecommendation(
-                id="rec_1", action_type=LearningActionType.EXAM_PRACTICE,
-                topic="Biology", reason="Exam approaching",
+                id="rec_1",
+                action_type=LearningActionType.EXAM_PRACTICE,
+                topic="Biology",
+                reason="Exam approaching",
                 generated_at=datetime.now(timezone.utc),
             ),
         ]
@@ -150,8 +174,11 @@ class TestAdaptiveStrategySelector:
         snapshot = _snapshot(
             active_recovery_plans=[
                 RecoverySummary(
-                    topic="Cell Division", progress_pct=0.4,
-                    completed_tasks=2, total_tasks=5, status="active",
+                    topic="Cell Division",
+                    progress_pct=0.4,
+                    completed_tasks=2,
+                    total_tasks=5,
+                    status="active",
                 ),
             ],
         )

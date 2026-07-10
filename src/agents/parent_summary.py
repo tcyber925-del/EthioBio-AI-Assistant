@@ -40,7 +40,9 @@ class ParentSummaryAgent(BaseAgent):
     ) -> dict:
         total_attempts = len(records)
         if total_attempts > 0:
-            avg_score = sum(float(r.score) / max(r.total, 1) * 100 for r in records) / total_attempts
+            avg_score = (
+                sum(float(r.score) / max(r.total, 1) * 100 for r in records) / total_attempts
+            )
         else:
             avg_score = 0
 
@@ -48,7 +50,9 @@ class ParentSummaryAgent(BaseAgent):
         is_low = avg_score < 60
 
         if language == "am":
-            lang_instruction = "Write the summary in Amharic (አማርኛ) only. Use polite, encouraging tone."
+            lang_instruction = (
+                "Write the summary in Amharic (አማርኛ) only. Use polite, encouraging tone."
+            )
         elif language == "both":
             lang_instruction = "Write the summary in English. Include key points also in Amharic."
         else:
@@ -57,13 +61,13 @@ class ParentSummaryAgent(BaseAgent):
         user_message = f"""Generate a weekly progress report (in {language}):
 
 Student: {student_name}
-Grade: {grade_level or 'N/A'}
+Grade: {grade_level or "N/A"}
 Week: {week_start.date()} to {week_end.date()}
-Topics covered: {', '.join(topics) if topics else 'None'}
+Topics covered: {", ".join(topics) if topics else "None"}
 Total quiz attempts: {total_attempts}
 Average score: {avg_score:.1f}%
-Performance warning: {'Yes' if is_low else 'No'}
-Weak areas: {', '.join(profile.weak_areas) if profile and profile.weak_areas else 'None identified'}
+Performance warning: {"Yes" if is_low else "No"}
+Weak areas: {", ".join(profile.weak_areas) if profile and profile.weak_areas else "None identified"}
 
 {lang_instruction}"""
 

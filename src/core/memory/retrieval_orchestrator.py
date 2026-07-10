@@ -19,8 +19,9 @@ def estimate_tokens(text: str) -> int:
 
 
 class MemoryRetrievalResult:
-    def __init__(self, memory_id: str, content: str, metadata: dict,
-                 score: float, similarity: float):
+    def __init__(
+        self, memory_id: str, content: str, metadata: dict, score: float, similarity: float
+    ):
         self.memory_id = memory_id
         self.content = content
         self.metadata = metadata
@@ -55,8 +56,7 @@ class RetrievalOrchestrator:
         except (ValueError, TypeError):
             return 0.0
 
-    def _combine_scores(self, similarity: float, recency: float,
-                        confidence: float) -> float:
+    def _combine_scores(self, similarity: float, recency: float, confidence: float) -> float:
         return (
             RANK_SIMILARITY_WEIGHT * similarity
             + RANK_RECENCY_WEIGHT * recency
@@ -64,7 +64,8 @@ class RetrievalOrchestrator:
         )
 
     def _truncate_to_budget(
-        self, results: list[MemoryRetrievalResult],
+        self,
+        results: list[MemoryRetrievalResult],
     ) -> list[MemoryRetrievalResult]:
         total_tokens = 0
         truncated = []
@@ -73,13 +74,17 @@ class RetrievalOrchestrator:
             if total_tokens + tokens > MEMORY_TOKEN_BUDGET:
                 remaining = MEMORY_TOKEN_BUDGET - total_tokens
                 if remaining > 20:
-                    r.content = r.content[:remaining * 4]
+                    r.content = r.content[: remaining * 4]
                     truncated.append(r)
                 break
             total_tokens += tokens
             truncated.append(r)
-        logger.info("memory_token_budget", total_tokens=total_tokens,
-                    results_returned=len(truncated), budget=MEMORY_TOKEN_BUDGET)
+        logger.info(
+            "memory_token_budget",
+            total_tokens=total_tokens,
+            results_returned=len(truncated),
+            budget=MEMORY_TOKEN_BUDGET,
+        )
         return truncated
 
     async def search(
@@ -99,8 +104,9 @@ class RetrievalOrchestrator:
         if topic:
             filters["topic"] = topic
         if filters:
-            where = {"$and": [{"user_id": v} if k == "user_id" else {k: v}
-                              for k, v in filters.items()]}
+            where = {
+                "$and": [{"user_id": v} if k == "user_id" else {k: v} for k, v in filters.items()]
+            }
 
         raw = await self.vector_store.search(
             query_embedding=query_embedding,
@@ -116,23 +122,29 @@ class RetrievalOrchestrator:
             recency = self._recency_score(meta.get("created_at"))
             combined = self._combine_scores(similarity, recency, confidence)
 
-            scored.append(MemoryRetrievalResult(
-                memory_id=item.get("id", ""),
-                content=item.get("content", ""),
-                metadata=meta,
-                score=combined,
-                similarity=similarity,
-            ))
+            scored.append(
+                MemoryRetrievalResult(
+                    memory_id=item.get("id", ""),
+                    content=item.get("content", ""),
+                    metadata=meta,
+                    score=combined,
+                    similarity=similarity,
+                )
+            )
 
         scored.sort(key=lambda x: x.score, reverse=True)
         truncated = self._truncate_to_budget(scored)
         return truncated[:n_results]
 
     async def search_by_topic(
-        self, topic: str, user_id: str | None = None,
+        self,
+        topic: str,
+        user_id: str | None = None,
     ) -> list[MemoryRetrievalResult]:
         return await self.search(
             query=f"learning about {topic}",
-            n_results=3, fetch_size=10,
-            topic=topic, user_id=user_id,
+            n_results=3,
+            fetch_size=10,
+            topic=topic,
+            user_id=user_id,
         )

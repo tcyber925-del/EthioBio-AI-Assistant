@@ -10,17 +10,19 @@ from src.core.retrieval.models import (
 
 class TestRetrievalModels:
     def test_retrieval_result_defaults(self):
-        r = RetrievalResult(
-            ko_id="1", title="T", content_type="pdf", score=0.9, matches=[]
-        )
+        r = RetrievalResult(ko_id="1", title="T", content_type="pdf", score=0.9, matches=[])
         assert r.workspace_id is None
         assert r.enrichment is None
 
     def test_evidence_source_has_citation(self):
         c = SourceCitation(ko_id="1", title="T", chunk_excerpt="excerpt", confidence_badge="high")
         s = EvidenceSource(
-            ko_id="1", title="T", content="content", chunk_index=0,
-            confidence=0.95, citation=c,
+            ko_id="1",
+            title="T",
+            content="content",
+            chunk_index=0,
+            confidence=0.95,
+            citation=c,
         )
         assert s.citation.confidence_badge == "high"
 
@@ -43,8 +45,20 @@ class TestTrustRanker:
 
         ranker = TrustRanker()
         results = [
-            RetrievalResult(ko_id="1", title="A", content_type="pdf", score=0.5, matches=[TextMatch(text="a", chunk_index=0, score=0.5)]),
-            RetrievalResult(ko_id="2", title="B", content_type="txt", score=0.8, matches=[TextMatch(text="b", chunk_index=0, score=0.8)]),
+            RetrievalResult(
+                ko_id="1",
+                title="A",
+                content_type="pdf",
+                score=0.5,
+                matches=[TextMatch(text="a", chunk_index=0, score=0.5)],
+            ),
+            RetrievalResult(
+                ko_id="2",
+                title="B",
+                content_type="txt",
+                score=0.8,
+                matches=[TextMatch(text="b", chunk_index=0, score=0.8)],
+            ),
         ]
         ranked = ranker.rerank(results, workspace_id=None)
         assert len(ranked) == 2
@@ -54,9 +68,27 @@ class TestTrustRanker:
 
         ranker = TrustRanker()
         results = [
-            RetrievalResult(ko_id="1", title="A", content_type="pdf", score=0.5, matches=[TextMatch(text="a", chunk_index=0, score=0.5)]),
-            RetrievalResult(ko_id="2", title="B", content_type="txt", score=0.8, matches=[TextMatch(text="b", chunk_index=0, score=0.8)]),
-            RetrievalResult(ko_id="3", title="C", content_type="pdf", score=0.6, matches=[TextMatch(text="c", chunk_index=0, score=0.6)]),
+            RetrievalResult(
+                ko_id="1",
+                title="A",
+                content_type="pdf",
+                score=0.5,
+                matches=[TextMatch(text="a", chunk_index=0, score=0.5)],
+            ),
+            RetrievalResult(
+                ko_id="2",
+                title="B",
+                content_type="txt",
+                score=0.8,
+                matches=[TextMatch(text="b", chunk_index=0, score=0.8)],
+            ),
+            RetrievalResult(
+                ko_id="3",
+                title="C",
+                content_type="pdf",
+                score=0.6,
+                matches=[TextMatch(text="c", chunk_index=0, score=0.6)],
+            ),
         ]
         ranked = ranker.rerank(results, workspace_id=None)
         scores = [r.score for r in ranked]
@@ -67,8 +99,21 @@ class TestTrustRanker:
 
         ranker = TrustRanker()
         results = [
-            RetrievalResult(ko_id="1", title="A", content_type="pdf", score=0.7, matches=[TextMatch(text="a", chunk_index=0, score=0.7)]),
-            RetrievalResult(ko_id="2", title="B", content_type="txt", score=0.7, matches=[TextMatch(text="b", chunk_index=0, score=0.7)], enrichment={"content_class": "lesson"}),
+            RetrievalResult(
+                ko_id="1",
+                title="A",
+                content_type="pdf",
+                score=0.7,
+                matches=[TextMatch(text="a", chunk_index=0, score=0.7)],
+            ),
+            RetrievalResult(
+                ko_id="2",
+                title="B",
+                content_type="txt",
+                score=0.7,
+                matches=[TextMatch(text="b", chunk_index=0, score=0.7)],
+                enrichment={"content_class": "lesson"},
+            ),
         ]
         ranked = ranker.rerank(results, workspace_id=None)
         assert ranked[0].ko_id == "2"
@@ -81,8 +126,22 @@ class TestTrustRanker:
         ranker = TrustRanker()
         ws = "ws-1"
         results = [
-            RetrievalResult(ko_id="1", title="A", content_type="pdf", score=0.7, matches=[TextMatch(text="a", chunk_index=0, score=0.7)], workspace_id="ws-2"),
-            RetrievalResult(ko_id="2", title="B", content_type="txt", score=0.7, matches=[TextMatch(text="b", chunk_index=0, score=0.7)], workspace_id=ws),
+            RetrievalResult(
+                ko_id="1",
+                title="A",
+                content_type="pdf",
+                score=0.7,
+                matches=[TextMatch(text="a", chunk_index=0, score=0.7)],
+                workspace_id="ws-2",
+            ),
+            RetrievalResult(
+                ko_id="2",
+                title="B",
+                content_type="txt",
+                score=0.7,
+                matches=[TextMatch(text="b", chunk_index=0, score=0.7)],
+                workspace_id=ws,
+            ),
         ]
         ranked = ranker.rerank(results, workspace_id=ws)
         assert ranked[0].ko_id == "2"
@@ -90,25 +149,31 @@ class TestTrustRanker:
 
 class TestRetrievalGateway:
     async def test_search_returns_results(self):
-        from src.core.retrieval.gateway import RetrievalGateway
         from unittest.mock import AsyncMock, MagicMock
+
+        from src.core.retrieval.gateway import RetrievalGateway
 
         mock_embedder = AsyncMock()
         mock_embedder.embed_text.return_value = [0.1] * 384
         mock_vs = MagicMock()
-        mock_vs.query = AsyncMock(return_value={
-            "documents": ["cell biology", "dna structure"],
-            "metadatas": [
-                {"knowledge_object_id": "ko-1", "chunk_index": 0},
-                {"knowledge_object_id": "ko-1", "chunk_index": 1},
-            ],
-            "distances": [0.1, 0.2],
-            "ids": ["ko-1:chunk:0", "ko-1:chunk:1"],
-        })
+        mock_vs.query = AsyncMock(
+            return_value={
+                "documents": ["cell biology", "dna structure"],
+                "metadatas": [
+                    {"knowledge_object_id": "ko-1", "chunk_index": 0},
+                    {"knowledge_object_id": "ko-1", "chunk_index": 1},
+                ],
+                "distances": [0.1, 0.2],
+                "ids": ["ko-1:chunk:0", "ko-1:chunk:1"],
+            }
+        )
         mock_registry = AsyncMock()
         mock_registry.get.return_value = MagicMock(
-            id="ko-1", title="Cell Biology", content_type="pdf",
-            workspace_id="ws-1", metadata={},
+            id="ko-1",
+            title="Cell Biology",
+            content_type="pdf",
+            workspace_id="ws-1",
+            metadata={},
         )
 
         gateway = RetrievalGateway(
@@ -122,13 +187,16 @@ class TestRetrievalGateway:
         assert results[0].title == "Cell Biology"
 
     async def test_search_returns_empty_for_no_matches(self):
-        from src.core.retrieval.gateway import RetrievalGateway
         from unittest.mock import AsyncMock, MagicMock
+
+        from src.core.retrieval.gateway import RetrievalGateway
 
         mock_embedder = AsyncMock()
         mock_embedder.embed_text.return_value = [0.1] * 384
         mock_vs = MagicMock()
-        mock_vs.query = AsyncMock(return_value={"documents": [], "metadatas": [], "distances": [], "ids": []})
+        mock_vs.query = AsyncMock(
+            return_value={"documents": [], "metadatas": [], "distances": [], "ids": []}
+        )
 
         gateway = RetrievalGateway(
             embedder=mock_embedder,
@@ -139,22 +207,28 @@ class TestRetrievalGateway:
         assert results == []
 
     async def test_search_filters_by_workspace(self):
-        from src.core.retrieval.gateway import RetrievalGateway
         from unittest.mock import AsyncMock, MagicMock
+
+        from src.core.retrieval.gateway import RetrievalGateway
 
         mock_embedder = AsyncMock()
         mock_embedder.embed_text.return_value = [0.1] * 384
         mock_vs = MagicMock()
-        mock_vs.query = AsyncMock(return_value={
-            "documents": ["cell biology"],
-            "metadatas": [{"knowledge_object_id": "ko-1", "chunk_index": 0}],
-            "distances": [0.1],
-            "ids": ["ko-1:chunk:0"],
-        })
+        mock_vs.query = AsyncMock(
+            return_value={
+                "documents": ["cell biology"],
+                "metadatas": [{"knowledge_object_id": "ko-1", "chunk_index": 0}],
+                "distances": [0.1],
+                "ids": ["ko-1:chunk:0"],
+            }
+        )
         mock_registry = AsyncMock()
         mock_registry.get.return_value = MagicMock(
-            id="ko-1", title="Cell Biology", content_type="pdf",
-            workspace_id="ws-2", metadata={},
+            id="ko-1",
+            title="Cell Biology",
+            content_type="pdf",
+            workspace_id="ws-2",
+            metadata={},
         )
 
         gateway = RetrievalGateway(
@@ -166,24 +240,30 @@ class TestRetrievalGateway:
         assert len(results) == 0
 
     async def test_search_returns_enrichment_in_result(self):
-        from src.core.retrieval.gateway import RetrievalGateway
-        from unittest.mock import AsyncMock, MagicMock
         import json
+        from unittest.mock import AsyncMock, MagicMock
+
+        from src.core.retrieval.gateway import RetrievalGateway
 
         mock_embedder = AsyncMock()
         mock_embedder.embed_text.return_value = [0.1] * 384
         mock_vs = MagicMock()
-        mock_vs.query = AsyncMock(return_value={
-            "documents": ["cell biology"],
-            "metadatas": [{"knowledge_object_id": "ko-1", "chunk_index": 0}],
-            "distances": [0.1],
-            "ids": ["ko-1:chunk:0"],
-        })
+        mock_vs.query = AsyncMock(
+            return_value={
+                "documents": ["cell biology"],
+                "metadatas": [{"knowledge_object_id": "ko-1", "chunk_index": 0}],
+                "distances": [0.1],
+                "ids": ["ko-1:chunk:0"],
+            }
+        )
         enrichment_data = {"content_class": "lesson", "key_terms": ["biology"]}
         mock_registry = AsyncMock()
         mock_registry.get.return_value = MagicMock(
-            id="ko-1", title="Cell Biology", content_type="pdf",
-            workspace_id="ws-1", metadata={"enrichment": json.dumps(enrichment_data)},
+            id="ko-1",
+            title="Cell Biology",
+            content_type="pdf",
+            workspace_id="ws-1",
+            metadata={"enrichment": json.dumps(enrichment_data)},
         )
 
         gateway = RetrievalGateway(
@@ -196,22 +276,28 @@ class TestRetrievalGateway:
         assert results[0].enrichment == enrichment_data
 
     async def test_search_handles_malformed_enrichment_json(self):
-        from src.core.retrieval.gateway import RetrievalGateway
         from unittest.mock import AsyncMock, MagicMock
+
+        from src.core.retrieval.gateway import RetrievalGateway
 
         mock_embedder = AsyncMock()
         mock_embedder.embed_text.return_value = [0.1] * 384
         mock_vs = MagicMock()
-        mock_vs.query = AsyncMock(return_value={
-            "documents": ["cell biology"],
-            "metadatas": [{"knowledge_object_id": "ko-1", "chunk_index": 0}],
-            "distances": [0.1],
-            "ids": ["ko-1:chunk:0"],
-        })
+        mock_vs.query = AsyncMock(
+            return_value={
+                "documents": ["cell biology"],
+                "metadatas": [{"knowledge_object_id": "ko-1", "chunk_index": 0}],
+                "distances": [0.1],
+                "ids": ["ko-1:chunk:0"],
+            }
+        )
         mock_registry = AsyncMock()
         mock_registry.get.return_value = MagicMock(
-            id="ko-1", title="Cell Biology", content_type="pdf",
-            workspace_id="ws-1", metadata={"enrichment": "not valid json"},
+            id="ko-1",
+            title="Cell Biology",
+            content_type="pdf",
+            workspace_id="ws-1",
+            metadata={"enrichment": "not valid json"},
         )
         gateway = RetrievalGateway(
             embedder=mock_embedder,
@@ -223,22 +309,28 @@ class TestRetrievalGateway:
         assert results[0].enrichment is None
 
     async def test_search_handles_none_metadata(self):
-        from src.core.retrieval.gateway import RetrievalGateway
         from unittest.mock import AsyncMock, MagicMock
+
+        from src.core.retrieval.gateway import RetrievalGateway
 
         mock_embedder = AsyncMock()
         mock_embedder.embed_text.return_value = [0.1] * 384
         mock_vs = MagicMock()
-        mock_vs.query = AsyncMock(return_value={
-            "documents": ["cell biology"],
-            "metadatas": [{"knowledge_object_id": "ko-1", "chunk_index": 0}],
-            "distances": [0.1],
-            "ids": ["ko-1:chunk:0"],
-        })
+        mock_vs.query = AsyncMock(
+            return_value={
+                "documents": ["cell biology"],
+                "metadatas": [{"knowledge_object_id": "ko-1", "chunk_index": 0}],
+                "distances": [0.1],
+                "ids": ["ko-1:chunk:0"],
+            }
+        )
         mock_registry = AsyncMock()
         mock_registry.get.return_value = MagicMock(
-            id="ko-1", title="Cell Biology", content_type="pdf",
-            workspace_id="ws-1", metadata=None,
+            id="ko-1",
+            title="Cell Biology",
+            content_type="pdf",
+            workspace_id="ws-1",
+            metadata=None,
         )
         gateway = RetrievalGateway(
             embedder=mock_embedder,
@@ -250,25 +342,31 @@ class TestRetrievalGateway:
         assert results[0].enrichment is None
 
     async def test_search_dedup_by_knowledge_object_id(self):
-        from src.core.retrieval.gateway import RetrievalGateway
         from unittest.mock import AsyncMock, MagicMock
+
+        from src.core.retrieval.gateway import RetrievalGateway
 
         mock_embedder = AsyncMock()
         mock_embedder.embed_text.return_value = [0.1] * 384
         mock_vs = MagicMock()
-        mock_vs.query = AsyncMock(return_value={
-            "documents": ["cell biology intro", "cell biology advanced"],
-            "metadatas": [
-                {"knowledge_object_id": "ko-1", "chunk_index": 0},
-                {"knowledge_object_id": "ko-1", "chunk_index": 1},
-            ],
-            "distances": [0.1, 0.3],
-            "ids": ["ko-1:chunk:0", "ko-1:chunk:1"],
-        })
+        mock_vs.query = AsyncMock(
+            return_value={
+                "documents": ["cell biology intro", "cell biology advanced"],
+                "metadatas": [
+                    {"knowledge_object_id": "ko-1", "chunk_index": 0},
+                    {"knowledge_object_id": "ko-1", "chunk_index": 1},
+                ],
+                "distances": [0.1, 0.3],
+                "ids": ["ko-1:chunk:0", "ko-1:chunk:1"],
+            }
+        )
         mock_registry = AsyncMock()
         mock_registry.get.return_value = MagicMock(
-            id="ko-1", title="Cell Biology", content_type="pdf",
-            workspace_id="ws-1", metadata={},
+            id="ko-1",
+            title="Cell Biology",
+            content_type="pdf",
+            workspace_id="ws-1",
+            metadata={},
         )
         gateway = RetrievalGateway(
             embedder=mock_embedder,
@@ -308,12 +406,18 @@ class TestCitationFormatter:
 
         f = CitationFormatter()
         cit = SourceCitation(
-            ko_id="1", title="Cell Biology",
-            chunk_excerpt="Cells are...", confidence_badge="high",
+            ko_id="1",
+            title="Cell Biology",
+            chunk_excerpt="Cells are...",
+            confidence_badge="high",
         )
         source = EvidenceSource(
-            ko_id="1", title="Cell Biology", content="Cells are...",
-            chunk_index=0, confidence=0.95, citation=cit,
+            ko_id="1",
+            title="Cell Biology",
+            content="Cells are...",
+            chunk_index=0,
+            confidence=0.95,
+            citation=cit,
         )
         result = f.format_inline(source)
         assert "Cell Biology" in result
@@ -325,12 +429,18 @@ class TestCitationFormatter:
 
         f = CitationFormatter()
         cit = SourceCitation(
-            ko_id="1", title="Cell Biology",
-            chunk_excerpt="Cells are...", confidence_badge="high",
+            ko_id="1",
+            title="Cell Biology",
+            chunk_excerpt="Cells are...",
+            confidence_badge="high",
         )
         source = EvidenceSource(
-            ko_id="1", title="Cell Biology", content="Cells are...",
-            chunk_index=0, confidence=0.95, citation=cit,
+            ko_id="1",
+            title="Cell Biology",
+            content="Cells are...",
+            chunk_index=0,
+            confidence=0.95,
+            citation=cit,
         )
         result = f.format_footnote(source, 1)
         assert "[1]" in result
@@ -341,8 +451,10 @@ class TestCitationFormatter:
 
         f = CitationFormatter()
         cit = f.build_citation(
-            ko_id="1", title="Cell Biology",
-            content="Cells are the basic unit of life.", confidence=0.95,
+            ko_id="1",
+            title="Cell Biology",
+            content="Cells are the basic unit of life.",
+            confidence=0.95,
         )
         assert cit.ko_id == "1"
         assert cit.confidence_badge == "high"
@@ -351,14 +463,16 @@ class TestCitationFormatter:
 
 class TestEvidencePackageBuilder:
     def test_build_from_results(self):
-        from src.core.retrieval.evidence_package import EvidencePackageBuilder
         from src.core.retrieval.citation import CitationFormatter
+        from src.core.retrieval.evidence_package import EvidencePackageBuilder
         from src.core.retrieval.models import RetrievalResult, TextMatch
 
         builder = EvidencePackageBuilder(CitationFormatter())
         results = [
             RetrievalResult(
-                ko_id="1", title="Cell Biology", content_type="pdf",
+                ko_id="1",
+                title="Cell Biology",
+                content_type="pdf",
                 score=0.95,
                 matches=[TextMatch(text="Cells are the basic unit", chunk_index=0, score=0.95)],
             ),
@@ -371,8 +485,8 @@ class TestEvidencePackageBuilder:
         assert pkg.sources[0].citation.confidence_badge == "high"
 
     def test_build_empty_results(self):
-        from src.core.retrieval.evidence_package import EvidencePackageBuilder
         from src.core.retrieval.citation import CitationFormatter
+        from src.core.retrieval.evidence_package import EvidencePackageBuilder
 
         builder = EvidencePackageBuilder(CitationFormatter())
         pkg = builder.build("nothing", [])
@@ -383,6 +497,7 @@ class TestEvidencePackageBuilder:
 class TestRetrievalAPI:
     async def test_search_returns_evidence_package(self):
         from unittest.mock import AsyncMock, MagicMock, patch
+
         from fastapi import FastAPI
         from httpx import ASGITransport, AsyncClient
 
@@ -398,6 +513,7 @@ class TestRetrievalAPI:
 
         app = FastAPI()
         import src.api.retrieval as retrieval_module
+
         app.include_router(retrieval_module.router)
 
         with (
@@ -417,6 +533,7 @@ class TestRetrievalAPI:
 
         app = FastAPI()
         import src.api.retrieval as retrieval_module
+
         app.include_router(retrieval_module.router)
 
         transport = ASGITransport(app=app)
@@ -446,14 +563,18 @@ class TestKnowledgeRouter:
 
     async def test_route_and_search_kml(self):
         from unittest.mock import AsyncMock
-        from src.core.retrieval.router import KnowledgeRouter
+
         from src.core.retrieval.models import RetrievalResult, TextMatch
+        from src.core.retrieval.router import KnowledgeRouter
 
         mock_gateway = AsyncMock()
         mock_gateway.search.return_value = [
             RetrievalResult(
-                ko_id="1", title="Cell Biology", content_type="pdf",
-                score=0.95, matches=[TextMatch(text="cells", chunk_index=0, score=0.95)],
+                ko_id="1",
+                title="Cell Biology",
+                content_type="pdf",
+                score=0.95,
+                matches=[TextMatch(text="cells", chunk_index=0, score=0.95)],
             ),
         ]
         router = KnowledgeRouter(gateway=mock_gateway)
@@ -472,17 +593,19 @@ class TestKnowledgeRouter:
 class TestPlannerIntegration:
     async def test_get_evidence_returns_package(self):
         from unittest.mock import AsyncMock
-        from src.core.retrieval.planner_integration import PlannerIntegrationService
-        from src.core.retrieval.citation import CitationFormatter
-        from src.core.retrieval.evidence_package import EvidencePackageBuilder
+
         from src.core.retrieval.gateway import RetrievalGateway
-        from src.core.retrieval.models import RetrievalResult, EvidencePackage, TextMatch
+        from src.core.retrieval.models import EvidencePackage, RetrievalResult, TextMatch
+        from src.core.retrieval.planner_integration import PlannerIntegrationService
 
         mock_gateway = AsyncMock(spec=RetrievalGateway)
         mock_gateway.search.return_value = [
             RetrievalResult(
-                ko_id="1", title="Cell Biology", content_type="pdf",
-                score=0.95, matches=[TextMatch(text="cells", chunk_index=0, score=0.95)],
+                ko_id="1",
+                title="Cell Biology",
+                content_type="pdf",
+                score=0.95,
+                matches=[TextMatch(text="cells", chunk_index=0, score=0.95)],
             ),
         ]
         service = PlannerIntegrationService(gateway=mock_gateway)
@@ -494,7 +617,6 @@ class TestPlannerIntegration:
 
     async def test_get_evidence_no_gateway(self):
         from src.core.retrieval.planner_integration import PlannerIntegrationService
-        from src.core.retrieval.models import EvidencePackage
 
         service = PlannerIntegrationService(gateway=None)
         pkg = await service.get_evidence(query="biology")
@@ -503,9 +625,9 @@ class TestPlannerIntegration:
 
     async def test_get_evidence_empty_results(self):
         from unittest.mock import AsyncMock
-        from src.core.retrieval.planner_integration import PlannerIntegrationService
+
         from src.core.retrieval.gateway import RetrievalGateway
-        from src.core.retrieval.models import EvidencePackage
+        from src.core.retrieval.planner_integration import PlannerIntegrationService
 
         mock_gateway = AsyncMock(spec=RetrievalGateway)
         mock_gateway.search.return_value = []

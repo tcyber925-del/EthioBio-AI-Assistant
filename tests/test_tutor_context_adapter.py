@@ -28,7 +28,8 @@ from src.core.learning_intelligence.tutor.tutor_context_package import (
 
 def _make_mock_adapter_deps(with_risk_topics: bool = False):
     snapshot = LearnerSnapshot(
-        user_id=uuid4(), generated_at=__import__("datetime").datetime.now(),
+        user_id=uuid4(),
+        generated_at=__import__("datetime").datetime.now(),
         educational_memory=EducationalMemorySummary(),
         gamification=GamificationSummary(),
     )
@@ -56,8 +57,11 @@ def _make_mock_adapter_deps(with_risk_topics: bool = False):
         readiness_band="Developing",
         topic_readiness=[
             TopicReadiness(
-                topic="Genetics", readiness_score=45.0, risk_level="HIGH",
-                risk_factors=["low_ability"], review_status="current",
+                topic="Genetics",
+                readiness_score=45.0,
+                risk_level="HIGH",
+                risk_factors=["low_ability"],
+                review_status="current",
             ),
         ],
         risk_topics=risk_topics,
@@ -66,8 +70,11 @@ def _make_mock_adapter_deps(with_risk_topics: bool = False):
     readiness_svc.get_readiness = AsyncMock(return_value=readiness_profile)
 
     return (
-        snapshot_svc, profile_builder, recommendation_svc,
-        strategy_selector, readiness_svc,
+        snapshot_svc,
+        profile_builder,
+        recommendation_svc,
+        strategy_selector,
+        readiness_svc,
     )
 
 
@@ -143,12 +150,12 @@ async def test_build_tolerates_readiness_failure():
 
 @pytest.mark.asyncio
 async def test_build_limits_recommendations_to_three():
-    from datetime import datetime, timezone
     from src.core.learning_intelligence.recommendation.models import LearningRecommendation
 
     recs = [
-        MagicMock(spec=LearningRecommendation, reason=f"Rec {i}",
-                  action_type="review_topic", topic="Bio")
+        MagicMock(
+            spec=LearningRecommendation, reason=f"Rec {i}", action_type="review_topic", topic="Bio"
+        )
         for i in range(7)
     ]
     deps = _make_mock_adapter_deps()

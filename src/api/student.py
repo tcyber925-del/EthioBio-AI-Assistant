@@ -47,10 +47,14 @@ async def get_student_dashboard(
             )
         ).scalar_one_or_none()
         achievements = (
-            await session.execute(
-                select(UserAchievement).where(UserAchievement.user_id == user_id)
+            (
+                await session.execute(
+                    select(UserAchievement).where(UserAchievement.user_id == user_id)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         return {
             "total_xp": g.total_xp if g else 0,
             "level": g.level if g else 1,
@@ -71,27 +75,35 @@ async def get_student_dashboard(
 
     async def _weak_topics():
         records = (
-            await session.execute(
-                select(StudentMastery)
-                .where(
-                    StudentMastery.user_id == user_id,
-                    StudentMastery.average_score < 70,
+            (
+                await session.execute(
+                    select(StudentMastery)
+                    .where(
+                        StudentMastery.user_id == user_id,
+                        StudentMastery.average_score < 70,
+                    )
+                    .order_by(StudentMastery.average_score.asc())
                 )
-                .order_by(StudentMastery.average_score.asc())
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         result = []
         for m in records:
             mc = (
-                await session.execute(
-                    select(MisconceptionPattern).where(
-                        MisconceptionPattern.user_id == user_id,
-                        MisconceptionPattern.topic == m.topic,
-                        MisconceptionPattern.resolved.is_(False),
+                (
+                    await session.execute(
+                        select(MisconceptionPattern).where(
+                            MisconceptionPattern.user_id == user_id,
+                            MisconceptionPattern.topic == m.topic,
+                            MisconceptionPattern.resolved.is_(False),
+                        )
                     )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             result.append(
                 {
                     "topic": m.topic,
@@ -106,16 +118,20 @@ async def get_student_dashboard(
     async def _due_reviews():
         now = datetime.now(timezone.utc)
         schedules = (
-            await session.execute(
-                select(SpacedRepetitionSchedule)
-                .where(
-                    SpacedRepetitionSchedule.user_id == user_id,
-                    SpacedRepetitionSchedule.next_review_at <= now,
+            (
+                await session.execute(
+                    select(SpacedRepetitionSchedule)
+                    .where(
+                        SpacedRepetitionSchedule.user_id == user_id,
+                        SpacedRepetitionSchedule.next_review_at <= now,
+                    )
+                    .order_by(SpacedRepetitionSchedule.next_review_at.asc())
+                    .limit(10)
                 )
-                .order_by(SpacedRepetitionSchedule.next_review_at.asc())
-                .limit(10)
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         return [
             {
                 "topic": s.topic,
@@ -128,22 +144,30 @@ async def get_student_dashboard(
 
     async def _recent_activity():
         xp_events = (
-            await session.execute(
-                select(XpEvent)
-                .where(XpEvent.user_id == user_id)
-                .order_by(XpEvent.created_at.desc())
-                .limit(10)
+            (
+                await session.execute(
+                    select(XpEvent)
+                    .where(XpEvent.user_id == user_id)
+                    .order_by(XpEvent.created_at.desc())
+                    .limit(10)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         attempts = (
-            await session.execute(
-                select(QuizAttempt)
-                .where(QuizAttempt.user_id == user_id)
-                .order_by(QuizAttempt.completed_at.desc())
-                .limit(10)
+            (
+                await session.execute(
+                    select(QuizAttempt)
+                    .where(QuizAttempt.user_id == user_id)
+                    .order_by(QuizAttempt.completed_at.desc())
+                    .limit(10)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         items = []
         for e in xp_events:
@@ -169,7 +193,10 @@ async def get_student_dashboard(
         return items[:15]
 
     weak_topics, due_reviews, recent_activity, gamification = await asyncio.gather(
-        _weak_topics(), _due_reviews(), _recent_activity(), _gamification(),
+        _weak_topics(),
+        _due_reviews(),
+        _recent_activity(),
+        _gamification(),
     )
 
     overall_readiness = 100.0

@@ -125,7 +125,7 @@ def sanitize_for_telegram(text: str) -> str:
             pattern = rf"</{tag}>"
             matches = list(re.finditer(pattern, text))
             for m in reversed(matches[-excess:]):
-                text = text[:m.start()] + text[m.end():]
+                text = text[: m.start()] + text[m.end() :]
 
     return text
 

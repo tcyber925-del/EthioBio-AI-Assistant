@@ -28,14 +28,16 @@ async def get_activity_feed(user_id: UUID, session: AsyncSession = Depends(get_s
         )
         for event in xp_result.scalars().all():
             label = event.source.replace("_", " ").title()
-            activities.append(ActivityItem(
-                activity_type="xp_event",
-                title=f"{label}",
-                description=f"{event.amount} XP earned",
-                icon="Zap",
-                timestamp=event.created_at,
-                metadata={"source": event.source, "amount": event.amount},
-            ))
+            activities.append(
+                ActivityItem(
+                    activity_type="xp_event",
+                    title=f"{label}",
+                    description=f"{event.amount} XP earned",
+                    icon="Zap",
+                    timestamp=event.created_at,
+                    metadata={"source": event.source, "amount": event.amount},
+                )
+            )
 
         quiz_result = await session.execute(
             select(QuizAttempt)
@@ -45,18 +47,22 @@ async def get_activity_feed(user_id: UUID, session: AsyncSession = Depends(get_s
         )
         for attempt in quiz_result.scalars().all():
             score_text = f"{attempt.score:.0f}%" if attempt.score is not None else "In progress"
-            activities.append(ActivityItem(
-                activity_type="quiz_attempt",
-                title="Quiz Attempt",
-                description=f"Score: {score_text} ({attempt.completed} of {attempt.total})"
-                if attempt.completed else f"Completed {int(attempt.total)} questions",
-                icon="FileCheck",
-                timestamp=attempt.started_at,
-                metadata={
-                    "score": attempt.score, "total": attempt.total,
-                    "completed": attempt.completed,
-                },
-            ))
+            activities.append(
+                ActivityItem(
+                    activity_type="quiz_attempt",
+                    title="Quiz Attempt",
+                    description=f"Score: {score_text} ({attempt.completed} of {attempt.total})"
+                    if attempt.completed
+                    else f"Completed {int(attempt.total)} questions",
+                    icon="FileCheck",
+                    timestamp=attempt.started_at,
+                    metadata={
+                        "score": attempt.score,
+                        "total": attempt.total,
+                        "completed": attempt.completed,
+                    },
+                )
+            )
 
         thread_result = await session.execute(
             select(MessageThread)
@@ -67,17 +73,20 @@ async def get_activity_feed(user_id: UUID, session: AsyncSession = Depends(get_s
         for thread in thread_result.scalars().all():
             msg_count = len(thread.messages) if isinstance(thread.messages, list) else 0
             topic = thread.topic or "Biology question"
-            activities.append(ActivityItem(
-                activity_type="tutor_session",
-                title=f"Tutor Session — {topic}",
-                description=f"{msg_count} messages ({thread.channel})",
-                icon="MessageSquare",
-                timestamp=thread.created_at,
-                metadata={
-                    "channel": thread.channel, "topic": thread.topic,
-                    "message_count": msg_count,
-                },
-            ))
+            activities.append(
+                ActivityItem(
+                    activity_type="tutor_session",
+                    title=f"Tutor Session — {topic}",
+                    description=f"{msg_count} messages ({thread.channel})",
+                    icon="MessageSquare",
+                    timestamp=thread.created_at,
+                    metadata={
+                        "channel": thread.channel,
+                        "topic": thread.topic,
+                        "message_count": msg_count,
+                    },
+                )
+            )
 
         ach_result = await session.execute(
             select(UserAchievement)
@@ -86,14 +95,16 @@ async def get_activity_feed(user_id: UUID, session: AsyncSession = Depends(get_s
             .limit(LIMIT)
         )
         for ach in ach_result.scalars().all():
-            activities.append(ActivityItem(
-                activity_type="achievement",
-                title=ach.title,
-                description=ach.description or "Achievement unlocked",
-                icon="Medal",
-                timestamp=ach.unlocked_at,
-                metadata={"achievement_id": ach.achievement_id},
-            ))
+            activities.append(
+                ActivityItem(
+                    activity_type="achievement",
+                    title=ach.title,
+                    description=ach.description or "Achievement unlocked",
+                    icon="Medal",
+                    timestamp=ach.unlocked_at,
+                    metadata={"achievement_id": ach.achievement_id},
+                )
+            )
 
         activities.sort(key=lambda a: a.timestamp, reverse=True)
         activities = activities[:LIMIT]

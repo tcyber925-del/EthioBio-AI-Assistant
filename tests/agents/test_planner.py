@@ -4,7 +4,7 @@ Tests Plan and SubTask models, PlannerAgent generation, and PlannerNode integrat
 """
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -13,7 +13,6 @@ from src.agents.planner.planner import FALLBACK_PLAN, PlannerAgent
 from src.agents.planner.prompts import build_planner_prompt
 from src.graph.nodes.planner import PlannerNode
 from src.graph.state import AgentState
-
 
 # ============================================================
 # Model Tests

@@ -67,8 +67,10 @@ async def start_session(
             db=db,
         )
         await event_logger.log(
-            request.user_id, "session_started",
-            topic=request.topic, db=db,
+            request.user_id,
+            "session_started",
+            topic=request.topic,
+            db=db,
         )
         await db.commit()
         return SessionStartResponse(
@@ -144,14 +146,17 @@ async def close_session(
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
         await event_logger.log(
-            session.user_id, "session_closed",
-            topic=session.active_topic, db=db,
+            session.user_id,
+            "session_closed",
+            topic=session.active_topic,
+            db=db,
         )
         await db.commit()
 
         summary_detail = None
         if session.summary:
             from sqlalchemy import select
+
             result = await db.execute(
                 select(MemoryEducationalSummary)
                 .where(MemoryEducationalSummary.embedding_id == str(session_id))
@@ -192,6 +197,7 @@ async def summarize_session(
 ):
     try:
         from sqlalchemy import select
+
         result = await db.execute(
             select(MemoryEducationalSummary)
             .where(MemoryEducationalSummary.embedding_id == str(session_id))
@@ -302,8 +308,11 @@ async def log_memory_event(
 ):
     try:
         event = await event_logger.log(
-            request.user_id, request.event_type,
-            topic=request.topic, metadata=request.event_metadata, db=db,
+            request.user_id,
+            request.event_type,
+            topic=request.topic,
+            metadata=request.event_metadata,
+            db=db,
         )
         await db.commit()
         if event is None:
@@ -366,14 +375,11 @@ async def get_timeline(
     db: AsyncSession = Depends(get_session),
 ):
     try:
-        events_query = (
-            select(
-                MemoryEvent.id.label("entry_id"),
-                MemoryEvent.event_type.label("entry_type"),
-                MemoryEvent.created_at.label("timestamp"),
-            )
-            .where(MemoryEvent.user_id == user_id)
-        )
+        events_query = select(
+            MemoryEvent.id.label("entry_id"),
+            MemoryEvent.event_type.label("entry_type"),
+            MemoryEvent.created_at.label("timestamp"),
+        ).where(MemoryEvent.user_id == user_id)
         from sqlalchemy import case, literal
 
         events_query = events_query.add_columns(
@@ -405,12 +411,14 @@ async def get_timeline(
 
         if start_date:
             from datetime import datetime
+
             parsed_start = datetime.fromisoformat(start_date)
             events_query = events_query.where(MemoryEvent.created_at >= parsed_start)
             turns_query = turns_query.where(ConversationTurn.created_at >= parsed_start)
 
         if end_date:
             from datetime import datetime
+
             parsed_end = datetime.fromisoformat(end_date)
             events_query = events_query.where(MemoryEvent.created_at <= parsed_end)
             turns_query = turns_query.where(ConversationTurn.created_at <= parsed_end)
@@ -455,7 +463,10 @@ async def list_semantic_facts(
 ):
     try:
         facts = await semantic_manager.list_by_user(
-            db=db, user_id=user_id, category=category, limit=limit,
+            db=db,
+            user_id=user_id,
+            category=category,
+            limit=limit,
         )
         return SemanticFactListResponse(
             facts=[
@@ -634,16 +645,11 @@ async def search_memories(request: MemorySearchRequest):
 @router.get("/health")
 async def memory_health(db: AsyncSession = Depends(get_session)):
     try:
-        summary_count_result = await db.execute(
-            select(func.count(MemoryEducationalSummary.id))
-        )
+        summary_count_result = await db.execute(select(func.count(MemoryEducationalSummary.id)))
         session_count_result = await db.execute(
-            select(func.count(MemorySession.session_id))
-            .where(MemorySession.summary.is_(None))
+            select(func.count(MemorySession.session_id)).where(MemorySession.summary.is_(None))
         )
-        event_count_result = await db.execute(
-            select(func.count(MemoryEvent.id))
-        )
+        event_count_result = await db.execute(select(func.count(MemoryEvent.id)))
         fact_count = await semantic_manager.get_count(db=db)
 
         summary_count = summary_count_result.scalar() or 0
@@ -653,6 +659,7 @@ async def memory_health(db: AsyncSession = Depends(get_session)):
         chroma_count = 0
         try:
             from src.core.memory.vector_store import MemoryVectorStore
+
             store = MemoryVectorStore()
             chroma_count = store.count()
         except Exception as e:

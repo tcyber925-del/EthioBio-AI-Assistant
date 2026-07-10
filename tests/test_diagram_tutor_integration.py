@@ -55,7 +55,9 @@ class TestFindBestTextbookDiagram:
         mock_session = self._make_session_mock([mock_row])
 
         result = await find_best_textbook_diagram(
-            query="plant cell", grade_level=10, topic="Cells",
+            query="plant cell",
+            grade_level=10,
+            topic="Cells",
             session=mock_session,
         )
         assert result is not None
@@ -73,7 +75,9 @@ class TestFindBestTextbookDiagram:
         mock_session = self._make_session_mock([mock_row])
 
         result = await find_best_textbook_diagram(
-            query="animal cell", grade_level=9, topic="cell",
+            query="animal cell",
+            grade_level=9,
+            topic="cell",
             session=mock_session,
         )
         assert result is not None
@@ -83,7 +87,9 @@ class TestFindBestTextbookDiagram:
         mock_session = self._make_session_mock([])
 
         result = await find_best_textbook_diagram(
-            query="quantum physics", grade_level=10, topic="physics",
+            query="quantum physics",
+            grade_level=10,
+            topic="physics",
             session=mock_session,
         )
         assert result is None
@@ -104,7 +110,9 @@ class TestFindBestTextbookDiagram:
         mock_session = self._make_session_mock([row1, row2])
 
         result = await find_best_textbook_diagram(
-            query="genetics", grade_level=11, topic="Genetics",
+            query="genetics",
+            grade_level=11,
+            topic="Genetics",
             session=mock_session,
         )
         assert result is not None
@@ -115,7 +123,9 @@ class TestFindBestTextbookDiagram:
         mock_session.execute.side_effect = Exception("DB error")
 
         result = await find_best_textbook_diagram(
-            query="cells", grade_level=10, topic="cells",
+            query="cells",
+            grade_level=10,
+            topic="cells",
             session=mock_session,
         )
         assert result is None
@@ -157,8 +167,10 @@ class TestGenerateTutorDiagram:
         assert "Grade 10" in result.get("textbook_ref", "")
         assert "Figure 2" in result.get("textbook_ref", "")
         mock_agent.generate.assert_awaited_once_with(
-            prompt="Structure of a plant cell", topic="Cells",
-            difficulty="beginner", grade=10,
+            prompt="Structure of a plant cell",
+            topic="Cells",
+            difficulty="beginner",
+            grade=10,
         )
 
     @patch("src.agents.diagram_tutor_integration._get_diagram_agent")

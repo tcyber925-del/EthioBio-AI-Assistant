@@ -16,9 +16,9 @@ from src.llm.router import ModelRouter
 # ============================================================
 
 # Intents that should never invoke the Planner
-HARD_EXCLUDED_INTENTS = frozenset({
-    "translation", "grammar", "formatting", "small_talk", "conversation"
-})
+HARD_EXCLUDED_INTENTS = frozenset(
+    {"translation", "grammar", "formatting", "small_talk", "conversation"}
+)
 
 # Patterns that suggest the query is simple (no planning needed)
 SIMPLE_PATTERNS = [
@@ -61,9 +61,21 @@ COMPLEX_PATTERNS = [
 
 # Keywords that indicate personalization (memory retrieval needed)
 PERSONALIZATION_KEYWORDS = [
-    "my ", "i ", "previously", "before", "struggled", "weakness",
-    "misconception", "confusing", "confused", "forget", "forgot",
-    "keep making", "keep getting", "always", "never understand",
+    "my ",
+    "i ",
+    "previously",
+    "before",
+    "struggled",
+    "weakness",
+    "misconception",
+    "confusing",
+    "confused",
+    "forget",
+    "forgot",
+    "keep making",
+    "keep getting",
+    "always",
+    "never understand",
 ]
 
 

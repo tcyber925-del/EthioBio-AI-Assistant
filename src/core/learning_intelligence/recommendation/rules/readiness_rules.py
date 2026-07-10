@@ -19,10 +19,7 @@ async def generate_readiness_recommendations(
         return recommendations
 
     risk_topics = readiness_profile.risk_topics
-    readiness_by_topic = {
-        tr.topic: tr.readiness_score
-        for tr in readiness_profile.topic_readiness
-    }
+    readiness_by_topic = {tr.topic: tr.readiness_score for tr in readiness_profile.topic_readiness}
 
     now = snapshot.generated_at or datetime.now(timezone.utc)
 

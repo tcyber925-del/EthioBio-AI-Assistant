@@ -21,6 +21,7 @@ class SvgImageValidator:
         if cv2 is not None:
             return cv2.resize(arr, (w, h))
         from PIL import Image as PilImage
+
         img = PilImage.fromarray(arr)
         return np.array(img.resize((w, h), PilImage.LANCZOS), dtype=np.uint8)
 
@@ -31,8 +32,12 @@ class SvgImageValidator:
     ) -> dict:
         svg_png = self._render_svg(svg)
         if svg_png is None:
-            return {"score": 0.0, "mse": 1.0, "histogram_similarity": 0.0,
-                     "error": "SVG rendering failed"}
+            return {
+                "score": 0.0,
+                "mse": 1.0,
+                "histogram_similarity": 0.0,
+                "error": "SVG rendering failed",
+            }
 
         svg_array = self._bytes_to_grayscale(svg_png)
         ref_array = self._bytes_to_grayscale(reference_bytes)

@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -50,7 +50,9 @@ async def test_cancel_clears_user_data_and_ends_conversation():
 @pytest.mark.asyncio
 async def test_handle_socratic_toggle_updates_state_and_keyboard():
     message = SimpleNamespace(reply_text=AsyncMock())
-    query = SimpleNamespace(answer=AsyncMock(), edit_message_reply_markup=AsyncMock(), message=message)
+    query = SimpleNamespace(
+        answer=AsyncMock(), edit_message_reply_markup=AsyncMock(), message=message
+    )
     update = SimpleNamespace(callback_query=query)
     context = SimpleNamespace(user_data={"socratic_mode": False})
 
@@ -196,7 +198,9 @@ async def test_help_command_replies_with_text():
 @pytest.mark.asyncio
 async def test_handle_progress_replies_new_message_for_callback():
     message = SimpleNamespace(reply_text=AsyncMock())
-    query = SimpleNamespace(answer=AsyncMock(), edit_message_reply_markup=AsyncMock(), message=message)
+    query = SimpleNamespace(
+        answer=AsyncMock(), edit_message_reply_markup=AsyncMock(), message=message
+    )
     update = SimpleNamespace(callback_query=query)
     context = SimpleNamespace(user_data={})
 

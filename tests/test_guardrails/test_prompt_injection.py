@@ -1,5 +1,3 @@
-import pytest
-
 from src.guardrails.input.prompt_injection import PromptInjectionDetector
 
 
@@ -38,6 +36,7 @@ def test_amharic_safe():
 
 def test_disabled_returns_clean():
     import src.config
+
     original = src.config.settings.prompt_injection_enabled
     src.config.settings.prompt_injection_enabled = False
     d = PromptInjectionDetector()

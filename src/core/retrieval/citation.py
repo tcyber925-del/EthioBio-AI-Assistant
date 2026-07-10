@@ -17,7 +17,7 @@ class CitationFormatter:
 
     def format_footnote(self, source: EvidenceSource, index: int) -> str:
         badge = source.citation.confidence_badge
-        return f"[{index}] {source.title} -- \"{source.citation.chunk_excerpt}\" [{badge}]"
+        return f'[{index}] {source.title} -- "{source.citation.chunk_excerpt}" [{badge}]'
 
     def build_citation(
         self, ko_id: str, title: str, content: str, confidence: float

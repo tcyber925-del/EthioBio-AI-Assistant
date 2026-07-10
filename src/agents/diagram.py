@@ -202,16 +202,18 @@ class DiagramAgent(BaseAgent):
             results = await self.adapter.search(query=topic, n_results=3, filter_obj=filter_obj)
             if results:
                 context = self.adapter.format_context(results)
-                system_prompt = (
-                    DIAGRAM_SYSTEM_PROMPT + CURRICULUM_CONTEXT_BLOCK.format(context=context)
+                system_prompt = DIAGRAM_SYSTEM_PROMPT + CURRICULUM_CONTEXT_BLOCK.format(
+                    context=context
                 )
                 for r in results:
-                    textbook_references.append({
-                        "grade": r.metadata.get("grade_level", grade),
-                        "unit": r.metadata.get("unit"),
-                        "figure_number": r.metadata.get("figure_number"),
-                        "caption": r.content,
-                    })
+                    textbook_references.append(
+                        {
+                            "grade": r.metadata.get("grade_level", grade),
+                            "unit": r.metadata.get("unit"),
+                            "figure_number": r.metadata.get("figure_number"),
+                            "caption": r.content,
+                        }
+                    )
         except Exception:
             logger.warning("rag_retrieval_failed", exc_info=True)
 
@@ -287,19 +289,23 @@ def validate_labels(
                     "numbered position with its biological name."
                 )
             )
-            results.append({
-                "label_id": lid,
-                "correct_text": correct["text"],
-                "submitted_text": sub["text"],
-                "is_correct": is_correct,
-                "explanation": explanation,
-            })
+            results.append(
+                {
+                    "label_id": lid,
+                    "correct_text": correct["text"],
+                    "submitted_text": sub["text"],
+                    "is_correct": is_correct,
+                    "explanation": explanation,
+                }
+            )
         else:
-            results.append({
-                "label_id": lid,
-                "correct_text": "",
-                "submitted_text": sub["text"],
-                "is_correct": False,
-                "explanation": "Unknown label position.",
-            })
+            results.append(
+                {
+                    "label_id": lid,
+                    "correct_text": "",
+                    "submitted_text": sub["text"],
+                    "is_correct": False,
+                    "explanation": "Unknown label position.",
+                }
+            )
     return results

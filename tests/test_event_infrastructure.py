@@ -1,10 +1,12 @@
 import asyncio
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
+from src.core.event_infrastructure.consumer import StreamConsumer
 from src.core.event_infrastructure.models import PipelineEvent
 from src.core.event_infrastructure.producer import RedisStreamProducer
-from src.core.event_infrastructure.consumer import StreamConsumer
 
 
 class TestEventInfrastructure:
@@ -15,7 +17,9 @@ class TestEventInfrastructure:
         mock_redis.xadd.return_value = "12345-0"
         mock_redis_class.from_url = AsyncMock(return_value=mock_redis)
 
-        producer = RedisStreamProducer(redis_url="redis://localhost:6379", stream_name="test:stream")
+        producer = RedisStreamProducer(
+            redis_url="redis://localhost:6379", stream_name="test:stream"
+        )
         event = PipelineEvent(
             ko_id="ko-uuid-123",
             event_type="KnowledgeRegistered",

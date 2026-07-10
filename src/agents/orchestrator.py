@@ -32,6 +32,7 @@ Respond with ONLY a JSON object: {"intent": "tutor", "confidence": 0.95, "reason
         )
 
         import json
+
         try:
             parsed = json.loads(result["content"])
             return parsed

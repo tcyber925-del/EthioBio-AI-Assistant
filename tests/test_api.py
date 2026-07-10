@@ -1,11 +1,11 @@
-from uuid import uuid4
 from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from src.main import app
 from src.database.session import get_session
+from src.main import app
 
 
 @pytest.fixture(autouse=True)
@@ -34,6 +34,7 @@ def override_db():
 
         mock.refresh.side_effect = mock_refresh
         yield mock
+
     app.dependency_overrides[get_session] = mock_get_session
     yield
     app.dependency_overrides.clear()

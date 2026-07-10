@@ -140,7 +140,9 @@ async def validate_diagram(
         await update_streak(request.user_id, session)
         xp_amount = XP_SOURCES.get("diagram_completion", 10)
         gam, _, level_up = await award_xp(
-            request.user_id, "diagram_completion", xp_amount,
+            request.user_id,
+            "diagram_completion",
+            xp_amount,
             {"topic": request.topic, "difficulty": request.difficulty, "score": score},
             session,
         )
@@ -167,6 +169,7 @@ async def validate_diagram(
 @router.post("/validate-image", response_model=ImageValidationResponse)
 async def validate_diagram_image(request: ImageValidationRequest):
     import base64
+
     try:
         reference_bytes = base64.b64decode(request.reference_image_base64)
     except Exception:
@@ -282,12 +285,14 @@ async def auto_label_batch(
                 )
                 labels = gen_result.get("labels", [])
                 diagram.ground_truth_labels = {"labels": labels}
-                results_list.append(AutoLabelResponse(
-                    diagram_id=str(diagram.id),
-                    caption=diagram.caption or "",
-                    labels_count=len(labels),
-                    labels=[DiagramLabel(**lb) for lb in labels],
-                ))
+                results_list.append(
+                    AutoLabelResponse(
+                        diagram_id=str(diagram.id),
+                        caption=diagram.caption or "",
+                        labels_count=len(labels),
+                        labels=[DiagramLabel(**lb) for lb in labels],
+                    )
+                )
                 processed += 1
             except Exception as e:
                 logger.warning("auto_label_item_error", diagram_id=str(diagram.id), error=str(e))
@@ -357,15 +362,21 @@ async def export_diagram(request: DiagramExportRequest):
     try:
         if request.format == "docx":
             content = export_diagram_to_docx(
-                svg=request.svg, title=request.title, topic=request.topic,
-                grade=request.grade, labels=labels_data,
+                svg=request.svg,
+                title=request.title,
+                topic=request.topic,
+                grade=request.grade,
+                labels=labels_data,
             )
             media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             filename = f"diagram_{request.topic.replace(' ', '_')}.docx"
         else:
             content = export_diagram_to_pdf(
-                svg=request.svg, title=request.title, topic=request.topic,
-                grade=request.grade, labels=labels_data,
+                svg=request.svg,
+                title=request.title,
+                topic=request.topic,
+                grade=request.grade,
+                labels=labels_data,
             )
             media_type = "application/pdf"
             filename = f"diagram_{request.topic.replace(' ', '_')}.pdf"
@@ -424,6 +435,7 @@ async def style_transfer(request: StyleTransferRequest):
         raise HTTPException(status_code=422, detail=f"SVG rendering failed: {e}")
 
     from src.config import Settings
+
     settings = Settings()
     if not settings.cloudflare_account_id or not settings.cloudflare_api_token:
         raise HTTPException(

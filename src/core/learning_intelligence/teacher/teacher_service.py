@@ -44,9 +44,7 @@ class TeacherService:
         if not students:
             return self._empty_profile(classroom_id)
 
-        profiles = await self._fetch_readiness_profiles(
-            session, [s.id for s in students]
-        )
+        profiles = await self._fetch_readiness_profiles(session, [s.id for s in students])
 
         return self._build_classroom_profile(
             classroom_id=classroom_id,
@@ -71,10 +69,7 @@ class TeacherService:
         session: AsyncSession,
         student_ids: list[UUID],
     ) -> list[ExamReadinessProfile]:
-        tasks = [
-            self._safe_fetch_readiness(session, sid)
-            for sid in student_ids
-        ]
+        tasks = [self._safe_fetch_readiness(session, sid) for sid in student_ids]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         profiles: list[ExamReadinessProfile] = []
         for r in results:
@@ -90,9 +85,7 @@ class TeacherService:
         student_id: UUID,
     ) -> ExamReadinessProfile | None:
         try:
-            return await self._readiness_service.get_readiness(
-                session, student_id
-            )
+            return await self._readiness_service.get_readiness(session, student_id)
         except Exception as e:
             logger.warning(
                 "readiness_fetch_failed_for_student",
@@ -114,9 +107,7 @@ class TeacherService:
 
         readiness_scores = [p.overall_readiness for p in profiles]
         classroom_health = (
-            sum(readiness_scores) / len(readiness_scores)
-            if readiness_scores
-            else 0.0
+            sum(readiness_scores) / len(readiness_scores) if readiness_scores else 0.0
         )
 
         distribution: dict[str, int] = {
@@ -166,8 +157,7 @@ class TeacherService:
         all_interventions.sort(key=lambda i: i.priority, reverse=True)
 
         mastery_heatmap = {
-            topic: sum(scores) / len(scores)
-            for topic, scores in topic_scores.items()
+            topic: sum(scores) / len(scores) for topic, scores in topic_scores.items()
         }
 
         return ClassroomProfile(

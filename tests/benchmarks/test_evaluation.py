@@ -24,9 +24,7 @@ async def test_all_adversarial_scenarios(mock_runner):
     """Adversarial scenarios should not crash the pipeline."""
     report = await mock_runner.run_all(filters=["adversarial"])
     for r in report.results:
-        assert r.error is None, (
-            f"Unexpected error in {r.scenario_id}: {r.error}"
-        )
+        assert r.error is None, f"Unexpected error in {r.scenario_id}: {r.error}"
 
 
 @pytest.mark.asyncio

@@ -287,8 +287,7 @@ async def get_effectiveness_trends(
         .where(InterventionAssignment.effectiveness_score.isnot(None))
         .where(InterventionAssignment.completed_at.isnot(None))
         .where(
-            InterventionAssignment.completed_at
-            >= sa_text(f"now() - interval '{months} months'")
+            InterventionAssignment.completed_at >= sa_text(f"now() - interval '{months} months'")
         )
         .group_by(sa_text("period"))
         .order_by(sa_text("period"))

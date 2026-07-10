@@ -19,9 +19,7 @@ class TrustRanker:
             r.score = s
         return [r for _, r in scored]
 
-    def _score_with_boosts(
-        self, result: RetrievalResult, workspace_id: str | None
-    ) -> float:
+    def _score_with_boosts(self, result: RetrievalResult, workspace_id: str | None) -> float:
         score = result.score
         if result.enrichment:
             score += ENRICHMENT_BONUS

@@ -1,4 +1,5 @@
 """Tests for Search Fanout models."""
+
 import pytest
 from pydantic import ValidationError
 
@@ -39,9 +40,7 @@ class TestRetrievalTask:
         assert task.reasoning == "Core concept retrieval"
 
     def test_defaults(self):
-        task = RetrievalTask(
-            id="t1", query="test", target_source="curriculum", priority=5
-        )
+        task = RetrievalTask(id="t1", query="test", target_source="curriculum", priority=5)
         assert task.estimated_cost == 0.0
         assert task.reasoning == ""
 
@@ -54,9 +53,7 @@ class TestRetrievalTask:
             RetrievalTask(id="t4", query="q", target_source="c", priority=11)
 
     def test_serialization(self):
-        task = RetrievalTask(
-            id="t1", query="meiosis", target_source="curriculum", priority=7
-        )
+        task = RetrievalTask(id="t1", query="meiosis", target_source="curriculum", priority=7)
         dumped = task.model_dump()
         assert dumped["query"] == "meiosis"
         assert dumped["priority"] == 7

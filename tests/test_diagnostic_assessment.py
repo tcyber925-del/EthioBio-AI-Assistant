@@ -166,25 +166,29 @@ class TestDiagnosticAgent:
         sample["assessments"] = [
             {
                 "topic": "Cell Biology",
-                "questions": [{
-                    "question_type": "multiple_choice",
-                    "question_text": "Q1",
-                    "options": ["A", "B", "C", "D"],
-                    "correct_answer": "A",
-                    "explanation": "Exp",
-                    "difficulty": "easy",
-                }],
+                "questions": [
+                    {
+                        "question_type": "multiple_choice",
+                        "question_text": "Q1",
+                        "options": ["A", "B", "C", "D"],
+                        "correct_answer": "A",
+                        "explanation": "Exp",
+                        "difficulty": "easy",
+                    }
+                ],
             },
             {
                 "topic": "Genetics",
-                "questions": [{
-                    "question_type": "true_false",
-                    "question_text": "Q2",
-                    "options": ["True", "False"],
-                    "correct_answer": "True",
-                    "explanation": "Exp",
-                    "difficulty": "easy",
-                }],
+                "questions": [
+                    {
+                        "question_type": "true_false",
+                        "question_text": "Q2",
+                        "options": ["True", "False"],
+                        "correct_answer": "True",
+                        "explanation": "Exp",
+                        "difficulty": "easy",
+                    }
+                ],
             },
         ]
         self.router.route.return_value = {

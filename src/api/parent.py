@@ -105,13 +105,15 @@ async def list_children(
         except Exception:
             pass
 
-        summaries.append(ChildSummary(
-            student_id=child.id,
-            name=child.email or f"Student #{str(child.id)[:8]}",
-            grade_level=child.grade_level,
-            last_active=child.updated_at,
-            overall_readiness=overall_readiness,
-        ))
+        summaries.append(
+            ChildSummary(
+                student_id=child.id,
+                name=child.email or f"Student #{str(child.id)[:8]}",
+                grade_level=child.grade_level,
+                last_active=child.updated_at,
+                overall_readiness=overall_readiness,
+            )
+        )
 
     return summaries
 
@@ -156,9 +158,7 @@ async def get_child_progress(
     streak = 0
     total_xp = 0
     gam_result = await session.execute(
-        select(UserGamification).where(
-            UserGamification.user_id == child.id
-        )
+        select(UserGamification).where(UserGamification.user_id == child.id)
     )
     gam = gam_result.scalar_one_or_none()
     if gam:

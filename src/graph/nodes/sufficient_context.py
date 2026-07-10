@@ -23,7 +23,6 @@ REPLAN_EVIDENCE_THRESHOLD = 0.5
 REPLAN_MISSING_THRESHOLD = 2
 
 
-
 @dataclass
 class SufficiencyResult:
     """Result of context sufficiency evaluation."""
@@ -56,10 +55,7 @@ def evaluate_sufficiency(state: AgentState) -> SufficiencyResult:
 
     if final_score >= SUFFICIENCY_THRESHOLD and not missing:
         action = "sufficient"
-        reason = (
-            f"Sufficient evidence: {evidence_count} records, "
-            f"coverage={coverage_score:.2f}"
-        )
+        reason = f"Sufficient evidence: {evidence_count} records, coverage={coverage_score:.2f}"
     elif final_score >= REPLAN_EVIDENCE_THRESHOLD and len(missing) < REPLAN_MISSING_THRESHOLD:
         action = "minor_gap"
         reason = f"Minor gap: missing {', '.join(missing[:2])}"

@@ -61,17 +61,13 @@ def _verify_password(plain: str, hashed: str) -> bool:
 
 
 def _create_access_token(user_id: str, role: str) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(
-        minutes=settings.access_token_expire_minutes
-    )
+    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
     payload = {
         "sub": user_id,
         "role": role,
         "exp": expire,
     }
-    return jwt.encode(
-        payload, settings.jwt_secret, algorithm=settings.jwt_algorithm
-    )
+    return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
 async def _send_telegram_otp(telegram_id: int, code: str) -> None:
@@ -128,9 +124,7 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token payload",
         )
-    result = await session.execute(
-        select(User).where(User.id == user_id)
-    )
+    result = await session.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user or not user.is_active:
         raise HTTPException(
@@ -145,9 +139,7 @@ async def register(
     body: RegisterRequest,
     session: AsyncSession = Depends(get_session),
 ):
-    existing = await session.execute(
-        select(User).where(User.email == body.email)
-    )
+    existing = await session.execute(select(User).where(User.email == body.email))
     if existing.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -180,9 +172,7 @@ async def login(
     body: LoginRequest,
     session: AsyncSession = Depends(get_session),
 ):
-    result = await session.execute(
-        select(User).where(User.email == body.email)
-    )
+    result = await session.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
     if not user or not user.password_hash:
         raise HTTPException(
@@ -224,9 +214,7 @@ async def request_otp(
     body: OtpRequest,
     session: AsyncSession = Depends(get_session),
 ):
-    result = await session.execute(
-        select(User).where(User.telegram_id == body.telegram_id)
-    )
+    result = await session.execute(select(User).where(User.telegram_id == body.telegram_id))
     user = result.scalar_one_or_none()
     if not user or not user.is_active:
         raise HTTPException(
@@ -264,9 +252,7 @@ async def verify_otp(
 
     await redis_conn.delete(f"otp:{body.telegram_id}")
 
-    result = await session.execute(
-        select(User).where(User.telegram_id == body.telegram_id)
-    )
+    result = await session.execute(select(User).where(User.telegram_id == body.telegram_id))
     user = result.scalar_one_or_none()
     if not user or not user.is_active:
         raise HTTPException(

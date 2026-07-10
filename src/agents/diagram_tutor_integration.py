@@ -14,11 +14,22 @@ from src.llm.router import ModelRouter
 
 logger = structlog.get_logger()
 
-DIAGRAM_TOPICS = frozenset({
-    "cells", "organ systems", "genetics", "anatomy", "botany",
-    "angiosperms", "photosynthesis", "microbiology", "human biology",
-    "zoology", "biochemistry", "biotechnology",
-})
+DIAGRAM_TOPICS = frozenset(
+    {
+        "cells",
+        "organ systems",
+        "genetics",
+        "anatomy",
+        "botany",
+        "angiosperms",
+        "photosynthesis",
+        "microbiology",
+        "human biology",
+        "zoology",
+        "biochemistry",
+        "biotechnology",
+    }
+)
 
 _diagram_agent: DiagramAgent | None = None
 _diagram_router: ModelRouter | None = None
@@ -92,12 +103,35 @@ async def find_best_textbook_diagram(
     }
 
 
-DIAGRAM_KEYWORDS = frozenset({
-    "diagram", "draw", "label", "structure", "parts", "component",
-    "organ", "cell", "heart", "flower", "photosynthesis", "mitosis",
-    "meiosis", "dna", "chromosome", "neuron", "eye", "ear", "leaf",
-    "flower", "stem", "root", "chloroplast", "membrane", "nucleus",
-})
+DIAGRAM_KEYWORDS = frozenset(
+    {
+        "diagram",
+        "draw",
+        "label",
+        "structure",
+        "parts",
+        "component",
+        "organ",
+        "cell",
+        "heart",
+        "flower",
+        "photosynthesis",
+        "mitosis",
+        "meiosis",
+        "dna",
+        "chromosome",
+        "neuron",
+        "eye",
+        "ear",
+        "leaf",
+        "flower",
+        "stem",
+        "root",
+        "chloroplast",
+        "membrane",
+        "nucleus",
+    }
+)
 
 
 def should_generate_diagram(

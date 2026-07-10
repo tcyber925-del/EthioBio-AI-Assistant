@@ -36,15 +36,18 @@ class MisconceptionGraphIntegrator:
         gaps = []
         for node in chain:
             row = await db.execute(
-                select(MisconceptionPattern).where(
+                select(MisconceptionPattern)
+                .where(
                     MisconceptionPattern.user_id == user_id,
                     MisconceptionPattern.topic == node["topic"],
                     MisconceptionPattern.resolved.is_(False),
-                ).order_by(MisconceptionPattern.frequency.desc())
+                )
+                .order_by(MisconceptionPattern.frequency.desc())
             )
             misconceptions = row.scalars().all()
 
             from sqlalchemy import text
+
             mastery_row = await db.execute(
                 text(
                     "SELECT average_score FROM student_mastery "
@@ -54,21 +57,23 @@ class MisconceptionGraphIntegrator:
             )
             score = mastery_row.fetchone()
 
-            gaps.append({
-                "topic": node["topic"],
-                "unit": node.get("unit"),
-                "depth": node["depth"],
-                "mastery_score": float(score[0]) if score else None,
-                "misconception_count": len(misconceptions),
-                "misconceptions": [
-                    {
-                        "description": p.pattern_description,
-                        "severity": p.severity,
-                        "frequency": p.frequency,
-                    }
-                    for p in misconceptions[:3]
-                ],
-            })
+            gaps.append(
+                {
+                    "topic": node["topic"],
+                    "unit": node.get("unit"),
+                    "depth": node["depth"],
+                    "mastery_score": float(score[0]) if score else None,
+                    "misconception_count": len(misconceptions),
+                    "misconceptions": [
+                        {
+                            "description": p.pattern_description,
+                            "severity": p.severity,
+                            "frequency": p.frequency,
+                        }
+                        for p in misconceptions[:3]
+                    ],
+                }
+            )
         return gaps
 
     async def get_misconception_cascade(
@@ -77,10 +82,12 @@ class MisconceptionGraphIntegrator:
         db: AsyncSession,
     ) -> list[dict]:
         unresolved = await db.execute(
-            select(MisconceptionPattern).where(
+            select(MisconceptionPattern)
+            .where(
                 MisconceptionPattern.user_id == user_id,
                 MisconceptionPattern.resolved.is_(False),
-            ).order_by(MisconceptionPattern.frequency.desc())
+            )
+            .order_by(MisconceptionPattern.frequency.desc())
         )
         patterns = unresolved.scalars().all()
         seen_topics = set()
@@ -91,12 +98,14 @@ class MisconceptionGraphIntegrator:
             seen_topics.add(p.topic)
             gaps = await self.get_prerequisite_gaps(user_id, p.topic, db)
             if gaps:
-                cascade.append({
-                    "topic": p.topic,
-                    "frequency": p.frequency,
-                    "severity": p.severity,
-                    "prerequisite_gaps": gaps,
-                })
+                cascade.append(
+                    {
+                        "topic": p.topic,
+                        "frequency": p.frequency,
+                        "severity": p.severity,
+                        "prerequisite_gaps": gaps,
+                    }
+                )
         return cascade
 
     async def get_topic_misconception_weight(
@@ -124,12 +133,14 @@ class MisconceptionGraphIntegrator:
             )
             count = len(count_result.scalars().all())
             if count > 0:
-                weights.append({
-                    "topic": r.topic,
-                    "unit": r.unit,
-                    "grade_level": r.grade_level,
-                    "active_misconception_count": count,
-                })
+                weights.append(
+                    {
+                        "topic": r.topic,
+                        "unit": r.unit,
+                        "grade_level": r.grade_level,
+                        "active_misconception_count": count,
+                    }
+                )
         return sorted(weights, key=lambda w: w["active_misconception_count"], reverse=True)
 
     async def _resolve_topic_node(
@@ -138,8 +149,10 @@ class MisconceptionGraphIntegrator:
         db: AsyncSession,
     ) -> CurriculumTopic | None:
         result = await db.execute(
-            select(CurriculumTopic).where(
+            select(CurriculumTopic)
+            .where(
                 CurriculumTopic.topic == topic,
-            ).limit(1)
+            )
+            .limit(1)
         )
         return result.scalar_one_or_none()

@@ -55,10 +55,7 @@ class CrossSessionRecall:
             )
             result = await db.execute(query)
             records = result.scalars().all()
-            return [
-                {"role": r.role, "content": r.content, "topic": r.topic}
-                for r in records
-            ]
+            return [{"role": r.role, "content": r.content, "topic": r.topic} for r in records]
         except Exception as e:
             logger.warning("recall_by_topic_error", error=str(e))
             return []
@@ -80,10 +77,7 @@ class CrossSessionRecall:
             )
             result = await db.execute(query)
             records = result.scalars().all()
-            return [
-                {"role": r.role, "content": r.content, "topic": r.topic}
-                for r in records
-            ]
+            return [{"role": r.role, "content": r.content, "topic": r.topic} for r in records]
         except Exception as e:
             logger.warning("recall_recent_error", error=str(e))
             return []

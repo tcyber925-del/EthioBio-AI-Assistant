@@ -70,13 +70,15 @@ class ProviderManager:
             available = await provider.is_available()
             provider_models = await provider.get_available_models()
             for m in provider_models:
-                models.append({
-                    "id": f"{name}/{m}",
-                    "name": m,
-                    "provider": name,
-                    "available": available,
-                    "is_default": m == settings.ollama_chat_model,
-                })
+                models.append(
+                    {
+                        "id": f"{name}/{m}",
+                        "name": m,
+                        "provider": name,
+                        "available": available,
+                        "is_default": m == settings.ollama_chat_model,
+                    }
+                )
         return models
 
     async def get_provider_info(self) -> list[dict]:
@@ -87,14 +89,16 @@ class ProviderManager:
             if name == "ollama":
                 info.available_models = await provider.get_available_models()
                 info.is_healthy = await provider.check_health()
-            infos.append({
-                "name": info.name,
-                "provider_type": info.provider_type,
-                "base_url": info.base_url,
-                "available_models": info.available_models,
-                "is_healthy": info.is_healthy,
-                "is_default": info.is_default,
-            })
+            infos.append(
+                {
+                    "name": info.name,
+                    "provider_type": info.provider_type,
+                    "base_url": info.base_url,
+                    "available_models": info.available_models,
+                    "is_healthy": info.is_healthy,
+                    "is_default": info.is_default,
+                }
+            )
         return infos
 
     async def route(
@@ -117,9 +121,9 @@ class ProviderManager:
             candidate = model_to_use
 
         preferred_provider = candidate.split("/")[0] if "/" in candidate else "ollama"
-        ordered_providers = [
-            preferred_provider
-        ] + [p for p in self._fallback_chain if p != preferred_provider]
+        ordered_providers = [preferred_provider] + [
+            p for p in self._fallback_chain if p != preferred_provider
+        ]
 
         for provider_name in ordered_providers:
             provider = self._providers.get(provider_name)

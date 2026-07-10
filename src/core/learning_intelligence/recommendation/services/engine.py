@@ -49,7 +49,8 @@ class RecommendationEngine:
         )
 
         readiness_results = await generate_readiness_recommendations(
-            snapshot, readiness_profile,
+            snapshot,
+            readiness_profile,
         )
         results = [r for r in results if not isinstance(r, BaseException)]
         results.append(readiness_results)
@@ -57,9 +58,11 @@ class RecommendationEngine:
         if session is not None:
             try:
                 learner = InterventionLearningEngine(session)
-                weak_topics: list[str] = list(dict.fromkeys(
-                    snapshot.weak_topics or [],
-                ))
+                weak_topics: list[str] = list(
+                    dict.fromkeys(
+                        snapshot.weak_topics or [],
+                    )
+                )
                 learned = await learner.get_boosted_recommendations(
                     user_id=user_id,
                     weak_topics=weak_topics,

@@ -1,5 +1,3 @@
-import pytest
-
 from src.guardrails.output.pii_scanner import PIIScanner
 
 

@@ -74,21 +74,26 @@ async def run_diagnostic(request: DiagnosticRequest, session: AsyncSession = Dep
         for assessment in result.get("assessments", []):
             topic = assessment["topic"]
             topic_qs = [q for q in all_questions if q.topic == topic]
-            topic_baselines.append(TopicBaseline(
-                topic=topic,
-                score=0.0,
-                total=len(topic_qs),
-                correct=0,
-                severity="pending",
-                questions=[QuestionSchema(
-                    question_type=q.question_type,
-                    question_text=q.question_text,
-                    options=cast(list[str] | None, q.options),
-                    correct_answer=q.correct_answer,
-                    explanation=q.explanation,
-                    difficulty=q.difficulty,
-                ) for q in topic_qs],
-            ))
+            topic_baselines.append(
+                TopicBaseline(
+                    topic=topic,
+                    score=0.0,
+                    total=len(topic_qs),
+                    correct=0,
+                    severity="pending",
+                    questions=[
+                        QuestionSchema(
+                            question_type=q.question_type,
+                            question_text=q.question_text,
+                            options=cast(list[str] | None, q.options),
+                            correct_answer=q.correct_answer,
+                            explanation=q.explanation,
+                            difficulty=q.difficulty,
+                        )
+                        for q in topic_qs
+                    ],
+                )
+            )
 
         diagnostic_id = uuid4()
         overall_score = 0.0

@@ -44,6 +44,7 @@ def test_recovery_progress_response_empty():
 
 def test_complete_task_response_schema():
     from src.schemas.recovery import CompleteTaskResponse
+
     resp = CompleteTaskResponse(
         task_id="00000000-0000-0000-0000-000000000001",
         plan_id="00000000-0000-0000-0000-000000000002",
@@ -66,6 +67,7 @@ def test_recovery_plan_response_schema():
     from datetime import datetime
 
     from src.schemas.recovery import RecoveryPlanResponse, RecoveryTaskResponse
+
     now = datetime.now()
     task = RecoveryTaskResponse(
         id="00000000-0000-0000-0000-000000000003",
@@ -97,6 +99,7 @@ def test_recovery_plan_response_schema():
 
 def test_gamification_profile_response_has_recovery():
     from src.schemas.gamification import GamificationProfileResponse
+
     resp = GamificationProfileResponse(
         user_id="00000000-0000-0000-0000-000000000006",
         total_xp=100,
@@ -111,7 +114,10 @@ def test_gamification_profile_response_has_recovery():
     assert resp.recovery_progress is None
 
     rec_progress = RecoveryProgressResponse(
-        active_plans=1, total_tasks=3, completed_tasks=1, overall_progress_pct=33.3,
+        active_plans=1,
+        total_tasks=3,
+        completed_tasks=1,
+        overall_progress_pct=33.3,
     )
     resp_with_recovery = GamificationProfileResponse(
         user_id="00000000-0000-0000-0000-000000000006",
@@ -130,6 +136,7 @@ def test_gamification_profile_response_has_recovery():
 
 def test_mastery_history_point_schema():
     from src.schemas.recovery import MasteryHistoryPoint
+
     now = datetime.now()
     point = MasteryHistoryPoint(
         average_score=65.0,
@@ -148,6 +155,7 @@ def test_mastery_history_point_schema():
 
 def test_mastery_history_point_empty_severity():
     from src.schemas.recovery import MasteryHistoryPoint
+
     now = datetime.now()
     point = MasteryHistoryPoint(
         average_score=35.0,
@@ -165,6 +173,7 @@ def test_mastery_history_response_schema():
     from uuid import UUID
 
     from src.schemas.recovery import MasteryHistoryPoint, MasteryHistoryResponse
+
     now = datetime.now()
     point = MasteryHistoryPoint(
         average_score=45.0,
@@ -189,6 +198,7 @@ def test_mastery_history_response_empty():
     from uuid import UUID
 
     from src.schemas.recovery import MasteryHistoryResponse
+
     resp = MasteryHistoryResponse(
         user_id=UUID("00000000-0000-0000-0000-000000000001"),
         topic="Genetics",
@@ -205,6 +215,7 @@ def test_recovery_dashboard_response_has_weak_topics_history():
         MasteryHistoryResponse,
         WeakTopicDetail,
     )
+
     now = datetime.now()
     detail = WeakTopicDetail(
         topic="Cell Biology",
@@ -232,6 +243,7 @@ def test_recovery_notification_response_schema():
     from uuid import UUID
 
     from src.schemas.recovery import RecoveryNotificationResponse
+
     now = datetime.now()
     n = RecoveryNotificationResponse(
         id=UUID("00000000-0000-0000-0000-000000000001"),
@@ -259,6 +271,7 @@ def test_recovery_notification_list_response_schema():
         RecoveryNotificationListResponse,
         RecoveryNotificationResponse,
     )
+
     now = datetime.now()
     n = RecoveryNotificationResponse(
         id=UUID("00000000-0000-0000-0000-000000000001"),
@@ -282,6 +295,7 @@ def test_recovery_notification_list_empty():
     from uuid import UUID
 
     from src.schemas.recovery import RecoveryNotificationListResponse
+
     resp = RecoveryNotificationListResponse(
         user_id=UUID("00000000-0000-0000-0000-000000000001"),
     )
@@ -294,12 +308,16 @@ def test_recovery_notification_different_event_types():
     from uuid import UUID
 
     from src.schemas.recovery import RecoveryNotificationResponse
+
     now = datetime.now()
     mastery = RecoveryNotificationResponse(
         id=UUID("00000000-0000-0000-0000-000000000001"),
-        topic="Genetics", event_type="mastery_improvement",
+        topic="Genetics",
+        event_type="mastery_improvement",
         message="Improved!",
-        improvement_pct=12.0, old_value=50.0, new_value=62.0,
+        improvement_pct=12.0,
+        old_value=50.0,
+        new_value=62.0,
         created_at=now,
     )
     assert mastery.event_type == "mastery_improvement"
@@ -307,7 +325,8 @@ def test_recovery_notification_different_event_types():
 
     severity = RecoveryNotificationResponse(
         id=UUID("00000000-0000-0000-0000-000000000002"),
-        topic="Photosynthesis", event_type="severity_upgrade",
+        topic="Photosynthesis",
+        event_type="severity_upgrade",
         message="Severity improved!",
         created_at=now,
     )
@@ -316,7 +335,8 @@ def test_recovery_notification_different_event_types():
 
     plan = RecoveryNotificationResponse(
         id=UUID("00000000-0000-0000-0000-000000000003"),
-        topic="Cell Division", event_type="plan_completed",
+        topic="Cell Division",
+        event_type="plan_completed",
         message="Plan done!",
         improvement_pct=100.0,
         created_at=now,
@@ -332,11 +352,14 @@ def test_dashboard_response_has_notification_fields():
         RecoveryDashboardResponse,
         RecoveryNotificationResponse,
     )
+
     now = datetime.now()
     n = RecoveryNotificationResponse(
         id=UUID("00000000-0000-0000-0000-000000000001"),
-        topic="Cell Biology", event_type="mastery_improvement",
-        message="Great progress!", improvement_pct=15.0,
+        topic="Cell Biology",
+        event_type="mastery_improvement",
+        message="Great progress!",
+        improvement_pct=15.0,
         created_at=now,
     )
     resp = RecoveryDashboardResponse(

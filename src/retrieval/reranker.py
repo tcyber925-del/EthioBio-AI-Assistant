@@ -4,7 +4,6 @@ Uses sentence-transformers cross-encoder to re-rank (query, passage) pairs
 with much higher accuracy than bi-encoder embeddings alone.
 """
 
-
 import structlog
 
 logger = structlog.get_logger()
@@ -19,6 +18,7 @@ def _get_or_create_cross_encoder(model_name: str = DEFAULT_RERANKER_MODEL):
     if _cross_encoder_model is None:
         try:
             from sentence_transformers import CrossEncoder
+
             _cross_encoder_model = CrossEncoder(model_name)
             logger.info("reranker_model_loaded", model=model_name)
         except ImportError:

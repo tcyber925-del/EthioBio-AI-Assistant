@@ -62,11 +62,13 @@ def extract_with_docling(
         text = page.get_textpage().get_text_bounded().strip()
         page_num = i + 1
         if text:
-            pages.append({
-                "text": text,
-                "page_number": page_num,
-                "heading": _extract_heading(text),
-            })
+            pages.append(
+                {
+                    "text": text,
+                    "page_number": page_num,
+                    "heading": _extract_heading(text),
+                }
+            )
             if rapidocr_fallback and _is_garbled(text):
                 garbled_pages.append(page_num)
     doc.close()
@@ -128,11 +130,13 @@ def _extract_with_full_ocr(filepath: str) -> list[dict]:
         if result.txts:
             text = " ".join(result.txts).strip()
             if text:
-                pages.append({
-                    "text": text,
-                    "page_number": page_num,
-                    "heading": _extract_heading(text),
-                })
+                pages.append(
+                    {
+                        "text": text,
+                        "page_number": page_num,
+                        "heading": _extract_heading(text),
+                    }
+                )
 
     doc.close()
     return pages
@@ -168,11 +172,13 @@ def _extract_garbled_pages_with_ocr(filepath: str, page_numbers: list[int]) -> l
         if result.txts:
             text = " ".join(result.txts).strip()
             if text:
-                ocr_pages.append({
-                    "text": text,
-                    "page_number": page_num,
-                    "heading": _extract_heading(text),
-                })
+                ocr_pages.append(
+                    {
+                        "text": text,
+                        "page_number": page_num,
+                        "heading": _extract_heading(text),
+                    }
+                )
                 logger.info("ocr_fallback_applied", page=page_num)
 
     doc.close()
@@ -232,11 +238,13 @@ def chunk_with_docling(filepath: str, max_tokens: int = 512) -> list[dict]:
         contextualized = chunker.contextualize(chunk)
         page_num = chunk.meta.doc_items[0].prov[0].page_no + 1 if chunk.meta.doc_items else 0
 
-        chunks.append({
-            "text": contextualized,
-            "page_number": page_num,
-            "heading": _extract_heading(contextualized),
-        })
+        chunks.append(
+            {
+                "text": contextualized,
+                "page_number": page_num,
+                "heading": _extract_heading(contextualized),
+            }
+        )
 
     logger.info("docling_chunking_complete", filepath=Path(filepath).name, chunks=len(chunks))
     return chunks

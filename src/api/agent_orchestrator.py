@@ -1,4 +1,3 @@
-
 from datetime import datetime
 
 import structlog
@@ -54,6 +53,7 @@ class ReflectionInfo(SchemaModel):
 
 
 _orchestrator_instance: AgentOrchestrator | None = None
+
 
 def _get_orchestrator() -> AgentOrchestrator:
     global _orchestrator_instance

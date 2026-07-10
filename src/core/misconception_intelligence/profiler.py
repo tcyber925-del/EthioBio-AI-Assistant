@@ -51,16 +51,18 @@ class MisconceptionProfiler:
         for p in patterns:
             if p.topic not in topic_map:
                 topic_map[p.topic] = []
-            topic_map[p.topic].append({
-                "id": str(p.id),
-                "pattern_type": p.pattern_type,
-                "description": p.pattern_description,
-                "severity": p.severity,
-                "confidence": p.confidence,
-                "frequency": p.frequency,
-                "common_wrong_answer": p.common_wrong_answer,
-                "last_detected_at": str(p.last_detected_at),
-            })
+            topic_map[p.topic].append(
+                {
+                    "id": str(p.id),
+                    "pattern_type": p.pattern_type,
+                    "description": p.pattern_description,
+                    "severity": p.severity,
+                    "confidence": p.confidence,
+                    "frequency": p.frequency,
+                    "common_wrong_answer": p.common_wrong_answer,
+                    "last_detected_at": str(p.last_detected_at),
+                }
+            )
 
         by_topic = []
         for topic, patterns in topic_map.items():
@@ -71,9 +73,12 @@ class MisconceptionProfiler:
             }
             try:
                 from src.core.misconception_intelligence import MisconceptionGraphIntegrator
+
                 gi = MisconceptionGraphIntegrator()
                 entry["prerequisite_gaps"] = await gi.get_prerequisite_gaps(
-                    user_id=user_id, topic=topic, db=db,
+                    user_id=user_id,
+                    topic=topic,
+                    db=db,
                 )
             except Exception:
                 entry["prerequisite_gaps"] = []
@@ -189,9 +194,7 @@ class MisconceptionProfiler:
         db: AsyncSession,
     ) -> dict:
         enrollments = await db.execute(
-            select(ClassEnrollment.student_id).where(
-                ClassEnrollment.class_id == classroom_id
-            )
+            select(ClassEnrollment.student_id).where(ClassEnrollment.class_id == classroom_id)
         )
         student_ids = [row[0] for row in enrollments.all()]
         total_students = len(student_ids)
@@ -243,21 +246,23 @@ class MisconceptionProfiler:
         by_topic = []
         for topic, td in sorted(topic_data.items()):
             affected = len(td["student_ids"])
-            by_topic.append({
-                "topic": topic,
-                "affected_students": affected,
-                "total_students": total_students,
-                "impact_percentage": round(affected / total_students * 100, 1),
-                "avg_severity_rank": round(
-                    td["total_severity_rank"] / td["severity_count"], 1
-                ) if td["severity_count"] else 0.0,
-                "severity_distribution": {
-                    level: td["severity_counts"].get(level, 0)
-                    for level in MISCONCEPTION_SEVERITIES
-                },
-                "top_pattern": td["top_pattern"],
-                "top_pattern_frequency": td["top_freq"],
-            })
+            by_topic.append(
+                {
+                    "topic": topic,
+                    "affected_students": affected,
+                    "total_students": total_students,
+                    "impact_percentage": round(affected / total_students * 100, 1),
+                    "avg_severity_rank": round(td["total_severity_rank"] / td["severity_count"], 1)
+                    if td["severity_count"]
+                    else 0.0,
+                    "severity_distribution": {
+                        level: td["severity_counts"].get(level, 0)
+                        for level in MISCONCEPTION_SEVERITIES
+                    },
+                    "top_pattern": td["top_pattern"],
+                    "top_pattern_frequency": td["top_freq"],
+                }
+            )
 
         return {
             "classroom_id": str(classroom_id),

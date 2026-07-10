@@ -79,8 +79,11 @@ class TestRecoveryRules:
         snap = _snapshot(
             active_recovery_plans=[
                 RecoverySummary(
-                    topic="Genetics", progress_pct=50.0,
-                    completed_tasks=2, total_tasks=4, status="active",
+                    topic="Genetics",
+                    progress_pct=50.0,
+                    completed_tasks=2,
+                    total_tasks=4,
+                    status="active",
                 ),
             ],
         )
@@ -93,8 +96,11 @@ class TestRecoveryRules:
         snap = _snapshot(
             active_recovery_plans=[
                 RecoverySummary(
-                    topic="Genetics", progress_pct=80.0,
-                    completed_tasks=4, total_tasks=5, status="active",
+                    topic="Genetics",
+                    progress_pct=80.0,
+                    completed_tasks=4,
+                    total_tasks=5,
+                    status="active",
                 ),
             ],
         )
@@ -169,8 +175,7 @@ class TestEngagementRules:
         snap = _snapshot(gamification=GamificationSummary(current_streak=0))
         recs = await generate_engagement_recommendations(snap)
         scores = [
-            r.priority_score for r in recs
-            if r.action_type == LearningActionType.MAINTAIN_STREAK
+            r.priority_score for r in recs if r.action_type == LearningActionType.MAINTAIN_STREAK
         ]
         assert 10.0 in scores
 
@@ -180,8 +185,7 @@ class TestEngagementRules:
         )
         recs = await generate_engagement_recommendations(snap)
         scores = [
-            r.priority_score for r in recs
-            if r.action_type == LearningActionType.MAINTAIN_STREAK
+            r.priority_score for r in recs if r.action_type == LearningActionType.MAINTAIN_STREAK
         ]
         assert 15.0 in scores
 

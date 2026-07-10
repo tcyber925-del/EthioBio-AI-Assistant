@@ -5,7 +5,6 @@ import re
 from src.graph.state import AgentState
 from src.retrieval.adapter import RetrievalFilter, RetrievalResult, VectorStoreAdapter
 
-
 N_RESULTS = 8
 
 # Front-matter offset: PDF page number - textbook page number per grade
@@ -33,9 +32,15 @@ def _is_quality_content(text: str) -> bool:
         if 0x7F <= cp <= 0x9F:
             return False
     # Must contain a complete sentence with subject + verb + period
-    has_sentence = bool(re.search(r'[A-Z][a-z]+(?: is| are| has| have| can| will| does| do| was| were| refers| contains| involves| produces| consists)[\s\w,.]+\.', text, re.IGNORECASE))
+    has_sentence = bool(
+        re.search(
+            r"[A-Z][a-z]+(?: is| are| has| have| can| will| does| do| was| were| refers| contains| involves| produces| consists)[\s\w,.]+\.",
+            text,
+            re.IGNORECASE,
+        )
+    )
     # OR at least 80 consecutive non-whitespace characters (body text block)
-    stripped = re.sub(r'\s+', '', text)
+    stripped = re.sub(r"\s+", "", text)
     has_text_block = len(stripped) > 80
     return has_sentence or has_text_block
 
@@ -109,13 +114,20 @@ class RetrievalNode:
                 meta["page_number"] = _correct_page(meta["page_number"], grade)
             corrected_results.append(
                 RetrievalResult(
-                    content=r.content, metadata=meta,
-                    score=r.score, source_id=r.source_id,
+                    content=r.content,
+                    metadata=meta,
+                    score=r.score,
+                    source_id=r.source_id,
                 )
             )
 
         state.retrieved_chunks = [
-            {"content": r.content, "metadata": r.metadata, "score": r.score, "source_id": r.source_id}
+            {
+                "content": r.content,
+                "metadata": r.metadata,
+                "score": r.score,
+                "source_id": r.source_id,
+            }
             for r in corrected_results
         ]
         state.context = self.adapter.format_context(corrected_results)

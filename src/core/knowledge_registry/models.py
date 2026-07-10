@@ -3,6 +3,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel
 
+from src.core.retrieval.models import TextMatch
+
 
 class LifecycleState(StrEnum):
     UPLOADED = "uploaded"
@@ -69,6 +71,3 @@ class SearchResult(BaseModel):
     content_type: str
     score: float
     matches: list["TextMatch"]
-
-
-from src.core.retrieval.models import TextMatch

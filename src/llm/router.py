@@ -4,7 +4,6 @@ import time
 from typing import Optional
 
 import structlog
-from opentelemetry import trace
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.models import ModelRoutingLog
@@ -41,10 +40,17 @@ class ModelRouter:
     def _estimate_confidence(self, response_content: str) -> float:
         content_lower = response_content.lower()
         uncertainty_indicators = [
-            "i'm not sure", "i don't know", "i am not sure",
-            "i cannot", "i'm unable", "i don't have",
-            "insufficient", "uncertain", "may not",
-            "might be wrong", "could be incorrect",
+            "i'm not sure",
+            "i don't know",
+            "i am not sure",
+            "i cannot",
+            "i'm unable",
+            "i don't have",
+            "insufficient",
+            "uncertain",
+            "may not",
+            "might be wrong",
+            "could be incorrect",
         ]
         for phrase in uncertainty_indicators:
             if phrase in content_lower:
@@ -52,7 +58,7 @@ class ModelRouter:
         if len(response_content) < 20:
             return 0.4
         if re.search(
-            r'\b(?:according to|based on|the curriculum states|reference)\b',
+            r"\b(?:according to|based on|the curriculum states|reference)\b",
             content_lower,
         ):
             return 0.95
@@ -93,7 +99,9 @@ class ModelRouter:
                 if "usage" in result:
                     usage = result["usage"]
                     span.set_attribute(GEN_AI_USAGE_INPUT_TOKENS, usage.get("prompt_tokens", 0))
-                    span.set_attribute(GEN_AI_USAGE_OUTPUT_TOKENS, usage.get("completion_tokens", 0))
+                    span.set_attribute(
+                        GEN_AI_USAGE_OUTPUT_TOKENS, usage.get("completion_tokens", 0)
+                    )
                 span.set_attribute(GEN_AI_RESPONSE_FINISH_REASONS, ["stop"])
                 span.update_name(f"chat {model_name}")
 

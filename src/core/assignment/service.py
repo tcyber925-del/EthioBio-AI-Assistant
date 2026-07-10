@@ -9,10 +9,16 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.database.models import (
     Assignment as AssignmentModel,
+)
+from src.database.models import (
     AssignmentStatus,
     ClassEnrollment,
-    Submission as SubmissionModel,
     SubmissionStatus,
+)
+from src.database.models import (
+    Submission as SubmissionModel,
+)
+from src.database.models import (
     Workspace as WorkspaceModel,
 )
 
@@ -101,12 +107,9 @@ class AssignmentService:
         self, workspace_id: str, status_filter: AssignmentStatus | None = None
     ) -> list[Assignment]:
         async with self._session_factory() as db:
-            query = (
-                select(AssignmentModel)
-                .where(
-                    AssignmentModel.workspace_id == UUID(workspace_id),
-                    AssignmentModel.deleted_at.is_(None),
-                )
+            query = select(AssignmentModel).where(
+                AssignmentModel.workspace_id == UUID(workspace_id),
+                AssignmentModel.deleted_at.is_(None),
             )
             if status_filter:
                 query = query.where(AssignmentModel.status == status_filter)
@@ -130,12 +133,9 @@ class AssignmentService:
             workspaces = (await db.execute(workspaces_query)).scalars().all()
             workspace_ids = [w.id for w in workspaces]
 
-            query = (
-                select(AssignmentModel)
-                .where(
-                    AssignmentModel.workspace_id.in_(workspace_ids),
-                    AssignmentModel.deleted_at.is_(None),
-                )
+            query = select(AssignmentModel).where(
+                AssignmentModel.workspace_id.in_(workspace_ids),
+                AssignmentModel.deleted_at.is_(None),
             )
             if status_filter:
                 query = query.where(AssignmentModel.status == status_filter)
@@ -187,27 +187,41 @@ class AssignmentService:
             logger.info("assignment_deleted", id=assignment_id)
             return True
 
-    async def submit(self, assignment_id: str, student_id: str, data: NewSubmission) -> Submission | None:
+    async def submit(
+        self, assignment_id: str, student_id: str, data: NewSubmission
+    ) -> Submission | None:
         async with self._session_factory() as db:
             assignment = await db.get(AssignmentModel, UUID(assignment_id))
-            if assignment is None or assignment.deleted_at is not None or assignment.status != AssignmentStatus.published:
+            if (
+                assignment is None
+                or assignment.deleted_at is not None
+                or assignment.status != AssignmentStatus.published
+            ):
                 return None
             due_date = assignment.due_date
             if due_date is not None and due_date.tzinfo is None:
                 due_date = due_date.replace(tzinfo=timezone.utc)
-            if due_date and not assignment.allow_late_submission and datetime.now(timezone.utc) > due_date:
+            if (
+                due_date
+                and not assignment.allow_late_submission
+                and datetime.now(timezone.utc) > due_date
+            ):
                 return None
 
             existing = (
-                await db.execute(
-                    select(SubmissionModel)
-                    .where(
-                        SubmissionModel.assignment_id == UUID(assignment_id),
-                        SubmissionModel.student_id == UUID(student_id),
+                (
+                    await db.execute(
+                        select(SubmissionModel)
+                        .where(
+                            SubmissionModel.assignment_id == UUID(assignment_id),
+                            SubmissionModel.student_id == UUID(student_id),
+                        )
+                        .order_by(SubmissionModel.attempt_number.desc())
                     )
-                    .order_by(SubmissionModel.attempt_number.desc())
                 )
-            ).scalars().first()
+                .scalars()
+                .first()
+            )
 
             attempt = (existing.attempt_number + 1) if existing else 1
             if attempt > assignment.max_attempts:
@@ -268,7 +282,9 @@ class AssignmentService:
             rows = (await db.execute(query)).scalars().all()
             return [_submission_from_orm(r) for r in rows]
 
-    async def review_submission(self, submission_id: str, data: UpdateSubmission) -> Submission | None:
+    async def review_submission(
+        self, submission_id: str, data: UpdateSubmission
+    ) -> Submission | None:
         async with self._session_factory() as db:
             row = await db.get(SubmissionModel, UUID(submission_id))
             if row is None:

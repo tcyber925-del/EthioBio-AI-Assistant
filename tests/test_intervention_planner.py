@@ -82,7 +82,8 @@ class TestInterventionPlanner:
         planner = InterventionPlanner()
         profile = _make_profile(["Genetics"], {"Genetics": 40.0})
         result = planner.plan(
-            snap, profile,
+            snap,
+            profile,
             _forgetting_risks({"Genetics": 0.5}),
             _stabilities({"Genetics": 0.5}),
         )
@@ -102,7 +103,8 @@ class TestInterventionPlanner:
         planner = InterventionPlanner()
         profile = _make_profile(["Genetics"], {"Genetics": 40.0})
         result = planner.plan(
-            snap, profile,
+            snap,
+            profile,
             _forgetting_risks({"Genetics": 0.5}),
             _stabilities({"Genetics": 0.5}),
         )
@@ -117,7 +119,8 @@ class TestInterventionPlanner:
         planner = InterventionPlanner()
         profile = _make_profile([], {"Genetics": 80.0})
         result = planner.plan(
-            snap, profile,
+            snap,
+            profile,
             _forgetting_risks({"Genetics": 0.8}),
             _stabilities({"Genetics": 0.7}),
         )
@@ -133,7 +136,8 @@ class TestInterventionPlanner:
         planner = InterventionPlanner()
         profile = _make_profile([], {"Genetics": 60.0})
         result = planner.plan(
-            snap, profile,
+            snap,
+            profile,
             _forgetting_risks({"Genetics": 0.3}),
             _stabilities({"Genetics": 0.2}),
         )
@@ -170,7 +174,8 @@ class TestInterventionPlanner:
         planner = InterventionPlanner()
         profile = _make_profile(["Genetics"], {"Genetics": 50.0})
         result = planner.plan(
-            snap, profile,
+            snap,
+            profile,
             _forgetting_risks({"Genetics": 0.3}),
             _stabilities({"Genetics": 0.5}),
         )

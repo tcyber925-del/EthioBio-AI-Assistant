@@ -2,11 +2,12 @@
 
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
 
+from src.core.memory.event_logger import EventLogger
 from src.core.memory.safety import (
     sanitize_summary_content,
     validate_confidence,
@@ -15,7 +16,6 @@ from src.core.memory.safety import (
 )
 from src.core.memory.session_manager import SessionManager
 from src.core.memory.socratic_manager import SocraticManager
-from src.core.memory.event_logger import EventLogger
 from src.schemas.memory import (
     MemorySearchRequest,
     MemorySearchResponse,
@@ -102,9 +102,12 @@ class TestSchemas:
     def test_session_start_response(self):
         now = datetime.now(timezone.utc)
         resp = SessionStartResponse(
-            session_id=uuid4(), user_id=uuid4(),
-            active_topic="Genetics", tutoring_mode="socratic",
-            started_at=now, last_active_at=now,
+            session_id=uuid4(),
+            user_id=uuid4(),
+            active_topic="Genetics",
+            tutoring_mode="socratic",
+            started_at=now,
+            last_active_at=now,
         )
         assert resp.tutoring_mode == "socratic"
         assert resp.active_topic == "Genetics"
@@ -119,9 +122,12 @@ class TestSchemas:
 
     def test_summarize_response(self):
         resp = SummarizeResponse(
-            summary_id=uuid4(), topic="Cell Biology",
-            understanding_level="advanced", key_misconceptions=["m1"],
-            confidence=0.85, next_learning_goal="Review mitosis",
+            summary_id=uuid4(),
+            topic="Cell Biology",
+            understanding_level="advanced",
+            key_misconceptions=["m1"],
+            confidence=0.85,
+            next_learning_goal="Review mitosis",
             created_at=datetime.now(timezone.utc),
         )
         assert resp.understanding_level == "advanced"
@@ -130,7 +136,9 @@ class TestSchemas:
 
     def test_session_close_response(self):
         resp = SessionCloseResponse(
-            session_id=uuid4(), summary="Done", closed=True,
+            session_id=uuid4(),
+            summary="Done",
+            closed=True,
         )
         assert resp.closed
         assert resp.summary_detail is None
@@ -148,8 +156,11 @@ class TestSchemas:
 
     def test_memory_search_result(self):
         r = MemorySearchResult(
-            memory_id="abc", content="some summary",
-            metadata={"topic": "Biology"}, score=0.85, similarity=0.9,
+            memory_id="abc",
+            content="some summary",
+            metadata={"topic": "Biology"},
+            score=0.85,
+            similarity=0.9,
         )
         assert r.memory_id == "abc"
         assert r.score == 0.85
@@ -161,8 +172,11 @@ class TestSchemas:
 
     def test_summary_response(self):
         resp = SummaryResponse(
-            id=uuid4(), user_id=uuid4(), topic="Biology",
-            understanding_level="beginner", confidence=0.5,
+            id=uuid4(),
+            user_id=uuid4(),
+            topic="Biology",
+            understanding_level="beginner",
+            confidence=0.5,
             created_at=datetime.now(timezone.utc),
         )
         assert resp.topic == "Biology"
@@ -181,7 +195,9 @@ class TestSessionManager:
     async def test_get_or_create_active_session_creates_new(self, mock_db):
         mgr = SessionManager()
         session = await mgr.get_or_create_active_session(
-            user_id=uuid4(), topic="Biology", db=mock_db,
+            user_id=uuid4(),
+            topic="Biology",
+            db=mock_db,
         )
         assert session is not None
         assert session.active_topic == "Biology"
@@ -221,13 +237,17 @@ class TestSessionManager:
 
         mgr = SessionManager()
         closed = []
+
         async def tracking_close(session_id, db):
             closed.append(session_id)
             return expired_session
+
         mgr.close_session = tracking_close
 
         session = await mgr.get_or_create_active_session(
-            user_id=uuid4(), topic="Biology", db=mock_db,
+            user_id=uuid4(),
+            topic="Biology",
+            db=mock_db,
         )
         assert session is not None
         assert len(closed) == 1
@@ -247,12 +267,16 @@ class TestSessionManager:
 
         mgr = SessionManager()
         closed = []
+
         async def tracking_close(session_id, db):
             closed.append(session_id)
+
         mgr.close_session = tracking_close
 
         session = await mgr.get_or_create_active_session(
-            user_id=uuid4(), topic="Genetics", db=mock_db,
+            user_id=uuid4(),
+            topic="Genetics",
+            db=mock_db,
         )
         assert session is not None
         assert len(closed) == 0
@@ -277,7 +301,9 @@ class TestSocraticManager:
     async def test_update_state_creates_new(self, mock_db):
         mgr = SocraticManager()
         result = await mgr.update_state(
-            user_id=uuid4(), topic="Biology", db=mock_db,
+            user_id=uuid4(),
+            topic="Biology",
+            db=mock_db,
             updates={"socratic_stage": "guided_discovery"},
         )
         assert result is not None
@@ -302,8 +328,11 @@ class TestEventLogger:
         mock_db = AsyncMock()
         logger = EventLogger()
         result = await logger.log(
-            user_id=uuid4(), event_type="test_event",
-            topic="Biology", metadata={"key": "val"}, db=mock_db,
+            user_id=uuid4(),
+            event_type="test_event",
+            topic="Biology",
+            metadata={"key": "val"},
+            db=mock_db,
         )
         assert result is not None
         assert result.event_type == "test_event"
@@ -335,8 +364,11 @@ class TestContextAssembler:
         assembler = ContextAssembler()
         with patch.object(assembler, "_format_summaries", AsyncMock(return_value="")):
             result = await assembler.assemble(
-                user_id=uuid4(), topic=None, db=mock_db,
-                session_state=None, socratic_state=None,
+                user_id=uuid4(),
+                topic=None,
+                db=mock_db,
+                session_state=None,
+                socratic_state=None,
             )
         assert result == ""
 
@@ -347,7 +379,9 @@ class TestContextAssembler:
         assembler = ContextAssembler()
         with patch.object(assembler, "_format_summaries", AsyncMock(return_value="")):
             result = await assembler.assemble(
-                user_id=uuid4(), topic="Cell Biology", db=mock_db,
+                user_id=uuid4(),
+                topic="Cell Biology",
+                db=mock_db,
                 session_state={
                     "active_topic": "Cell Biology",
                     "tutoring_mode": "socratic",
@@ -367,7 +401,9 @@ class TestContextAssembler:
         assembler = ContextAssembler()
         with patch.object(assembler, "_format_summaries", AsyncMock(return_value="")):
             result = await assembler.assemble(
-                user_id=uuid4(), topic="Genetics", db=mock_db,
+                user_id=uuid4(),
+                topic="Genetics",
+                db=mock_db,
                 session_state={
                     "active_topic": "Genetics",
                     "tutoring_mode": "socratic",
@@ -387,14 +423,16 @@ class TestContextAssembler:
     @pytest.mark.asyncio
     async def test_assemble_drops_excessive_sections(self, mock_db):
         from src.core.memory.context_assembler import (
-            MEMORY_TOKEN_BUDGET, ContextAssembler,
+            ContextAssembler,
         )
 
         assembler = ContextAssembler()
         with patch.object(assembler, "_format_summaries", AsyncMock(return_value="")):
             moderate_topic = "B" * 400  # ~100 tokens, easily fits SESSION_BUDGET of 200
             result = await assembler.assemble(
-                user_id=uuid4(), topic=moderate_topic, db=mock_db,
+                user_id=uuid4(),
+                topic=moderate_topic,
+                db=mock_db,
                 session_state={
                     "active_topic": moderate_topic,
                     "tutoring_mode": "direct",

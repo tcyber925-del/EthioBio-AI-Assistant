@@ -20,7 +20,7 @@ LESSON_SYSTEM_PROMPT = (
     '  "activities": [{"name": "Activity name", "duration_minutes": 10, '
     '"description": "What to do", "type": "group|individual|pair"}],\n'
     '  "periods": [\n'
-    '    {\n'
+    "    {\n"
     '      "name": "Opening",\n'
     '      "duration_minutes": 5,\n'
     '      "objective": "Engage students",\n'
@@ -29,7 +29,7 @@ LESSON_SYSTEM_PROMPT = (
     '      "teacher_activity": "Pose a question",\n'
     '      "student_activity": "Discuss in pairs",\n'
     '      "materials_needed": ["Whiteboard", "Marker"]\n'
-    '    }\n'
+    "    }\n"
     "  ],\n"
     '  "assessment": "How to assess understanding",\n'
     '  "homework": "Optional homework assignment",\n'
@@ -50,10 +50,10 @@ MISCONCEPTION_ACTIVITY_PROMPT = (
     "  {{\n"
     '    "misconception": "The misconception being addressed",\n'
     '    "activity_name": "Name of the activity",\n'
-    "    \"description\": \"Step-by-step activity that creates cognitive"
+    '    "description": "Step-by-step activity that creates cognitive'
     ' conflict and then resolution",\n'
     '    "duration_minutes": 10,\n'
-    "    \"activity_type\": \"concept_conflict|diagnostic_question|"
+    '    "activity_type": "concept_conflict|diagnostic_question|'
     'evidence_challenge|reconstruction"\n'
     "  }}\n"
     "]"
@@ -149,8 +149,7 @@ class LessonPlannerAgent(BaseAgent):
             )
         elif language == "both":
             lang_instruction = (
-                "Generate content in English with key terms "
-                "and explanations also in Amharic."
+                "Generate content in English with key terms and explanations also in Amharic."
             )
         else:
             lang_instruction = "Generate all content in English."
@@ -246,36 +245,40 @@ Respond with valid JSON only."""
 
             if generate_exit_ticket:
                 output["exit_ticket"] = await self._generate_exit_ticket(
-                    grade_level=grade_level, topic=topic,
-                    language=language, session=session,
+                    grade_level=grade_level,
+                    topic=topic,
+                    language=language,
+                    session=session,
                 )
 
             if generate_differentiation:
                 output["differentiation"] = await self._generate_differentiation(
-                    grade_level=grade_level, topic=topic,
+                    grade_level=grade_level,
+                    topic=topic,
                     explanation=output["explanation"],
-                    language=language, session=session,
+                    language=language,
+                    session=session,
                 )
 
             if generate_diagram_suggestions:
                 output["diagram_suggestions"] = await self._generate_diagram_suggestions(
-                    grade_level=grade_level, topic=topic,
-                    language=language, session=session,
+                    grade_level=grade_level,
+                    topic=topic,
+                    language=language,
+                    session=session,
                 )
 
             if generate_misconception_activities and classroom_context:
-                mc_list = (
-                    (classroom_context.get("misconceptions") or {}).get("by_topic") or []
-                )
+                mc_list = (classroom_context.get("misconceptions") or {}).get("by_topic") or []
                 if mc_list:
-                    output["misconception_activities"] = (
-                        await self._generate_misconception_activities(
-                            grade_level=grade_level,
-                            topic=topic,
-                            misconceptions_json=json.dumps(mc_list, indent=2),
-                            language=language,
-                            session=session,
-                        )
+                    output[
+                        "misconception_activities"
+                    ] = await self._generate_misconception_activities(
+                        grade_level=grade_level,
+                        topic=topic,
+                        misconceptions_json=json.dumps(mc_list, indent=2),
+                        language=language,
+                        session=session,
                     )
 
             return output

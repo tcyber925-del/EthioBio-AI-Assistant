@@ -65,8 +65,7 @@ class TutorSynthesisAgent:
             system += f"\n\n## Evidence Synthesis\n{evidence_synthesis}\n\nUse the above evidence to ground your answer. Include verbatim quotes from the evidence. Cite evidence IDs using [id:<evidence_id>]."
         elif evidence_items:
             items_text = "\n".join(
-                f"- [{e.get('id', '?')}] {e.get('content', '')[:200]}"
-                for e in evidence_items
+                f"- [{e.get('id', '?')}] {e.get('content', '')[:200]}" for e in evidence_items
             )
             system += f"\n\n## Evidence Items\n{items_text}\n\nUse the above evidence to ground your answer. Include verbatim quotes from the evidence. Cite evidence IDs using [id:<evidence_id>]."
 
@@ -80,7 +79,7 @@ class TutorSynthesisAgent:
             system += "Your previous response contained claims that could not be verified against the provided evidence. "
             system += "Please revise the response to fix the following ungrounded claims:\n"
             for i, claim in enumerate(ungrounded_claims, 1):
-                system += f"\n{i}. \"{claim}\""
+                system += f'\n{i}. "{claim}"'
             system += "\n\nEnsure EVERY claim in your response is directly supported by the provided evidence. "
             system += "Remove or rephrase any claim you cannot support with a verbatim quote from the evidence."
 
@@ -88,7 +87,9 @@ class TutorSynthesisAgent:
         if language == "am":
             lang_context = "Respond entirely in Amharic (አማርኛ). Use Amharic biology terminology."
         elif language == "both":
-            lang_context = "Answer in English with Amharic explanation. Provide key terms in both languages."
+            lang_context = (
+                "Answer in English with Amharic explanation. Provide key terms in both languages."
+            )
         else:
             lang_context = "Answer in English."
 
@@ -100,7 +101,10 @@ class TutorSynthesisAgent:
         ]
 
         result = await self.router.route(
-            llm_messages, request_type="tutor", temperature=0.7, max_tokens=2048,
+            llm_messages,
+            request_type="tutor",
+            temperature=0.7,
+            max_tokens=2048,
         )
 
         content = result["content"]
@@ -108,7 +112,9 @@ class TutorSynthesisAgent:
 
         if evidence_items and not citation_map:
             logger.warning("tutor_response_missing_citations")
-            disclaimer = "\n\n*Note: Some claims could not be directly cited to the available evidence.*"
+            disclaimer = (
+                "\n\n*Note: Some claims could not be directly cited to the available evidence.*"
+            )
             cleaned_content += disclaimer
 
         return TutorResponse(

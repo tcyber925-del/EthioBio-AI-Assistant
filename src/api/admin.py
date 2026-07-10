@@ -1,4 +1,3 @@
-
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -123,18 +122,21 @@ async def review_content(
             ]
         else:
             items = await session.execute(
-                select(LessonPlan).where(LessonPlan.status == status).order_by(LessonPlan.created_at.desc()).limit(50)
+                select(LessonPlan)
+                .where(LessonPlan.status == status)
+                .order_by(LessonPlan.created_at.desc())
+                .limit(50)
             )
             results = [
                 {
-                    "id": str(l.id),
-                    "topic": l.topic,
-                    "grade_level": l.grade_level,
-                    "objective": l.objective[:100] if l.objective else "",
-                    "status": l.status,
-                    "created_at": l.created_at.isoformat() if l.created_at else None,
+                    "id": str(item.id),
+                    "topic": item.topic,
+                    "grade_level": item.grade_level,
+                    "objective": item.objective[:100] if item.objective else "",
+                    "status": item.status,
+                    "created_at": item.created_at.isoformat() if item.created_at else None,
                 }
-                for l in items.scalars().all()
+                for item in items.scalars().all()
             ]
         return {"content_type": effective_type, "status": status, "items": results}
     except Exception as e:
@@ -150,10 +152,10 @@ async def get_monitoring(
     try:
         total_requests = await session.scalar(select(func.count(ModelRoutingLog.id)))
         failed_requests = await session.scalar(
-            select(func.count(ModelRoutingLog.id)).where(ModelRoutingLog.success == False)
+            select(func.count(ModelRoutingLog.id)).where(not ModelRoutingLog.success)
         )
         fallbacks = await session.scalar(
-            select(func.count(ModelRoutingLog.id)).where(ModelRoutingLog.fallback_triggered == True)
+            select(func.count(ModelRoutingLog.id)).where(ModelRoutingLog.fallback_triggered)
         )
 
         return {
@@ -174,6 +176,7 @@ async def get_quiz_detail(
     _: User = Depends(require_admin),
 ):
     from uuid import UUID
+
     try:
         item_uuid = UUID(item_id)
         quiz = await session.get(Quiz, item_uuid)
@@ -223,6 +226,7 @@ async def get_lesson_detail(
     _: User = Depends(require_admin),
 ):
     from uuid import UUID
+
     try:
         item_uuid = UUID(item_id)
         lesson = await session.get(LessonPlan, item_uuid)
@@ -267,9 +271,12 @@ async def update_content_status(
     _: User = Depends(require_admin),
 ):
     from uuid import UUID
+
     try:
         item_uuid = UUID(item_id)
-        model_cls = Quiz if content_type == "quiz" else LessonPlan if content_type == "lesson" else None
+        model_cls = (
+            Quiz if content_type == "quiz" else LessonPlan if content_type == "lesson" else None
+        )
         if not model_cls:
             raise HTTPException(status_code=400, detail=f"Invalid content type: {content_type}")
 
@@ -337,21 +344,25 @@ async def list_users(
             )
             pc_result = await session.execute(pc_query)
             for pc in pc_result.scalars().all():
-                children_list.append({
-                    "id": str(pc.student.id),
-                    "email": pc.student.email or f"Student #{str(pc.student.id)[:8]}",
-                })
+                children_list.append(
+                    {
+                        "id": str(pc.student.id),
+                        "email": pc.student.email or f"Student #{str(pc.student.id)[:8]}",
+                    }
+                )
 
-        result_data.append({
-            "id": str(u.id),
-            "email": u.email,
-            "role": u.role.value if u.role else None,
-            "grade_level": u.grade_level,
-            "telegram_id": u.telegram_id,
-            "is_active": u.is_active,
-            "created_at": u.created_at.isoformat() if u.created_at else None,
-            "children": children_list if children_list else None,
-        })
+        result_data.append(
+            {
+                "id": str(u.id),
+                "email": u.email,
+                "role": u.role.value if u.role else None,
+                "grade_level": u.grade_level,
+                "telegram_id": u.telegram_id,
+                "is_active": u.is_active,
+                "created_at": u.created_at.isoformat() if u.created_at else None,
+                "children": children_list if children_list else None,
+            }
+        )
 
     return {
         "users": result_data,
@@ -415,9 +426,7 @@ async def list_admin_schools(
     session: AsyncSession = Depends(get_session),
     _: User = Depends(require_admin),
 ):
-    result = await session.execute(
-        select(School).options(selectinload(School.class_groups))
-    )
+    result = await session.execute(select(School).options(selectinload(School.class_groups)))
     schools = result.scalars().all()
 
     return [
@@ -431,7 +440,8 @@ async def list_admin_schools(
                 f"{min(cg.grade_level for cg in s.class_groups)}-"
                 f"{max(cg.grade_level for cg in s.class_groups)}"
             )
-            if s.class_groups else "N/A",
+            if s.class_groups
+            else "N/A",
         }
         for s in schools
     ]
@@ -472,9 +482,7 @@ async def list_review_items(
         )
 
         if status == "resolved":
-            query = query.where(
-                AgentTrace.event_metadata["reviewed"].as_string() == "true"
-            )
+            query = query.where(AgentTrace.event_metadata["reviewed"].as_string() == "true")
             count_query = count_query.where(
                 AgentTrace.event_metadata["reviewed"].as_string() == "true"
             )
@@ -500,23 +508,25 @@ async def list_review_items(
         items = []
         for t in traces:
             md = t.event_metadata or {}
-            items.append({
-                "trace_id": t.trace_id,
-                "user_message": t.user_message,
-                "response": t.response,
-                "intent": t.intent,
-                "grade_level": t.grade_level,
-                "language": t.language,
-                "safety_issues": md.get("safety_issues", []),
-                "safety_action": md.get("safety_action", ""),
-                "groundedness_score": md.get("groundedness_score", 0.0),
-                "hallucination_rate": md.get("hallucination_rate", 0.0),
-                "requires_teacher_review": md.get("requires_teacher_review", False),
-                "reviewed": md.get("reviewed", False),
-                "review_notes": md.get("review_notes"),
-                "reviewed_at": md.get("reviewed_at"),
-                "created_at": t.start_time.isoformat() if t.start_time else None,
-            })
+            items.append(
+                {
+                    "trace_id": t.trace_id,
+                    "user_message": t.user_message,
+                    "response": t.response,
+                    "intent": t.intent,
+                    "grade_level": t.grade_level,
+                    "language": t.language,
+                    "safety_issues": md.get("safety_issues", []),
+                    "safety_action": md.get("safety_action", ""),
+                    "groundedness_score": md.get("groundedness_score", 0.0),
+                    "hallucination_rate": md.get("hallucination_rate", 0.0),
+                    "requires_teacher_review": md.get("requires_teacher_review", False),
+                    "reviewed": md.get("reviewed", False),
+                    "review_notes": md.get("review_notes"),
+                    "reviewed_at": md.get("reviewed_at"),
+                    "created_at": t.start_time.isoformat() if t.start_time else None,
+                }
+            )
 
         return ReviewListResponse(traces=items, total=total, limit=limit, offset=offset)
     except HTTPException:
@@ -534,9 +544,7 @@ async def resolve_review_item(
     _: User = Depends(require_admin),
 ):
     try:
-        result = await session.execute(
-            select(AgentTrace).where(AgentTrace.trace_id == trace_id)
-        )
+        result = await session.execute(select(AgentTrace).where(AgentTrace.trace_id == trace_id))
         trace = result.scalar_one_or_none()
         if trace is None:
             raise HTTPException(status_code=404, detail="Trace not found")

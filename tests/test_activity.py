@@ -1,8 +1,9 @@
 """Tests for the activity feed module."""
 
-import pytest
-from uuid import UUID
 from datetime import datetime, timezone
+from uuid import UUID
+
+import pytest
 
 
 class TestActivitySchemas:
@@ -87,7 +88,6 @@ class TestActivityEndpoint:
 
     @pytest.mark.asyncio
     async def test_invalid_uuid_returns_error(self):
-        from src.schemas.activity import ActivityItem
 
         with pytest.raises(Exception):
             UUID("not-a-uuid")

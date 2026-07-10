@@ -171,7 +171,9 @@ def export_lesson_plan_to_pdf(lesson: dict[str, Any]) -> bytes:
             if pdf.get_y() > 265:
                 pdf.add_page()
             pdf.set_font("Helvetica", "B", 10)
-            pdf.multi_cell(0, 5, f"Q{i}. ({q.get('question_type', '')}) {q.get('question_text', '')}")
+            pdf.multi_cell(
+                0, 5, f"Q{i}. ({q.get('question_type', '')}) {q.get('question_text', '')}"
+            )
             options = q.get("options")
             if options:
                 pdf.set_font("Helvetica", "", 10)
@@ -218,7 +220,13 @@ def export_lesson_plan_to_pdf(lesson: dict[str, Any]) -> bytes:
             if pdf.get_y() > 265:
                 pdf.add_page()
             pdf.set_font("Helvetica", "B", 10)
-            pdf.cell(0, 5, f"{d.get('title', '')} ({d.get('diagram_type', '')})", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(
+                0,
+                5,
+                f"{d.get('title', '')} ({d.get('diagram_type', '')})",
+                new_x="LMARGIN",
+                new_y="NEXT",
+            )
             pdf.set_font("Helvetica", "", 10)
             desc = d.get("description")
             if desc:
@@ -237,9 +245,17 @@ def export_lesson_plan_to_pdf(lesson: dict[str, Any]) -> bytes:
             if pdf.get_y() > 265:
                 pdf.add_page()
             pdf.set_font("Helvetica", "B", 10)
-            pdf.cell(0, 5, f"{a.get('activity_name', '')} ({a.get('activity_type', '')} · {a.get('duration_minutes', '')}min)", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(
+                0,
+                5,
+                f"{a.get('activity_name', '')} ({a.get('activity_type', '')} · {a.get('duration_minutes', '')}min)",  # noqa: E501
+                new_x="LMARGIN",
+                new_y="NEXT",
+            )
             pdf.set_font("Helvetica", "", 10)
-            pdf.cell(0, 5, f"Addressing: {a.get('misconception', '')}", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(
+                0, 5, f"Addressing: {a.get('misconception', '')}", new_x="LMARGIN", new_y="NEXT"
+            )
             desc = a.get("description")
             if desc:
                 pdf.multi_cell(0, 5, desc)

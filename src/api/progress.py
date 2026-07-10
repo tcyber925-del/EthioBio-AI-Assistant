@@ -49,11 +49,12 @@ async def get_student_profile(student_id: UUID, session: AsyncSession = Depends(
         wrong_attempts = await session.execute(
             select(Question.topic)
             .join(QuizAttempt, QuizAttempt.quiz_id == Question.quiz_id)
-            .where(QuizAttempt.user_id == student_id, QuizAttempt.completed == True)
+            .where(QuizAttempt.user_id == student_id, QuizAttempt.completed)
         )
         wrong_topics = wrong_attempts.scalars().all()
         if wrong_topics:
             from collections import Counter
+
             weak_topics = [topic for topic, _ in Counter(wrong_topics).most_common(5)]
 
         return {
@@ -75,7 +76,9 @@ async def get_student_profile(student_id: UUID, session: AsyncSession = Depends(
 
 
 @router.post("/student/{student_id}", response_model=ProgressResponse)
-async def get_student_progress(student_id: UUID, request: ProgressRequest, session: AsyncSession = Depends(get_session)):
+async def get_student_progress(
+    student_id: UUID, request: ProgressRequest, session: AsyncSession = Depends(get_session)
+):
     router_llm = ModelRouter()
     agent = StudentProgressAgent(llm_router=router_llm)
 
@@ -103,7 +106,9 @@ async def get_student_progress(student_id: UUID, request: ProgressRequest, sessi
 
 
 @router.post("/parent-summary", response_model=ParentSummaryResponse)
-async def generate_parent_summary(request: ParentSummaryRequest, session: AsyncSession = Depends(get_session)):
+async def generate_parent_summary(
+    request: ParentSummaryRequest, session: AsyncSession = Depends(get_session)
+):
     router_llm = ModelRouter()
     agent = ParentSummaryAgent(llm_router=router_llm)
 

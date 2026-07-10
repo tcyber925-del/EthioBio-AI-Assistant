@@ -45,8 +45,6 @@ class KnowledgeRouter:
     ) -> list:
         plan = self.route(query, workspace_id, user_id)
         if plan.primary_source == "kml" and self._gateway:
-            results = await self._gateway.search(
-                q=query, workspace_id=workspace_id, limit=limit
-            )
+            results = await self._gateway.search(q=query, workspace_id=workspace_id, limit=limit)
             return results
         return []

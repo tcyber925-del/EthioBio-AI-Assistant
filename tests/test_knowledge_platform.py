@@ -46,8 +46,10 @@ def collection_service(session_factory):
 @pytest.fixture
 def mock_embedder():
     embedder = MagicMock()
+
     async def embed_batch(texts, batch_size=16, use_ollama=False):
         return [[0.1] * 384 for _ in texts]
+
     embedder.embed_batch = embed_batch
     return embedder
 
@@ -74,6 +76,7 @@ def pipeline(registry, mock_embedder, mock_vector_store, session_factory):
 @pytest.fixture
 def enrichment_service(registry):
     from src.core.enrichment.service import EnrichmentService
+
     return EnrichmentService(registry)
 
 
@@ -106,16 +109,27 @@ class TestKnowledgeRegistry:
 
     async def test_list_by_filter_workspace(self, registry):
         ws = "00000000-0000-0000-0000-000000000001"
-        await registry.register(NewKnowledgeObject(workspace_id=ws, owner_id=ws, title="Doc1", content_type="pdf"))
-        await registry.register(NewKnowledgeObject(workspace_id=ws, owner_id=ws, title="Doc2", content_type="pdf"))
+        await registry.register(
+            NewKnowledgeObject(workspace_id=ws, owner_id=ws, title="Doc1", content_type="pdf")
+        )
+        await registry.register(
+            NewKnowledgeObject(workspace_id=ws, owner_id=ws, title="Doc2", content_type="pdf")
+        )
         ws2 = "00000000-0000-0000-0000-000000000002"
-        await registry.register(NewKnowledgeObject(workspace_id=ws2, owner_id=ws2, title="Doc3", content_type="pdf"))
+        await registry.register(
+            NewKnowledgeObject(workspace_id=ws2, owner_id=ws2, title="Doc3", content_type="pdf")
+        )
 
         results = await registry.list_by_filter(KnowledgeFilter(workspace_id=ws))
         assert len(results) == 2
 
     async def test_lifecycle_transitions(self, registry):
-        ko = NewKnowledgeObject(workspace_id="00000000-0000-0000-0000-000000000001", owner_id="00000000-0000-0000-0000-000000000002", title="Doc", content_type="pdf")
+        ko = NewKnowledgeObject(
+            workspace_id="00000000-0000-0000-0000-000000000001",
+            owner_id="00000000-0000-0000-0000-000000000002",
+            title="Doc",
+            content_type="pdf",
+        )
         result, _ = await registry.register(ko)
 
         result2, events = await registry.update_lifecycle(
@@ -131,7 +145,12 @@ class TestKnowledgeRegistry:
         assert result3.lifecycle_state == LifecycleState.PUBLISHED
 
     async def test_invalid_transition_raises(self, registry):
-        ko = NewKnowledgeObject(workspace_id="00000000-0000-0000-0000-000000000001", owner_id="00000000-0000-0000-0000-000000000002", title="Doc", content_type="pdf")
+        ko = NewKnowledgeObject(
+            workspace_id="00000000-0000-0000-0000-000000000001",
+            owner_id="00000000-0000-0000-0000-000000000002",
+            title="Doc",
+            content_type="pdf",
+        )
         result, _ = await registry.register(ko)
 
         with pytest.raises(ValueError, match="Invalid transition"):
@@ -140,16 +159,28 @@ class TestKnowledgeRegistry:
             )
 
     async def test_update_metadata(self, registry):
-        ko = NewKnowledgeObject(workspace_id="00000000-0000-0000-0000-000000000001", owner_id="00000000-0000-0000-0000-000000000002", title="Doc", content_type="pdf")
+        ko = NewKnowledgeObject(
+            workspace_id="00000000-0000-0000-0000-000000000001",
+            owner_id="00000000-0000-0000-0000-000000000002",
+            title="Doc",
+            content_type="pdf",
+        )
         result, _ = await registry.register(ko)
 
-        result2, events = await registry.update_metadata(result.id, {"language": "en", "difficulty": "medium"})
+        result2, events = await registry.update_metadata(
+            result.id, {"language": "en", "difficulty": "medium"}
+        )
         assert result2.metadata.get("language") == "en"
         assert result2.metadata.get("difficulty") == "medium"
         assert events[0].event_type == "metadata_updated"
 
     async def test_create_version(self, registry):
-        ko = NewKnowledgeObject(workspace_id="00000000-0000-0000-0000-000000000001", owner_id="00000000-0000-0000-0000-000000000002", title="Doc", content_type="pdf")
+        ko = NewKnowledgeObject(
+            workspace_id="00000000-0000-0000-0000-000000000001",
+            owner_id="00000000-0000-0000-0000-000000000002",
+            title="Doc",
+            content_type="pdf",
+        )
         result, _ = await registry.register(ko)
 
         version, events = await registry.create_version(result.id)
@@ -160,7 +191,12 @@ class TestKnowledgeRegistry:
         assert len(versions) == 2
 
     async def test_soft_delete(self, registry):
-        ko = NewKnowledgeObject(workspace_id="00000000-0000-0000-0000-000000000001", owner_id="00000000-0000-0000-0000-000000000002", title="Doc", content_type="pdf")
+        ko = NewKnowledgeObject(
+            workspace_id="00000000-0000-0000-0000-000000000001",
+            owner_id="00000000-0000-0000-0000-000000000002",
+            title="Doc",
+            content_type="pdf",
+        )
         result, _ = await registry.register(ko)
 
         events = await registry.soft_delete(result.id, reason="test cleanup")
@@ -171,9 +207,21 @@ class TestKnowledgeRegistry:
 
     async def test_search_by_title(self, registry):
         ws = "00000000-0000-0000-0000-000000000001"
-        await registry.register(NewKnowledgeObject(workspace_id=ws, owner_id=ws, title="Cell Biology", content_type="pdf"))
-        await registry.register(NewKnowledgeObject(workspace_id=ws, owner_id=ws, title="Plant Biology", content_type="pdf"))
-        await registry.register(NewKnowledgeObject(workspace_id=ws, owner_id=ws, title="Physics 101", content_type="pdf"))
+        await registry.register(
+            NewKnowledgeObject(
+                workspace_id=ws, owner_id=ws, title="Cell Biology", content_type="pdf"
+            )
+        )
+        await registry.register(
+            NewKnowledgeObject(
+                workspace_id=ws, owner_id=ws, title="Plant Biology", content_type="pdf"
+            )
+        )
+        await registry.register(
+            NewKnowledgeObject(
+                workspace_id=ws, owner_id=ws, title="Physics 101", content_type="pdf"
+            )
+        )
 
         results = await registry.list_by_filter(KnowledgeFilter(search="Biology"))
         assert len(results) == 2
@@ -240,7 +288,8 @@ class TestWorkspaceService:
         ws = await workspace_service.create(NewWorkspace(name="Membership Test"), created_by=uid)
 
         member = await workspace_service.add_member(
-            ws.id, "00000000-0000-0000-0000-000000000002",
+            ws.id,
+            "00000000-0000-0000-0000-000000000002",
             role=WorkspaceRole.member,
         )
         assert member.user_id == "00000000-0000-0000-0000-000000000002"
@@ -255,7 +304,9 @@ class TestWorkspaceService:
         members = await workspace_service.list_members(ws.id)
         assert len(members) == 1
 
-        not_found = await workspace_service.remove_member(ws.id, "00000000-0000-0000-0000-000000009999")
+        not_found = await workspace_service.remove_member(
+            ws.id, "00000000-0000-0000-0000-000000009999"
+        )
         assert not_found is False
 
     async def test_update_member_role(self, workspace_service):
@@ -316,9 +367,7 @@ class TestWorkspaceContext:
         ws = await service.create(
             NewWorkspace(name="Context Test"), created_by="00000000-0000-0000-0000-000000000001"
         )
-        result = await get_workspace_context(
-            x_workspace_id=ws.id, session_factory=session_factory
-        )
+        result = await get_workspace_context(x_workspace_id=ws.id, session_factory=session_factory)
         assert result == ws.id
 
     async def test_invalid_uuid_format(self):
@@ -532,9 +581,15 @@ class TestCollection:
         ws2_id = "00000000-0000-0000-0000-000000000002"
         owner_id = "00000000-0000-0000-0000-000000000003"
 
-        await collection_service.create(NewCollection(workspace_id=ws_id, name="C1"), created_by=owner_id)
-        await collection_service.create(NewCollection(workspace_id=ws_id, name="C2"), created_by=owner_id)
-        await collection_service.create(NewCollection(workspace_id=ws2_id, name="C3"), created_by=owner_id)
+        await collection_service.create(
+            NewCollection(workspace_id=ws_id, name="C1"), created_by=owner_id
+        )
+        await collection_service.create(
+            NewCollection(workspace_id=ws_id, name="C2"), created_by=owner_id
+        )
+        await collection_service.create(
+            NewCollection(workspace_id=ws2_id, name="C3"), created_by=owner_id
+        )
 
         cols = await collection_service.list_for_workspace(ws_id)
         assert len(cols) == 2
@@ -543,8 +598,12 @@ class TestCollection:
         ws_id = "00000000-0000-0000-0000-000000000001"
         owner_id = "00000000-0000-0000-0000-000000000002"
 
-        coll = await collection_service.create(NewCollection(workspace_id=ws_id, name="Original"), created_by=owner_id)
-        updated = await collection_service.update(coll.id, UpdateCollection(name="Renamed", description="Updated desc"))
+        coll = await collection_service.create(
+            NewCollection(workspace_id=ws_id, name="Original"), created_by=owner_id
+        )
+        updated = await collection_service.update(
+            coll.id, UpdateCollection(name="Renamed", description="Updated desc")
+        )
         assert updated is not None
         assert updated.name == "Renamed"
         assert updated.description == "Updated desc"
@@ -553,20 +612,28 @@ class TestCollection:
         ws_id = "00000000-0000-0000-0000-000000000001"
         owner_id = "00000000-0000-0000-0000-000000000002"
 
-        coll = await collection_service.create(NewCollection(workspace_id=ws_id, name="To Delete"), created_by=owner_id)
+        coll = await collection_service.create(
+            NewCollection(workspace_id=ws_id, name="To Delete"), created_by=owner_id
+        )
         ok = await collection_service.soft_delete(coll.id)
         assert ok is True
 
         got = await collection_service.get(coll.id)
         assert got is None
 
-    async def test_add_and_remove_knowledge_object(self, collection_service, session_factory, registry):
+    async def test_add_and_remove_knowledge_object(
+        self, collection_service, session_factory, registry
+    ):
         ws_id = "00000000-0000-0000-0000-000000000001"
         owner_id = "00000000-0000-0000-0000-000000000002"
 
-        coll = await collection_service.create(NewCollection(workspace_id=ws_id, name="My Collection"), created_by=owner_id)
+        coll = await collection_service.create(
+            NewCollection(workspace_id=ws_id, name="My Collection"), created_by=owner_id
+        )
         ko, _ = await registry.register(
-            NewKnowledgeObject(workspace_id=ws_id, owner_id=owner_id, title="Doc", content_type="pdf")
+            NewKnowledgeObject(
+                workspace_id=ws_id, owner_id=owner_id, title="Doc", content_type="pdf"
+            )
         )
 
         ok = await collection_service.add_knowledge_object(coll.id, ko.id)
@@ -587,10 +654,14 @@ class TestCollection:
         owner_id = "00000000-0000-0000-0000-000000000002"
 
         ko, _ = await registry.register(
-            NewKnowledgeObject(workspace_id=ws_id, owner_id=owner_id, title="Doc", content_type="pdf")
+            NewKnowledgeObject(
+                workspace_id=ws_id, owner_id=owner_id, title="Doc", content_type="pdf"
+            )
         )
 
-        ok = await collection_service.add_knowledge_object("00000000-0000-0000-0000-000000009999", ko.id)
+        ok = await collection_service.add_knowledge_object(
+            "00000000-0000-0000-0000-000000009999", ko.id
+        )
         assert ok is False
 
 
@@ -604,8 +675,10 @@ class TestSearch:
         test_registry = KnowledgeRegistry(sf)
         ko, _ = await test_registry.register(
             NewKnowledgeObject(
-                workspace_id=ws_id, owner_id=owner_id,
-                title="Cell Biology Textbook", content_type="pdf",
+                workspace_id=ws_id,
+                owner_id=owner_id,
+                title="Cell Biology Textbook",
+                content_type="pdf",
             )
         )
         await test_registry.update_lifecycle(
@@ -621,15 +694,24 @@ class TestSearch:
             from src.core.retrieval.models import RetrievalResult, TextMatch
 
             mock_gateway = MagicMock()
-            mock_gateway.search = AsyncMock(return_value=[
-                RetrievalResult(
-                    ko_id=ko.id, title="Cell Biology Textbook", content_type="pdf",
-                    score=0.85, matches=[
-                        TextMatch(text="Cells are the basic unit of life", chunk_index=0, score=0.85),
-                        TextMatch(text="DNA contains genetic information", chunk_index=1, score=0.75),
-                    ],
-                ),
-            ])
+            mock_gateway.search = AsyncMock(
+                return_value=[
+                    RetrievalResult(
+                        ko_id=ko.id,
+                        title="Cell Biology Textbook",
+                        content_type="pdf",
+                        score=0.85,
+                        matches=[
+                            TextMatch(
+                                text="Cells are the basic unit of life", chunk_index=0, score=0.85
+                            ),
+                            TextMatch(
+                                text="DNA contains genetic information", chunk_index=1, score=0.75
+                            ),
+                        ],
+                    ),
+                ]
+            )
 
             with patch.object(knowledge_module, "_get_gateway", return_value=mock_gateway):
                 resp = await client.get(
@@ -674,11 +756,15 @@ class TestPipeline:
         owner_id = "00000000-0000-0000-0000-000000000002"
 
         ko, _ = await pipeline._registry.register(
-            NewKnowledgeObject(workspace_id=ws_id, owner_id=owner_id, title="Pipeline Test", content_type="txt")
+            NewKnowledgeObject(
+                workspace_id=ws_id, owner_id=owner_id, title="Pipeline Test", content_type="txt"
+            )
         )
 
         file_path = tmp_path / "test.txt"
-        file_path.write_text("First paragraph about biology.\n\nSecond paragraph about cells.\n\nThird paragraph about DNA.")
+        file_path.write_text(
+            "First paragraph about biology.\n\nSecond paragraph about cells.\n\nThird paragraph about DNA."
+        )
         result = await pipeline.run(ko.id, file_path)
 
         assert result.success is True
@@ -690,6 +776,7 @@ class TestPipeline:
         assert updated.metadata.get("chunk_count") == 3
 
         import json
+
         enrichment_raw = updated.metadata.get("enrichment")
         assert enrichment_raw is not None
         enrichment = json.loads(enrichment_raw)
@@ -703,7 +790,12 @@ class TestPipeline:
         owner_id = "00000000-0000-0000-0000-000000000002"
 
         ko, _ = await pipeline._registry.register(
-            NewKnowledgeObject(workspace_id=ws_id, owner_id=owner_id, title="Bad Format", content_type="application/octet-stream")
+            NewKnowledgeObject(
+                workspace_id=ws_id,
+                owner_id=owner_id,
+                title="Bad Format",
+                content_type="application/octet-stream",
+            )
         )
 
         file_path = tmp_path / "bad.exe"
@@ -723,7 +815,9 @@ class TestPipeline:
         owner_id = "00000000-0000-0000-0000-000000000002"
 
         ko, _ = await pipeline._registry.register(
-            NewKnowledgeObject(workspace_id=ws_id, owner_id=owner_id, title="Big File", content_type="txt")
+            NewKnowledgeObject(
+                workspace_id=ws_id, owner_id=owner_id, title="Big File", content_type="txt"
+            )
         )
 
         file_path = tmp_path / "big.txt"
@@ -740,14 +834,18 @@ class TestPipeline:
 
         file_path = tmp_path / "dup.txt"
         import hashlib
+
         content = b"same content"
         file_path.write_bytes(content)
         actual_hash = hashlib.sha256(content).hexdigest()
 
         existing, _ = await pipeline._registry.register(
             NewKnowledgeObject(
-                workspace_id=ws_id, owner_id=owner_id, title="Existing",
-                content_type="txt", content_hash=actual_hash,
+                workspace_id=ws_id,
+                owner_id=owner_id,
+                title="Existing",
+                content_type="txt",
+                content_hash=actual_hash,
             )
         )
         await pipeline._registry.update_lifecycle(
@@ -759,7 +857,9 @@ class TestPipeline:
 
         duplicate, _ = await pipeline._registry.register(
             NewKnowledgeObject(
-                workspace_id=ws_id, owner_id=owner_id, title="Duplicate",
+                workspace_id=ws_id,
+                owner_id=owner_id,
+                title="Duplicate",
                 content_type="txt",
             )
         )
@@ -769,11 +869,15 @@ class TestPipeline:
         assert result.stage == "validation"
         assert "Duplicate" in result.error
 
-    async def test_skips_vector_store_when_not_configured(self, registry, tmp_path, session_factory):
+    async def test_skips_vector_store_when_not_configured(
+        self, registry, tmp_path, session_factory
+    ):
         storage = LocalFileStorage(Path(mkdtemp()))
         no_store_pipeline = PipelineOrchestrator(
-            registry=registry, storage=storage,
-            embedder=MagicMock(), vector_store=None,
+            registry=registry,
+            storage=storage,
+            embedder=MagicMock(),
+            vector_store=None,
             session_factory=session_factory,
         )
 
@@ -781,7 +885,9 @@ class TestPipeline:
         owner_id = "00000000-0000-0000-0000-000000000002"
 
         ko, _ = await registry.register(
-            NewKnowledgeObject(workspace_id=ws_id, owner_id=owner_id, title="No Vec", content_type="txt")
+            NewKnowledgeObject(
+                workspace_id=ws_id, owner_id=owner_id, title="No Vec", content_type="txt"
+            )
         )
 
         file_path = tmp_path / "simple.txt"
@@ -798,10 +904,13 @@ class TestPipeline:
         owner_id = "00000000-0000-0000-0000-000000000002"
 
         ko, _ = await pipeline._registry.register(
-            NewKnowledgeObject(workspace_id=ws_id, owner_id=owner_id, title="PDF Test", content_type="pdf")
+            NewKnowledgeObject(
+                workspace_id=ws_id, owner_id=owner_id, title="PDF Test", content_type="pdf"
+            )
         )
 
         from pypdf import PdfWriter
+
         writer = PdfWriter()
         writer.add_blank_page(width=612, height=792)
         writer.add_blank_page(width=612, height=792)
@@ -821,7 +930,9 @@ class TestPipeline:
         owner_id = "00000000-0000-0000-0000-000000000002"
 
         ko, _ = await pipeline._registry.register(
-            NewKnowledgeObject(workspace_id=ws_id, owner_id=owner_id, title="Empty", content_type="txt")
+            NewKnowledgeObject(
+                workspace_id=ws_id, owner_id=owner_id, title="Empty", content_type="txt"
+            )
         )
 
         file_path = tmp_path / "empty.txt"
@@ -900,7 +1011,8 @@ class TestEnrichment:
             NewKnowledgeObject(
                 workspace_id="00000000-0000-0000-0000-000000000001",
                 owner_id="00000000-0000-0000-0000-000000000002",
-                title="Enrichment Test", content_type="txt",
+                title="Enrichment Test",
+                content_type="txt",
             )
         )
         chunks = [
@@ -923,7 +1035,8 @@ class TestEnrichment:
             NewKnowledgeObject(
                 workspace_id="00000000-0000-0000-0000-000000000001",
                 owner_id="00000000-0000-0000-0000-000000000002",
-                title="Empty Enrichment", content_type="txt",
+                title="Empty Enrichment",
+                content_type="txt",
             )
         )
         result = await enrichment_service.enrich(ko.id, [], "text/plain")
@@ -939,11 +1052,13 @@ class TestEnrichment:
             NewKnowledgeObject(
                 workspace_id="00000000-0000-0000-0000-000000000001",
                 owner_id="00000000-0000-0000-0000-000000000002",
-                title="Enrich API Test", content_type="txt",
+                title="Enrich API Test",
+                content_type="txt",
             )
         )
 
         from src.core.enrichment.service import EnrichmentService
+
         enricher = EnrichmentService(app_registry)
         await enricher.enrich(ko.id, ["biology biology cell dna dna"], "text/plain")
 
@@ -961,7 +1076,8 @@ class TestEnrichment:
             NewKnowledgeObject(
                 workspace_id="00000000-0000-0000-0000-000000000001",
                 owner_id="00000000-0000-0000-0000-000000000002",
-                title="Metadata Store Test", content_type="txt",
+                title="Metadata Store Test",
+                content_type="txt",
             )
         )
         chunks = ["biology cell dna genetics"]
@@ -970,6 +1086,7 @@ class TestEnrichment:
         assert updated is not None
         assert "enrichment" in updated.metadata
         import json
+
         stored = json.loads(updated.metadata["enrichment"])
         assert stored["ko_id"] == ko.id
         assert stored["enrichment_version"] == "1"

@@ -94,7 +94,10 @@ class TestBuildSchoolProfile:
         ]
         profile = service._build_school_profile(school, [(cg, profiles)])
         assert profile.health_distribution == {
-            "Strong": 1, "Ready": 2, "Developing": 1, "Critical": 1,
+            "Strong": 1,
+            "Ready": 2,
+            "Developing": 1,
+            "Critical": 1,
         }
         assert profile.total_students == 5
 
@@ -109,11 +112,14 @@ class TestBuildSchoolProfile:
         p1 = _profile(overall_readiness=70.0)
         p2 = _profile(overall_readiness=50.0)
         p3 = _profile(overall_readiness=90.0)
-        profile = service._build_school_profile(school, [
-            (cg1, [p1]),
-            (cg2, [p2]),
-            (cg3, [p3]),
-        ])
+        profile = service._build_school_profile(
+            school,
+            [
+                (cg1, [p1]),
+                (cg2, [p2]),
+                (cg3, [p3]),
+            ],
+        )
         assert profile.total_teachers == 2
         tm1 = [m for m in profile.teacher_metrics if m.teacher_id == tid1][0]
         assert tm1.classroom_count == 2
@@ -126,10 +132,13 @@ class TestBuildSchoolProfile:
         cg_high = _class_group(name="High", students=[MagicMock()])
         low_profiles = [_profile(overall_readiness=30.0, readiness_band="Critical")]
         high_profiles = [_profile(overall_readiness=85.0, readiness_band="Strong")]
-        profile = service._build_school_profile(school, [
-            (cg_low, low_profiles),
-            (cg_high, high_profiles),
-        ])
+        profile = service._build_school_profile(
+            school,
+            [
+                (cg_low, low_profiles),
+                (cg_high, high_profiles),
+            ],
+        )
         assert len(profile.at_risk_classrooms) == 1
         assert profile.at_risk_classrooms[0]["name"] == "Low"
 

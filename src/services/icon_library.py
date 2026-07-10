@@ -38,8 +38,9 @@ class IconLibrary:
             IconCategory(name=name, icon_count=count)
             for name, count in sorted(cats.items(), key=lambda x: -x[1])
         ]
-        logger.info("icon_catalog_loaded", total=len(self._catalog),
-                     categories=len(self._categories))
+        logger.info(
+            "icon_catalog_loaded", total=len(self._catalog), categories=len(self._categories)
+        )
         return self._catalog
 
     def get_categories(self) -> list[IconCategory]:
@@ -60,7 +61,8 @@ class IconLibrary:
         if search:
             q = search.lower()
             filtered = [
-                i for i in filtered
+                i
+                for i in filtered
                 if q in i.name.lower() or q in i.id.lower() or q in i.category.lower()
             ]
         total = len(filtered)
@@ -79,6 +81,7 @@ class IconLibrary:
         url = f"https://raw.githubusercontent.com/duerrsimon/bioicons/main/{path}"
         try:
             import urllib.request
+
             req = urllib.request.Request(url, headers={"User-Agent": "EthioBio/1.0"})
             with urllib.request.urlopen(req, timeout=10) as resp:
                 if resp.status == 200:
@@ -125,13 +128,9 @@ class IconLibrary:
         rows = (count + cols - 1) // cols
         cell_w = 800 // cols
         cell_h = 600 // rows
-        svg_parts = [
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">'
-        ]
+        svg_parts = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">']
 
-        svg_parts.append(
-            '<rect width="800" height="600" fill="#f8f9fa" rx="8"/>'
-        )
+        svg_parts.append('<rect width="800" height="600" fill="#f8f9fa" rx="8"/>')
         svg_parts.append(
             f'<text x="400" y="30" text-anchor="middle" font-size="20" '
             f'font-weight="bold" fill="#333">{title}</text>'
@@ -160,8 +159,4 @@ class IconLibrary:
         cleaned = svg.strip()
         if cleaned.startswith("<svg"):
             cleaned = cleaned[cleaned.find(">") + 1 : cleaned.rfind("</svg>")]
-        return (
-            f'<g transform="translate({x},{y}) scale({min(w, h) / 200})">\n'
-            f"{cleaned}\n"
-            f"</g>"
-        )
+        return f'<g transform="translate({x},{y}) scale({min(w, h) / 200})">\n{cleaned}\n</g>'

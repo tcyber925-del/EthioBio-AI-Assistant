@@ -1,6 +1,5 @@
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
-import pytest
 from langgraph.graph import END
 
 from src.core.teacher_copilot.evidence_engine import EvidenceEngine
@@ -58,7 +57,14 @@ class TestRouteAfterClassify:
         assert route_after_classify(state) == "create_assessment"
 
     def test_other_intents_route_to_gather(self):
-        for intent in ("student_analysis", "classroom_analysis", "intervention_guidance", "curriculum_analysis", "lesson_planning", ""):
+        for intent in (
+            "student_analysis",
+            "classroom_analysis",
+            "intervention_guidance",
+            "curriculum_analysis",
+            "lesson_planning",
+            "",
+        ):
             state = TeacherCopilotState(intent=intent)
             assert route_after_classify(state) == "gather"
 
@@ -98,9 +104,21 @@ class TestGatherDataNode:
 
         mock_evidence = AsyncMock(spec=EvidenceEngine)
         mock_evidence.gather_evidence.return_value = [
-            {"source": "mastery_record", "confidence": 0.7, "content": {"topic": "Cell Biology", "score": 0.45, "severity": "moderate"}},
-            {"source": "mastery_record", "confidence": 0.8, "content": {"topic": "Genetics", "score": 0.9, "severity": "good"}},
-            {"source": "quiz_attempt", "confidence": 0.9, "content": {"score": 8, "total": 10, "percent": 80.0, "quiz_id": "q1"}},
+            {
+                "source": "mastery_record",
+                "confidence": 0.7,
+                "content": {"topic": "Cell Biology", "score": 0.45, "severity": "moderate"},
+            },
+            {
+                "source": "mastery_record",
+                "confidence": 0.8,
+                "content": {"topic": "Genetics", "score": 0.9, "severity": "good"},
+            },
+            {
+                "source": "quiz_attempt",
+                "confidence": 0.9,
+                "content": {"score": 8, "total": 10, "percent": 80.0, "quiz_id": "q1"},
+            },
         ]
 
         node = GatherDataNode(mock_evidence)
@@ -159,7 +177,13 @@ class TestReasonNode:
         node = ReasonNode(mock_engine)
         state = TeacherCopilotState(
             intent="student_analysis",
-            evidence=[{"source": "mastery_record", "confidence": 0.7, "content": {"topic": "Cell Biology", "score": 0.45}}],
+            evidence=[
+                {
+                    "source": "mastery_record",
+                    "confidence": 0.7,
+                    "content": {"topic": "Cell Biology", "score": 0.45},
+                }
+            ],
             mastery_data={"Cell Biology": {"score": 0.45}},
             classroom_profile={"name": "Grade 10 Bio"},
         )
@@ -183,7 +207,11 @@ class TestReasonNode:
         state = TeacherCopilotState(
             intent="student_analysis",
             evidence=[
-                {"source": "mastery_record", "confidence": 0.7, "content": {"topic": "Cell Biology", "score": 0.45}},
+                {
+                    "source": "mastery_record",
+                    "confidence": 0.7,
+                    "content": {"topic": "Cell Biology", "score": 0.45},
+                },
             ],
         )
         _ = await node(state)
@@ -262,7 +290,12 @@ class TestFormatResponseNode:
             generated_assessment={
                 "title": "Test Quiz",
                 "questions": [
-                    {"question_text": "What is DNA?", "options": ["A", "B", "C"], "correct_answer": "A", "explanation": "DNA is..."},
+                    {
+                        "question_text": "What is DNA?",
+                        "options": ["A", "B", "C"],
+                        "correct_answer": "A",
+                        "explanation": "DNA is...",
+                    },
                 ],
             },
         )
@@ -275,7 +308,13 @@ class TestFormatResponseNode:
         node = FormatResponseNode()
         state = TeacherCopilotState(
             reasoning="Analysis here.",
-            evidence=[{"source": "mastery_record", "confidence": 0.7, "content": {"topic": "Cell Biology", "score": 0.45}}],
+            evidence=[
+                {
+                    "source": "mastery_record",
+                    "confidence": 0.7,
+                    "content": {"topic": "Cell Biology", "score": 0.45},
+                }
+            ],
         )
         result = node(state)
         assert "Analysis here." in result["response_text"]
@@ -295,7 +334,11 @@ class TestFormatResponseNode:
             generated_assessment={
                 "title": "Short Answer Quiz",
                 "questions": [
-                    {"question_text": "Explain mitosis.", "correct_answer": "Cell division", "explanation": "..."},
+                    {
+                        "question_text": "Explain mitosis.",
+                        "correct_answer": "Cell division",
+                        "explanation": "...",
+                    },
                 ],
             },
         )

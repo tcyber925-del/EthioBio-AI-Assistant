@@ -137,7 +137,9 @@ async def evaluate_with_ragas(
         return {"error": str(e)}
 
 
-def _heuristic_eval(questions: list[str], answers: list[str], contexts: list[list[str]], ground_truths: list[str]) -> dict:
+def _heuristic_eval(
+    questions: list[str], answers: list[str], contexts: list[list[str]], ground_truths: list[str]
+) -> dict:
     """Fallback heuristic evaluation when Ragas is not available."""
     faithfulness_scores = []
     for answer, context_list in zip(answers, contexts):

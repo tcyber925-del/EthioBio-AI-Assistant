@@ -62,4 +62,9 @@ skills-lock.json
 session-ses_*.md
 dashboard/test-results/
 .playwright-mcp/
-.playwright-mcp/
+
+# Worktrees
+.worktrees/
+
+# Duplicate scripts directory (operational artifact from gt)
+scripts/scripts/

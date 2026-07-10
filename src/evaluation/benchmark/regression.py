@@ -24,39 +24,32 @@ class RegressionDetector:
         if min_g is not None:
             actual = metrics.get("groundedness_score", 0.0)
             if actual < min_g:
-                issues.append(
-                    f"groundedness {actual:.3f} < min {min_g:.3f}"
-                )
+                issues.append(f"groundedness {actual:.3f} < min {min_g:.3f}")
 
         max_h = baseline.get("max_hallucination_rate")
         if max_h is not None:
             actual = metrics.get("hallucination_rate", 0.0)
             if actual > max_h:
-                issues.append(
-                    f"hallucination_rate {actual:.3f} > max {max_h:.3f}"
-                )
+                issues.append(f"hallucination_rate {actual:.3f} > max {max_h:.3f}")
 
         min_c = baseline.get("min_coverage_score")
         if min_c is not None:
             actual = metrics.get("coverage_score", 0.0)
             if actual < min_c:
-                issues.append(
-                    f"coverage {actual:.3f} < min {min_c:.3f}"
-                )
+                issues.append(f"coverage {actual:.3f} < min {min_c:.3f}")
 
         max_d = baseline.get("max_duration_ms")
         if max_d is not None:
             actual = metrics.get("duration_ms", 0.0)
             if actual > max_d:
-                issues.append(
-                    f"duration {actual:.0f}ms > max {max_d:.0f}ms"
-                )
+                issues.append(f"duration {actual:.0f}ms > max {max_d:.0f}ms")
 
         return issues
 
     @staticmethod
     def generate_baseline(
-        metrics: dict, tolerance: float = DEFAULT_TOLERANCE,
+        metrics: dict,
+        tolerance: float = DEFAULT_TOLERANCE,
     ) -> dict:
         groundedness = metrics.get("groundedness_score")
         hallucination = metrics.get("hallucination_rate")

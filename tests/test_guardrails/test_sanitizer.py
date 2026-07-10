@@ -1,5 +1,3 @@
-import pytest
-
 from src.guardrails.input.sanitizer import InputSanitizer
 
 

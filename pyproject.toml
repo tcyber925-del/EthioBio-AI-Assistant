@@ -25,6 +25,12 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W"]
 
+[tool.ruff.lint.per-file-ignores]
+"src/agents/*" = ["E501"]
+"src/evaluation/*" = ["E501"]
+"src/graph/*" = ["E501"]
+"tests/*" = ["E501", "N803", "N806"]
+
 [tool.mypy]
 python_version = "3.12"
 strict = false

@@ -70,9 +70,11 @@ def test_get_textbook_diagrams_endpoint_signature():
 
 def test_index_script_imports():
     import importlib.util
+
     spec = importlib.util.find_spec("scripts.index_diagrams")
     if spec is not None:
         import scripts.index_diagrams
+
         assert callable(scripts.index_diagrams.main)
 
 
@@ -202,27 +204,31 @@ async def test_rag_injects_context_when_found():
     from src.llm.router import ModelRouter
 
     mock_router = AsyncMock(spec=ModelRouter)
-    mock_router.route = AsyncMock(return_value={
-        "content": '{"title":"Cell","diagram_svg":"<svg></svg>","labels":[]}',
-        "model": "ollama/test",
-    })
+    mock_router.route = AsyncMock(
+        return_value={
+            "content": '{"title":"Cell","diagram_svg":"<svg></svg>","labels":[]}',
+            "model": "ollama/test",
+        }
+    )
 
     mock_adapter = MagicMock()
-    mock_adapter.search = AsyncMock(return_value=[
-        MagicMock(
-            content="Diagram of an animal cell",
-            metadata={
-                "source_type": "textbook_diagram",
-                "grade_level": 10,
-                "unit": "Unit 2",
-                "topic": "Cell Biology",
-                "figure_number": 1,
-                "image_path": "data/diagrams/10/animal_cell_1.jpg",
-            },
-            score=0.95,
-            source_id="diagram_caption_1",
-        ),
-    ])
+    mock_adapter.search = AsyncMock(
+        return_value=[
+            MagicMock(
+                content="Diagram of an animal cell",
+                metadata={
+                    "source_type": "textbook_diagram",
+                    "grade_level": 10,
+                    "unit": "Unit 2",
+                    "topic": "Cell Biology",
+                    "figure_number": 1,
+                    "image_path": "data/diagrams/10/animal_cell_1.jpg",
+                },
+                score=0.95,
+                source_id="diagram_caption_1",
+            ),
+        ]
+    )
     mock_adapter.format_context = MagicMock(return_value="[Grade 10] Diagram of an animal cell")
 
     agent = DiagramAgent(llm_router=mock_router, adapter=mock_adapter)
@@ -246,10 +252,12 @@ async def test_rag_fallback_when_not_found():
     from src.llm.router import ModelRouter
 
     mock_router = AsyncMock(spec=ModelRouter)
-    mock_router.route = AsyncMock(return_value={
-        "content": '{"title":"Cell","diagram_svg":"<svg></svg>","labels":[]}',
-        "model": "ollama/test",
-    })
+    mock_router.route = AsyncMock(
+        return_value={
+            "content": '{"title":"Cell","diagram_svg":"<svg></svg>","labels":[]}',
+            "model": "ollama/test",
+        }
+    )
 
     mock_adapter = MagicMock()
     mock_adapter.search = AsyncMock(return_value=[])
@@ -275,10 +283,12 @@ async def test_rag_unavailable_graceful():
     from src.llm.router import ModelRouter
 
     mock_router = AsyncMock(spec=ModelRouter)
-    mock_router.route = AsyncMock(return_value={
-        "content": '{"title":"Cell","diagram_svg":"<svg></svg>","labels":[]}',
-        "model": "ollama/test",
-    })
+    mock_router.route = AsyncMock(
+        return_value={
+            "content": '{"title":"Cell","diagram_svg":"<svg></svg>","labels":[]}',
+            "model": "ollama/test",
+        }
+    )
 
     mock_adapter = MagicMock()
     mock_adapter.search = AsyncMock(side_effect=Exception("ChromaDB unavailable"))
@@ -300,10 +310,12 @@ async def test_rag_respects_grade_filter():
     from src.agents.diagram import DiagramAgent
 
     mock_router = AsyncMock()
-    mock_router.route = AsyncMock(return_value={
-        "content": '{"title":"Cell","diagram_svg":"<svg></svg>","labels":[]}',
-        "model": "ollama/test",
-    })
+    mock_router.route = AsyncMock(
+        return_value={
+            "content": '{"title":"Cell","diagram_svg":"<svg></svg>","labels":[]}',
+            "model": "ollama/test",
+        }
+    )
 
     mock_adapter = MagicMock()
     mock_adapter.search = AsyncMock(return_value=[])
@@ -339,9 +351,7 @@ def test_validate_response_includes_source():
         total_labels=2,
         correct_count=2,
         results=[
-            DiagramLabelResult(
-                label_id="1", correct_text="X", submitted_text="X", is_correct=True
-            ),
+            DiagramLabelResult(label_id="1", correct_text="X", submitted_text="X", is_correct=True),
         ],
         attempt_id=uuid.uuid4(),
         source="textbook",
@@ -357,9 +367,7 @@ def test_validate_response_defaults_to_ai_generated():
         total_labels=2,
         correct_count=2,
         results=[
-            DiagramLabelResult(
-                label_id="1", correct_text="X", submitted_text="X", is_correct=True
-            ),
+            DiagramLabelResult(label_id="1", correct_text="X", submitted_text="X", is_correct=True),
         ],
         attempt_id=uuid.uuid4(),
     )
@@ -377,7 +385,9 @@ async def test_validate_with_textbook_labels():
     mock_session = AsyncMock()
     mock_diagram = MagicMock()
     mock_diagram.ground_truth_labels = {
-        "labels": fake_labels, "proposed": True, "human_reviewed": False
+        "labels": fake_labels,
+        "proposed": True,
+        "human_reviewed": False,
     }
     mock_session.get = AsyncMock(return_value=mock_diagram)
 

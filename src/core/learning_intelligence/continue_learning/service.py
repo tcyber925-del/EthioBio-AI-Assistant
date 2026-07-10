@@ -89,9 +89,7 @@ class ContinueLearningService:
         self,
         recommendation_service: RecommendationService | None = None,
     ):
-        self._recommendation_service = (
-            recommendation_service or RecommendationService()
-        )
+        self._recommendation_service = recommendation_service or RecommendationService()
 
     async def get_feed(
         self,
@@ -99,16 +97,12 @@ class ContinueLearningService:
         user_id: UUID,
         readiness_profile: ExamReadinessProfile | None = None,
     ) -> ContinueLearningFeed:
-        recommendations = await self._recommendation_service.get_recommendations(
-            session, user_id
-        )
+        recommendations = await self._recommendation_service.get_recommendations(session, user_id)
 
         if not recommendations:
             return self._empty_feed(user_id)
 
-        sections: dict[str, list[LearningCard]] = {
-            name: [] for name in SECTION_ORDER
-        }
+        sections: dict[str, list[LearningCard]] = {name: [] for name in SECTION_ORDER}
 
         cards = [_recommendation_to_card(r) for r in recommendations]
 
@@ -157,9 +151,7 @@ class ContinueLearningService:
             description="Take a quiz to assess your knowledge and unlock personalized learning.",
             action_type=LearningActionType.TAKE_QUIZ,
             priority_score=100.0,
-            estimated_minutes=ACTIVITY_DURATION_LOOKUP.get(
-                LearningActionType.TAKE_QUIZ, 15
-            ),
+            estimated_minutes=ACTIVITY_DURATION_LOOKUP.get(LearningActionType.TAKE_QUIZ, 15),
             xp_reward=XP_SOURCES.get("quiz_completion", 10),
         )
         tutor_card = LearningCard(
@@ -168,9 +160,7 @@ class ContinueLearningService:
             description="Have a question? Ask our AI tutor for help with any biology topic.",
             action_type=LearningActionType.ASK_TUTOR,
             priority_score=50.0,
-            estimated_minutes=ACTIVITY_DURATION_LOOKUP.get(
-                LearningActionType.ASK_TUTOR, 10
-            ),
+            estimated_minutes=ACTIVITY_DURATION_LOOKUP.get(LearningActionType.ASK_TUTOR, 10),
             xp_reward=XP_SOURCES.get("tutor_interaction", 5),
         )
         return ContinueLearningFeed(
@@ -179,9 +169,7 @@ class ContinueLearningService:
             primary_action=start_card,
             sections={"quiz_opportunities": [start_card, tutor_card]},
             summary=FeedSummary(
-                estimated_minutes=start_card.estimated_minutes
-                + tutor_card.estimated_minutes,
-                xp_available=(start_card.xp_reward or 0)
-                + (tutor_card.xp_reward or 0),
+                estimated_minutes=start_card.estimated_minutes + tutor_card.estimated_minutes,
+                xp_available=(start_card.xp_reward or 0) + (tutor_card.xp_reward or 0),
             ),
         )

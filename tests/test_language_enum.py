@@ -1,4 +1,3 @@
-import pytest
 from src.schemas.common import LanguageEnum
 
 

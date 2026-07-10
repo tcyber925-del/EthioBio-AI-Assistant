@@ -3,9 +3,15 @@ import re
 from src.agents.tutor.models import TeachingStrategy
 
 CONCEPTUAL_KEYWORDS = [
-    "why", "how", "explain", "compare", "contrast",
-    "what is the difference", "what's the difference",
-    "what is the relationship", "what's the relationship",
+    "why",
+    "how",
+    "explain",
+    "compare",
+    "contrast",
+    "what is the difference",
+    "what's the difference",
+    "what is the relationship",
+    "what's the relationship",
 ]
 
 
@@ -24,7 +30,7 @@ def select_teaching_strategy(
         return TeachingStrategy.ASSESSMENT_PREP
 
     msg_lower = user_message.lower()
-    if re.search(r'\b(?:exam|test|quiz|prepare|practice|assessment)\b', msg_lower):
+    if re.search(r"\b(?:exam|test|quiz|prepare|practice|assessment)\b", msg_lower):
         return TeachingStrategy.ASSESSMENT_PREP
 
     if misconception_detected or "weak_areas" in learner_profile_block.lower():

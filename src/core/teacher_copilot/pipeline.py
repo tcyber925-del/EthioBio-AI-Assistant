@@ -80,9 +80,18 @@ class AssessmentCreatorNode:
 
         topic = "biology"
         topic_keywords = [
-            "photosynthesis", "respiration", "genetics", "cell division",
-            "ecology", "evolution", "classification", "circulatory",
-            "digestive", "nervous", "excretory", "reproduction",
+            "photosynthesis",
+            "respiration",
+            "genetics",
+            "cell division",
+            "ecology",
+            "evolution",
+            "classification",
+            "circulatory",
+            "digestive",
+            "nervous",
+            "excretory",
+            "reproduction",
         ]
         for kw in topic_keywords:
             if kw in msg.lower():
@@ -154,8 +163,7 @@ class FormatResponseNode:
             parts.append("\n\n**Generated Assessment**")
             for i, q in enumerate(questions, 1):
                 options_block = (
-                    "".join(f"   {o}\n" for o in q.get("options", []))
-                    if q.get("options") else ""
+                    "".join(f"   {o}\n" for o in q.get("options", [])) if q.get("options") else ""
                 )
                 parts.append(f"\n**{i}. {q['question_text']}**\n{options_block}")
             parts.append("\n_Answer key and explanations available._")

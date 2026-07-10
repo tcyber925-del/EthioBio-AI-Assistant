@@ -190,7 +190,9 @@ async def prerequisite_gap_analysis(
 ):
     try:
         gaps = await engine.get_prerequisite_gap_analysis(
-            db=db, topic_id=topic_id, user_id=user_id,
+            db=db,
+            topic_id=topic_id,
+            user_id=user_id,
         )
         return [GapAnalysisItem(**g) for g in gaps]
     except Exception as e:
@@ -205,7 +207,9 @@ async def list_topics(
 ):
     try:
         stmt = select(CurriculumTopic).order_by(
-            CurriculumTopic.grade_level, CurriculumTopic.unit, CurriculumTopic.topic,
+            CurriculumTopic.grade_level,
+            CurriculumTopic.unit,
+            CurriculumTopic.topic,
         )
         if grade_level is not None:
             stmt = stmt.where(CurriculumTopic.grade_level == grade_level)

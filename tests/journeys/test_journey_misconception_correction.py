@@ -28,10 +28,16 @@ class TestMisconceptionCorrectionJourney:
             "Soil provides water and minerals, not food."
         )
         state.retrieved_chunks = [
-            {"content": "Photosynthesis converts light energy into chemical energy (glucose)",
-             "score": 0.95, "source": "curriculum"},
-            {"content": "Common misconception: plants eat soil. Actually, they produce their own food.",  # noqa: E501
-             "score": 0.91, "source": "misconceptions"},
+            {
+                "content": "Photosynthesis converts light energy into chemical energy (glucose)",
+                "score": 0.95,
+                "source": "curriculum",
+            },
+            {
+                "content": "Common misconception: plants eat soil. Actually, they produce their own food.",  # noqa: E501
+                "score": 0.91,
+                "source": "misconceptions",
+            },
         ]
         state.draft = (
             "That's a common misconception! Plants don't eat soil — "

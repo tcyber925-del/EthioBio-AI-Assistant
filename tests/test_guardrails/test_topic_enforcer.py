@@ -1,5 +1,3 @@
-import pytest
-
 from src.guardrails.output.topic_enforcer import TopicEnforcer
 
 

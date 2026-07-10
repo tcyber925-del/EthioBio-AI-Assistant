@@ -3,10 +3,9 @@ from uuid import uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
 
 from src.api.auth import _create_access_token
-from src.database.models import AgentTrace, UserRole
+from src.database.models import UserRole
 from src.database.session import get_session
 from src.main import app
 

@@ -103,17 +103,19 @@ class SearchFanoutNode:
                 else:
                     score = 0.2
 
-                chunks.append({
-                    "content": turn.content,
-                    "metadata": {
-                        "id": str(turn.id),
-                        "topic": turn.topic or "",
-                        "role": turn.role,
-                        "source_name": "conversation_turn",
-                    },
-                    "score": score,
-                    "source": "memory",
-                })
+                chunks.append(
+                    {
+                        "content": turn.content,
+                        "metadata": {
+                            "id": str(turn.id),
+                            "topic": turn.topic or "",
+                            "role": turn.role,
+                            "source_name": "conversation_turn",
+                        },
+                        "score": score,
+                        "source": "memory",
+                    }
+                )
 
             if terms:
                 summary_stmt = (
@@ -128,16 +130,18 @@ class SearchFanoutNode:
                     content_lower = (summary.topic or "").lower()
                     if not any(t in content_lower for t in terms):
                         continue
-                    chunks.append({
-                        "content": summary.next_learning_goal or f"Summary for {summary.topic}",
-                        "metadata": {
-                            "id": str(summary.id),
-                            "topic": summary.topic or "",
-                            "source_name": "educational_summary",
-                        },
-                        "score": summary.confidence or 0.5,
-                        "source": "memory",
-                    })
+                    chunks.append(
+                        {
+                            "content": summary.next_learning_goal or f"Summary for {summary.topic}",
+                            "metadata": {
+                                "id": str(summary.id),
+                                "topic": summary.topic or "",
+                                "source_name": "educational_summary",
+                            },
+                            "score": summary.confidence or 0.5,
+                            "source": "memory",
+                        }
+                    )
 
             return chunks
 
@@ -169,52 +173,58 @@ class SearchFanoutNode:
                 f"Topic '{topic}': mastery={mastery.get('average_score', 0):.2f} "
                 f"({severity}), attempts={mastery.get('attempt_count', 0)}"
             )
-            chunks.append({
-                "content": content,
-                "metadata": {
-                    "id": f"learner:mastery:{topic.lower().replace(' ', '_')}",
-                    "topic": topic,
-                    "source_name": "student_mastery",
-                },
-                "score": score,
-                "source": "learner",
-            })
+            chunks.append(
+                {
+                    "content": content,
+                    "metadata": {
+                        "id": f"learner:mastery:{topic.lower().replace(' ', '_')}",
+                        "topic": topic,
+                        "source_name": "student_mastery",
+                    },
+                    "score": score,
+                    "source": "learner",
+                }
+            )
 
         for topic, ability in (snapshot.ability_by_topic or {}).items():
             if terms and not any(t in topic.lower() for t in terms):
                 continue
-            chunks.append({
-                "content": (
-                    f"Topic '{topic}': ability={ability.get('ability_score', 0):.2f}, "
-                    f"uncertainty={ability.get('uncertainty', 0):.2f}"
-                ),
-                "metadata": {
-                    "id": f"learner:ability:{topic.lower().replace(' ', '_')}",
-                    "topic": topic,
-                    "source_name": "student_ability",
-                },
-                "score": min(1.0, ability.get("ability_score", 0) + 0.3),
-                "source": "learner",
-            })
+            chunks.append(
+                {
+                    "content": (
+                        f"Topic '{topic}': ability={ability.get('ability_score', 0):.2f}, "
+                        f"uncertainty={ability.get('uncertainty', 0):.2f}"
+                    ),
+                    "metadata": {
+                        "id": f"learner:ability:{topic.lower().replace(' ', '_')}",
+                        "topic": topic,
+                        "source_name": "student_ability",
+                    },
+                    "score": min(1.0, ability.get("ability_score", 0) + 0.3),
+                    "source": "learner",
+                }
+            )
 
-        for mc in (snapshot.misconceptions or []):
+        for mc in snapshot.misconceptions or []:
             mc_topic = getattr(mc, "topic", "") or ""
             if terms and not any(t in mc_topic.lower() for t in terms):
                 continue
-            chunks.append({
-                "content": (
-                    f"Misconception in '{mc_topic}': "
-                    f"{getattr(mc, 'pattern_type', '')} "
-                    f"(frequency={getattr(mc, 'frequency', 0)})"
-                ),
-                "metadata": {
-                    "id": f"learner:misconception:{mc_topic.lower().replace(' ', '_')}",
-                    "topic": mc_topic,
-                    "source_name": "misconception_pattern",
-                },
-                "score": min(0.7, getattr(mc, "frequency", 0) * 0.15),
-                "source": "learner",
-            })
+            chunks.append(
+                {
+                    "content": (
+                        f"Misconception in '{mc_topic}': "
+                        f"{getattr(mc, 'pattern_type', '')} "
+                        f"(frequency={getattr(mc, 'frequency', 0)})"
+                    ),
+                    "metadata": {
+                        "id": f"learner:misconception:{mc_topic.lower().replace(' ', '_')}",
+                        "topic": mc_topic,
+                        "source_name": "misconception_pattern",
+                    },
+                    "score": min(0.7, getattr(mc, "frequency", 0) * 0.15),
+                    "source": "learner",
+                }
+            )
 
         return chunks
 
@@ -238,17 +248,20 @@ class SearchFanoutNode:
             if terms and not any(t in topic_lower for t in terms):
                 if not any(t in rec.reason.lower() for t in terms):
                     continue
-            chunks.append({
-                "content": f"Recommendation for '{rec.topic}': {rec.reason}",
-                "metadata": {
-                    "id": rec.id or f"rec:{rec.action_type}:{(rec.topic or 'unknown').lower().replace(' ', '_')}",  # noqa: E501
-                    "action_type": rec.action_type,
-                    "topic": rec.topic or "",
-                    "source_name": "recommendation_engine",
-                },
-                "score": rec.priority_score * 0.9,
-                "source": "recommendation",
-            })
+            chunks.append(
+                {
+                    "content": f"Recommendation for '{rec.topic}': {rec.reason}",
+                    "metadata": {
+                        "id": rec.id
+                        or f"rec:{rec.action_type}:{(rec.topic or 'unknown').lower().replace(' ', '_')}",  # noqa: E501
+                        "action_type": rec.action_type,
+                        "topic": rec.topic or "",
+                        "source_name": "recommendation_engine",
+                    },
+                    "score": rec.priority_score * 0.9,
+                    "source": "recommendation",
+                }
+            )
 
         return chunks
 
@@ -274,9 +287,7 @@ class SearchFanoutNode:
             return source, []
 
     async def __call__(self, state: AgentState) -> AgentState:
-        query_groups = state.query_groups or {
-            "curriculum": [state.user_message]
-        }
+        query_groups = state.query_groups or {"curriculum": [state.user_message]}
 
         # Plan: create tasks and derive strategy
         tasks, strategy = self.agent.plan(query_groups)
@@ -292,8 +303,7 @@ class SearchFanoutNode:
                 seen.add(key)
                 search_coros.append(
                     self._safe_search(
-                        task.target_source, task.query,
-                        user_id=user_id, grade_level=grade_level
+                        task.target_source, task.query, user_id=user_id, grade_level=grade_level
                     )
                 )
 
@@ -346,9 +356,7 @@ class SearchFanoutNode:
         deduplicated = quality_filtered or deduplicated[:2]
 
         # Rank by score
-        ranked = sorted(
-            deduplicated, key=lambda x: x.get("score", 0), reverse=True
-        )
+        ranked = sorted(deduplicated, key=lambda x: x.get("score", 0), reverse=True)
         ranked = ranked[:TOTAL_MAX_RESULTS]
 
         state.retrieved_chunks = ranked

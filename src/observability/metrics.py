@@ -123,13 +123,23 @@ def _r():
 
 class _NoopRegistry:
     class _Noop:
-        def inc(self, *a, **kw): pass
-        def set(self, *a, **kw): pass
-        def observe(self, *a, **kw): pass
+        def inc(self, *a, **kw):
+            pass
 
-    def counter(self, _name): return self._Noop()
-    def gauge(self, _name): return self._Noop()
-    def histogram(self, _name): return self._Noop()
+        def set(self, *a, **kw):
+            pass
+
+        def observe(self, *a, **kw):
+            pass
+
+    def counter(self, _name):
+        return self._Noop()
+
+    def gauge(self, _name):
+        return self._Noop()
+
+    def histogram(self, _name):
+        return self._Noop()
 
 
 def inc_counter(name: str, labels: dict | None = None) -> None:

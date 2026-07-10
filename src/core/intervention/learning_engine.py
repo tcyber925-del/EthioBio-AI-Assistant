@@ -56,7 +56,8 @@ class InterventionLearningEngine:
             select(
                 InterventionKnowledgeEntry.intervention_type,
                 func.avg(InterventionKnowledgeEntry.effectiveness_score),
-            ).where(InterventionKnowledgeEntry.topic == topic)
+            )
+            .where(InterventionKnowledgeEntry.topic == topic)
             .group_by(InterventionKnowledgeEntry.intervention_type)
         )
         rows = result.fetchall()
@@ -85,22 +86,24 @@ class InterventionLearningEngine:
             boost = max(0.0, min(0.5, boost))
 
             action = TYPE_TO_ACTION.get(best_type, LearningActionType.REVIEW_TOPIC)
-            recs.append(LearningRecommendation(
-                id=f"learned_{user_id_short}_{i}",
-                action_type=action,
-                topic=topic,
-                priority_score=0.5 + boost,
-                reason=(
-                    f"Historical effectiveness suggests {best_type} "
-                    f"works well for this topic (avg {best_score:.0f}%)"
-                ),
-                explanation=(
-                    f"Interventions of type {best_type} "
-                    f"have shown {best_score:.0f}% average "
-                    f"effectiveness for {topic}"
-                ),
-                generated_at=datetime.now(timezone.utc),
-                metadata={"learned_boost": round(boost, 3), "avg_effectiveness": best_score},
-            ))
+            recs.append(
+                LearningRecommendation(
+                    id=f"learned_{user_id_short}_{i}",
+                    action_type=action,
+                    topic=topic,
+                    priority_score=0.5 + boost,
+                    reason=(
+                        f"Historical effectiveness suggests {best_type} "
+                        f"works well for this topic (avg {best_score:.0f}%)"
+                    ),
+                    explanation=(
+                        f"Interventions of type {best_type} "
+                        f"have shown {best_score:.0f}% average "
+                        f"effectiveness for {topic}"
+                    ),
+                    generated_at=datetime.now(timezone.utc),
+                    metadata={"learned_boost": round(boost, 3), "avg_effectiveness": best_score},
+                )
+            )
 
         return recs

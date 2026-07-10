@@ -5,14 +5,19 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.core.assignment import AssignmentService
-from src.core.assignment.models import NewAssignment, NewSubmission, UpdateAssignment, UpdateSubmission
+from src.core.assignment.models import (
+    NewAssignment,
+    NewSubmission,
+    UpdateAssignment,
+    UpdateSubmission,
+)
 from src.database.models import (
-    Assignment as AssignmentModel,
     ClassEnrollment,
     ClassGroup,
-    Submission as SubmissionModel,
     User,
     UserRole,
+)
+from src.database.models import (
     Workspace as WorkspaceModel,
 )
 from src.database.session import Base
@@ -69,7 +74,9 @@ async def workspace(db_session: AsyncSession, teacher_user: str):
 
 @pytest.fixture
 async def class_group(db_session: AsyncSession, teacher_user: str, student_user: str):
-    cg = ClassGroup(id=uuid.uuid4(), name="Grade 10-A", grade_level=10, teacher_id=uuid.UUID(teacher_user))
+    cg = ClassGroup(
+        id=uuid.uuid4(), name="Grade 10-A", grade_level=10, teacher_id=uuid.UUID(teacher_user)
+    )
     db_session.add(cg)
     await db_session.commit()
 
@@ -129,26 +136,34 @@ class TestAssignmentService:
         assert len(results) == 2
 
     async def test_update(self, service, workspace, teacher_user):
-        created = await service.create(NewAssignment(workspace_id=workspace, title="Original"), teacher_user)
+        created = await service.create(
+            NewAssignment(workspace_id=workspace, title="Original"), teacher_user
+        )
         updated = await service.update(created.id, UpdateAssignment(title="Updated"))
         assert updated is not None
         assert updated.title == "Updated"
 
     async def test_publish(self, service, workspace, teacher_user):
-        created = await service.create(NewAssignment(workspace_id=workspace, title="To Publish"), teacher_user)
+        created = await service.create(
+            NewAssignment(workspace_id=workspace, title="To Publish"), teacher_user
+        )
         published = await service.publish(created.id)
         assert published is not None
         assert published.status == "published"
 
     async def test_soft_delete(self, service, workspace, teacher_user):
-        created = await service.create(NewAssignment(workspace_id=workspace, title="To Delete"), teacher_user)
+        created = await service.create(
+            NewAssignment(workspace_id=workspace, title="To Delete"), teacher_user
+        )
         ok = await service.soft_delete(created.id)
         assert ok is True
         result = await service.get(created.id)
         assert result is None
 
     async def test_submit_and_list(self, service, workspace, teacher_user, student_user):
-        created = await service.create(NewAssignment(workspace_id=workspace, title="Submit Test"), teacher_user)
+        created = await service.create(
+            NewAssignment(workspace_id=workspace, title="Submit Test"), teacher_user
+        )
         await service.publish(created.id)
 
         sub = await service.submit(
@@ -163,26 +178,37 @@ class TestAssignmentService:
         submissions = await service.list_submissions(created.id)
         assert len(submissions) == 1
 
-    async def test_submit_exceeds_max_attempts(self, service, workspace, teacher_user, student_user):
+    async def test_submit_exceeds_max_attempts(
+        self, service, workspace, teacher_user, student_user
+    ):
         created = await service.create(
             NewAssignment(workspace_id=workspace, title="Limited Attempts", max_attempts=1),
             teacher_user,
         )
         await service.publish(created.id)
 
-        sub1 = await service.submit(created.id, student_user, NewSubmission(content_text="Attempt 1"))
+        sub1 = await service.submit(
+            created.id, student_user, NewSubmission(content_text="Attempt 1")
+        )
         assert sub1 is not None
 
-        sub2 = await service.submit(created.id, student_user, NewSubmission(content_text="Attempt 2"))
+        sub2 = await service.submit(
+            created.id, student_user, NewSubmission(content_text="Attempt 2")
+        )
         assert sub2 is None
 
     async def test_review_submission(self, service, workspace, teacher_user, student_user):
-        created = await service.create(NewAssignment(workspace_id=workspace, title="Review Test"), teacher_user)
+        created = await service.create(
+            NewAssignment(workspace_id=workspace, title="Review Test"), teacher_user
+        )
         await service.publish(created.id)
         sub = await service.submit(created.id, student_user, NewSubmission(content_text="Answer"))
 
         reviewed = await service.review_submission(
-            sub.id, UpdateSubmission(status="reviewed", grade=85.0, teacher_feedback={"comment": "Good work"})
+            sub.id,
+            UpdateSubmission(
+                status="reviewed", grade=85.0, teacher_feedback={"comment": "Good work"}
+            ),
         )
         assert reviewed is not None
         assert reviewed.status == "reviewed"
@@ -191,7 +217,9 @@ class TestAssignmentService:
         assert reviewed.reviewed_at is not None
 
     async def test_my_submissions(self, service, workspace, teacher_user, student_user):
-        created = await service.create(NewAssignment(workspace_id=workspace, title="My Sub"), teacher_user)
+        created = await service.create(
+            NewAssignment(workspace_id=workspace, title="My Sub"), teacher_user
+        )
         await service.publish(created.id)
         await service.submit(created.id, student_user, NewSubmission(content_text="My answer"))
 

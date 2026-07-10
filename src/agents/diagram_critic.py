@@ -128,8 +128,7 @@ class DiagramCritic:
             svg = result.get("diagram_svg", "")
             labels_data = result.get("labels", [])
             labels = [
-                DiagramLabel(**item) if isinstance(item, dict) else item
-                for item in labels_data
+                DiagramLabel(**item) if isinstance(item, dict) else item for item in labels_data
             ]
 
             critique_result = await self.critique(svg=svg, labels=labels, prompt=current_prompt)

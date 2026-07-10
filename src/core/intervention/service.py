@@ -89,9 +89,7 @@ class InterventionService:
         session: AsyncSession,
         status: str | None = None,
     ) -> list[InterventionAssignment]:
-        stmt = select(InterventionAssignment).where(
-            InterventionAssignment.user_id == user_id
-        )
+        stmt = select(InterventionAssignment).where(InterventionAssignment.user_id == user_id)
         if status:
             stmt = stmt.where(InterventionAssignment.status == status)
         stmt = stmt.order_by(InterventionAssignment.priority.desc())
@@ -249,22 +247,30 @@ class InterventionService:
         return {"confidence": min(confidence, 1.0), "sample_size": n}
 
     async def _get_mastery_change(
-        self, record: InterventionAssignment, session: AsyncSession,
+        self,
+        record: InterventionAssignment,
+        session: AsyncSession,
     ) -> float | None:
         before = await session.execute(
-            select(StudentMastery).where(
+            select(StudentMastery)
+            .where(
                 StudentMastery.user_id == record.user_id,
                 StudentMastery.topic == record.topic,
                 StudentMastery.created_at < record.assigned_at,
-            ).order_by(StudentMastery.created_at.desc()).limit(1)
+            )
+            .order_by(StudentMastery.created_at.desc())
+            .limit(1)
         )
         before_rec = before.scalar_one_or_none()
         after = await session.execute(
-            select(StudentMastery).where(
+            select(StudentMastery)
+            .where(
                 StudentMastery.user_id == record.user_id,
                 StudentMastery.topic == record.topic,
                 StudentMastery.created_at > record.assigned_at,
-            ).order_by(StudentMastery.created_at.desc()).limit(1)
+            )
+            .order_by(StudentMastery.created_at.desc())
+            .limit(1)
         )
         after_rec = after.scalar_one_or_none()
 
@@ -273,10 +279,13 @@ class InterventionService:
         return None
 
     async def _get_readiness_change(
-        self, record: InterventionAssignment, session: AsyncSession,
+        self,
+        record: InterventionAssignment,
+        session: AsyncSession,
     ) -> float:
         try:
             from sqlalchemy import text as sa_text
+
             before = await session.execute(
                 sa_text(
                     "SELECT rr.readiness_score FROM readiness_results rr "
@@ -306,10 +315,13 @@ class InterventionService:
         return 0.0
 
     async def _get_retention_change(
-        self, record: InterventionAssignment, session: AsyncSession,
+        self,
+        record: InterventionAssignment,
+        session: AsyncSession,
     ) -> float:
         try:
             from sqlalchemy import text as sa_text
+
             result = await session.execute(
                 sa_text(
                     "SELECT "
@@ -333,7 +345,9 @@ class InterventionService:
         return 0.0
 
     async def _get_misconception_reduction(
-        self, record: InterventionAssignment, session: AsyncSession,
+        self,
+        record: InterventionAssignment,
+        session: AsyncSession,
     ) -> float:
         before_count = await session.execute(
             select(func.count(MisconceptionPattern.id)).where(
@@ -390,11 +404,8 @@ class InterventionService:
                     by_topic.append(r.effectiveness_score)
 
         avg_effectiveness = (
-            sum(
-                r.effectiveness_score
-                for r in completed
-                if r.effectiveness_score is not None
-            ) / len([r for r in completed if r.effectiveness_score is not None])
+            sum(r.effectiveness_score for r in completed if r.effectiveness_score is not None)
+            / len([r for r in completed if r.effectiveness_score is not None])
             if any(r.effectiveness_score is not None for r in completed)
             else 0.0
         )

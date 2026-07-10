@@ -86,9 +86,7 @@ class TestReadinessService:
             generated_at=NOW,
             mastery_by_topic={"Genetics": {"average_score": 70.0}},
             misconceptions=[
-                MisconceptionSummary(
-                    topic="Genetics", pattern_type="confusion", frequency=3
-                ),
+                MisconceptionSummary(topic="Genetics", pattern_type="confusion", frequency=3),
             ],
         )
         svc = ReadinessService(
@@ -182,9 +180,7 @@ class TestReadinessService:
                 ),
             ],
             misconceptions=[
-                MisconceptionSummary(
-                    topic="Genetics", pattern_type="confusion", frequency=3
-                ),
+                MisconceptionSummary(topic="Genetics", pattern_type="confusion", frequency=3),
             ],
         )
         svc = ReadinessService(

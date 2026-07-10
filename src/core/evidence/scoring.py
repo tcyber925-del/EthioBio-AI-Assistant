@@ -91,9 +91,7 @@ def calculate_confidence(
     )
 
 
-def analyze_coverage(
-    question: str, evidence_list: list[dict]
-) -> CoverageAnalysisResult:
+def analyze_coverage(question: str, evidence_list: list[dict]) -> CoverageAnalysisResult:
     """Analyze evidence coverage for a question.
 
     Args:

@@ -18,6 +18,7 @@ class VectorStore:
     def _get_client(self):
         if self._client is None:
             import chromadb
+
             os.makedirs(self.persist_directory, exist_ok=True)
             self._client = chromadb.PersistentClient(path=self.persist_directory)
         return self._client

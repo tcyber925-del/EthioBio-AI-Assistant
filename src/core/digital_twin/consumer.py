@@ -1,11 +1,10 @@
-import structlog
 from uuid import UUID, uuid4
 
-from sqlalchemy.ext.asyncio import AsyncSession
+import structlog
 
+from src.core.digital_twin.builder import TwinBuilder
 from src.core.event_infrastructure.consumer import StreamConsumer
 from src.core.event_infrastructure.models import PipelineEvent
-from src.core.digital_twin.builder import TwinBuilder
 from src.database.session import async_session_factory
 
 logger = structlog.get_logger()
@@ -29,7 +28,7 @@ class DigitalTwinEventConsumer(StreamConsumer):
     async def process(self, event: PipelineEvent) -> None:
         # Assuming the payload contains 'user_id' for educational events
         user_id_str = event.payload.get("user_id")
-        
+
         # If user_id isn't in payload, we might fallback to checking ko_id if it's a user event
         if not user_id_str:
             user_id_str = event.ko_id
@@ -55,7 +54,7 @@ class DigitalTwinEventConsumer(StreamConsumer):
             builder = TwinBuilder(session)
             await builder.rebuild(user_id)
             await session.commit()
-            
+
         logger.info(
             "digital_twin_rebuild_completed",
             user_id=str(user_id),

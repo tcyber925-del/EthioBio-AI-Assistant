@@ -9,11 +9,13 @@ from src.agents.tutor.tutor import TutorSynthesisAgent
 @pytest.mark.asyncio
 async def test_agent_selects_strategy_and_extracts_citations():
     mock_router = MagicMock()
-    mock_router.route = AsyncMock(return_value={
-        "content": "Meiosis produces diverse cells. [id:bio_ch4_22]",
-        "model": "test-model",
-        "confidence": 0.9,
-    })
+    mock_router.route = AsyncMock(
+        return_value={
+            "content": "Meiosis produces diverse cells. [id:bio_ch4_22]",
+            "model": "test-model",
+            "confidence": 0.9,
+        }
+    )
 
     agent = TutorSynthesisAgent(mock_router)
     response = await agent.generate(
@@ -44,11 +46,13 @@ async def test_agent_selects_strategy_and_extracts_citations():
 @pytest.mark.asyncio
 async def test_agent_uses_socratic_when_in_socratic_mode():
     mock_router = MagicMock()
-    mock_router.route = AsyncMock(return_value={
-        "content": "What do you think? [id:bio_ch4_22]",
-        "model": "test-model",
-        "confidence": 0.8,
-    })
+    mock_router.route = AsyncMock(
+        return_value={
+            "content": "What do you think? [id:bio_ch4_22]",
+            "model": "test-model",
+            "confidence": 0.8,
+        }
+    )
 
     agent = TutorSynthesisAgent(mock_router)
     response = await agent.generate(

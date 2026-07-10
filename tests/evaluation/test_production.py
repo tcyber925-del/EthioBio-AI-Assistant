@@ -181,7 +181,13 @@ class TestProductionRunner:
 
     def test_check_production_thresholds_custom(self):
         results = run_all_production_checks()
-        thresholds = {"reliability": 0.0, "security": 0.0, "safety_hardening": 0.0, "governance": 0.0, "cost_efficiency": 0.0}
+        thresholds = {
+            "reliability": 0.0,
+            "security": 0.0,
+            "safety_hardening": 0.0,
+            "governance": 0.0,
+            "cost_efficiency": 0.0,
+        }
         failures = check_production_thresholds(results, thresholds)
         assert len(failures) == 0
 

@@ -55,7 +55,13 @@ class StudentProgressAgent(BaseAgent):
             second_half = sum(
                 float(r.score) / max(r.total, 1) * 100 for r in sorted_records[half:]
             ) / max(len(sorted_records) - half, 1)
-            trend = "improving" if second_half > first_half + 5 else "declining" if second_half < first_half - 5 else "stable"
+            trend = (
+                "improving"
+                if second_half > first_half + 5
+                else "declining"
+                if second_half < first_half - 5
+                else "stable"
+            )
         else:
             trend = "stable"
 
@@ -74,10 +80,10 @@ class StudentProgressAgent(BaseAgent):
     ) -> dict:
         user_message = f"""Analyze this student's performance data and provide learning recommendations:
 
-Overall Score: {analysis['overall_score']}%
-Trend: {analysis['trend']}
-Weak Areas: {', '.join(analysis['weak_areas'])}
-Topics: {analysis['topics']}
+Overall Score: {analysis["overall_score"]}%
+Trend: {analysis["trend"]}
+Weak Areas: {", ".join(analysis["weak_areas"])}
+Topics: {analysis["topics"]}
 
 Provide 2-3 specific, actionable recommendations for improvement."""
 

@@ -17,10 +17,46 @@ from src.services.icon_library import IconLibrary
 @pytest.fixture
 def sample_catalog(tmp_path: Path) -> Path:
     icons = [
-        {"id": "dna", "name": "Dna", "category": "Genetics", "author": "test", "license": "cc-0", "path": "", "filename": "dna.svg", "grade_tags": []},
-        {"id": "cell", "name": "Cell", "category": "Cell_types", "author": "test", "license": "cc-0", "path": "", "filename": "cell.svg", "grade_tags": []},
-        {"id": "mitosis", "name": "Mitosis", "category": "Cell_types", "author": "test", "license": "cc-0", "path": "", "filename": "mitosis.svg", "grade_tags": []},
-        {"id": "heart", "name": "Heart", "category": "Human_physiology", "author": "test", "license": "cc-0", "path": "", "filename": "heart.svg", "grade_tags": []},
+        {
+            "id": "dna",
+            "name": "Dna",
+            "category": "Genetics",
+            "author": "test",
+            "license": "cc-0",
+            "path": "",
+            "filename": "dna.svg",
+            "grade_tags": [],
+        },
+        {
+            "id": "cell",
+            "name": "Cell",
+            "category": "Cell_types",
+            "author": "test",
+            "license": "cc-0",
+            "path": "",
+            "filename": "cell.svg",
+            "grade_tags": [],
+        },
+        {
+            "id": "mitosis",
+            "name": "Mitosis",
+            "category": "Cell_types",
+            "author": "test",
+            "license": "cc-0",
+            "path": "",
+            "filename": "mitosis.svg",
+            "grade_tags": [],
+        },
+        {
+            "id": "heart",
+            "name": "Heart",
+            "category": "Human_physiology",
+            "author": "test",
+            "license": "cc-0",
+            "path": "",
+            "filename": "heart.svg",
+            "grade_tags": [],
+        },
     ]
     path = tmp_path / "catalog.json"
     path.write_text(json.dumps({"total": 4, "icons": icons}))

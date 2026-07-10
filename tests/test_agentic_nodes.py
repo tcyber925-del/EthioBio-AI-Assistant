@@ -64,9 +64,7 @@ class TestQueryRewriterNode:
         node = QueryRewriterNode(router=None)
 
         state = AgentState(user_message="test query")
-        state.subtasks = [
-            {"id": "1", "type": "curriculum", "objective": "find mitosis info"}
-        ]
+        state.subtasks = [{"id": "1", "type": "curriculum", "objective": "find mitosis info"}]
 
         result = await node(state)
 
@@ -104,10 +102,12 @@ class TestChunkDeduplication:
     async def test_deduplicate_removes_duplicates(self):
         """Should remove duplicate chunks."""
         mock_adapter = MagicMock()
-        mock_adapter.search = AsyncMock(return_value=[
-            RetrievalResult("same content", {"id": "id1"}, 0.8, source_id=""),
-            RetrievalResult("same content", {"id": "id2"}, 0.9, source_id=""),
-        ])
+        mock_adapter.search = AsyncMock(
+            return_value=[
+                RetrievalResult("same content", {"id": "id1"}, 0.8, source_id=""),
+                RetrievalResult("same content", {"id": "id2"}, 0.9, source_id=""),
+            ]
+        )
 
         node = SearchFanoutNode(mock_adapter)
         state = AgentState(
@@ -125,11 +125,13 @@ class TestChunkDeduplication:
     async def test_rank_chunks(self):
         """Should rank chunks by score."""
         mock_adapter = MagicMock()
-        mock_adapter.search = AsyncMock(return_value=[
-            RetrievalResult("low", {"id": "id1"}, 0.3, source_id=""),
-            RetrievalResult("high", {"id": "id2"}, 0.9, source_id=""),
-            RetrievalResult("medium", {"id": "id3"}, 0.6, source_id=""),
-        ])
+        mock_adapter.search = AsyncMock(
+            return_value=[
+                RetrievalResult("low", {"id": "id1"}, 0.3, source_id=""),
+                RetrievalResult("high", {"id": "id2"}, 0.9, source_id=""),
+                RetrievalResult("medium", {"id": "id3"}, 0.6, source_id=""),
+            ]
+        )
 
         node = SearchFanoutNode(mock_adapter)
         state = AgentState(
@@ -152,9 +154,11 @@ class TestSearchFanoutNode:
     async def test_node_retrieves_chunks(self):
         """Should retrieve and rank chunks via curriculum retriever."""
         mock_adapter = MagicMock()
-        mock_adapter.search = AsyncMock(return_value=[
-            RetrievalResult("test content", {"id": "id1"}, 0.8, source_id=""),
-        ])
+        mock_adapter.search = AsyncMock(
+            return_value=[
+                RetrievalResult("test content", {"id": "id1"}, 0.8, source_id=""),
+            ]
+        )
 
         node = SearchFanoutNode(mock_adapter)
         state = AgentState(user_message="test")
@@ -226,6 +230,7 @@ class TestSearchFanoutNode:
         mock_factory.return_value.__aenter__.return_value = mock_session
 
         from src.retrieval.adapter import VectorStoreAdapter
+
         adapter = VectorStoreAdapter()
         node = SearchFanoutNode(adapter, db_session_factory=mock_factory)
 
@@ -598,7 +603,7 @@ class TestTutorNodePRD008:
             recommendations=[],
         )
 
-        with patch.object(node, 'agent') as mock_agent:
+        with patch.object(node, "agent") as mock_agent:
             mock_agent.generate = AsyncMock(return_value=expected_response)
             result = await node(state)
 
@@ -619,11 +624,13 @@ class TestTutorNodePRD008:
         mock_router = MagicMock(spec=ModelRouter)
         node = TutorNode(mock_router)
 
-        mock_router.route = AsyncMock(return_value={
-            "content": "Legacy response",
-            "model": "test",
-            "confidence": 0.8,
-        })
+        mock_router.route = AsyncMock(
+            return_value={
+                "content": "Legacy response",
+                "model": "test",
+                "confidence": 0.8,
+            }
+        )
 
         state = AgentState(
             user_message="What is mitosis?",
@@ -669,18 +676,20 @@ class TestHallucinationNode:
         )
 
         with patch.object(node, "detector") as mock_detector:
-            mock_detector.analyze = AsyncMock(return_value=MagicMock(
-                supported_claims=1,
-                unsupported_claims=0,
-                hallucination_rate=0.0,
-                grounding_score=1.0,
-                claim_assessments=[],
-                detection_mode="structural",
-                model_dump=lambda: {
-                    "supported_claims": 1,
-                    "hallucination_rate": 0.0,
-                },
-            ))
+            mock_detector.analyze = AsyncMock(
+                return_value=MagicMock(
+                    supported_claims=1,
+                    unsupported_claims=0,
+                    hallucination_rate=0.0,
+                    grounding_score=1.0,
+                    claim_assessments=[],
+                    detection_mode="structural",
+                    model_dump=lambda: {
+                        "supported_claims": 1,
+                        "hallucination_rate": 0.0,
+                    },
+                )
+            )
             result = await node(state)
 
         assert result.hallucination_rate == 0.0

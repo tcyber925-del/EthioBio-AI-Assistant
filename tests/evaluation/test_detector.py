@@ -68,11 +68,13 @@ async def test_detector_empty_inputs():
 @pytest.mark.asyncio
 async def test_detector_full_mode_with_llm():
     mock_router = MagicMock()
-    mock_router.route = AsyncMock(return_value={
-        "content": "supported",
-        "model": "test",
-        "confidence": 0.95,
-    })
+    mock_router.route = AsyncMock(
+        return_value={
+            "content": "supported",
+            "model": "test",
+            "confidence": 0.95,
+        }
+    )
 
     detector = HallucinationDetector(mode=DetectionMode.FULL, router=mock_router)
     report = await detector.analyze(

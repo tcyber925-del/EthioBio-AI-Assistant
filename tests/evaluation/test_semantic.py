@@ -59,11 +59,13 @@ async def test_empty_citation_map():
 @pytest.mark.asyncio
 async def test_llm_mode_with_router():
     mock_router = MagicMock()
-    mock_router.route = AsyncMock(return_value={
-        "content": "supported",
-        "model": "test",
-        "confidence": 0.95,
-    })
+    mock_router.route = AsyncMock(
+        return_value={
+            "content": "supported",
+            "model": "test",
+            "confidence": 0.95,
+        }
+    )
 
     citation_map = [
         {

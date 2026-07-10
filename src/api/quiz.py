@@ -1,4 +1,3 @@
-
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -43,17 +42,19 @@ async def get_quiz_recommendations(user_id, session: AsyncSession = Depends(get_
                 priority = 3
 
             misconceptions = wt.get("misconceptions", [])
-            recommendations.append(QuizRecommendation(
-                topic=wt["topic"],
-                unit=wt.get("unit", ""),
-                grade_level=wt.get("grade_level", 0),
-                current_mastery=avg,
-                severity=severity,
-                recommended_difficulty=recommended_difficulty,
-                priority=priority,
-                has_misconceptions=len(misconceptions) > 0,
-                misconception_count=len(misconceptions),
-            ))
+            recommendations.append(
+                QuizRecommendation(
+                    topic=wt["topic"],
+                    unit=wt.get("unit", ""),
+                    grade_level=wt.get("grade_level", 0),
+                    current_mastery=avg,
+                    severity=severity,
+                    recommended_difficulty=recommended_difficulty,
+                    priority=priority,
+                    has_misconceptions=len(misconceptions) > 0,
+                    misconception_count=len(misconceptions),
+                )
+            )
 
         recommendations.sort(key=lambda r: r.priority)
         return QuizRecommendResponse(
@@ -93,6 +94,7 @@ async def generate_quiz(request: QuizGenerateRequest, session: AsyncSession = De
 
         if request.adaptive and request.user_id:
             from src.agents.adaptive_quiz import select_adaptive_questions
+
             selected = await select_adaptive_questions(
                 session=session,
                 user_id=request.user_id,
@@ -185,13 +187,16 @@ async def submit_quiz(request: QuizSubmitRequest, session: AsyncSession = Depend
                 is_correct = user_answer.strip().lower() == question.correct_answer.strip().lower()
                 if is_correct:
                     correct_count += 1
-                feedback.append({
-                    "question_id": q_id,
-                    "correct": is_correct,
-                    "correct_answer": question.correct_answer,
-                    "explanation": question.explanation,
-                })
+                feedback.append(
+                    {
+                        "question_id": q_id,
+                        "correct": is_correct,
+                        "correct_answer": question.correct_answer,
+                        "explanation": question.explanation,
+                    }
+                )
                 from src.agents.adaptive_quiz import record_attempt
+
                 await record_attempt(
                     session=session,
                     user_id=request.user_id,
@@ -206,6 +211,7 @@ async def submit_quiz(request: QuizSubmitRequest, session: AsyncSession = Depend
         # Update student ability estimates per topic
         if quiz.topic:
             from src.agents.adaptive_quiz import update_ability
+
             await update_ability(
                 session=session,
                 user_id=request.user_id,
@@ -245,6 +251,7 @@ async def submit_quiz(request: QuizSubmitRequest, session: AsyncSession = Depend
         misconceptions_detected: list[dict] = []
         try:
             from datetime import datetime, timezone
+
             cutoff = attempt.completed_at or attempt.started_at or datetime.now(timezone.utc)
             mc_result = await session.execute(
                 select(MisconceptionPattern)
@@ -256,15 +263,19 @@ async def submit_quiz(request: QuizSubmitRequest, session: AsyncSession = Depend
                 .limit(10)
             )
             for mc in mc_result.scalars().all():
-                misconceptions_detected.append({
-                    "topic": mc.topic,
-                    "pattern_description": mc.pattern_description,
-                    "severity": mc.severity,
-                    "frequency": mc.frequency,
-                    "confidence": mc.confidence,
-                    "common_wrong_answer": mc.common_wrong_answer,
-                    "last_detected_at": str(mc.last_detected_at) if mc.last_detected_at else None,
-                })
+                misconceptions_detected.append(
+                    {
+                        "topic": mc.topic,
+                        "pattern_description": mc.pattern_description,
+                        "severity": mc.severity,
+                        "frequency": mc.frequency,
+                        "confidence": mc.confidence,
+                        "common_wrong_answer": mc.common_wrong_answer,
+                        "last_detected_at": str(mc.last_detected_at)
+                        if mc.last_detected_at
+                        else None,
+                    }
+                )
         except Exception:
             logger.warning("quiz_misconception_fetch_error", exc_info=True)
 
@@ -283,17 +294,19 @@ async def submit_quiz(request: QuizSubmitRequest, session: AsyncSession = Depend
                     rec_diff = "hard"
                     pri = 3
                 mc_list = wt.get("misconceptions", [])
-                recommendations.append(QuizRecommendation(
-                    topic=wt["topic"],
-                    unit=wt.get("unit", ""),
-                    grade_level=wt.get("grade_level", 0),
-                    current_mastery=wt["average_score"],
-                    severity=sev,
-                    recommended_difficulty=rec_diff,
-                    priority=pri,
-                    has_misconceptions=len(mc_list) > 0,
-                    misconception_count=len(mc_list),
-                ))
+                recommendations.append(
+                    QuizRecommendation(
+                        topic=wt["topic"],
+                        unit=wt.get("unit", ""),
+                        grade_level=wt.get("grade_level", 0),
+                        current_mastery=wt["average_score"],
+                        severity=sev,
+                        recommended_difficulty=rec_diff,
+                        priority=pri,
+                        has_misconceptions=len(mc_list) > 0,
+                        misconception_count=len(mc_list),
+                    )
+                )
             recommendations.sort(key=lambda r: r.priority)
         except Exception:
             logger.warning("quiz_recommend_after_submit_error", exc_info=True)

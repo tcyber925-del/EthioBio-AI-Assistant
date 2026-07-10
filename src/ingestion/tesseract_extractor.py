@@ -109,12 +109,10 @@ def _estimate_quality(text: str) -> float:
     common_words = {"the", "is", "are", "of", "in", "and", "to", "for", "cell", "dna", "rna"}
     common_ratio = sum(1 for w in words if w.lower() in common_words) / max(len(words), 1)
 
-    ethiopic_ratio = sum(1 for c in text if '\u1200' <= c <= '\u137F') / max(len(text), 1)
+    ethiopic_ratio = sum(1 for c in text if "\u1200" <= c <= "\u137f") / max(len(text), 1)
 
     score = (
-        0.4 * alpha_ratio
-        + 0.3 * min(1.0, avg_word_len / 6.0)
-        + 0.3 * min(1.0, common_ratio * 10)
+        0.4 * alpha_ratio + 0.3 * min(1.0, avg_word_len / 6.0) + 0.3 * min(1.0, common_ratio * 10)
     )
 
     if ethiopic_ratio > 0.1:

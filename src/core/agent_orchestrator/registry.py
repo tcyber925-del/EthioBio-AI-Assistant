@@ -26,7 +26,8 @@ class AgentRegistry:
 
     def find_by_capability(self, capability_name: str) -> list[AgentRegistration]:
         return [
-            reg for reg in self._agents.values()
+            reg
+            for reg in self._agents.values()
             if any(c.name == capability_name for c in reg.capabilities)
         ]
 
