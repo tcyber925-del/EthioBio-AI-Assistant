@@ -61,6 +61,28 @@ from src.schemas.common import HealthResponse
 logger = structlog.get_logger()
 
 
+def _init_sentry():
+    """Initialize Sentry SDK if SENTRY_DSN is configured. No-op otherwise."""
+    if not settings.sentry_dsn:
+        return
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.asyncio import AsyncioIntegration
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+
+        sentry_sdk.init(
+            dsn=settings.sentry_dsn,
+            integrations=[FastApiIntegration(), AsyncioIntegration()],
+            traces_sample_rate=1.0,
+            environment="production" if not settings.debug else "development",
+        )
+        logger.info("sentry_initialized")
+    except ImportError:
+        logger.warning("sentry_sdk_not_installed, skipping Sentry init")
+    except Exception:
+        logger.exception("sentry_init_failed")
+
+
 async def _save_trace_from_pipeline(trace, repo):
     """Save a completed PipelineTrace to persistent storage."""
     try:
@@ -125,6 +147,7 @@ def _preload_models():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("app_starting", name=settings.app_name)
+    _init_sentry()
     await init_db()
     _preload_models()
     from src.guardrails.startup import run_startup_checks
@@ -294,6 +317,61 @@ async def health_modules():
     if not health_registry:
         return {"overall_status": "disabled", "uptime_seconds": 0, "modules": []}
     return health_registry.to_dict(include_details=True)
+
+
+@app.get("/liveness")
+async def liveness():
+    """Process is alive. Return 200 if the event loop is running."""
+    return {"status": "alive"}
+
+
+@app.get("/readiness")
+async def readiness():
+    """Check all external dependencies. Returns 503 if any critical is down."""
+    from sqlalchemy import text
+
+    from src.database.session import async_session_factory
+
+    checks = {"database": "ok", "redis": "ok", "ollama": "ok"}
+    is_ready = True
+
+    # Database
+    try:
+        async with async_session_factory() as session:
+            await session.execute(text("SELECT 1"))
+    except Exception:
+        checks["database"] = "down"
+        is_ready = False
+
+    # Redis
+    try:
+        from src.redis_client import get_redis
+
+        redis = await get_redis()
+        await redis.ping()
+    except Exception:
+        checks["redis"] = "down"
+        is_ready = False
+
+    # Ollama (local or Cloud)
+    try:
+        router = ModelRouter()
+        ollama_ok = await router.check_health()
+        if not ollama_ok:
+            checks["ollama"] = "down"
+            is_ready = False
+    except Exception:
+        checks["ollama"] = "down"
+        is_ready = False
+
+    status_code = 200 if is_ready else 503
+    from fastapi import Response
+
+    return Response(
+        content=__import__("json").dumps({"ready": is_ready, "checks": checks}),
+        media_type="application/json",
+        status_code=status_code,
+    )
 
 
 @app.get("/metrics", response_class=PlainTextResponse)

@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
     ollama_chat_model: str = "tinyllama"
     ollama_embed_model: str = "nomic-embed-text"
+    ollama_api_key: Optional[str] = None  # Ollama Cloud (https://ollama.com)
 
     openrouter_api_key: Optional[str] = None
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
@@ -86,6 +87,7 @@ class Settings(BaseSettings):
     otel_service_name: str = "ethiobio"
     otel_endpoint: Optional[str] = None
     otel_traces_sampling_rate: float = 1.0
+    sentry_dsn: Optional[str] = None  # Sentry free tier (https://sentry.io)
 
     observability_metrics_enabled: bool = True
     observability_health_enabled: bool = True

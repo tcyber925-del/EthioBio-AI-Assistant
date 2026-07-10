@@ -15,7 +15,13 @@ class OllamaProvider(LLMProvider):
         self._default_model = default_model or settings.ollama_chat_model
         self._available_models: list[str] | None = None
         self._healthy: bool | None = None
-        self._client = httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=10.0))
+        headers = {}
+        if settings.ollama_api_key:
+            headers["Authorization"] = f"Bearer {settings.ollama_api_key}"
+        self._client = httpx.AsyncClient(
+            timeout=httpx.Timeout(120.0, connect=10.0),
+            headers=headers,
+        )
 
     @property
     def name(self) -> str:

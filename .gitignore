@@ -68,3 +68,7 @@ dashboard/test-results/
 
 # Duplicate scripts directory (operational artifact from gt)
 scripts/scripts/
+
+# Agent session state (auto-generated)
+.opencode/goals/state.json
+.opencode/goals/state.json.ledger.jsonl
