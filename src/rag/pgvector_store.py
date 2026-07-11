@@ -7,12 +7,11 @@ from sqlalchemy import text as sa_text
 from src.config import settings
 from src.database.models import KnowledgeEmbedding
 from src.database.session import async_session_factory
-from src.rag.vector_store import VectorStore
 
 logger = structlog.get_logger()
 
 
-class PGVectorStore(VectorStore):
+class PGVectorStore:
     """PostgreSQL pgvector-backed vector store.
 
     Implements the same interface as ChromaDB VectorStore so it can be
@@ -34,7 +33,7 @@ class PGVectorStore(VectorStore):
             for i, (text, emb, meta, doc_id) in enumerate(zip(texts, embeddings, metadatas, ids)):
                 ko_id = meta.get("knowledge_object_id")
                 embedding = KnowledgeEmbedding(
-                    id=uuid.uuid5(uuid.NAMESPACE_DNS, doc_id) if doc_id else uuid.uuid4(),
+                    id=uuid.uuid4(),
                     knowledge_object_id=uuid.UUID(ko_id) if ko_id else None,
                     chunk_index=meta.get("chunk_index", i),
                     content=text,
@@ -78,7 +77,7 @@ class PGVectorStore(VectorStore):
         sql = sa_text(
             f"""
             SELECT id, content, metadata,
-                   embedding::vector(384) <=> :query_vec::vector(384) AS distance
+                   CAST(embedding AS vector(384)) <=> CAST(:query_vec AS vector(384)) AS distance
             FROM knowledge_embeddings
             WHERE {' AND '.join(wheres)}
             ORDER BY distance
@@ -104,17 +103,22 @@ class PGVectorStore(VectorStore):
             await session.commit()
         logger.info("pgvector_collection_cleared")
 
+    async def count_async(self) -> int:
+        factory = async_session_factory()
+        async with factory() as session:
+            result = await session.execute(
+                sa_text("SELECT COUNT(*) FROM knowledge_embeddings")
+            )
+            return result.scalar() or 0
+
     def count(self) -> int:
         import asyncio
-
-        factory = async_session_factory()
-        async def _count():
-            async with factory() as session:
-                result = await session.execute(
-                    sa_text("SELECT COUNT(*) FROM knowledge_embeddings")
-                )
-                return result.scalar() or 0
-        return asyncio.run(_count())
+        try:
+            asyncio.get_running_loop()
+            raise RuntimeError("count() is sync; use count_async() in async context")
+        except RuntimeError:
+            pass
+        return asyncio.run(self.count_async())
 
     def _get_collection(self):
         return None

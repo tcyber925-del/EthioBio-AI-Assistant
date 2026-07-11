@@ -1,3 +1,5 @@
+import asyncio
+
 import structlog
 
 from src.llm.router import ModelRouter
@@ -39,7 +41,10 @@ class Embedder:
 
         model = self._get_local_model()
         if model:
-            return model.encode(text).tolist()
+            loop = asyncio.get_running_loop()
+            return await loop.run_in_executor(
+                None, lambda: model.encode(text).tolist()
+            )
 
         return await self.router.generate_embedding(text)
 
@@ -55,8 +60,13 @@ class Embedder:
 
         model = self._get_local_model()
         if model:
-            embeddings = model.encode(texts, batch_size=batch_size, show_progress_bar=False)
-            return embeddings.tolist()
+            loop = asyncio.get_running_loop()
+            embeddings = await loop.run_in_executor(
+                None, lambda: model.encode(
+                    texts, batch_size=batch_size, show_progress_bar=False
+                ).tolist()
+            )
+            return embeddings
 
         results = []
         for text in texts:

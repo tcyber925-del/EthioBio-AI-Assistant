@@ -4,7 +4,6 @@ from typing import Optional
 import structlog
 
 from src.config import settings
-from src.rag.pgvector_store import PGVectorStore
 
 logger = structlog.get_logger()
 
@@ -14,16 +13,20 @@ class VectorStore:
         self,
         persist_directory: str = None,
         collection_name: str = None,
-        use_pgvector: bool = False,
+        use_pgvector: bool | None = None,
     ):
         self.persist_directory = persist_directory or settings.vector_store_path
         self.collection_name = collection_name or settings.collection_name
         self._client = None
         self._collection = None
-        self._use_pgvector = use_pgvector or settings.store_backend == "pgvector"
-        self._pg_store: PGVectorStore | None = None
+        self._use_pgvector = (
+            use_pgvector if use_pgvector is not None
+            else settings.store_backend == "pgvector"
+        )
+        self._pg_store = None
 
-    def _get_pg(self) -> PGVectorStore:
+    def _get_pg(self):
+        from src.rag.pgvector_store import PGVectorStore
         if self._pg_store is None:
             self._pg_store = PGVectorStore(collection_name=self.collection_name)
         return self._pg_store
@@ -99,8 +102,8 @@ class VectorStore:
         except Exception as e:
             logger.error("delete_collection_error", error=str(e))
 
-    def count(self) -> int:
+    async def count(self) -> int:
         if self._use_pgvector:
-            return self._get_pg().count()
+            return await self._get_pg().count_async()
         collection = self._get_collection()
         return collection.count()

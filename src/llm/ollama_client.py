@@ -10,7 +10,13 @@ class OllamaClient:
     def __init__(self, base_url: str = None, model: str = None):
         self.base_url = (base_url or settings.ollama_base_url).rstrip("/")
         self.model = model or settings.ollama_chat_model
-        self.client = httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=10.0))
+        headers = {}
+        if settings.ollama_api_key:
+            headers["Authorization"] = f"Bearer {settings.ollama_api_key}"
+        self.client = httpx.AsyncClient(
+            timeout=httpx.Timeout(120.0, connect=10.0),
+            headers=headers,
+        )
 
     async def chat(
         self,

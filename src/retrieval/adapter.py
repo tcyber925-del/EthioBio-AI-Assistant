@@ -92,6 +92,8 @@ class VectorStoreAdapter:
     def _detect_store_dimension(self) -> Optional[int]:
         """Detect embedding dimension from the vector store."""
         try:
+            if self.vector_store._use_pgvector:
+                return None
             collection = self.vector_store._get_collection()
             count = collection.count()
             if count == 0:
@@ -320,12 +322,18 @@ class VectorStoreAdapter:
 
         return citation_instruction + "\n\n".join(sections)
 
-    def count(self) -> int:
-        return self.vector_store.count()
+    async def count(self) -> int:
+        return await self.vector_store.count()
 
-    def build_bm25_index(self):
+    async def build_bm25_index(self):
         """Build BM25 index from all documents in the vector store."""
+        if self.vector_store._use_pgvector:
+            logger.warning("bm25_build_skipped_pgvector_store")
+            return
         collection = self.vector_store._get_collection()
+        if collection is None:
+            logger.warning("bm25_build_skipped_pgvector_store")
+            return
         all_docs = collection.get(include=["documents", "metadatas"])
 
         if not all_docs["documents"]:
