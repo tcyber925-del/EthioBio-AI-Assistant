@@ -404,10 +404,11 @@ async def readiness():
 
     # Database
     try:
-        async with async_session_factory() as session:
+        factory = async_session_factory()
+        async with factory() as session:
             await session.execute(text("SELECT 1"))
-    except Exception as e:
-        checks["database"] = f"down ({e})"
+    except Exception:
+        checks["database"] = "down"
         is_ready = False
 
     # Redis
