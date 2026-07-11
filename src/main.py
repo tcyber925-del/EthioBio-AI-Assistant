@@ -6,7 +6,6 @@ from pathlib import Path
 import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 from redis.asyncio import Redis
@@ -302,18 +301,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=[
-        "localhost",
-        "127.0.0.1",
-        "*.up.railway.app",
-        "*.vercel.app",
-        settings.api_base_url.replace("https://", "").replace("http://", "").split(":")[0],
-    ]
-    if not settings.debug
-    else ["*"],
-)
 
 _redis = Redis.from_url(settings.redis_url)
 add_rate_limit_middleware(app, _redis)
