@@ -328,13 +328,13 @@ class VectorStoreAdapter:
     async def build_bm25_index(self):
         """Build BM25 index from all documents in the vector store."""
         if self.vector_store._use_pgvector:
-            logger.warning("bm25_build_skipped_pgvector_store")
-            return
-        collection = self.vector_store._get_collection()
-        if collection is None:
-            logger.warning("bm25_build_skipped_pgvector_store")
-            return
-        all_docs = collection.get(include=["documents", "metadatas"])
+            all_docs = await self.vector_store._get_pg().get_all()
+        else:
+            collection = self.vector_store._get_collection()
+            if collection is None:
+                logger.warning("bm25_build_skipped_pgvector_store")
+                return
+            all_docs = collection.get(include=["documents", "metadatas"])
 
         if not all_docs["documents"]:
             logger.warning("bm25_build_no_documents")

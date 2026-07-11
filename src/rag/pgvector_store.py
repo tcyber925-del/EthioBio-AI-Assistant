@@ -96,6 +96,22 @@ class PGVectorStore:
             "ids": [str(r[0]) for r in rows],
         }
 
+    async def get_all(self) -> dict:
+        """Fetch all documents + metadatas + ids (for BM25 index building)."""
+        factory = async_session_factory()
+        async with factory() as session:
+            result = await session.execute(
+                sa_text(
+                    "SELECT id, content, metadata "
+                    "FROM knowledge_embeddings ORDER BY created_at"
+                )
+            )
+            rows = result.all()
+        documents = [r[1] for r in rows]
+        metadatas = [r[2] for r in rows]
+        ids = [str(r[0]) for r in rows]
+        return {"documents": documents, "metadatas": metadatas, "ids": ids}
+
     async def delete_collection(self):
         factory = async_session_factory()
         async with factory() as session:

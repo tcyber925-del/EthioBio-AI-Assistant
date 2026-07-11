@@ -14,7 +14,9 @@ from rank_bm25 import BM25Okapi
 
 logger = structlog.get_logger()
 
-DEFAULT_INDEX_PATH = "./data/vectors/bm25_index.pkl"
+DEFAULT_INDEX_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)), "data", "bm25_index.pkl"
+)
 
 
 def _tokenize(text: str) -> list[str]:
@@ -145,7 +147,10 @@ class BM25Index:
 
     def clear(self):
         if os.path.exists(self.persist_path):
-            os.remove(self.persist_path)
+            try:
+                os.remove(self.persist_path)
+            except OSError:
+                pass
         self._bm25 = None
         self._corpus = []
         self._doc_ids = []
