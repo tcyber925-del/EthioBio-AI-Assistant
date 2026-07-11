@@ -4,9 +4,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import structlog
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 from redis.asyncio import Redis
 
@@ -189,31 +189,43 @@ async def lifespan(app: FastAPI):
     pipeline_monitor.set_on_complete(lambda trace: asyncio.create_task(_on_trace_complete(trace)))
 
     _telegram_bot_app = None
-    if settings.telegram_bot_token and not settings.telegram_webhook_url:
+    if settings.telegram_bot_token:
         try:
             from src.telegram.bot import build_app
 
             tg_app = build_app()
             await tg_app.initialize()
-            from telegram import BotCommand
 
-            commands = [
-                BotCommand("start", "Show menu"),
-                BotCommand("help", "Show help"),
-                BotCommand("ask", "Ask a biology question"),
-                BotCommand("quiz", "Generate a quiz"),
-                BotCommand("grade", "Set your grade (7-12)"),
-                BotCommand("language", "Set language (en/am/both)"),
-                BotCommand("menu", "Show main menu"),
-                BotCommand("cancel", "Cancel current operation"),
-            ]
-            await tg_app.bot.set_my_commands(commands)
-            await tg_app.updater.start_polling(
-                allowed_updates=["message", "callback_query"], drop_pending_updates=True
-            )
+            webhook_url = settings.telegram_webhook_url
+            webhook_secret = settings.telegram_webhook_secret
+            if webhook_url:
+                await tg_app.bot.set_webhook(
+                    url=webhook_url,
+                    secret_token=webhook_secret,
+                    allowed_updates=["message", "callback_query"],
+                )
+                logger.info("bot_webhook_set", url=webhook_url)
+            else:
+                from telegram import BotCommand
+
+                commands = [
+                    BotCommand("start", "Show menu"),
+                    BotCommand("help", "Show help"),
+                    BotCommand("ask", "Ask a biology question"),
+                    BotCommand("quiz", "Generate a quiz"),
+                    BotCommand("grade", "Set your grade (7-12)"),
+                    BotCommand("language", "Set language (en/am/both)"),
+                    BotCommand("menu", "Show main menu"),
+                    BotCommand("cancel", "Cancel current operation"),
+                ]
+                await tg_app.bot.set_my_commands(commands)
+                await tg_app.updater.start_polling(
+                    allowed_updates=["message", "callback_query"], drop_pending_updates=True
+                )
             await tg_app.start()
+            app.state.telegram_bot = tg_app
             _telegram_bot_app = tg_app
-            logger.info("bot_polling_started")
+            logger.info("bot_started", mode="webhook" if webhook_url else "polling")
         except Exception:
             logger.exception("bot_start_failed")
 
@@ -402,7 +414,6 @@ async def readiness():
         is_ready = False
 
     status_code = 200 if is_ready else 503
-    from fastapi import Response
 
     return Response(
         content=__import__("json").dumps({"ready": is_ready, "checks": checks}),
@@ -418,6 +429,27 @@ async def metrics_endpoint():
     if not registry:
         return "# No metrics registry (disabled)\n"
     return registry.prometheus_text()
+
+
+@app.post("/webhook")
+async def telegram_webhook(request: Request):
+    tg_app = getattr(app.state, "telegram_bot", None)
+    if tg_app is None:
+        logger.warning("webhook_no_bot_app")
+        return Response(status_code=503, content='{"error":"bot not ready"}')
+
+    if settings.telegram_webhook_secret:
+        token = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+        if token != settings.telegram_webhook_secret:
+            logger.warning("webhook_invalid_secret_token")
+            return Response(status_code=403, content='{"error":"forbidden"}')
+
+    from telegram import Update
+
+    json_data = await request.json()
+    update = Update.de_json(json_data, tg_app.bot)
+    await tg_app.process_update(update)
+    return Response(status_code=200, content='{"ok":true}')
 
 
 def run():
