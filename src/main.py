@@ -188,6 +188,35 @@ async def lifespan(app: FastAPI):
 
     pipeline_monitor.set_on_complete(lambda trace: asyncio.create_task(_on_trace_complete(trace)))
 
+    _telegram_bot_app = None
+    if settings.telegram_bot_token and not settings.telegram_webhook_url:
+        try:
+            from src.telegram.bot import build_app
+
+            tg_app = build_app()
+            await tg_app.initialize()
+            from telegram import BotCommand
+
+            commands = [
+                BotCommand("start", "Show menu"),
+                BotCommand("help", "Show help"),
+                BotCommand("ask", "Ask a biology question"),
+                BotCommand("quiz", "Generate a quiz"),
+                BotCommand("grade", "Set your grade (7-12)"),
+                BotCommand("language", "Set language (en/am/both)"),
+                BotCommand("menu", "Show main menu"),
+                BotCommand("cancel", "Cancel current operation"),
+            ]
+            await tg_app.bot.set_my_commands(commands)
+            await tg_app.updater.start_polling(
+                allowed_updates=["message", "callback_query"], drop_pending_updates=True
+            )
+            await tg_app.start()
+            _telegram_bot_app = tg_app
+            logger.info("bot_polling_started")
+        except Exception:
+            logger.exception("bot_start_failed")
+
     _pipeline_consumer_task = None
     try:
         from src.core.knowledge_registry import KnowledgeRegistry
@@ -218,6 +247,14 @@ async def lifespan(app: FastAPI):
         logger.warning("pipeline_consumer_unavailable, processing via inline background tasks only")
 
     yield
+
+    if _telegram_bot_app is not None:
+        try:
+            await _telegram_bot_app.stop()
+            await _telegram_bot_app.shutdown()
+            logger.info("bot_shutdown_complete")
+        except Exception:
+            logger.exception("bot_shutdown_failed")
 
     if _pipeline_consumer_task is not None:
         _pipeline_consumer_task.cancel()

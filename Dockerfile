@@ -11,14 +11,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY requirements.txt .
 
-RUN pip install uv && rm -rf ~/.cache/pip
+RUN pip install --no-cache-dir uv
 
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --system torch --index-url https://download.pytorch.org/whl/cpu
+RUN uv pip install --system torch --index-url https://download.pytorch.org/whl/cpu
 
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --system -r requirements.txt \
-    && uv pip uninstall --system torchvision -y
+RUN uv pip install --system -r requirements.txt \
+    && uv pip uninstall --system torchvision -y \
+    && rm -rf /root/.cache/uv
 
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 
@@ -26,4 +25,4 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD python -m uvicorn src.main:app --host 0.0.0.0 --port ${PORT:-8000}
