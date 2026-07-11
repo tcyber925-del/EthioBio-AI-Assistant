@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -175,11 +176,29 @@ class PipelineOrchestrator:
 
         texts = [c["text"] for c in chunks]
         chunk_ids = [c["id"] for c in chunks]
+
+        ko_meta = {}
+        if self._session_factory:
+            try:
+                async with self._session_factory() as db:
+                    ko = await db.get(KnowledgeObjectModel, uuid.UUID(ko_id))
+                    if ko:
+                        ko_meta = ko.ko_metadata or {}
+            except Exception:
+                pass
+
         metadatas = [
             {
                 "knowledge_object_id": c["knowledge_object_id"],
                 "chunk_index": i,
                 "heading": c.get("heading", ""),
+                "topic": ko_meta.get("topic", c.get("topic", "")),
+                "grade_level": ko_meta.get("grade_level", c.get("grade_level", 0)),
+                "unit": ko_meta.get("unit", c.get("unit", "")),
+                "section": c.get("section", ""),
+                "subtopic": c.get("subtopic", ""),
+                "source_type": ko_meta.get("source_type", c.get("source_type", "")),
+                "page_number": c.get("page_number", 0),
             }
             for i, c in enumerate(chunks)
         ]
