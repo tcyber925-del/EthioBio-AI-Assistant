@@ -59,53 +59,16 @@ async def get_session() -> AsyncSession:
 
 
 async def init_db():
-    logger.info("database_init_deferred - waiting for first connection")
-    engine = _get_engine()
-    logger.debug("engine_created")
-    from src.database.models import Base
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    logger.info("database_tables_created")
-
-    # Run pending SQL migrations
+    logger.info("running_database_migrations")
+    import asyncio
     from pathlib import Path
 
-    from sqlalchemy import text
+    from alembic.command import upgrade as alembic_upgrade
+    from alembic.config import Config as AlembicConfig
 
-    migrations_dir = Path("scripts/migrations")
-    if migrations_dir.exists():
-        logger.info("checking_database_migrations")
-        async with engine.begin() as conn:
-            await conn.execute(
-                text(
-                    "CREATE TABLE IF NOT EXISTS applied_migrations (migration_name VARCHAR(255) PRIMARY KEY)"  # noqa: E501
-                )
-            )
-
-        migration_files = sorted(migrations_dir.glob("*.sql"))
-        for sql_file in migration_files:
-            migration_name = sql_file.name
-            async with engine.begin() as conn:
-                result = await conn.execute(
-                    text("SELECT 1 FROM applied_migrations WHERE migration_name = :name"),
-                    {"name": migration_name},
-                )
-                if not result.scalar():
-                    logger.info("applying_migration", name=migration_name)
-                    sql_content = sql_file.read_text().strip()
-                    if sql_content:
-                        # Split by semicolon to run statements individually (avoiding prepared statement limits)  # noqa: E501
-                        statements = [
-                            stmt.strip() for stmt in sql_content.split(";") if stmt.strip()
-                        ]
-                        for stmt in statements:
-                            await conn.execute(text(stmt))
-                    await conn.execute(
-                        text("INSERT INTO applied_migrations (migration_name) VALUES (:name)"),
-                        {"name": migration_name},
-                    )
-                    logger.info("migration_applied", name=migration_name)
+    alembic_cfg = AlembicConfig(Path(__file__).parents[2] / "alembic.ini")
+    await asyncio.to_thread(alembic_upgrade, alembic_cfg, "head")
+    logger.info("database_migrations_complete")
 
 
 async def close_db():
