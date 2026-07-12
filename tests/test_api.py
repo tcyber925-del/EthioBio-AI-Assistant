@@ -4,6 +4,8 @@ from uuid import uuid4
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from src.api.auth import get_current_user
+from src.database.models import User, UserRole
 from src.database.session import get_session
 from src.main import app
 
@@ -35,7 +37,16 @@ def override_db():
         mock.refresh.side_effect = mock_refresh
         yield mock
 
+    def mock_get_current_user():
+        return User(
+            id=uuid4(),
+            email="test@example.com",
+            role=UserRole.teacher,
+            is_active=True,
+        )
+
     app.dependency_overrides[get_session] = mock_get_session
+    app.dependency_overrides[get_current_user] = mock_get_current_user
     yield
     app.dependency_overrides.clear()
 
@@ -157,3 +168,18 @@ async def test_memory_timeline_endpoint():
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
+
+
+@pytest.mark.asyncio
+async def test_public_stats_endpoint():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/auth/public-stats")
+        assert response.status_code == 200
+        data = response.json()
+        assert "active_students" in data
+        assert "quizzes_completed" in data
+        assert "lesson_plans_generated" in data
+        assert "knowledge_assets" in data
+        assert data["system_status"] == "healthy"
+
