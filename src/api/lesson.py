@@ -7,8 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.lesson_planner import LessonPlannerAgent
 from src.agents.unit_planner import UnitPlannerAgent
+from src.api.auth import get_current_user
 from src.core.lesson_planning import ClassroomIntelligenceService
-from src.database.models import LessonPlan, UnitPlan
+from src.database.models import LessonPlan, UnitPlan, User
 from src.database.session import get_session
 from src.llm.router import ModelRouter
 from src.schemas.lesson import (
@@ -33,7 +34,9 @@ router = APIRouter(prefix="/lesson-plan", tags=["Lesson Plan"])
 async def generate_lesson_plan(
     request: LessonPlanRequest,
     session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ):
+    teacher_id = request.teacher_id or current_user.id
     router_llm = ModelRouter(preferred_model=request.model)
     agent = LessonPlannerAgent(llm_router=router_llm)
 
@@ -69,7 +72,7 @@ async def generate_lesson_plan(
         periods_data = result.get("periods")
 
         db_plan = LessonPlan(
-            teacher_id=request.teacher_id,
+            teacher_id=teacher_id,
             classroom_id=request.classroom_id,
             grade_level=request.grade_level,
             topic=request.topic,
@@ -250,7 +253,10 @@ async def list_lesson_plans(
     classroom_id: uuid.UUID | None = None,
     limit: int = 20,
     session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ):
+    if teacher_id is None:
+        teacher_id = current_user.id
     stmt = select(LessonPlan).order_by(LessonPlan.created_at.desc()).limit(limit)
     if teacher_id:
         stmt = stmt.where(LessonPlan.teacher_id == teacher_id)

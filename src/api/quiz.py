@@ -1,3 +1,5 @@
+import uuid
+
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -5,8 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.quiz import QuizAgent
 from src.agents.weak_topic_detection import analyze_quiz_attempt, get_weak_topics
+from src.api.auth import get_current_user
 from src.api.gamification import award_xp, check_achievements, update_streak
-from src.database.models import MisconceptionPattern, Question, Quiz, QuizAttempt
+from src.database.models import MisconceptionPattern, Question, Quiz, QuizAttempt, User
 from src.database.session import get_session
 from src.llm.router import ModelRouter
 from src.schemas.quiz import (
@@ -68,7 +71,11 @@ async def get_quiz_recommendations(user_id, session: AsyncSession = Depends(get_
 
 
 @router.post("/generate", response_model=QuizGenerateResponse)
-async def generate_quiz(request: QuizGenerateRequest, session: AsyncSession = Depends(get_session)):
+async def generate_quiz(
+    request: QuizGenerateRequest,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
     router_llm = ModelRouter(preferred_model=request.model)
     agent = QuizAgent(llm_router=router_llm)
 
@@ -122,7 +129,7 @@ async def generate_quiz(request: QuizGenerateRequest, session: AsyncSession = De
         )
 
         db_quiz = Quiz(
-            teacher_id=request.teacher_id,
+            teacher_id=request.teacher_id or current_user.id,
             title=f"Grade {request.grade_level} - {request.topic}",
             grade_level=request.grade_level,
             topic=request.topic,
@@ -163,6 +170,35 @@ async def generate_quiz(request: QuizGenerateRequest, session: AsyncSession = De
         await session.rollback()
         logger.error("quiz_generate_error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/")
+async def list_quizzes(
+    teacher_id: uuid.UUID | None = None,
+    limit: int = 20,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    if teacher_id is None:
+        teacher_id = current_user.id
+    stmt = (
+        select(Quiz)
+        .where(Quiz.teacher_id == teacher_id)
+        .order_by(Quiz.created_at.desc())
+        .limit(limit)
+    )
+    result = await session.execute(stmt)
+    quizzes = result.scalars().all()
+    return [
+        {
+            "id": str(q.id),
+            "topic": q.topic,
+            "grade_level": q.grade_level,
+            "status": q.status,
+            "created_at": q.created_at.isoformat() if q.created_at else None,
+        }
+        for q in quizzes
+    ]
 
 
 @router.post("/submit", response_model=QuizSubmitResponse)
