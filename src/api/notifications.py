@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +16,7 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
 class NotificationPrefsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     email: str
     digest_frequency: str = "never"
     milestone_alerts: bool = True

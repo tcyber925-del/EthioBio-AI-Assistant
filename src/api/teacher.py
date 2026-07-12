@@ -2,7 +2,7 @@ from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -31,16 +31,19 @@ school_service = SchoolService()
 
 
 class CreateSchoolRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     name: str
 
 
 class CreateClassroomRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     name: str
     grade_level: int
     student_ids: list[UUID] = []
 
 
 class EnrollStudentsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     student_ids: list[UUID]
 
 

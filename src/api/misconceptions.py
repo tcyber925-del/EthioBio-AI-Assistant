@@ -2,7 +2,7 @@ from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -79,6 +79,7 @@ class MisconceptionProfileResponse(BaseModel):
 
 
 class AnalyzeTextRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     text: str
 
 

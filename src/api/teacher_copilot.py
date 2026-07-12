@@ -2,7 +2,7 @@ from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.auth import get_current_user
@@ -20,6 +20,7 @@ router = APIRouter(prefix="/copilot", tags=["Teacher Copilot"])
 
 
 class CopilotQuery(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     message: str
     classroom_id: UUID | None = None
     student_id: UUID | None = None

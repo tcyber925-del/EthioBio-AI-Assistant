@@ -2,7 +2,7 @@ from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,12 +18,14 @@ engine = GraphReasoningEngine()
 
 
 class PrerequisiteCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     topic_id: UUID
     prerequisite_topic_id: UUID
     relationship_type: str = "prerequisite"
 
 
 class PrerequisiteBatchCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     topic_id: UUID
     prerequisite_ids: list[UUID]
 

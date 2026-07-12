@@ -6,7 +6,7 @@ import httpx
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from jose import JWTError, jwt
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +20,7 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 class RegisterRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     email: str
     password: str
     role: str = "teacher"
@@ -33,15 +34,18 @@ class TokenResponse(BaseModel):
 
 
 class LoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     email: str
     password: str
 
 
 class OtpRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     telegram_id: int
 
 
 class OtpVerifyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     telegram_id: int
     otp: str
 

@@ -1,6 +1,6 @@
 import structlog
 from fastapi import APIRouter
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from src.llm.manager import ProviderManager
 from src.llm.registry import ModelRegistry
@@ -42,6 +42,7 @@ class ProviderHealth(BaseModel):
 
 
 class SetModelRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     model: str
 
 

@@ -3,7 +3,7 @@ from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import String, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -305,6 +305,7 @@ class UserListResponse(BaseModel):
 
 
 class UpdateUserStatusRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     is_active: bool
 
 
@@ -394,6 +395,7 @@ async def update_user_status(
 
 
 class UpdateUserRoleRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     role: str
 
 
@@ -455,6 +457,7 @@ class ReviewListResponse(BaseModel):
 
 
 class ReviewActionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     action: str = "resolve"
     review_notes: str = ""
 
