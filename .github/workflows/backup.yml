@@ -1,0 +1,32 @@
+name: Database Backup
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          pip install b2 -q
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+
+      - name: Dump database to B2
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_SYNC_URL }}
+          B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+          B2_APP_KEY: ${{ secrets.B2_APP_KEY }}
+          B2_BUCKET: ${{ secrets.B2_BUCKET }}
+        run: |
+          b2 authorize-account "$B2_KEY_ID" "$B2_APP_KEY"
+          TS=$(date -u +%F)
+          echo "Dumping database..."
+          pg_dump "$DATABASE_URL" --clean --if-exists --no-owner | gzip | b2 upload-file "$B2_BUCKET" - "ethiobio_prod_$TS.sql.gz"
+          echo "Uploading latest alias..."
+          pg_dump "$DATABASE_URL" --clean --if-exists --no-owner | gzip | b2 upload-file "$B2_BUCKET" - ethiobio_prod_latest.sql.gz
+          echo "Backup complete: ethiobio_prod_$TS.sql.gz"
