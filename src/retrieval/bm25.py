@@ -14,9 +14,8 @@ from rank_bm25 import BM25Okapi
 
 logger = structlog.get_logger()
 
-DEFAULT_INDEX_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)), "data", "bm25_index.pkl"
-)
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+DEFAULT_INDEX_PATH = os.path.join(_PROJECT_ROOT, "data", "bm25_index.pkl")
 
 
 def _tokenize(text: str) -> list[str]:
