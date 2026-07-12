@@ -11,7 +11,7 @@ import structlog
 
 from src.rag.embedder import Embedder
 from src.rag.vector_store import VectorStore
-from src.retrieval.bm25 import BM25Index
+from src.retrieval.bm25 import BM25Index, get_bm25_index
 from src.retrieval.reranker import Reranker
 
 logger = structlog.get_logger()
@@ -83,7 +83,7 @@ class VectorStoreAdapter:
         else:
             self.embedder = Embedder()
 
-        self.bm25_index = bm25_index or BM25Index()
+        self.bm25_index = bm25_index or get_bm25_index()
         self.reranker = reranker or Reranker()
         self.use_hybrid = use_hybrid
         self.dense_weight = dense_weight

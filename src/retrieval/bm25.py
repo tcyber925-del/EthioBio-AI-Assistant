@@ -17,12 +17,28 @@ logger = structlog.get_logger()
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DEFAULT_INDEX_PATH = os.path.join(_PROJECT_ROOT, "data", "bm25_index.pkl")
 
+_bm25_index_instance = None
+
 
 def _tokenize(text: str) -> list[str]:
     """Simple tokenizer: lowercase, split on non-alphanumeric, remove short tokens."""
     text = text.lower()
     tokens = re.findall(r"[a-z0-9]+", text)
     return [t for t in tokens if len(t) > 1]
+
+
+def get_bm25_index(persist_path: str = DEFAULT_INDEX_PATH) -> "BM25Index":
+    global _bm25_index_instance
+    if _bm25_index_instance is None:
+        _bm25_index_instance = BM25Index(persist_path=persist_path)
+    return _bm25_index_instance
+
+
+def clear_bm25_index():
+    global _bm25_index_instance
+    if _bm25_index_instance is not None:
+        _bm25_index_instance.clear()
+    _bm25_index_instance = None
 
 
 class BM25Index:
