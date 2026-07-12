@@ -60,6 +60,32 @@ class RetrievalFilter:
         return {"$and": filters}
 
 
+def _build_bm25_lazy(adapter: "VectorStoreAdapter") -> None:
+    """Build BM25 index synchronously using VectorStoreAdapter."""
+    try:
+        import asyncio
+
+        loop = asyncio.get_event_loop()
+        if adapter.vector_store._use_pgvector:
+            pg = adapter.vector_store._get_pg()
+            all_docs = loop.run_until_complete(pg.get_all())
+        else:
+            collection = adapter.vector_store._get_collection()
+            if collection is None:
+                return
+            all_docs = collection.get(include=["documents", "metadatas"])
+        if all_docs["documents"]:
+            adapter.bm25_index.clear()
+            adapter.bm25_index.build(
+                documents=all_docs["documents"],
+                ids=all_docs["ids"],
+                metadatas=all_docs["metadatas"],
+            )
+            logger.info("bm25_index_built_lazy", count=len(all_docs["documents"]))
+    except Exception:
+        logger.exception("bm25_lazy_build_failed")
+
+
 class VectorStoreAdapter:
     def __init__(
         self,
@@ -213,14 +239,23 @@ class VectorStoreAdapter:
     ) -> list[dict]:
         """BM25 search returning raw dicts for merging."""
         if not self.bm25_index.exists():
-            return []
+            try:
+                _build_bm25_lazy(self)
+            except Exception:
+                logger.exception("bm25_lazy_build_failed")
+            if not self.bm25_index.exists():
+                return []
 
-        bm25_results = self.bm25_index.search(
-            query,
-            n_results=n_results,
-            grade_level=grade_level,
-            source_type=source_type,
-        )
+        try:
+            bm25_results = self.bm25_index.search(
+                query,
+                n_results=n_results,
+                grade_level=grade_level,
+                source_type=source_type,
+            )
+        except Exception:
+            logger.exception("bm25_search_failed")
+            return []
 
         retrieved = []
         for r in bm25_results:

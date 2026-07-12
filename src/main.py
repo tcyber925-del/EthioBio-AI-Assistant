@@ -138,10 +138,8 @@ async def _evaluate_trace(trace):
 def _preload_models():
     """Preload sentence-transformer models at startup."""
     from src.rag.embedder import _get_or_create_sentence_transformer
-    from src.retrieval.reranker import _get_or_create_cross_encoder
 
     _get_or_create_sentence_transformer()
-    _get_or_create_cross_encoder()
     logger.info("embedding_models_preloaded")
 
 
