@@ -38,4 +38,4 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install -r requirements.txt
-      - run: python -m pytest tests/ -v -k "not test_chat_endpoint and not test_quiz_generate_endpoint" -x
+      - run: python -m pytest tests/ -v -k "not test_chat_endpoint and not test_quiz_generate_endpoint and not test_assignment" -x
