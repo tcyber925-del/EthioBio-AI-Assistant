@@ -86,7 +86,7 @@ export default function LoginPage() {
         body: JSON.stringify({ telegram_id: Number(telegramId), otp: otpCode }),
       })
       setToken(data.access_token)
-      router.push('/')
+      router.push('/v2/overview')
     } catch (err: any) {
       setError(err.message)
     } finally {
