@@ -156,7 +156,11 @@ class SearchFanoutNode:
         factory = self.db_session_factory()
         async with factory as session:
             snapshot_service = SnapshotService()
-            snapshot = await snapshot_service.get_snapshot(session, UUID(user_id))
+            try:
+                user_uuid = UUID(user_id)
+            except ValueError:
+                return []
+            snapshot = await snapshot_service.get_snapshot(session, user_uuid)
 
         if not snapshot:
             return []
@@ -237,7 +241,11 @@ class SearchFanoutNode:
         factory = self.db_session_factory()
         async with factory as session:
             service = RecommendationService()
-            recommendations = await service.get_recommendations(session, UUID(user_id))
+            try:
+                user_uuid = UUID(user_id)
+            except ValueError:
+                return []
+            recommendations = await service.get_recommendations(session, user_uuid)
 
         if not recommendations:
             return []
