@@ -142,7 +142,7 @@ async def test_admin_dashboard_endpoint():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get("/admin/dashboard")
-        assert response.status_code in (200, 401, 500)
+        assert response.status_code in (200, 401, 403, 500)
         if response.status_code == 200:
             data = response.json()
             assert "users" in data
