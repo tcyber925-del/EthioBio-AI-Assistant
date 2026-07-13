@@ -8,7 +8,6 @@ import asyncio
 import logging
 from collections.abc import Callable
 from typing import Optional
-from uuid import UUID
 
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -156,11 +155,7 @@ class SearchFanoutNode:
         factory = self.db_session_factory()
         async with factory as session:
             snapshot_service = SnapshotService()
-            try:
-                user_uuid = UUID(user_id)
-            except ValueError:
-                return []
-            snapshot = await snapshot_service.get_snapshot(session, user_uuid)
+            snapshot = await snapshot_service.get_snapshot(session, user_id)
 
         if not snapshot:
             return []
@@ -241,11 +236,7 @@ class SearchFanoutNode:
         factory = self.db_session_factory()
         async with factory as session:
             service = RecommendationService()
-            try:
-                user_uuid = UUID(user_id)
-            except ValueError:
-                return []
-            recommendations = await service.get_recommendations(session, user_uuid)
+            recommendations = await service.get_recommendations(session, user_id)
 
         if not recommendations:
             return []

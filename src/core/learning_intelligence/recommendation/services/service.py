@@ -40,7 +40,7 @@ class RecommendationService:
     async def get_recommendations(
         self,
         session: AsyncSession,
-        user_id: UUID,
+        user_id: str | UUID,
     ) -> list[LearningRecommendation]:
         user_id_str = str(user_id)
         cached = await self._cache.get(user_id_str)
