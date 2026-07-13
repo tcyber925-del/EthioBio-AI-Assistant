@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { getToken } from '@/lib/auth'
 
 export default function MarketingLayout({
@@ -13,7 +13,6 @@ export default function MarketingLayout({
 }) {
   const t = useTranslations('landing')
   const router = useRouter()
-  const pathname = usePathname()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [locale, setLocale] = useState('en')
 

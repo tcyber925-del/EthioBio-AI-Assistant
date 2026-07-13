@@ -8,8 +8,6 @@ import { setToken } from '@/lib/auth'
 import { setCookie } from '@/lib/cookies'
 import { fetchWithTimeout } from '@/lib/fetch'
 
-export const dynamic = 'force-dynamic'
-
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
@@ -62,7 +60,7 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
     try {
-      await fetchWithTimeout('/api/auth/request-otp', {
+      await fetchWithTimeout('/auth/request-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ telegram_id: Number(telegramId) }),
@@ -80,7 +78,7 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchWithTimeout('/api/auth/verify-otp', {
+      const data = await fetchWithTimeout('/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ telegram_id: Number(telegramId), otp: otpCode }),

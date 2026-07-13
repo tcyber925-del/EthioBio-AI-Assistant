@@ -153,7 +153,7 @@ export default function LandingPage() {
             transition={{ duration: 0.5 }}
             className="verge-label inline-block text-[#3cffd0] bg-[#3cffd0]/10 border border-[#3cffd0]/30 px-3 py-1 rounded-sm mb-6"
           >
-            {t('kicker')}
+            {t('hero_kicker')}
           </motion.span>
           
           <motion.h1 
@@ -162,7 +162,7 @@ export default function LandingPage() {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="verge-display text-4xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-tighter leading-none mb-6 max-w-5xl mx-auto"
           >
-            {t('title')}
+            {t('hero_title')}
           </motion.h1>
 
           <motion.p 
@@ -171,7 +171,7 @@ export default function LandingPage() {
             transition={{ duration: 0.8, delay: 0.3 }}
             className="text-gray-400 text-lg sm:text-xl max-w-3xl mx-auto mb-10 leading-relaxed font-sans"
           >
-            {t('subtitle')}
+            {t('hero_subtitle')}
           </motion.p>
 
           <motion.div 
@@ -215,19 +215,19 @@ export default function LandingPage() {
             onClick={() => setActiveTab('student')}
             className={`flex-1 min-w-[150px] py-3 text-xs font-mono font-bold uppercase tracking-wider transition-all border ${activeTab === 'student' ? 'bg-[#5200ff] border-[#5200ff] text-white' : 'border-transparent text-gray-500 hover:text-white hover:bg-white/5'}`}
           >
-            {t('tab_student')}
+            {t('console_student')}
           </button>
           <button 
             onClick={() => setActiveTab('teacher')}
             className={`flex-1 min-w-[150px] py-3 text-xs font-mono font-bold uppercase tracking-wider transition-all border ${activeTab === 'teacher' ? 'bg-[#5200ff] border-[#5200ff] text-white' : 'border-transparent text-gray-500 hover:text-white hover:bg-white/5'}`}
           >
-            {t('tab_teacher')}
+            {t('console_teacher')}
           </button>
           <button 
             onClick={() => setActiveTab('quiz')}
             className={`flex-1 min-w-[150px] py-3 text-xs font-mono font-bold uppercase tracking-wider transition-all border ${activeTab === 'quiz' ? 'bg-[#5200ff] border-[#5200ff] text-white' : 'border-transparent text-gray-500 hover:text-white hover:bg-white/5'}`}
           >
-            {t('tab_quiz')}
+            {t('console_quiz')}
           </button>
         </div>
 
@@ -503,7 +503,7 @@ export default function LandingPage() {
       <section id="features" className="py-20 border-b border-[#2d2d2d] bg-[#181818]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="verge-display text-3xl sm:text-4xl text-white mb-4">{t('features_title')}</h2>
+            <h2 className="verge-display text-3xl sm:text-4xl text-white mb-4">{t('section_features')}</h2>
             <p className="text-gray-400 max-w-xl mx-auto font-sans">{t('features_subtitle')}</p>
           </div>
 
@@ -511,8 +511,8 @@ export default function LandingPage() {
             <div className="border border-[#2d2d2d] bg-[#131313] p-6 flex flex-col justify-between hover:border-[#3cffd0] transition-colors">
               <div>
                 <BookOpen className="w-8 h-8 text-[#3cffd0] mb-4" />
-                <h3 className="verge-label text-base text-white mb-2">{t('feat_rag_title')}</h3>
-                <p className="text-gray-400 text-sm leading-relaxed">{t('feat_rag_desc')}</p>
+                <h3 className="verge-label text-base text-white mb-2">{t('feature_textbook')}</h3>
+                <p className="text-gray-400 text-sm leading-relaxed">{t('feature_textbook_desc')}</p>
               </div>
               <span className="text-[10px] text-gray-600 font-mono mt-6">Citations verified</span>
             </div>
@@ -520,8 +520,8 @@ export default function LandingPage() {
             <div className="border border-[#2d2d2d] bg-[#131313] p-6 flex flex-col justify-between hover:border-[#3cffd0] transition-colors">
               <div>
                 <Brain className="w-8 h-8 text-[#3cffd0] mb-4" />
-                <h3 className="verge-label text-base text-white mb-2">{t('feat_adaptive_title')}</h3>
-                <p className="text-gray-400 text-sm leading-relaxed">{t('feat_adaptive_desc')}</p>
+                <h3 className="verge-label text-base text-white mb-2">{t('feature_gamification')}</h3>
+                <p className="text-gray-400 text-sm leading-relaxed">{t('feature_gamification_desc')}</p>
               </div>
               <span className="text-[10px] text-gray-600 font-mono mt-6">Bayesian IRT estimation</span>
             </div>
@@ -529,8 +529,8 @@ export default function LandingPage() {
             <div className="border border-[#2d2d2d] bg-[#131313] p-6 flex flex-col justify-between hover:border-[#3cffd0] transition-colors">
               <div>
                 <Zap className="w-8 h-8 text-[#3cffd0] mb-4" />
-                <h3 className="verge-label text-base text-white mb-2">{t('feat_recovery_title')}</h3>
-                <p className="text-gray-400 text-sm leading-relaxed">{t('feat_recovery_desc')}</p>
+                <h3 className="verge-label text-base text-white mb-2">{t('feature_recovery')}</h3>
+                <p className="text-gray-400 text-sm leading-relaxed">{t('feature_recovery_desc')}</p>
               </div>
               <span className="text-[10px] text-gray-600 font-mono mt-6">Automatic recovery</span>
             </div>
