@@ -106,7 +106,6 @@ class UnitPlanGenerateRequest(SchemaModel):
     duration_minutes: int = Field(40, ge=20, le=120)
     language: LanguageEnum = LanguageEnum.EN
     teacher_id: Optional[UUID] = None
-    classroom_id: Optional[UUID] = None
     model: Optional[str] = None
     generate_exit_ticket: bool = False
     generate_differentiation: bool = False
