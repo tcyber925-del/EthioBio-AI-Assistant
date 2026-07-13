@@ -14,7 +14,7 @@ and aggregated health metrics for the observability endpoint.
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Callable, Optional
 
 import structlog
 
@@ -126,7 +126,7 @@ class PipelineMonitor:
     def __init__(self):
         self.traces: dict[str, PipelineTrace] = {}
         self._metrics_interval = METRICS_WINDOW_SECONDS
-        self._on_complete: Optional[callable] = None
+        self._on_complete: Optional[Callable[[Any], None]] = None
 
     def start_trace(self, metadata: Optional[dict] = None) -> PipelineTrace:
         """Start a new trace."""
@@ -139,7 +139,7 @@ class PipelineMonitor:
         self.traces[trace_id] = trace
         return trace
 
-    def set_on_complete(self, callback: callable) -> None:
+    def set_on_complete(self, callback: Callable[[Any], None]) -> None:
         """Set a callback invoked when a trace completes.
 
         Callback signature: callback(trace: PipelineTrace) -> None

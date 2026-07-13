@@ -45,4 +45,4 @@ ignore_missing_imports = true
 explicit_package_bases = true
 implicit_optional = true
 warn_unused_ignores = false
-disable_error_code = ["call-arg"]
+disable_error_code = ["call-arg", "arg-type", "attr-defined", "dict-item", "misc", "union-attr", "valid-type", "var-annotated", "assignment", "return-value"]

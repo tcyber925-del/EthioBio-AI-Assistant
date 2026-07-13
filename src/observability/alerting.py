@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import structlog
 
 from src.config import settings
@@ -10,7 +12,7 @@ class AlertThreshold:
         self,
         name: str,
         severity: str,
-        evaluate: callable,
+        evaluate: Callable[[], bool],
         message: str,
         cooldown_seconds: float = 300.0,
     ):

@@ -6,7 +6,7 @@ Supports both the legacy pipeline and the new Agentic RAG pipeline.
 """
 
 from collections.abc import Callable
-from typing import Optional
+from typing import Any, Optional
 
 from langgraph.graph import END, StateGraph
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -105,9 +105,9 @@ def build_agentic_graph(
 
 async def run_graph(
     user_message: str,
-    user_id=None,
-    grade_level: int = None,
-    topic: str = None,
+    user_id: Optional[Any] = None,
+    grade_level: Optional[int] = None,
+    topic: Optional[str] = None,
     language: str = "en",
     preferred_model: str | None = None,
     socratic_mode: bool = False,

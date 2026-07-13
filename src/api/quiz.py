@@ -218,7 +218,7 @@ async def submit_quiz(request: QuizSubmitRequest, session: AsyncSession = Depend
         for answer in request.answers:
             q_id = answer.get("question_id")
             user_answer = answer.get("answer", "")
-            question = question_map.get(q_id)
+            question = question_map.get(q_id) if q_id is not None else None
             if question:
                 is_correct = user_answer.strip().lower() == question.correct_answer.strip().lower()
                 if is_correct:
