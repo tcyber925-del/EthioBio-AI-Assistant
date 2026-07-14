@@ -7,11 +7,11 @@ import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from jose import JWTError, jwt
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import settings
-from src.database.models import User, UserRole
+from src.database.models import KnowledgeObject, LessonPlan, QuizAttempt, User, UserRole
 from src.database.session import get_session
 from src.redis_client import get_redis
 
@@ -270,3 +270,42 @@ async def verify_otp(
         user_id=str(user.id),
         role=user.role.value,
     )
+
+
+class PublicStatsResponse(BaseModel):
+    active_students: int
+    quizzes_completed: int
+    lesson_plans_generated: int
+    knowledge_assets: int
+    system_status: str
+
+
+@router.get("/public-stats")
+async def public_stats(
+    session: AsyncSession = Depends(get_session),
+    redis_conn=Depends(get_redis),
+):
+    cached = await redis_conn.get("public_stats")
+    if cached:
+        from json import loads
+        return loads(cached)
+
+    from json import dumps
+
+    student_count = await session.scalar(
+        select(func.count(User.id)).where(User.role == UserRole.student, User.is_active.is_(True))
+    )
+    quiz_count = await session.scalar(select(func.count(QuizAttempt.id)))
+    lesson_count = await session.scalar(select(func.count(LessonPlan.id)))
+    asset_count = await session.scalar(select(func.count(KnowledgeObject.id)))
+
+    result = PublicStatsResponse(
+        active_students=student_count or 0,
+        quizzes_completed=quiz_count or 0,
+        lesson_plans_generated=lesson_count or 0,
+        knowledge_assets=asset_count or 0,
+        system_status="healthy",
+    )
+
+    await redis_conn.setex("public_stats", 600, dumps(result.model_dump()))
+    return result
