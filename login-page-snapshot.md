@@ -1,0 +1,74 @@
+- generic [active] [ref=f5e1]:
+  - alert [ref=f5e2]
+  - generic [ref=f5e3]:
+    - banner [ref=f5e4]:
+      - generic [ref=f5e5]:
+        - generic [ref=f5e6]:
+          - link "EthioBio AI" [ref=f5e7] [cursor=pointer]:
+            - /url: /
+          - navigation [ref=f5e9]:
+            - link "Features" [ref=f5e10] [cursor=pointer]:
+              - /url: "#features"
+            - link "Interactive Demo" [ref=f5e11] [cursor=pointer]:
+              - /url: "#console"
+            - link "Numbers" [ref=f5e12] [cursor=pointer]:
+              - /url: "#stats"
+        - generic [ref=f5e13]:
+          - generic [ref=f5e14]:
+            - button "EN" [ref=f5e15] [cursor=pointer]
+            - button "አማ" [ref=f5e16] [cursor=pointer]
+          - link "Launch App" [ref=f5e17] [cursor=pointer]:
+            - /url: /login
+    - main [ref=f5e18]:
+      - generic [ref=f5e20]:
+        - generic [ref=f5e26]:
+          - heading "EthioBio" [level=1] [ref=f5e27]
+          - paragraph [ref=f5e28]: Teacher Dashboard
+        - generic [ref=f5e29]:
+          - heading "Sign In" [level=2] [ref=f5e30]
+          - generic [ref=f5e31]:
+            - generic [ref=f5e32]: Email
+            - textbox "teacher@school.edu" [ref=f5e33]
+          - generic [ref=f5e34]:
+            - generic [ref=f5e35]: Password
+            - generic [ref=f5e36]:
+              - textbox "••••••••" [ref=f5e37]
+              - button [ref=f5e38] [cursor=pointer]
+          - button "Sign In" [ref=f5e42] [cursor=pointer]
+          - paragraph [ref=f5e43]:
+            - text: New teacher?
+            - button "Create Account" [ref=f5e44] [cursor=pointer]
+          - button "Login with Telegram" [ref=f5e46] [cursor=pointer]
+    - contentinfo [ref=f5e47]:
+      - generic [ref=f5e48]:
+        - generic [ref=f5e49]:
+          - generic [ref=f5e50]:
+            - text: EthioBio AI
+            - paragraph [ref=f5e51]: Empowering secondary biology students and teachers across Ethiopia with textbook-grounded AI intelligence.
+          - generic [ref=f5e52]:
+            - heading "Resources" [level=4] [ref=f5e53]
+            - list [ref=f5e54]:
+              - listitem [ref=f5e55]:
+                - link "Core Modules" [ref=f5e56] [cursor=pointer]:
+                  - /url: "#features"
+              - listitem [ref=f5e57]:
+                - link "Product Console" [ref=f5e58] [cursor=pointer]:
+                  - /url: "#console"
+              - listitem [ref=f5e59]:
+                - link "Telegram Bot" [ref=f5e60] [cursor=pointer]:
+                  - /url: https://t.me/ethiobio_bot
+          - generic [ref=f5e61]:
+            - heading "Portal" [level=4] [ref=f5e62]
+            - list [ref=f5e63]:
+              - listitem [ref=f5e64]:
+                - link "Login / Verify OTP" [ref=f5e65] [cursor=pointer]:
+                  - /url: /login
+              - listitem [ref=f5e66]:
+                - link "Teacher Workspace" [ref=f5e67] [cursor=pointer]:
+                  - /url: /v2/overview
+              - listitem [ref=f5e68]:
+                - link "Student Center" [ref=f5e69] [cursor=pointer]:
+                  - /url: /student
+        - generic [ref=f5e70]:
+          - generic [ref=f5e71]: © 2026 EthioBio AI Assistant. Inspired by brutalist digital design.
+          - generic [ref=f5e72]: "● System status: healthy"
