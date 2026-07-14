@@ -27,7 +27,7 @@ class SnapshotBuilder:
         ("gamification", load_gamification),
     ]
 
-    async def build(self, session: AsyncSession, user_id: UUID) -> LearnerSnapshot:
+    async def build(self, session: AsyncSession, user_id: str | UUID) -> LearnerSnapshot:
         results = await asyncio.gather(
             *(loader(session, user_id) for _, loader in self.LOADERS),
             return_exceptions=True,

@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timezone
+from typing import Optional
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
@@ -284,7 +285,7 @@ async def complete_recovery_task(
 @router.post("/auto-generate/{user_id}", response_model=GenerateRecoveryPlanResponse)
 async def auto_generate_recovery_plan(
     user_id,
-    request: GenerateRecoveryPlanRequest = None,
+    request: Optional[GenerateRecoveryPlanRequest] = None,
     session: AsyncSession = Depends(get_session),
 ):
     if request is None:

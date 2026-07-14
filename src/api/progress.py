@@ -96,7 +96,7 @@ async def get_student_progress(
         )
         record_list = records.scalars().all()
 
-        result = agent.analyze_progress(record_list, profile)
+        result = await agent.analyze_progress(record_list, profile)
         return ProgressResponse(**result)
     except HTTPException:
         raise

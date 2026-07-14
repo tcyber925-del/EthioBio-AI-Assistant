@@ -31,7 +31,7 @@ class IconLibrary:
             data = json.load(f)
         raw = data.get("icons", [])
         self._catalog = [IconEntry(**item) for item in raw]
-        cats = {}
+        cats: dict[str, int] = {}
         for icon in self._catalog:
             cats[icon.category] = cats.get(icon.category, 0) + 1
         self._categories = [

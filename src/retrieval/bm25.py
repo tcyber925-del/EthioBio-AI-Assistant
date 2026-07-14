@@ -100,7 +100,7 @@ class BM25Index:
                 }
             )
 
-        candidates.sort(key=lambda x: x["score"], reverse=True)
+        candidates.sort(key=lambda x: float(x["score"]), reverse=True)
         return candidates[:n_results]
 
     def get_documents(self, indices: list[int]) -> list[str]:

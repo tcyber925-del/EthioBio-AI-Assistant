@@ -1,3 +1,5 @@
+from typing import Any
+
 import structlog
 
 logger = structlog.get_logger()
@@ -12,11 +14,11 @@ def log_event(
     trace_id: str | None = None,
     span_id: str | None = None,
     user_id: str | None = None,
-    details: dict | None = None,
+    details: dict[str, Any] | None = None,
     level: str = "info",
-) -> None:
+) -> dict:
     """Emit a structured log event with consistent schema."""
-    payload = {
+    payload: dict = {
         "domain": domain,
         "module": module,
         "outcome": outcome,
