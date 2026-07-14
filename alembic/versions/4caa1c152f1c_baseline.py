@@ -1,15 +1,15 @@
 """baseline
 
 Revision ID: 4caa1c152f1c
-Revises: 
+Revises:
 Create Date: 2026-07-11 18:59:47.941147
 
 """
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = '4caa1c152f1c'

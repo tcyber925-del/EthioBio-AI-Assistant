@@ -53,7 +53,7 @@ def check_safety_node_robustness() -> dict[str, Any]:
 def check_claim_verification() -> dict[str, Any]:
     """Verify claim verification is wired in the Agentic RAG pipeline."""
     try:
-        from src.graph.nodes.claim_verifier import ClaimVerifierNode, route_after_verification
+        from src.graph.nodes.claim_verifier import route_after_verification
 
         has_verifier = callable(route_after_verification)
         return {

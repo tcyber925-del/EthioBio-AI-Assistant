@@ -2,8 +2,9 @@
 import asyncio
 import json
 import time
-import httpx
 from statistics import mean, median, stdev
+
+import httpx
 
 API_URL = "http://localhost:8000"
 
@@ -85,7 +86,7 @@ async def benchmark():
 
     latencies = [r["latency"] for r in results if r["status"] == 200]
     if latencies:
-        print(f"\nLatency (successful only):")
+        print("\nLatency (successful only):")
         print(f"  Mean:   {mean(latencies):.1f}s")
         print(f"  Median: {median(latencies):.1f}s")
         if len(latencies) > 1:
@@ -94,7 +95,7 @@ async def benchmark():
         print(f"  Max:    {max(latencies):.1f}s")
 
     valid = [r for r in results if r["svg_valid"]]
-    print(f"\nSVG Quality:")
+    print("\nSVG Quality:")
     print(f"  Valid:        {len(valid)}/{len(results)}")
     print(f"  Avg labels:   {mean([r['label_count'] for r in results]):.1f}")
     print(f"  Avg size:     {mean([r['svg_size_kb'] for r in results]):.1f}KB")

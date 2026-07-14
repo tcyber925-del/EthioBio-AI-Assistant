@@ -175,11 +175,10 @@ def _extract_with_easyocr(filepath: str, dpi: int = 100) -> list[dict]:
     EasyOCR 1.7.2 has no Amharic recognition model (character file exists
     but no trained .pth). English-only extraction is high quality.
     """
+    import easyocr
+    import fitz
     import numpy as np
     from PIL import Image
-    import fitz
-
-    import easyocr
     reader = easyocr.Reader(["en"], gpu=False, verbose=False)
 
     doc = fitz.open(filepath)
@@ -206,7 +205,7 @@ def _extract_with_easyocr(filepath: str, dpi: int = 100) -> list[dict]:
 
 def _preprocess_for_tesseract(image):
     """Preprocess a PIL image for better Tesseract accuracy."""
-    from PIL import Image, ImageEnhance, ImageFilter
+    from PIL import ImageEnhance, ImageFilter
 
     img = image.convert("L")
     img = ImageEnhance.Contrast(img).enhance(1.5)
@@ -224,7 +223,6 @@ def _extract_with_tesseract(filepath: str) -> list[dict]:
     """
     import pypdfium2 as pdfium
     import pytesseract
-    from PIL import Image
 
     tess_config = "--oem 3 --psm 3 -l eng+script/Ethiopic"
     doc = pdfium.PdfDocument(filepath)

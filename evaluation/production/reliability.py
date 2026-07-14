@@ -55,7 +55,7 @@ def check_graph_error_handling() -> dict[str, Any]:
     found_try = 0
     total = 0
     for nf in node_files:
-        path = f"src/graph/nodes/{os.path.basename(nf)}"
+        f"src/graph/nodes/{os.path.basename(nf)}"
         try:
             with open(nf) as f:
                 content = f.read()
