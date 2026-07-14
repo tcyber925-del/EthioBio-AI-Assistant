@@ -7,6 +7,7 @@ const nextConfig = {
     const api = process.env.NEXT_PUBLIC_API_URL || 'http://app:8000'
     return [
       { source: '/api/:path*', destination: `${api}/:path*` },
+      { source: '/models', destination: `${api}/models` },
       { source: '/models/:path*', destination: `${api}/models/:path*` },
       { source: '/quiz/:path*', destination: `${api}/quiz/:path*` },
       { source: '/lesson-plan/:path*', destination: `${api}/lesson-plan/:path*` },
