@@ -2,12 +2,14 @@
 Standalone Grade 10 OCR script.
 No app module imports — pure OCR + JSON output.
 """
-import json, os, sys, time
+import json
+import os
+import time
 
 os.environ["PYTHONUNBUFFERED"] = "1"
 
-from rapidocr import RapidOCR
 import pypdfium2 as pdfium
+from rapidocr import RapidOCR
 
 PDF_PATH = "/app/data/textbooks/Grade10/grade 10-biology_kehulumcom_d02c.pdf"
 OUT_PATH = "/tmp/grade10_ocr.json"

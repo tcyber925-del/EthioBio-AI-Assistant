@@ -37,7 +37,7 @@ def override_db():
         mock.refresh.side_effect = mock_refresh
         yield mock
 
-    def mock_get_current_user():
+    async def mock_get_current_user():
         return User(
             id=uuid4(),
             email="test@example.com",

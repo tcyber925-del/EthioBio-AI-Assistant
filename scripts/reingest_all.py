@@ -2,13 +2,16 @@
 Re-ingest all grades using local sentence-transformers (384-dim, batched).
 Grade 10 uses OCR JSON, others use PyMuPDF extraction.
 """
-import asyncio, json, os, sys, time
+import asyncio
+import json
+import os
+import sys
+import time
 
 sys.path.insert(0, "/app")
 os.environ["PYTHONUNBUFFERED"] = "1"
 
 import scripts.ingest_curriculum as ic
-from src.config import settings
 
 OCR_JSON = "/tmp/grade10_ocr.json"
 GRADE10_FILE = "grade 10-biology_kehulumcom_d02c.pdf"
@@ -39,7 +42,7 @@ async def main():
         print(f"Grade {g}: {filename} [{source_type}]")
         pages = ic._extract_with_pymupdf(filepath)
         if not pages:
-            print(f"  No pages extracted!")
+            print("  No pages extracted!")
             continue
 
         all_chunks = []

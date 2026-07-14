@@ -1,8 +1,11 @@
-import sys, os, time, concurrent.futures
+import concurrent.futures
+import os
+import time
+
 os.environ["PYTHONUNBUFFERED"] = "1"
 
-from rapidocr import RapidOCR
 import pypdfium2 as pdfium
+from rapidocr import RapidOCR
 
 FILEPATH = "/app/data/textbooks/Grade10/grade 10-biology_kehulumcom_d02c.pdf"
 _PAGE_TIMEOUT = 180

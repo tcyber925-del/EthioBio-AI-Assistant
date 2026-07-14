@@ -343,7 +343,7 @@ def run_production_checks(args: argparse.Namespace) -> int:
     )
 
     results = run_all_production_checks()
-    scores = get_production_scores(results)
+    get_production_scores(results)
     threshold_failures = check_production_thresholds(results, PRODUCTION_THRESHOLDS)
 
     for cat, info in sorted(results.items()):

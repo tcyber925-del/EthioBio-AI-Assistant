@@ -1,9 +1,12 @@
-import sys, os, time
+import os
+import sys
+import time
+
 sys.path.insert(0, "/app")
 os.environ["PYTHONUNBUFFERED"] = "1"
 
-from rapidocr import RapidOCR
 import pypdfium2 as pdfium
+from rapidocr import RapidOCR
 
 ocr = RapidOCR()
 doc = pdfium.PdfDocument("/app/data/textbooks/Grade10/grade 10-biology_kehulumcom_d02c.pdf")

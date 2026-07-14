@@ -52,7 +52,7 @@ const NAV_STRUCTURE: NavSection[] = [
   {
     section: 'Main',
     items: [
-      { label: 'Dashboard', href: '/', icon: Home, roles: ['admin'] },
+      { label: 'Dashboard', href: '/dashboard', icon: Home, roles: ['admin'] },
       { label: 'Student Dashboard', href: '/student', icon: Home, roles: ['student'] },
       { label: 'Parent', href: '/parent', icon: User, roles: ['parent', 'admin'] },
     ],
