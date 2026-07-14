@@ -2,13 +2,18 @@
 Embed Grade 10 OCR output: load JSON → chunk → embed → store → BM25 rebuild.
 Uses Ollama batch API (/api/embed) for fast 768-dim embeddings.
 """
-import asyncio, httpx, json, os, sys, time
+import asyncio
+import json
+import os
+import sys
+import time
+
+import httpx
 
 sys.path.insert(0, "/app")
 os.environ["PYTHONUNBUFFERED"] = "1"
 
 import scripts.ingest_curriculum as ic
-from src.config import settings
 
 OCR_JSON = "/tmp/grade10_ocr.json"
 GRADE = 10
@@ -53,7 +58,7 @@ async def main():
     # Delete and recreate collection at 768-dim
     print("Recreating ChromaDB collection at 768-dim...")
     try:
-        coll = store._get_collection()
+        store._get_collection()
         await store.delete_collection()
         print("  Old collection deleted.")
     except Exception as e:

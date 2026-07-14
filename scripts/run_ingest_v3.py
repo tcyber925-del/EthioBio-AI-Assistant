@@ -1,10 +1,16 @@
-import sys, os, asyncio, time
+import asyncio
+import os
+import sys
+import time
+
 sys.path.insert(0, "/app")
 os.environ["PYTHONUNBUFFERED"] = "1"
 
-from rapidocr import RapidOCR
 import pypdfium2 as pdfium
+from rapidocr import RapidOCR
+
 import scripts.ingest_curriculum as ic
+
 
 def patched_ocr(filepath, page_numbers=None):
     ocr = RapidOCR()
@@ -36,6 +42,7 @@ def patched_ocr(filepath, page_numbers=None):
     return pages
 
 from src.llm.ollama_client import OllamaClient
+
 _original_gen_emb = OllamaClient.generate_embedding
 
 async def patched_gen_emb(self, text, model=None):

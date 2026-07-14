@@ -7,12 +7,9 @@ version automatically — callers never think about versioning.
 
 import enum
 from datetime import datetime
-from uuid import UUID, uuid4
-
-from pydantic import Field
+from uuid import UUID
 
 from src.schemas.base import SchemaModel
-
 
 # ─── Enums ───────────────────────────────────────────────────────────────
 
