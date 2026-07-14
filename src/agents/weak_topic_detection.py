@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Any, cast
+from typing import Any, Optional, cast
 
 import structlog
 from sqlalchemy import select
@@ -53,7 +53,7 @@ async def analyze_quiz_attempt(attempt: QuizAttempt, session: AsyncSession) -> N
         q_id = answer.get("question_id") if isinstance(answer, dict) else answer.question_id
         user_answer = answer.get("answer", "") if isinstance(answer, dict) else answer.answer
 
-        question = question_map.get(q_id)
+        question = question_map.get(q_id) if q_id is not None else None
         if not question:
             continue
         topic = question.topic
@@ -400,8 +400,10 @@ async def _generate_improvement_notification(
     message: str,
     old_value: float | None = None,
     new_value: float | None = None,
-    session: AsyncSession = None,
+    session: Optional[AsyncSession] = None,
 ) -> None:
+    if session is None:
+        return
     notification = RecoveryNotification(
         user_id=user_id,
         topic=topic,

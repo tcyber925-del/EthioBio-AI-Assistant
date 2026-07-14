@@ -23,7 +23,7 @@ class ResearchAgent(BaseAgent):
             try:
                 results = await self.adapter.search(query, k=3)
                 if results:
-                    retrieved_context = "\n".join([r.text for r in results])
+                    retrieved_context = "\n".join([r.content for r in results])
             except Exception as e:
                 logger.warning("research_agent_retrieval_failed", error=str(e))
 

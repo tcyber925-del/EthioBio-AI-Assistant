@@ -28,7 +28,7 @@ class SnapshotService:
     async def get_snapshot(
         self,
         session: AsyncSession,
-        user_id: UUID,
+        user_id: str | UUID,
     ) -> LearnerSnapshot:
         user_id_str = str(user_id)
         cached = await self._cache.get(user_id_str)

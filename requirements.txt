@@ -48,5 +48,6 @@ Pillow>=10.0.0
 bcrypt>=4.0.0
 python-jose[cryptography]>=3.3.0
 cairosvg>=2.7.0
+aiosqlite>=0.20.0
 defusedxml>=0.7.1
 opencv-python-headless>=4.9.0.80
