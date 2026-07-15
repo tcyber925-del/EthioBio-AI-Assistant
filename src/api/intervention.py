@@ -75,17 +75,6 @@ async def update_intervention(
     return _to_response(record)
 
 
-@router.get("/{intervention_id}", response_model=InterventionResponse)
-async def get_intervention(
-    intervention_id: str,
-    session: AsyncSession = Depends(get_session),
-):
-    record = await service.get(intervention_id, session)
-    if not record:
-        raise HTTPException(status_code=404, detail="Intervention not found")
-    return _to_response(record)
-
-
 @router.get("", response_model=list[InterventionResponse])
 async def list_interventions(
     user_id: str | None = Query(None),
@@ -405,3 +394,14 @@ async def get_analytics_dashboard(
         overall_confidence=overall_confidence,
         total_kb_entries=total_kb_entries,
     )
+
+
+@router.get("/{intervention_id}", response_model=InterventionResponse)
+async def get_intervention(
+    intervention_id: str,
+    session: AsyncSession = Depends(get_session),
+):
+    record = await service.get(intervention_id, session)
+    if not record:
+        raise HTTPException(status_code=404, detail="Intervention not found")
+    return _to_response(record)
