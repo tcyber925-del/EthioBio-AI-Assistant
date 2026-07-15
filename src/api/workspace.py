@@ -27,11 +27,6 @@ def _valid_uuid(value: str) -> bool:
         return False
 
 
-@router.get("/test/json-response")
-async def test_json_response():
-    return JSONResponse(content={"hello": "world"}, status_code=202)
-
-
 @router.post("/", response_model=Workspace, status_code=201)
 async def create_workspace(body: NewWorkspace):
     ws = await service.create(body, created_by=body.owner_id or "system")

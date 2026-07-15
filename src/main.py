@@ -31,7 +31,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 from redis.asyncio import Redis
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 from src.api import (
     activity,
@@ -306,21 +305,17 @@ app = FastAPI(
 )
 
 
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    """Add security headers to every response."""
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    if not settings.debug:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
 
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
-        response = await call_next(request)
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Referrer-Policy"] = "no-referrer"
-        if not settings.debug:
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        return response
-
-
-app.add_middleware(SecurityHeadersMiddleware)
 
 _redis = Redis.from_url(settings.redis_url)
 add_rate_limit_middleware(app, _redis)
