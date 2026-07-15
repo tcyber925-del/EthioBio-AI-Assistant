@@ -29,8 +29,8 @@ export default function StudentsPage() {
     setLoading(true)
     setError(null)
     try {
-      const d = await fetchWithAuth('/api/admin/dashboard')
-      setStudents(d.recent_users || [])
+      const d = await fetchWithAuth('/api/teacher/students')
+      setStudents(d || [])
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {

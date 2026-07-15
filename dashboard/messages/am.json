@@ -447,6 +447,7 @@
     "no_diagrams_subtitle": "ርዕስ ይምረጡ፣ ችግረት ያዘጋጁ እና ማየት የሚፈልጉትን ይግለጹ",
     "topic": "ርዕስ",
     "difficulty": "ችግረት",
+    "grade_label": "ክፍል",
     "provider": "አቅራቢ",
     "not_configured": "አልተዋቀረም"
   },

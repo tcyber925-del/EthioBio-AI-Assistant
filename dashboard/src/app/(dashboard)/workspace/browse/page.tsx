@@ -47,10 +47,10 @@ export default function BrowseAssetsPage() {
     setLoading(true)
     setError(null)
     try {
-      const assetList = await fetchWithAuth(`/api/v1/knowledge/?workspace_id=${activeWorkspace.id}`)
+      const assetList = await fetchWithAuth(`/api/v1/knowledge?workspace_id=${activeWorkspace.id}`)
       setAssets(assetList)
 
-      const collectionList = await fetchWithAuth(`/api/v1/collections/?workspace_id=${activeWorkspace.id}`)
+      const collectionList = await fetchWithAuth(`/api/v1/collections?workspace_id=${activeWorkspace.id}`)
       setCollections(collectionList)
     } catch (err: any) {
       setError(err.message || 'Failed to load assets and collections')
@@ -74,7 +74,7 @@ export default function BrowseAssetsPage() {
     setCreatingCollection(true)
     try {
       const userId = getUserId() || 'system'
-      await fetchWithAuth(`/api/v1/collections/?created_by=${userId}`, {
+      await fetchWithAuth(`/api/v1/collections?created_by=${userId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

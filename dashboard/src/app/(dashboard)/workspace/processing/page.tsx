@@ -28,7 +28,7 @@ export default function ProcessingQueuePage() {
   const fetchAssets = async () => {
     if (!activeWorkspace) return
     try {
-      const list = await fetchWithAuth(`/api/v1/knowledge/?workspace_id=${activeWorkspace.id}&limit=50`)
+      const list = await fetchWithAuth(`/api/v1/knowledge?workspace_id=${activeWorkspace.id}&limit=50`)
       setAssets(list)
       setError(null)
     } catch (err: any) {

@@ -29,12 +29,12 @@ export default function AssignmentsPage() {
     setError(null)
     try {
       const userId = getUserId()
-      const workspaces = await fetchWithAuth(`/api/v1/workspaces/?user_id=${userId}`)
+      const workspaces = await fetchWithAuth(`/api/v1/workspaces?user_id=${userId}`)
       if (workspaces.length === 0) {
         setAssignments([])
         return
       }
-      const list = await fetchWithAuth(`/api/v1/assignments/?workspace_id=${workspaces[0].id}`)
+      const list = await fetchWithAuth(`/api/v1/assignments?workspace_id=${workspaces[0].id}`)
       setAssignments(list)
     } catch (err: any) {
       setError(err.message || 'Failed to load assignments')

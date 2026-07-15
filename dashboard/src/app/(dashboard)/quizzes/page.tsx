@@ -39,7 +39,7 @@ export default function QuizzesPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchWithAuth(`/api/quiz/?teacher_id=${getUserId()}`)
+      const data = await fetchWithAuth(`/api/quiz?teacher_id=${getUserId()}`)
       setItems(data.items || [])
     } catch (err: any) {
       setError(err.message)

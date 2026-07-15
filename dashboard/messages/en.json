@@ -585,6 +585,7 @@
     "no_diagrams_subtitle": "Choose a topic, set difficulty, and describe what you want to see",
     "topic": "Topic",
     "difficulty": "Difficulty",
+    "grade_label": "Grade",
     "provider": "Provider",
     "not_configured": "not configured"
   },

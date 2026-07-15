@@ -51,7 +51,7 @@ export default function LessonsPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchWithAuth(`/api/lesson-plan/?teacher_id=${getUserId()}`)
+      const data = await fetchWithAuth(`/api/lesson-plan?teacher_id=${getUserId()}`)
       setItems(data.items || [])
     } catch (err: any) {
       setError(err.message)

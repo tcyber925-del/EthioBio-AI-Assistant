@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { Activity, ClipboardList, AlertTriangle, Loader2, Search, CheckCircle2, Clock, BookOpen, Lightbulb, ArrowRight, Target, Brain, TrendingUp, RotateCcw, Bell, PartyPopper, Sparkles, RefreshCw } from 'lucide-react'
 import { fetchWithTimeout } from '@/lib/fetch'
+import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { CardSkeleton } from '@/components/Skeleton'
 import { isAuthenticated } from '@/lib/auth'
 import { MasteryRadarChart } from '@/components/recovery/MasteryRadarChart'
@@ -227,8 +228,8 @@ export default function RecoveryPage() {
   const fetchDashboardData = async () => {
     setStudentsLoading(true)
     try {
-      const d = await fetchWithTimeout('/api/admin/dashboard')
-      setStudents(d.recent_users || [])
+      const d = await fetchWithAuth('/api/teacher/students')
+      setStudents(d || [])
     } catch (err: unknown) {
       console.error('Failed to load students for recovery:', err)
     } finally {
