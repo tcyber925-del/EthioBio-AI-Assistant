@@ -179,7 +179,7 @@ async def lifespan(app: FastAPI):
         for name in guardrail_modules:
             _health_registry.register(name)
 
-    repo = TraceRepository(async_session_factory)
+    repo = TraceRepository(async_session_factory())
 
     async def _on_trace_complete(trace):
         await _save_trace_from_pipeline(trace, repo)
