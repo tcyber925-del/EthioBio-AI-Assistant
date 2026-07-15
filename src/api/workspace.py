@@ -9,6 +9,7 @@ from src.core.workspace.models import Workspace, WorkspaceMember
 from src.database.session import async_session_factory
 
 logger = structlog.get_logger()
+logger.info("workspace_module_loaded")
 router = APIRouter(prefix="/api/v1/workspaces", tags=["Workspace"])
 
 try:
@@ -58,7 +59,7 @@ async def create_workspace(body: NewWorkspace):
     return ws
 
 
-@router.get("/{workspace_id}", response_model=Workspace | None)
+@router.get("/{workspace_id}")
 async def get_workspace(workspace_id: str):
     if not _valid_uuid(workspace_id):
         return JSONResponse(content={"detail": "Invalid UUID format"}, status_code=400)
