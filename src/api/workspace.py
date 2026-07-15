@@ -27,6 +27,11 @@ def _valid_uuid(value: str) -> bool:
         return False
 
 
+@router.get("/raise-httpexception")
+async def raise_httpexception():
+    raise HTTPException(status_code=400, detail="Test exception from workspace")
+
+
 @router.post("/", response_model=Workspace, status_code=201)
 async def create_workspace(body: NewWorkspace):
     ws = await service.create(body, created_by=body.owner_id or "system")
