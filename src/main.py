@@ -368,8 +368,6 @@ app.include_router(activity.router)
 app.include_router(knowledge.router)
 app.include_router(retrieval_router)
 
-app.include_router(workspace.router)
-
 # test router
 from fastapi import APIRouter as _APIRouter
 _test_router = _APIRouter(prefix="/api/v1/zzz-test")
