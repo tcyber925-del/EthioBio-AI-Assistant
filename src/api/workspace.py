@@ -2,7 +2,7 @@ from uuid import UUID as _UUID
 
 import structlog
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from src.core.workspace import NewWorkspace, WorkspaceRole, WorkspaceService
 from src.core.workspace.models import Workspace, WorkspaceMember
@@ -25,6 +25,21 @@ def _valid_uuid(value: str) -> bool:
         return True
     except ValueError:
         return False
+
+
+@router.get("/test-json")
+async def test_json():
+    return JSONResponse(content={"msg": "test ok"}, status_code=200)
+
+
+@router.get("/test-dict")
+async def test_dict():
+    return {"msg": "test ok"}
+
+
+@router.get("/test-exception")
+async def test_exception():
+    raise ValueError("test exception")
 
 
 @router.get("/raise-httpexception")

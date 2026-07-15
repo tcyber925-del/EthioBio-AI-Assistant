@@ -368,27 +368,6 @@ app.include_router(activity.router)
 app.include_router(knowledge.router)
 app.include_router(retrieval_router)
 
-# test router
-from fastapi import APIRouter as _APIRouter
-_test_router = _APIRouter(prefix="/api/v1/zzz-test")
-
-
-@_test_router.get("/json")
-async def _test_json():
-    return JSONResponse(content={"msg": "test ok"}, status_code=200)
-
-
-@_test_router.get("/dict")
-async def _test_dict():
-    return {"msg": "test ok"}
-
-
-@_test_router.get("/exception")
-async def _test_exception():
-    raise ValueError("test exception")
-
-
-app.include_router(_test_router)
 app.include_router(workspace.router)
 app.include_router(collection.router)
 app.include_router(assignment.router)
