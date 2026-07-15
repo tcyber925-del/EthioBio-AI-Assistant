@@ -358,6 +358,16 @@ async def test_exception():
     raise ValueError("test exception")
 
 
+@app.get("/zzz-test-inline-json")
+async def test_inline_json():
+    return JSONResponse(content={"msg": "inline test ok"}, status_code=200)
+
+
+@app.get("/zzz-test-inline-dict")
+async def test_inline_dict():
+    return {"msg": "inline test ok"}
+
+
 app.include_router(chat.router)
 app.include_router(quiz.router)
 app.include_router(diagnostic.router)

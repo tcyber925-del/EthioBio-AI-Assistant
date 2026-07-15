@@ -29,7 +29,7 @@ def _valid_uuid(value: str) -> bool:
 
 @router.get("/raise-httpexception")
 async def raise_httpexception():
-    return {"detail": "This is a dict from workspace"}
+    return {"message": "THIS_IS_THE_RAISE_HTTPEXCEPTION_ENDPOINT"}
 
 
 @router.get("/raise-plain-exception")
