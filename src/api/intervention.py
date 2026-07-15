@@ -237,6 +237,13 @@ async def get_leaderboard(
     limit: int = Query(10, ge=1, le=50),
     session: AsyncSession = Depends(get_session),
 ):
+    return await _get_leaderboard_data(limit, session)
+
+
+async def _get_leaderboard_data(
+    limit: int = 10,
+    session: AsyncSession | None = None,
+):
     result = await session.execute(
         select(
             InterventionAssignment.id,
@@ -267,6 +274,13 @@ async def get_effectiveness_trends(
     months: int = Query(6, ge=1, le=24),
     session: AsyncSession = Depends(get_session),
 ):
+    return await _get_effectiveness_trends_data(months, session)
+
+
+async def _get_effectiveness_trends_data(
+    months: int = 6,
+    session: AsyncSession | None = None,
+):
     result = await session.execute(
         select(
             func.date_trunc("month", InterventionAssignment.completed_at).label("period"),
@@ -296,6 +310,14 @@ async def compare_intervention_types(
     types: str = Query(..., description="Comma-separated intervention types"),
     topic: str | None = Query(None),
     session: AsyncSession = Depends(get_session),
+):
+    return await _compare_intervention_types_data(types, topic, session)
+
+
+async def _compare_intervention_types_data(
+    types: str,
+    topic: str | None = None,
+    session: AsyncSession | None = None,
 ):
     type_list = [t.strip() for t in types.split(",") if t.strip()]
     if not type_list:
@@ -351,7 +373,7 @@ async def get_analytics_dashboard(
         teacher_id=teacher_id_str,
     )
     summary = InterventionAnalytics(**summary_raw)
-    leaderboard = await get_leaderboard(session=session)
+    leaderboard = await _get_leaderboard_data(session=session)
     learner = InterventionLearningEngine(session)
     eff_by_type = await learner.get_effectiveness_by_type()
     if eff_by_type:
@@ -366,13 +388,13 @@ async def get_analytics_dashboard(
         )
     else:
         learning_insights = None
-    trends = await get_effectiveness_trends(session=session)
+    trends = await _get_effectiveness_trends_data(session=session)
 
     all_types = list(summary.effectiveness_by_type.keys())
     comparison = None
     if len(all_types) >= 2:
         try:
-            comparison = await compare_intervention_types(
+            comparison = await _compare_intervention_types_data(
                 types=",".join(all_types),
                 session=session,
             )
