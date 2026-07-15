@@ -7,6 +7,7 @@ from pathlib import Path
 
 import structlog
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
 structlog.configure(
     processors=[
@@ -307,7 +308,11 @@ app = FastAPI(
 
 @app.middleware("http")
 async def security_headers_middleware(request: Request, call_next):
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    except Exception:
+        logger.exception("middleware_unhandled_error")
+        return JSONResponse(status_code=500, content={"detail": "Internal server error"})
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"

@@ -1,9 +1,6 @@
 ---
-name: triage
-description: Move issues and external PRs through a state machine of triage roles — categorise, verify, grill if needed, and write agent-ready briefs.
-disable-model-invocation: true
+description: "Move issues and external PRs through a state machine of triage roles — categorise, verify, grill if needed, and write agent-ready briefs."
 ---
-
 # Triage
 
 Move issues on the project issue tracker through a small state machine of triage roles.
