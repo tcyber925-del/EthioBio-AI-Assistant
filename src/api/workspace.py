@@ -43,10 +43,10 @@ async def get_workspace(workspace_id: str):
     return ws
 
 
-@router.get("/", response_model=list[Workspace])
+@router.get("/")
 async def list_workspaces(user_id: str):
     if not _valid_uuid(user_id):
-        raise HTTPException(status_code=422, detail=[{"type": "uuid", "loc": ["query", "user_id"], "msg": "Invalid UUID format"}])
+        raise HTTPException(status_code=400, detail="Invalid UUID format")
     try:
         return await service.list_for_user(user_id)
     except Exception:

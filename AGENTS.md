@@ -80,3 +80,17 @@ This file is kept under ~120 lines. When adding a module, create a file in `.ope
 - `docker-compose.yml` — service topology (postgres+pgvector, redis, ollama with GPU)
 - `scripts/Git-Worktree/README.md` — `gt` worktree orchestrator docs
 - `~/.opencode/skills/gt/SKILL.md` — `gt` agent skill (auto-loaded for worktree tasks)
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked on GitHub Issues. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Issues use the five canonical triage labels. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout. See `docs/agents/domain.md`.
