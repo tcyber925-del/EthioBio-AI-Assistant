@@ -27,9 +27,16 @@ async def get_workspace(workspace_id: str):
 
 @router.get("/", response_model=list[Workspace])
 async def list_workspaces(user_id: str):
+    import sys
+    print(f"list_workspaces called with user_id={user_id}", flush=True)
     try:
-        return await service.list_for_user(user_id)
+        result = await service.list_for_user(user_id)
+        print(f"list_workspaces success: {result}", flush=True)
+        return result
     except Exception:
+        import traceback
+        traceback.print_exc()
+        print(f"list_workspaces failed for user_id={user_id}", flush=True)
         logger.exception("list_workspaces_failed")
         raise
 
