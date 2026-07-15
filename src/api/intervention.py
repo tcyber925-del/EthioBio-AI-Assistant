@@ -367,55 +367,59 @@ async def get_analytics_dashboard(
     teacher_id: str | None = Query(None),
     session: AsyncSession = Depends(get_session),
 ):
-    teacher_id_str: str | None = teacher_id
-    summary_raw = await service.get_analytics(
-        session=session,
-        teacher_id=teacher_id_str,
-    )
-    summary = InterventionAnalytics(**summary_raw)
-    leaderboard = await _get_leaderboard_data(session=session)
-    learner = InterventionLearningEngine(session)
-    eff_by_type = await learner.get_effectiveness_by_type()
-    if eff_by_type:
-        global_avg = round(sum(eff_by_type.values()) / len(eff_by_type), 1)
-        top_type = max(eff_by_type, key=lambda k: eff_by_type[k])  # type: ignore[arg-type]
-        boost = min((sorted(eff_by_type.values(), reverse=True)[0] - global_avg) / 100, 0.5)
-        learning_insights = LearnedEffectivenessResponse(
-            effectiveness_by_type=eff_by_type,
-            global_average=global_avg,
-            top_recommended_type=top_type,
-            learned_boost=max(0.0, boost),
+    try:
+        teacher_id_str: str | None = teacher_id
+        summary_raw = await service.get_analytics(
+            session=session,
+            teacher_id=teacher_id_str,
         )
-    else:
-        learning_insights = None
-    trends = await _get_effectiveness_trends_data(session=session)
-
-    all_types = list(summary.effectiveness_by_type.keys())
-    comparison = None
-    if len(all_types) >= 2:
-        try:
-            comparison = await _compare_intervention_types_data(
-                types=",".join(all_types),
-                session=session,
+        summary = InterventionAnalytics(**summary_raw)
+        leaderboard = await _get_leaderboard_data(session=session)
+        learner = InterventionLearningEngine(session)
+        eff_by_type = await learner.get_effectiveness_by_type()
+        if eff_by_type:
+            global_avg = round(sum(eff_by_type.values()) / len(eff_by_type), 1)
+            top_type = max(eff_by_type, key=lambda k: eff_by_type[k])  # type: ignore[arg-type]
+            boost = min((sorted(eff_by_type.values(), reverse=True)[0] - global_avg) / 100, 0.5)
+            learning_insights = LearnedEffectivenessResponse(
+                effectiveness_by_type=eff_by_type,
+                global_average=global_avg,
+                top_recommended_type=top_type,
+                learned_boost=max(0.0, boost),
             )
-        except Exception:
-            logger.warning("comparison_fetch_failed", exc_info=True)
+        else:
+            learning_insights = None
+        trends = await _get_effectiveness_trends_data(session=session)
 
-    kb_count_result = await session.execute(
-        select(func.count()).select_from(InterventionKnowledgeEntry)
-    )
-    total_kb_entries = kb_count_result.scalar() or 0
-    overall_confidence = round(min(total_kb_entries / (total_kb_entries + 20), 1.0), 3)
+        all_types = list(summary.effectiveness_by_type.keys())
+        comparison = None
+        if len(all_types) >= 2:
+            try:
+                comparison = await _compare_intervention_types_data(
+                    types=",".join(all_types),
+                    session=session,
+                )
+            except Exception:
+                logger.warning("comparison_fetch_failed", exc_info=True)
 
-    return InterventionAnalyticsDashboard(
-        summary=summary,
-        leaderboard=leaderboard,
-        learning_insights=learning_insights,
-        trends=trends,
-        comparison=comparison,
-        overall_confidence=overall_confidence,
-        total_kb_entries=total_kb_entries,
-    )
+        kb_count_result = await session.execute(
+            select(func.count()).select_from(InterventionKnowledgeEntry)
+        )
+        total_kb_entries = kb_count_result.scalar() or 0
+        overall_confidence = round(min(total_kb_entries / (total_kb_entries + 20), 1.0), 3)
+
+        return InterventionAnalyticsDashboard(
+            summary=summary,
+            leaderboard=leaderboard,
+            learning_insights=learning_insights,
+            trends=trends,
+            comparison=comparison,
+            overall_confidence=overall_confidence,
+            total_kb_entries=total_kb_entries,
+        )
+    except Exception:
+        logger.exception("dashboard_failed")
+        raise
 
 
 @router.get("/{intervention_id}", response_model=InterventionResponse)

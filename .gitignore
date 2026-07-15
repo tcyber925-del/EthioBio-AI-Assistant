@@ -72,3 +72,4 @@ scripts/scripts/
 # Agent session state (auto-generated)
 .opencode/goals/state.json
 .opencode/goals/state.json.ledger.jsonl
+.vercel
