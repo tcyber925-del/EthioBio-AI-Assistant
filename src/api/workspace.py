@@ -2,6 +2,7 @@ from uuid import UUID as _UUID
 
 import structlog
 from fastapi import APIRouter, HTTPException
+from starlette.responses import JSONResponse
 
 from src.core.workspace import NewWorkspace, WorkspaceRole, WorkspaceService
 from src.core.workspace.models import Workspace, WorkspaceMember
@@ -55,7 +56,7 @@ async def get_workspace(workspace_id: str):
 @router.get("/", response_model=list[Workspace])
 async def list_workspaces(user_id: str):
     if not _valid_uuid(user_id):
-        raise UUID_ERR
+        return JSONResponse(content={"detail": "Invalid UUID format"}, status_code=400)
     try:
         return await service.list_for_user(user_id)
     except Exception:
