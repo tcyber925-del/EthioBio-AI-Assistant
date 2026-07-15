@@ -29,7 +29,12 @@ def _valid_uuid(value: str) -> bool:
 
 @router.get("/raise-httpexception")
 async def raise_httpexception():
-    raise HTTPException(status_code=400, detail="Test exception from workspace")
+    return JSONResponse(content={"detail": "Test JSONResponse from workspace"}, status_code=400)
+
+
+@router.get("/raise-plain-exception")
+async def raise_plain_exception():
+    raise ValueError("Test plain exception from workspace")
 
 
 @router.post("/", response_model=Workspace, status_code=201)
@@ -51,7 +56,7 @@ async def get_workspace(workspace_id: str):
 @router.get("/")
 async def list_workspaces(user_id: str):
     if not _valid_uuid(user_id):
-        raise HTTPException(status_code=400, detail="Invalid UUID format")
+        return JSONResponse(content={"detail": "Invalid UUID format"}, status_code=400)
     try:
         return await service.list_for_user(user_id)
     except Exception:
