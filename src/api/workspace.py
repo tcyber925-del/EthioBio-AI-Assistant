@@ -8,7 +8,12 @@ from src.database.session import async_session_factory
 logger = structlog.get_logger()
 router = APIRouter(prefix="/api/v1/workspaces", tags=["Workspace"])
 
-service = WorkspaceService(async_session_factory())
+try:
+    _factory = async_session_factory()
+    service = WorkspaceService(_factory)
+except Exception:
+    logger.exception("workspace_service_init_failed")
+    raise
 
 
 @router.post("/", response_model=Workspace, status_code=201)
