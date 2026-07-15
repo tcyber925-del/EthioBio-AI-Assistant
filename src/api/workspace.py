@@ -27,7 +27,11 @@ async def get_workspace(workspace_id: str):
 
 @router.get("/", response_model=list[Workspace])
 async def list_workspaces(user_id: str):
-    return await service.list_for_user(user_id)
+    try:
+        return await service.list_for_user(user_id)
+    except Exception:
+        logger.exception("list_workspaces_failed")
+        raise
 
 
 @router.patch("/{workspace_id}", response_model=Workspace)
