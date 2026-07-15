@@ -1,3 +1,5 @@
+from uuid import UUID as _UUID
+
 import structlog
 from fastapi import APIRouter, HTTPException
 
@@ -16,6 +18,17 @@ except Exception:
     raise
 
 
+def _validate_uuid(value: str, field_name: str = "id") -> str:
+    try:
+        _UUID(value)
+        return value
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid {field_name}: must be a valid UUID",
+        )
+
+
 @router.post("/", response_model=Workspace, status_code=201)
 async def create_workspace(body: NewWorkspace):
     ws = await service.create(body, created_by=body.owner_id or "system")
@@ -24,6 +37,7 @@ async def create_workspace(body: NewWorkspace):
 
 @router.get("/{workspace_id}", response_model=Workspace | None)
 async def get_workspace(workspace_id: str):
+    _validate_uuid(workspace_id, "workspace_id")
     ws = await service.get(workspace_id)
     if ws is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
@@ -32,6 +46,7 @@ async def get_workspace(workspace_id: str):
 
 @router.get("/", response_model=list[Workspace])
 async def list_workspaces(user_id: str):
+    _validate_uuid(user_id, "user_id")
     try:
         return await service.list_for_user(user_id)
     except Exception:
@@ -43,6 +58,7 @@ async def list_workspaces(user_id: str):
 async def update_workspace(
     workspace_id: str, name: str | None = None, description: str | None = None
 ):
+    _validate_uuid(workspace_id, "workspace_id")
     ws = await service.update(workspace_id, name=name, description=description)
     if ws is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
@@ -51,6 +67,7 @@ async def update_workspace(
 
 @router.delete("/{workspace_id}", status_code=204)
 async def delete_workspace(workspace_id: str):
+    _validate_uuid(workspace_id, "workspace_id")
     ok = await service.soft_delete(workspace_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Workspace not found")
@@ -58,16 +75,21 @@ async def delete_workspace(workspace_id: str):
 
 @router.get("/{workspace_id}/members", response_model=list[WorkspaceMember])
 async def list_members(workspace_id: str):
+    _validate_uuid(workspace_id, "workspace_id")
     return await service.list_members(workspace_id)
 
 
 @router.post("/{workspace_id}/members/{user_id}", response_model=WorkspaceMember, status_code=201)
 async def add_member(workspace_id: str, user_id: str, role: WorkspaceRole = WorkspaceRole.member):
+    _validate_uuid(workspace_id, "workspace_id")
+    _validate_uuid(user_id, "user_id")
     return await service.add_member(workspace_id, user_id, role=role)
 
 
 @router.delete("/{workspace_id}/members/{user_id}", status_code=204)
 async def remove_member(workspace_id: str, user_id: str):
+    _validate_uuid(workspace_id, "workspace_id")
+    _validate_uuid(user_id, "user_id")
     ok = await service.remove_member(workspace_id, user_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Membership not found")
@@ -75,6 +97,8 @@ async def remove_member(workspace_id: str, user_id: str):
 
 @router.patch("/{workspace_id}/members/{user_id}/role", status_code=204)
 async def update_member_role(workspace_id: str, user_id: str, role: WorkspaceRole):
+    _validate_uuid(workspace_id, "workspace_id")
+    _validate_uuid(user_id, "user_id")
     ok = await service.update_member_role(workspace_id, user_id, role)
     if not ok:
         raise HTTPException(status_code=404, detail="Membership not found")
@@ -82,5 +106,6 @@ async def update_member_role(workspace_id: str, user_id: str, role: WorkspaceRol
 
 @router.post("/seed/{class_group_id}", response_model=Workspace, status_code=201)
 async def seed_from_class_group(class_group_id: str):
+    _validate_uuid(class_group_id, "class_group_id")
     ws = await service.seed_from_class_group(class_group_id)
     return ws
