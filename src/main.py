@@ -342,6 +342,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# TEST ENDPOINTS
+@app.get("/test-json-response")
+async def test_json_response():
+    return JSONResponse(content={"msg": "test ok"}, status_code=200)
+
+
+@app.get("/test-dict")
+async def test_dict():
+    return {"msg": "test ok"}
+
+
+@app.get("/test-exception")
+async def test_exception():
+    raise ValueError("test exception")
+
+
 app.include_router(chat.router)
 app.include_router(quiz.router)
 app.include_router(diagnostic.router)
