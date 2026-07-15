@@ -342,31 +342,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# TEST ENDPOINTS
-@app.get("/test-json-response")
-async def test_json_response():
-    return JSONResponse(content={"msg": "test ok"}, status_code=200)
-
-
-@app.get("/test-dict")
-async def test_dict():
-    return {"msg": "test ok"}
-
-
-@app.get("/test-exception")
-async def test_exception():
-    raise ValueError("test exception")
-
-
-@app.get("/zzz-test-inline-json")
-async def test_inline_json():
-    return JSONResponse(content={"msg": "inline test ok"}, status_code=200)
-
-
-@app.get("/zzz-test-inline-dict")
-async def test_inline_dict():
-    return {"msg": "inline test ok"}
-
 
 app.include_router(chat.router)
 app.include_router(quiz.router)
@@ -392,6 +367,30 @@ app.include_router(misconceptions.router)
 app.include_router(activity.router)
 app.include_router(knowledge.router)
 app.include_router(retrieval_router)
+
+app.include_router(workspace.router)
+
+# test router
+from fastapi import APIRouter as _APIRouter
+_test_router = _APIRouter(prefix="/api/v1/zzz-test")
+
+
+@_test_router.get("/json")
+async def _test_json():
+    return JSONResponse(content={"msg": "test ok"}, status_code=200)
+
+
+@_test_router.get("/dict")
+async def _test_dict():
+    return {"msg": "test ok"}
+
+
+@_test_router.get("/exception")
+async def _test_exception():
+    raise ValueError("test exception")
+
+
+app.include_router(_test_router)
 app.include_router(workspace.router)
 app.include_router(collection.router)
 app.include_router(assignment.router)
