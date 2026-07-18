@@ -36,7 +36,7 @@ async def create_workspace(body: NewWorkspace):
 @router.get("/{workspace_id}")
 async def get_workspace(workspace_id: str):
     if not _valid_uuid(workspace_id):
-        return JSONResponse(content={"detail": "Invalid UUID format"}, status_code=400)
+        raise HTTPException(status_code=400, detail="Invalid UUID format")
     ws = await service.get(workspace_id)
     if ws is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
