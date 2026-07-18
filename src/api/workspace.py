@@ -32,6 +32,11 @@ def _valid_uuid(value: str) -> bool:
         return False
 
 
+@router.get("/simple")
+def simple():
+    return "hello world"
+
+
 @router.get("/test-json")
 async def test_json():
     import os
