@@ -141,7 +141,7 @@ export default function UploadPage() {
               className="absolute inset-0 opacity-0 cursor-pointer"
               disabled={uploading || success}
             />
-            <div className={`p-4 rounded-full ${file ? 'bg-v2-accentMuted text-v2-accent' : 'bg-v2-bg text-v2-text-secondary'}`}>
+            <div className={`p-4 rounded-full ${file ? 'bg-v2-accent-muted text-v2-accent' : 'bg-v2-bg text-v2-text-secondary'}`}>
               <Upload className="w-8 h-8" />
             </div>
             {file ? (

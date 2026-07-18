@@ -58,7 +58,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
       <div className="flex flex-col gap-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-v2-surface border border-v2-border p-4 rounded-[20px]">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-v2-accentMuted text-v2-accent border border-v2-accent/30">
+            <div className="p-2.5 rounded-xl bg-v2-accent-muted text-v2-accent border border-v2-accent/30">
               <FolderKanban className="w-5 h-5" />
             </div>
             <div>

@@ -236,7 +236,7 @@ export default function AssessmentStudioPage() {
                       onClick={() => handleTypeToggle(t.id)}
                       className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
                         selectedTypes.includes(t.id)
-                          ? 'bg-v2-accentMuted text-v2-accent border-v2-accent/40'
+                          ? 'bg-v2-accent-muted text-v2-accent border-v2-accent/40'
                           : 'bg-v2-bg text-v2-text-secondary border-v2-border hover:border-v2-accent/30'
                       }`}
                     >
@@ -339,7 +339,7 @@ export default function AssessmentStudioPage() {
                     </div>
                   )}
 
-                  <div className="mt-2 bg-v2-accentMuted p-3.5 rounded-xl border border-v2-accent/20 flex flex-col gap-1.5">
+                  <div className="mt-2 bg-v2-accent-muted p-3.5 rounded-xl border border-v2-accent/20 flex flex-col gap-1.5">
                     <p className="text-xs text-v2-accent font-bold">CORRECT ANSWER</p>
                     <p className="text-sm text-v2-text-primary font-medium">{q.correct_answer}</p>
                     {q.explanation && (
