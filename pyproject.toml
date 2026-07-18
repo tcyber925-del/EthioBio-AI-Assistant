@@ -5,6 +5,9 @@ description = "AI-powered biology learning assistant for Ethiopian middle and hi
 requires-python = ">=3.12"
 dependencies = ["httpx", "structlog>=24.4.0"]
 
+[project.optional-dependencies]
+dev = ["ruff", "pytest>=8", "pytest-asyncio", "mypy", "pytest-timeout"]
+
 [project.scripts]
 ethiobio = "src.main:run"
 ethiobio-bot = "src.telegram.bot:main"
