@@ -9,11 +9,6 @@ from src.core.workspace.models import Workspace, WorkspaceMember
 from src.database.session import async_session_factory
 
 logger = structlog.get_logger()
-import os
-print("WORKSPACE_MODULE_LOADED", flush=True)
-logger.info("workspace_module_loaded")
-os.makedirs("/tmp/workspace_debug", exist_ok=True)
-open("/tmp/workspace_debug/loaded.txt", "w").write("loaded")
 router = APIRouter(prefix="/api/v1/workspaces", tags=["Workspace"])
 
 try:
@@ -30,50 +25,6 @@ def _valid_uuid(value: str) -> bool:
         return True
     except ValueError:
         return False
-
-
-@router.get("/simple")
-def simple():
-    return "hello world"
-
-
-@router.get("/test-json")
-async def test_json():
-    import os
-    loaded = os.path.isfile("/tmp/workspace_debug/loaded.txt")
-    return JSONResponse(content={"msg": "test ok", "loaded": loaded}, status_code=200)
-
-
-@router.get("/test-dict")
-async def test_dict():
-    import os
-    loaded = os.path.isfile("/tmp/workspace_debug/loaded.txt")
-    return {"msg": "test ok", "loaded": loaded}
-
-
-@router.get("/test-exception")
-async def test_exception():
-    raise ValueError("test exception")
-
-
-@router.get("/debug-file")
-async def debug_file():
-    import os
-    loaded = os.path.isfile("/tmp/workspace_debug/loaded.txt")
-    content = ""
-    if loaded:
-        content = open("/tmp/workspace_debug/loaded.txt").read()
-    return {"loaded": loaded, "content": content}
-
-
-@router.get("/raise-httpexception")
-async def raise_httpexception():
-    return {"message": "THIS_IS_THE_RAISE_HTTPEXCEPTION_ENDPOINT"}
-
-
-@router.get("/raise-plain-exception")
-async def raise_plain_exception():
-    raise ValueError("Test plain exception from workspace")
 
 
 @router.post("/", response_model=Workspace, status_code=201)
