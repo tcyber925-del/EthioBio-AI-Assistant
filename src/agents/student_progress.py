@@ -1,10 +1,10 @@
 from typing import Optional
+
+import structlog
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.agents.base import BaseAgent
 from src.llm.router import ModelRouter
-from sqlalchemy.ext.asyncio import AsyncSession
-from src.database.models import ProgressRecord as Record
-from datetime import datetime, timezone, timedelta
-import structlog
 
 logger = structlog.get_logger()
 
@@ -16,7 +16,7 @@ class StudentProgressAgent(BaseAgent):
     def __init__(self, llm_router: ModelRouter):
         super().__init__(llm_router, name="student_progress")
 
-    def analyze_progress(self, records: list, profile) -> dict:
+    async def analyze_progress(self, records: list, profile) -> dict:
         if not records:
             return {
                 "student_id": str(profile.id) if profile else "",
@@ -55,7 +55,13 @@ class StudentProgressAgent(BaseAgent):
             second_half = sum(
                 float(r.score) / max(r.total, 1) * 100 for r in sorted_records[half:]
             ) / max(len(sorted_records) - half, 1)
-            trend = "improving" if second_half > first_half + 5 else "declining" if second_half < first_half - 5 else "stable"
+            trend = (
+                "improving"
+                if second_half > first_half + 5
+                else "declining"
+                if second_half < first_half - 5
+                else "stable"
+            )
         else:
             trend = "stable"
 
@@ -74,10 +80,10 @@ class StudentProgressAgent(BaseAgent):
     ) -> dict:
         user_message = f"""Analyze this student's performance data and provide learning recommendations:
 
-Overall Score: {analysis['overall_score']}%
-Trend: {analysis['trend']}
-Weak Areas: {', '.join(analysis['weak_areas'])}
-Topics: {analysis['topics']}
+Overall Score: {analysis["overall_score"]}%
+Trend: {analysis["trend"]}
+Weak Areas: {", ".join(analysis["weak_areas"])}
+Topics: {analysis["topics"]}
 
 Provide 2-3 specific, actionable recommendations for improvement."""
 

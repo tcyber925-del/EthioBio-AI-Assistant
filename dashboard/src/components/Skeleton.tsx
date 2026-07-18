@@ -1,10 +1,10 @@
 export default function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`animate-pulse bg-gray-200 rounded ${className}`} />
+  return <div className={`animate-pulse bg-border rounded ${className}`} />
 }
 
 export function CardSkeleton() {
   return (
-    <div className="bg-white rounded-xl shadow-sm border p-5">
+    <div className="bg-card rounded-xl border border-border p-5">
       <div className="flex items-center gap-4">
         <Skeleton className="w-12 h-12 rounded-lg" />
         <div className="flex-1">

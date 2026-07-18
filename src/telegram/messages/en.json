@@ -1,0 +1,202 @@
+{
+  "start": {
+    "dashboard_login": "Your dashboard login code: <b>{code}</b>\n\nThis code expires in 5 minutes. Enter it on the login page.",
+    "welcome": "Welcome to EthioBio AI Assistant!\n\nI'm your biology learning assistant for Ethiopian Grades 7-12.\n\nSend me any biology question, or use the menu below:"
+  },
+  "common": {
+    "error": "Sorry, I encountered an error. Please try again.",
+    "cancelled": "Cancelled.",
+    "usage_ask": "Usage: /ask <your biology question>",
+    "thinking": "Thinking...",
+    "generating": "Generating...",
+    "choose_option": "Choose an option:",
+    "teacher_tools": "Teacher Tools:",
+    "main_menu": "Main menu:",
+    "error_try_again": "Sorry, I encountered an error. Please try again.",
+    "email_usage": "Usage: `/email you@example.com`",
+    "email_invalid": "Please provide a valid email address.",
+    "need_start": "Please /start first to register.",
+    "email_set": "✅ Email set to `{email}`. Use /settings to customize notifications.",
+    "grade_label": "Grade {grade}"
+  },
+  "help": {
+    "text": "EthioBio AI Assistant — Help\n\nCommands:\n/start — Show menu\n/help — This message\n/ask <question> — Ask a biology question\n/quiz [grade] [topic] — Generate a quiz\n/grade <7-12> — Set your default grade\n/language <en|am|both> — Set language\n/socratic — Toggle Socratic tutoring mode\n/hint — Get the next hint level (1-3) in Socratic mode\n/cancel — Cancel current operation\n\nOr just type any biology question to get started!"
+  },
+  "tutor": {
+    "grade_prompt": "Grade {grade} selected. Send me your biology question. I'll help you understand it!",
+    "grade_select": "Select your grade level:",
+    "no_question": "No active question. Ask a question first with /ask or select Tutor from the menu.",
+    "socratic_on": "Socratic Mode is now ON.\n\nIn Socratic mode, I'll guide you through questions rather than giving direct answers — helping you discover the answer yourself!",
+    "socratic_off": "Socratic Mode is now OFF.\n\nI'll give you direct answers with explanations.",
+    "revealing_answer": "🔍 Revealing the full answer...",
+    "hint_level": "💡 Hint level {level}/3...",
+    "hint_revealed": "The answer has already been revealed! Ask a new question to continue.",
+    "hint_exhausted": "You've used all hint levels. Tap 'Reveal Answer' to see the full explanation.",
+    "hint_usage": "\n\n📊 You used {count} hint(s) before revealing the answer.",
+    "misconception": "\n\n💡 I noticed a misunderstanding — gently corrected above.",
+    "sources": "\n\n---\nSources: {sources}"
+  },
+  "gamification": {
+    "xp_earned": "\n\n⭐ +{xp} XP for this session",
+    "level_up": "\n🎉 LEVEL UP! You are now Level {level}!",
+    "xp_quiz": "\n\n⭐ +{xp} XP",
+    "level_up_quiz": "\n🎉 LEVEL UP! Now Level {level}!"
+  },
+  "quiz": {
+    "grade_prompt": "Select your grade level:",
+    "topic_prompt": "Grade {grade} selected. What topic should the quiz cover?\n(e.g., Cell Biology, Genetics, Ecology)",
+    "quiz_type_prompt": "Select quiz type:",
+    "generating": "Generating your quiz...",
+    "error": "Error generating quiz.",
+    "usage": "Usage: /quiz [grade] [topic]",
+    "generate_failed": "Sorry, couldn't generate the quiz. Try a different topic.",
+    "teacher_list": "📄 Review Quizzes\n\nOpen the Teacher Dashboard in your browser:\n{dashboard_url}/quizzes\n\nThe dashboard shows all generated quizzes for review and approval.",
+    "teacher_dashboard": "📈 Teacher Dashboard\n\nOpen in your browser:\n{dashboard_url}\n\nFeatures:\n• 📊 Stats overview\n• 📝 Quiz management\n• 📋 Lesson plans\n• 📈 Monitoring\n• 🧬 Test Q&A",
+    "type_mc": "✅ Multiple Choice",
+    "type_tf": "📋 True / False",
+    "type_mixed": "🔀 Mixed",
+    "question": "📝 {title}\n\nQuestion {current}/{total}\n<i>{qtype}</i>\n\n{qtext}",
+    "correct": "✅ Correct!",
+    "wrong": "❌ Wrong. The answer was: {answer}",
+    "short_answer": "\n\n✏️ Type your answer below, then tap Next.",
+    "complete": "📊 Quiz Complete!\nScore: {correct}/{total} ({pct}%)",
+    "score": "⭐ XP earned this quiz: {xp}",
+    "cancelled": "Quiz cancelled."
+  },
+  "diagram": {
+    "grade_prompt": "Select your grade level for the diagram:",
+    "topic_prompt": "Grade {grade} selected. Describe the biology diagram you want:\n(e.g., Draw a plant cell, Show the heart structure, Compare mitosis and meiosis)",
+    "generating": "Generating your diagram...",
+    "grade_label": "Grade",
+    "labels_count": "Labels",
+    "no_labels": "No labels on this diagram",
+    "error": "Error generating diagram."
+  },
+  "lesson": {
+    "grade_prompt": "Select grade level:",
+    "generating": "Creating lesson plan...",
+    "error": "Error creating lesson plan.",
+    "topic_prompt": "Grade {grade} selected. What biology topic?",
+    "features_prompt": "Grade {grade} selected. Choose features to include:",
+    "features_done": "✅ Done — enter topic",
+    "feature_exit_ticket": "Exit Ticket",
+    "feature_differentiation": "Differentiation",
+    "feature_diagrams": "Diagram Suggestions",
+    "feature_misconceptions": "Misconception Activities"
+  },
+  "settings": {
+    "text": "⚙️ Notification Settings\n\nMilestone Alerts: {milestone}\nReview Reminders: {reminder}\nDigest Frequency: {digest}\n\nTap to toggle or change settings."
+  },
+  "language": {
+    "choose": "Choose your language:",
+    "set": "Language set to {name}!",
+    "usage": "Usage: /language <en|am|both>",
+    "set_cmd": "Language set to {name}.",
+    "en_label": "🇬🇧 English",
+    "am_label": "🇪🇹 አማርኛ (Amharic)",
+    "both_label": "🌍 Bilingual"
+  },
+  "grade": {
+    "set": "Default grade set to Grade {grade}.",
+    "usage": "Usage: /grade <7-12>"
+  },
+  "model": {
+    "no_models": "Failed to fetch models. Is the API server running?",
+    "no_providers": "Failed to fetch providers.",
+    "refresh_failed": "Failed to refresh models.",
+    "set_failed": "Failed to set model: {model}",
+    "refresh": "🔄 Refresh Models",
+    "back_providers": "← Back to Providers"
+  },
+  "progress": {
+    "no_weak": "📊 *Mastery Progress*\n\nNo weak topics detected! You're doing great across all subjects.",
+    "need_start": "Please /start first to register."
+  },
+  "recovery": {
+    "no_plans": "📋 *No Active Recovery Plans*\n\nComplete quizzes to identify weak areas. Recovery plans help you strengthen your understanding of challenging topics.",
+    "user_not_found": "❌ User not found. Please /start first.",
+    "task_not_found": "❌ Task not found.",
+    "task_done": "✅ Task *{title}* was already completed!"
+  },
+  "parent": {
+    "usage": "Usage: <code>/parent_register your@email.com</code>\n\nYou need a parent account on the dashboard first. Register at the dashboard, then link your Telegram here.",
+    "no_account": "No parent account found with that email. Make sure you registered as a parent on the dashboard first.",
+    "already_linked": "This account is already linked to another Telegram user. Contact support if you need to relink.",
+    "linked": "Telegram linked! Use /children to view your children's progress.",
+    "need_register": "Please register first with /parent_register",
+    "no_child": "Child not found.",
+    "no_parent": "Parent account not found.",
+    "no_student": "Student not found.",
+    "no_children": "No children linked to your account yet. Ask an admin to link your children, or check the dashboard.",
+    "no_children_short": "No children linked to your account yet.",
+    "your_children": "Your Children:",
+    "back_children": "← Back to Children",
+    "back_progress": "← Back to Progress",
+    "weekly_summary": "📋 Weekly Summary"
+  },
+  "ask_question": "🧬 Ask a Question",
+  "take_quiz": "📝 Take a Quiz",
+  "my_progress": "📊 My Progress",
+  "socratic_on": "🧠 Socratic: ON",
+  "socratic_off": "🧠 Socratic: OFF",
+  "language_btn": "🌐 Language",
+  "teacher_tools": "👨‍🏫 Teacher Tools",
+  "help_btn": "❓ Help",
+  "start_quiz": "Start Quiz",
+  "next_question": "➡️ Next Question",
+  "show_hint": "💡 Show Hint",
+  "reveal_answer": "🔍 Reveal Answer",
+  "grade_quiz": "Grade Quiz",
+  "retry_quiz": "🔁 Retry Quiz",
+  "new_quiz": "📝 New Quiz",
+  "main_menu": "🏠 Main Menu",
+  "back": "← Back",
+  "back_to_menu": "← Back to Menu",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "yes": "Yes",
+  "no": "No",
+  "loading": "Loading...",
+  "error_generic": "Something went wrong. Please try again.",
+  "choose_language": "Choose your language:",
+  "language_set": "Language set to {name}!",
+  "copilot_chat": "🤖 Copilot Chat",
+  "ask_another": "Ask Another",
+  "create_lesson_plan": "📋 Create Lesson Plan",
+  "review_quizzes": "📄 Review Quizzes",
+  "upload_material": "📎 Upload Material",
+  "upload": {
+    "hint": "📎 *Upload Material*\n\nSend me a file and I'll upload it to your workspace for processing.\n\nAccepted formats: `pdf`, `docx`, `txt`, `md`\nMaximum size: 20 MB\n\nJust drag and drop or attach a file directly in this chat."
+  },
+  "open_dashboard": "📈 Open Dashboard",
+  "view_recovery": "Recovery Plan",
+  "view_progress": "📊 Progress",
+  "broad_hint": "💡 Broad Hint",
+  "specific_hint": "💡 Specific Hint",
+  "strong_hint": "💡 Strong Hint",
+  "end_quiz": "🔙 End Quiz",
+  "true": "✅ True",
+  "false": "❌ False",
+  "choose_grade": "Choose your grade:",
+  "choose_topic": "Choose a topic:",
+  "choose_quiz_type": "Choose quiz type:",
+  "welcome": "Welcome to EthioBio AI Assistant!\n\nI'm your biology learning assistant for Ethiopian Grades 7-12.\n\nSend me any biology question, or use the menu below:",
+  "copilot": {
+    "title": "🤖 Teacher Copilot",
+    "prompt": "Ask me anything about your classroom.\n\nExamples:\n• Who needs attention today?\n• Why is a student struggling?\n• Create a 5-question quiz on genetics\n• Summarize classroom readiness\n• What interventions work for cell division?",
+    "analyzing": "🔄 Analyzing your classroom data...",
+    "evidence_label": "📋 Evidence",
+    "not_linked": "👨‍🏫 Teacher access required.\n\nUse /link <email> to connect your dashboard teacher account.",
+    "not_teacher": "👨‍🏫 This feature is for teachers only.\n\nUse /link <email> to connect your dashboard teacher account.",
+    "error": "Sorry, I couldn't complete that analysis. Please try again."
+  },
+  "link": {
+    "usage": "Usage: /link <email>\n\nLink your Telegram to your teacher dashboard account.\n\nExample: /link teacher@school.com",
+    "otp_sent": "📧 Verification code sent to your Telegram: <b>{code}</b>\n\nEnter this code to link your teacher account.\n\nThis code expires in 5 minutes.",
+    "otp_prompt": "Enter the verification code sent to your Telegram:",
+    "verified": "✅ Teacher account linked! You now have full teacher access.\nTry \"Copilot Chat\" in Teacher Tools.",
+    "not_found": "No teacher account found with that email. Make sure you registered as a teacher on the dashboard first.",
+    "already_linked": "This Telegram is already linked to a teacher account.",
+    "wrong_otp": "❌ Invalid code. Please try again or use /link to restart."
+  }
+}

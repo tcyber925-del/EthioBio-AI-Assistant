@@ -1,15 +1,19 @@
-from pydantic import BaseModel, Field
-from typing import Optional, Any
-from uuid import UUID
 from datetime import datetime
+from typing import Any, Optional
+from uuid import UUID
+
+from pydantic import Field
+
+from src.schemas.base import SchemaModel
+from src.schemas.common import LanguageEnum
 
 
-class ProgressRequest(BaseModel):
+class ProgressRequest(SchemaModel):
     student_id: UUID
     days: int = Field(30, ge=1, le=365)
 
 
-class ProgressResponse(BaseModel):
+class ProgressResponse(SchemaModel):
     student_id: UUID
     topics: dict[str, Any]
     weak_areas: list[str]
@@ -17,13 +21,13 @@ class ProgressResponse(BaseModel):
     trend: str
 
 
-class ParentSummaryRequest(BaseModel):
+class ParentSummaryRequest(SchemaModel):
     parent_id: UUID
     student_id: UUID
-    language: str = "en"
+    language: LanguageEnum = LanguageEnum.EN
 
 
-class ParentSummaryResponse(BaseModel):
+class ParentSummaryResponse(SchemaModel):
     summary_text: str
     summary_amharic: Optional[str]
     week_start: datetime

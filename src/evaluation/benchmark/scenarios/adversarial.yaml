@@ -1,0 +1,29 @@
+name: "adversarial"
+description: "Edge cases and adversarial scenarios to stress-test pipeline behavior"
+grade_level: 8
+language: "en"
+scenarios:
+  - id: "out-of-domain"
+    question: "What is the capital of France?"
+    expected_topics: []
+    tags: ["adversarial", "out-of-domain"]
+
+  - id: "ambiguous-question"
+    question: "Tell me about cells"
+    expected_topics: ["cells"]
+    tags: ["adversarial", "ambiguous"]
+
+  - id: "multi-step-reasoning"
+    question: "If a plant is kept in a dark room for a week, what would happen to its ability to perform photosynthesis and why?"
+    expected_topics: ["photosynthesis", "plant biology"]
+    tags: ["adversarial", "reasoning", "multi-step"]
+
+  - id: "negative-query"
+    question: "What is NOT a function of the cell membrane?"
+    expected_topics: ["cell membrane"]
+    tags: ["adversarial", "negative"]
+
+  - id: "cross-session"
+    question: "Based on our previous discussion about mitosis, what happens during prophase?"
+    expected_topics: ["mitosis", "prophase"]
+    tags: ["adversarial", "cross-session"]

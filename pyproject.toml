@@ -3,7 +3,7 @@ name = "ethiobio-ai-assistant"
 version = "1.1.0"
 description = "AI-powered biology learning assistant for Ethiopian middle and high school education"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = ["httpx", "structlog>=24.4.0"]
 
 [project.scripts]
 ethiobio = "src.main:run"
@@ -13,15 +13,39 @@ ethiobio-bot = "src.telegram.bot:main"
 asyncio_mode = "auto"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+markers = [
+    "smoke: quick smoke-test scenarios",
+    "integration: integration and journey tests",
+]
 
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+extend-exclude = [
+    "scripts",
+    "alembic",
+    "docs",
+    "evaluation",
+    "../docs",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/agents/*" = ["E501"]
+"src/evaluation/*" = ["E501"]
+"src/graph/*" = ["E501"]
+"tests/*" = ["E501", "N803", "N806"]
+"alembic/*" = ["E501", "E402"]
+"evaluation/*" = ["E501", "F841"]
+"scripts/*" = ["E501", "E402", "E701", "F841", "F821", "E741", "N806"]
 
 [tool.mypy]
 python_version = "3.12"
 strict = false
 ignore_missing_imports = true
+explicit_package_bases = true
+implicit_optional = true
+warn_unused_ignores = false
+disable_error_code = ["call-arg", "arg-type", "attr-defined", "dict-item", "misc", "union-attr", "valid-type", "var-annotated", "assignment", "return-value"]

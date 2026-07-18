@@ -1,26 +1,31 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-import Sidebar from '@/components/Sidebar'
+import type { Metadata } from 'next';
+import { NextIntlClientProvider } from 'next-intl';
+import { cookies } from 'next/headers';
+import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] })
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'EthioBio AI Assistant - Teacher Dashboard',
-  description: 'Biology education platform for Ethiopian middle and high schools',
-}
+  title: 'EthioBio AI Assistant',
+  description: 'Personalized Biology Tutoring for Ethiopian Grades 7-12',
+};
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const cookieStore = await cookies();
+  const locale = cookieStore.get('NEXT_LOCALE')?.value ?? 'en';
+  const messages = (await import(`../../messages/${locale}.json`)).default;
+
   return (
-    <html lang="en">
-      <body className={`${inter.className} bg-gray-50`}>
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <main className="flex-1 p-8 overflow-auto">
-            {children}
-          </main>
-        </div>
+    <html lang={locale}>
+      <body className="bg-v2-bg text-v2-text-primary font-sans">
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          {children}
+        </NextIntlClientProvider>
       </body>
     </html>
-  )
+  );
 }

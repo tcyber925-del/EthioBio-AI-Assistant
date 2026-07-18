@@ -1,7 +1,7 @@
 import structlog
-from typing import Optional
-from openai import AsyncOpenAI
 from anthropic import AsyncAnthropic
+from openai import AsyncOpenAI
+
 from src.config import settings
 
 logger = structlog.get_logger()
@@ -23,7 +23,9 @@ class FallbackProvider:
             self._client = AsyncAnthropic(api_key=self.api_key)
         return self._client
 
-    async def chat(self, messages: list[dict], temperature: float = 0.7, max_tokens: int = 2048) -> dict:
+    async def chat(
+        self, messages: list[dict], temperature: float = 0.7, max_tokens: int = 2048
+    ) -> dict:
         client = await self._get_client()
         if not client:
             raise ValueError(f"Unsupported fallback provider: {self.provider}")

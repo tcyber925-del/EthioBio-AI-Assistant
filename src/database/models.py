@@ -1,10 +1,26 @@
+import enum
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import String, Integer, BigInteger, Float, Boolean, Text, DateTime, Enum, ForeignKey, JSON
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from sqlalchemy import (
+    ARRAY,
+    JSON,
+    BigInteger,
+    Boolean,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.types import Uuid
+
 from src.database.session import Base
-import enum
 
 
 def utcnow():
@@ -26,6 +42,8 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=True)
     telegram_id: Mapped[int] = mapped_column(BigInteger, unique=True, nullable=True)
     phone: Mapped[str] = mapped_column(String(20), unique=True, nullable=True)
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.student)
@@ -33,29 +51,71 @@ class User(Base):
     grade_level: Mapped[int] = mapped_column(Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
 
     student_profile: Mapped["StudentProfile"] = relationship(back_populates="user", uselist=False)
     quiz_attempts: Mapped[list["QuizAttempt"]] = relationship(back_populates="user")
     message_threads: Mapped[list["MessageThread"]] = relationship(back_populates="user")
     feedback_events: Mapped[list["FeedbackEvent"]] = relationship(back_populates="user")
+    diagram_attempts: Mapped[list["DiagramAttempt"]] = relationship(back_populates="user")
+
+    children: Mapped[list["User"]] = relationship(
+        secondary="parent_children",
+        primaryjoin="User.id == ParentChild.parent_id",
+        secondaryjoin="User.id == ParentChild.student_id",
+        back_populates="parents",
+    )
+    parents: Mapped[list["User"]] = relationship(
+        secondary="parent_children",
+        primaryjoin="User.id == ParentChild.student_id",
+        secondaryjoin="User.id == ParentChild.parent_id",
+        back_populates="children",
+    )
+
+
+class ParentChild(Base):
+    __tablename__ = "parent_children"
+
+    parent_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True
+    )
+    student_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True
+    )
 
 
 class StudentProfile(Base):
     __tablename__ = "student_profiles"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), unique=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), unique=True
+    )
     school: Mapped[str] = mapped_column(String(200), nullable=True)
     region: Mapped[str] = mapped_column(String(100), nullable=True)
     topic_mastery: Mapped[dict] = mapped_column(JSON, default=dict)
-    score_history: Mapped[dict] = mapped_column(JSON, default=list)
+    score_history: Mapped[list] = mapped_column(JSON, default=list)
     weak_areas: Mapped[list] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
 
     user: Mapped["User"] = relationship(back_populates="student_profile")
     progress_records: Mapped[list["ProgressRecord"]] = relationship(back_populates="student")
+
+
+class School(Base):
+    __tablename__ = "schools"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    name: Mapped[str] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    class_groups: Mapped[list["ClassGroup"]] = relationship(back_populates="school")
+    health_snapshots: Mapped[list["SchoolHealthSnapshot"]] = relationship(back_populates="school")
 
 
 class ClassGroup(Base):
@@ -65,9 +125,13 @@ class ClassGroup(Base):
     name: Mapped[str] = mapped_column(String(200))
     grade_level: Mapped[int] = mapped_column(Integer)
     teacher_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    school_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("schools.id"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     students: Mapped[list["User"]] = relationship(secondary="class_enrollments")
+    school: Mapped["School | None"] = relationship(back_populates="class_groups")
 
 
 class ClassEnrollment(Base):
@@ -77,6 +141,20 @@ class ClassEnrollment(Base):
     class_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("class_groups.id"))
     student_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     enrolled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class SchoolHealthSnapshot(Base):
+    __tablename__ = "school_health_snapshots"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    school_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("schools.id"))
+    snapshot_date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    avg_health: Mapped[float] = mapped_column(Float)
+    total_students: Mapped[int] = mapped_column(Integer)
+    at_risk_count: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    school: Mapped["School"] = relationship(back_populates="health_snapshots")
 
 
 class CurriculumTopic(Base):
@@ -93,11 +171,28 @@ class CurriculumTopic(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class TopicPrerequisite(Base):
+    __tablename__ = "topic_prerequisites"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    topic_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("curriculum_topics.id"), index=True
+    )
+    prerequisite_topic_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("curriculum_topics.id"), index=True
+    )
+    relationship_type: Mapped[str] = mapped_column(String(50), default="prerequisite")
+    grade_level: Mapped[int] = mapped_column(Integer, default=0)
+
+
 class LessonPlan(Base):
     __tablename__ = "lesson_plans"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
-    teacher_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    teacher_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    classroom_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     grade_level: Mapped[int] = mapped_column(Integer)
     topic: Mapped[str] = mapped_column(String(300))
     objective: Mapped[str] = mapped_column(Text)
@@ -109,15 +204,30 @@ class LessonPlan(Base):
     teacher_notes: Mapped[str] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="draft")
     model_used: Mapped[str] = mapped_column(String(100), nullable=True)
+    rating: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
+    used_in_class: Mapped[bool] = mapped_column(Boolean, default=False)
+    unit_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    day_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    section_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    periods: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    exit_ticket: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    differentiation: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    diagram_suggestions: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    misconception_activities: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
 
 
 class Question(Base):
     __tablename__ = "questions"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
-    quiz_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("quizzes.id"), nullable=True)
+    quiz_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("quizzes.id"), nullable=True
+    )
     question_type: Mapped[str] = mapped_column(String(20))
     question_text: Mapped[str] = mapped_column(Text)
     options: Mapped[dict] = mapped_column(JSON, nullable=True)
@@ -126,6 +236,7 @@ class Question(Base):
     grade_level: Mapped[int] = mapped_column(Integer)
     topic: Mapped[str] = mapped_column(String(300))
     difficulty: Mapped[str] = mapped_column(String(20), default="medium")
+    difficulty_score: Mapped[float] = mapped_column(Float, default=0.0)
     source_ref: Mapped[str] = mapped_column(String(200), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -134,7 +245,9 @@ class Quiz(Base):
     __tablename__ = "quizzes"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
-    teacher_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    teacher_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
     title: Mapped[str] = mapped_column(String(300))
     grade_level: Mapped[int] = mapped_column(Integer)
     topic: Mapped[str] = mapped_column(String(300))
@@ -142,9 +255,13 @@ class Quiz(Base):
     status: Mapped[str] = mapped_column(String(20), default="draft")
     model_used: Mapped[str] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
 
-    questions: Mapped[list["Question"]] = relationship(backref="quiz", foreign_keys="Question.quiz_id")
+    questions: Mapped[list["Question"]] = relationship(
+        backref="quiz", foreign_keys="Question.quiz_id"
+    )
     attempts: Mapped[list["QuizAttempt"]] = relationship(back_populates="quiz")
 
 
@@ -169,7 +286,9 @@ class ProgressRecord(Base):
     __tablename__ = "progress_records"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
-    student_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("student_profiles.id"))
+    student_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("student_profiles.id")
+    )
     topic: Mapped[str] = mapped_column(String(300))
     score: Mapped[float] = mapped_column(Float)
     total: Mapped[int] = mapped_column(Integer)
@@ -204,7 +323,9 @@ class MessageThread(Base):
     grade_level: Mapped[int] = mapped_column(Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
 
     user: Mapped["User"] = relationship(back_populates="message_threads")
 
@@ -222,6 +343,303 @@ class ContentSource(Base):
     is_approved: Mapped[bool] = mapped_column(Boolean, default=False)
     processed: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class UserGamification(Base):
+    __tablename__ = "user_gamification"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), unique=True
+    )
+    total_xp: Mapped[int] = mapped_column(Integer, default=0)
+    level: Mapped[int] = mapped_column(Integer, default=1)
+    current_streak: Mapped[int] = mapped_column(Integer, default=0)
+    longest_streak: Mapped[int] = mapped_column(Integer, default=0)
+    last_active_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    user: Mapped["User"] = relationship(backref="gamification", uselist=False)
+
+
+class XpEvent(Base):
+    __tablename__ = "xp_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    source: Mapped[str] = mapped_column(String(50))
+    amount: Mapped[int] = mapped_column(Integer)
+    event_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    user: Mapped["User"] = relationship(backref="xp_events")
+
+
+class UserAchievement(Base):
+    __tablename__ = "user_achievements"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    achievement_id: Mapped[str] = mapped_column(String(50))
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str] = mapped_column(String(500), nullable=True)
+    icon: Mapped[str] = mapped_column(String(50), default="🏆")
+    unlocked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    user: Mapped["User"] = relationship(backref="achievements")
+
+
+class RecoveryPlan(Base):
+    __tablename__ = "recovery_plans"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    topic: Mapped[str] = mapped_column(String(300))
+    total_tasks: Mapped[int] = mapped_column(Integer, default=0)
+    completed_tasks: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(20), default="active")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    user: Mapped["User"] = relationship(backref="recovery_plans")
+    tasks: Mapped[list["RecoveryTask"]] = relationship(back_populates="plan")
+
+
+class RecoveryTask(Base):
+    __tablename__ = "recovery_tasks"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    plan_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("recovery_plans.id"))
+    title: Mapped[str] = mapped_column(String(300))
+    task_type: Mapped[str] = mapped_column(String(50))
+    description: Mapped[str] = mapped_column(Text, nullable=True)
+    is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    completed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    xp_awarded: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    plan: Mapped["RecoveryPlan"] = relationship(back_populates="tasks")
+
+
+class DiagramAttempt(Base):
+    __tablename__ = "diagram_attempts"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    topic: Mapped[str] = mapped_column(String(100))
+    difficulty: Mapped[str] = mapped_column(String(20))
+    score: Mapped[float] = mapped_column(Float, nullable=True)
+    labels: Mapped[dict] = mapped_column(JSON, default=dict)
+    completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    completed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    user: Mapped["User"] = relationship(back_populates="diagram_attempts")
+
+
+class TextbookDiagram(Base):
+    __tablename__ = "textbook_diagrams"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    grade_level: Mapped[int] = mapped_column(Integer)
+    unit: Mapped[str] = mapped_column(String(200), default="")
+    topic: Mapped[str] = mapped_column(String(200), default="")
+    caption: Mapped[str] = mapped_column(Text, default="")
+    image_path: Mapped[str] = mapped_column(String(500))
+    figure_number: Mapped[int] = mapped_column(Integer)
+    page_number: Mapped[int] = mapped_column(Integer)
+    source_file: Mapped[str] = mapped_column(String(300))
+    ground_truth_labels: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class StudentMastery(Base):
+    __tablename__ = "student_mastery"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    topic: Mapped[str] = mapped_column(String(300))
+    unit: Mapped[str] = mapped_column(String(200), nullable=True)
+    grade_level: Mapped[int] = mapped_column(Integer)
+    average_score: Mapped[float] = mapped_column(Float, default=0.0)
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    total_questions_attempted: Mapped[int] = mapped_column(Integer, default=0)
+    correct_answers: Mapped[int] = mapped_column(Integer, default=0)
+    severity: Mapped[str] = mapped_column(String(20), default="good")
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    last_assessed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    user: Mapped["User"] = relationship(backref="mastery_records")
+
+
+class InterventionAssignment(Base):
+    __tablename__ = "intervention_assignments"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), index=True
+    )
+    classroom_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("class_groups.id"), nullable=True
+    )
+    teacher_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    intervention_type: Mapped[str] = mapped_column(String(50))
+    topic: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="planned")
+    priority: Mapped[float] = mapped_column(Float, default=0.5)
+    estimated_impact: Mapped[float] = mapped_column(Float, default=0.0)
+    effectiveness_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    assigned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    user: Mapped["User"] = relationship(
+        backref="intervention_assignments",
+        foreign_keys=[user_id],
+    )
+
+
+class InterventionKnowledgeEntry(Base):
+    __tablename__ = "intervention_knowledge_entries"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    intervention_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("intervention_assignments.id")
+    )
+    intervention_type: Mapped[str] = mapped_column(String(50), index=True)
+    topic: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    teacher_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    classroom_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("class_groups.id"), nullable=True
+    )
+    effectiveness_score: Mapped[float] = mapped_column(Float, default=0.0)
+    mastery_change: Mapped[float | None] = mapped_column(Float, nullable=True)
+    readiness_change: Mapped[float | None] = mapped_column(Float, nullable=True)
+    retention_change: Mapped[float | None] = mapped_column(Float, nullable=True)
+    misconception_reduction: Mapped[float | None] = mapped_column(Float, nullable=True)
+    pre_mastery_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    post_mastery_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    priority: Mapped[float] = mapped_column(Float, default=0.5)
+    estimated_impact: Mapped[float] = mapped_column(Float, default=0.0)
+    completion_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    assigned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class MisconceptionPattern(Base):
+    __tablename__ = "misconception_patterns"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    topic: Mapped[str] = mapped_column(String(300))
+    pattern_type: Mapped[str] = mapped_column(String(50))
+    pattern_description: Mapped[str] = mapped_column(Text)
+    frequency: Mapped[int] = mapped_column(Integer, default=1)
+    common_wrong_answer: Mapped[str] = mapped_column(String(500), nullable=True)
+    related_question_ids: Mapped[dict] = mapped_column(JSON, default=list)
+    first_detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    resolved: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    user: Mapped["User"] = relationship(backref="misconception_patterns")
+
+
+class MisconceptionKnowledgeEntry(Base):
+    __tablename__ = "misconception_knowledge_entries"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    topic: Mapped[str] = mapped_column(String(300), index=True)
+    misconception: Mapped[str] = mapped_column(Text)
+    explanation: Mapped[str] = mapped_column(Text)
+    severity: Mapped[str] = mapped_column(String(50), default="misconception")
+    related_objectives: Mapped[list] = mapped_column(JSON, default=list)
+    recommended_strategies: Mapped[list] = mapped_column(JSON, default=list)
+    detection_patterns: Mapped[list] = mapped_column(JSON, default=list)
+    grade_level: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class TopicMasteryHistory(Base):
+    __tablename__ = "topic_mastery_history"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    topic: Mapped[str] = mapped_column(String(300))
+    unit: Mapped[str] = mapped_column(String(200), nullable=True)
+    grade_level: Mapped[int] = mapped_column(Integer)
+    average_score: Mapped[float] = mapped_column(Float)
+    attempt_count: Mapped[int] = mapped_column(Integer)
+    severity: Mapped[str] = mapped_column(String(20))
+    confidence: Mapped[float] = mapped_column(Float)
+    source: Mapped[str] = mapped_column(String(50))
+    source_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    user: Mapped["User"] = relationship(backref="mastery_history")
+
+
+class SpacedRepetitionSchedule(Base):
+    __tablename__ = "spaced_repetition_schedule"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    topic: Mapped[str] = mapped_column(String(300))
+    unit: Mapped[str] = mapped_column(String(200), nullable=True)
+    grade_level: Mapped[int] = mapped_column(Integer, default=0)
+    mastery_score: Mapped[float] = mapped_column(Float, default=0.0)
+    interval_days: Mapped[int] = mapped_column(Integer, default=1)
+    ease_factor: Mapped[float] = mapped_column(Float, default=2.5)
+    next_review_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    review_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    user: Mapped["User"] = relationship(backref="spaced_repetition_schedules")
+
+
+class RecoveryNotification(Base):
+    __tablename__ = "recovery_notifications"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), index=True
+    )
+    topic: Mapped[str] = mapped_column(String(300))
+    event_type: Mapped[str] = mapped_column(String(50))
+    message: Mapped[str] = mapped_column(Text)
+    improvement_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    old_value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    new_value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    user: Mapped["User"] = relationship(backref="recovery_notifications")
 
 
 class FeedbackEvent(Base):
@@ -251,4 +669,460 @@ class ModelRoutingLog(Base):
     prompt_version: Mapped[str] = mapped_column(String(50), nullable=True)
     success: Mapped[bool] = mapped_column(Boolean, default=True)
     error: Mapped[str] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class QuestionAttempt(Base):
+    __tablename__ = "question_attempts"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    question_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("questions.id"))
+    quiz_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("quizzes.id"), nullable=True
+    )
+    correct: Mapped[bool] = mapped_column(Boolean)
+    time_spent: Mapped[float | None] = mapped_column(Float, nullable=True)
+    hints_used: Mapped[int] = mapped_column(Integer, default=0)
+    attempt_number: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class StudentAbility(Base):
+    __tablename__ = "student_abilities"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True
+    )
+    topic: Mapped[str] = mapped_column(String(300), primary_key=True)
+    ability_score: Mapped[float] = mapped_column(Float, default=0.0)
+    uncertainty: Mapped[float] = mapped_column(Float, default=3.0)
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class MemorySession(Base):
+    __tablename__ = "memory_sessions"
+
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=new_uuid
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    active_topic: Mapped[str] = mapped_column(String(300), nullable=True)
+    tutoring_mode: Mapped[str] = mapped_column(String(20), default="direct")
+    educational_context: Mapped[dict] = mapped_column(JSON, nullable=True)
+    unresolved_questions: Mapped[dict] = mapped_column(JSON, default=list)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_active_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    summary: Mapped[str] = mapped_column(Text, nullable=True)
+
+    user: Mapped["User"] = relationship(backref="memory_sessions")
+
+
+class MemorySocraticState(Base):
+    __tablename__ = "memory_socratic_states"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    topic: Mapped[str] = mapped_column(String(300))
+    socratic_stage: Mapped[str] = mapped_column(String(30), default="guided_discovery")
+    current_focus: Mapped[str] = mapped_column(String(500), nullable=True)
+    student_understanding: Mapped[str] = mapped_column(String(20), default="none")
+    next_question: Mapped[str] = mapped_column(Text, nullable=True)
+    conceptual_gaps: Mapped[dict] = mapped_column(JSON, default=list)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    user: Mapped["User"] = relationship(backref="memory_socratic_states")
+
+
+class MemoryEducationalSummary(Base):
+    __tablename__ = "memory_educational_summaries"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    topic: Mapped[str] = mapped_column(String(300))
+    understanding_level: Mapped[str] = mapped_column(String(20), nullable=True)
+    key_misconceptions: Mapped[dict] = mapped_column(JSON, default=list)
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    next_learning_goal: Mapped[str] = mapped_column(Text, nullable=True)
+    tutoring_quality_notes: Mapped[str] = mapped_column(Text, nullable=True)
+    embedding_id: Mapped[str] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    user: Mapped["User"] = relationship(backref="memory_educational_summaries")
+
+
+class MemoryEvent(Base):
+    __tablename__ = "memory_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    event_type: Mapped[str] = mapped_column(String(50))
+    topic: Mapped[str] = mapped_column(String(300), nullable=True)
+    event_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    user: Mapped["User"] = relationship(backref="memory_events")
+
+
+class SemanticFact(Base):
+    __tablename__ = "semantic_facts"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), index=True
+    )
+    fact_key: Mapped[str] = mapped_column(String(200))
+    fact_value: Mapped[str] = mapped_column(Text)
+    category: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    confidence: Mapped[float] = mapped_column(Float, default=0.7)
+    source_event_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("memory_events.id"), nullable=True
+    )
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    consolidated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    user: Mapped["User"] = relationship(backref="semantic_facts")
+
+
+class ConversationTurn(Base):
+    __tablename__ = "conversation_turns"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), index=True
+    )
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("memory_sessions.session_id"), nullable=True
+    )
+    role: Mapped[str] = mapped_column(String(20))
+    content: Mapped[str] = mapped_column(Text)
+    topic: Mapped[str] = mapped_column(String(300), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, index=True
+    )
+
+    user: Mapped["User"] = relationship(backref="conversation_turns")
+
+
+class NotificationPreference(Base):
+    __tablename__ = "notification_preferences"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True
+    )
+    email: Mapped[str] = mapped_column(String(255))
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    digest_frequency: Mapped[str] = mapped_column(String(20), default="never")
+    milestone_alerts: Mapped[bool] = mapped_column(Boolean, default=True)
+    review_reminders: Mapped[bool] = mapped_column(Boolean, default=True)
+    verification_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    verification_expires: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+# ============================================================
+# Evidence Graph Models (Agentic RAG Phase 0)
+# ============================================================
+
+
+class EvidenceSession(Base):
+    __tablename__ = "evidence_sessions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    session_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    trace_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="active")  # active, closed
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class EvidenceRecord(Base):
+    __tablename__ = "evidence_records"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("evidence_sessions.id"), nullable=False
+    )
+    trace_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    source_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    source_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    chunk_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    original_query: Mapped[str] = mapped_column(Text, nullable=False)
+    retrieval_query: Mapped[str] = mapped_column(Text, nullable=False)
+    retrieval_score: Mapped[float] = mapped_column(Float, default=0.0)
+    rerank_score: Mapped[float] = mapped_column(Float, default=0.0)
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    retrieved_by: Mapped[str] = mapped_column(String(50), nullable=False)
+    archived: Mapped[bool] = mapped_column(Boolean, default=False)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class AgentTrace(Base):
+    __tablename__ = "agent_traces"
+
+    trace_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="running")
+    error: Mapped[str] = mapped_column(Text, nullable=True)
+    user_message: Mapped[str] = mapped_column(Text)
+    response: Mapped[str] = mapped_column(Text, nullable=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)
+    grade_level: Mapped[int] = mapped_column(Integer, nullable=True)
+    language: Mapped[str] = mapped_column(String(8), nullable=True)
+    intent: Mapped[str] = mapped_column(String(64), nullable=True)
+    nodes_visited: Mapped[list] = mapped_column(JSON, default=list)
+    node_timings: Mapped[dict] = mapped_column(JSON, default=dict)
+    event_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+    duration_ms: Mapped[float] = mapped_column(Float, default=0.0)
+
+
+class StudentDigitalTwin(Base):
+    __tablename__ = "student_digital_twins"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id"),
+        primary_key=True,
+    )
+    knowledge_state: Mapped[dict] = mapped_column(JSON, default=dict)
+    mastery_state: Mapped[dict] = mapped_column(JSON, default=dict)
+    misconception_state: Mapped[dict] = mapped_column(JSON, default=dict)
+    retention_state: Mapped[dict] = mapped_column(JSON, default=dict)
+    readiness_state: Mapped[dict] = mapped_column(JSON, default=dict)
+    intervention_state: Mapped[dict] = mapped_column(JSON, default=dict)
+    overall_health: Mapped[str] = mapped_column(String(20), default="unknown")
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    last_built_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+        onupdate=utcnow,
+    )
+
+    user: Mapped["User"] = relationship(backref="digital_twin")
+
+
+class KnowledgeObject(Base):
+    __tablename__ = "knowledge_objects"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_uuid)
+    workspace_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    collection_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("collections.id"), nullable=True
+    )
+    owner_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"))
+    title: Mapped[str] = mapped_column(String(500))
+    content_type: Mapped[str] = mapped_column(String(100))
+    content_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    lifecycle_state: Mapped[str] = mapped_column(String(50), default="uploaded")
+    enrichment_status: Mapped[str] = mapped_column(String(20), default="pending")
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    ko_metadata: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class KnowledgeObjectVersion(Base):
+    __tablename__ = "knowledge_object_versions"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_uuid)
+    ko_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("knowledge_objects.id"))
+    version: Mapped[int] = mapped_column(Integer)
+    snapshot: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class KnowledgeEmbedding(Base):
+    __tablename__ = "knowledge_embeddings"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_uuid)
+    knowledge_object_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("knowledge_objects.id", ondelete="CASCADE"), nullable=True
+    )
+    chunk_index: Mapped[int] = mapped_column(Integer, default=0)
+    content: Mapped[str] = mapped_column(Text)
+    embedding: Mapped[list[float] | None] = mapped_column(ARRAY(Float), nullable=True)
+    embedding_metadata: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class UnitPlan(Base):
+    __tablename__ = "unit_plans"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    teacher_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    unit_title: Mapped[str] = mapped_column(String(300))
+    grade_level: Mapped[int] = mapped_column(Integer)
+    topic: Mapped[str] = mapped_column(String(300))
+    days: Mapped[int] = mapped_column(Integer)
+    duration_minutes: Mapped[int] = mapped_column(Integer, default=40)
+    language: Mapped[str] = mapped_column(String(10), default="en")
+    model_used: Mapped[str] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class WorkspaceRole(str, enum.Enum):
+    owner = "owner"
+    admin = "admin"
+    member = "member"
+    viewer = "viewer"
+
+
+class Workspace(Base):
+    __tablename__ = "workspaces"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_uuid)
+    name: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    organization_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    class_group_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("class_groups.id"), nullable=True
+    )
+    created_by: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    members: Mapped[list["WorkspaceMember"]] = relationship(
+        back_populates="workspace", cascade="all, delete-orphan"
+    )
+
+
+class WorkspaceMember(Base):
+    __tablename__ = "workspace_members"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_uuid)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("workspaces.id"))
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"))
+    role: Mapped[WorkspaceRole] = mapped_column(Enum(WorkspaceRole), default=WorkspaceRole.member)
+    invited_by: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("users.id"), nullable=True
+    )
+    joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    workspace: Mapped["Workspace"] = relationship(back_populates="members")
+
+
+class AssignmentStatus(str, enum.Enum):
+    draft = "draft"
+    published = "published"
+    completed = "completed"
+    archived = "archived"
+
+
+class SubmissionStatus(str, enum.Enum):
+    submitted = "submitted"
+    under_review = "under_review"
+    revision_requested = "revision_requested"
+    reviewed = "reviewed"
+    completed = "completed"
+
+
+class Assignment(Base):
+    __tablename__ = "assignments"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_uuid)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("workspaces.id"), index=True)
+    teacher_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"), index=True)
+    title: Mapped[str] = mapped_column(String(300))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    assignment_type: Mapped[str] = mapped_column(String(50), default="homework")
+    due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rubric: Mapped[dict] = mapped_column("rubric", JSON, default=dict)
+    status: Mapped[AssignmentStatus] = mapped_column(
+        Enum(AssignmentStatus), default=AssignmentStatus.draft
+    )
+    max_attempts: Mapped[int] = mapped_column(Integer, default=1)
+    allow_late_submission: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class Submission(Base):
+    __tablename__ = "submissions"
+    __table_args__ = (UniqueConstraint("assignment_id", "student_id", "attempt_number"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_uuid)
+    assignment_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("assignments.id"), index=True)
+    student_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"), index=True)
+    storage_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    content_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[SubmissionStatus] = mapped_column(
+        Enum(SubmissionStatus), default=SubmissionStatus.submitted
+    )
+    ai_feedback: Mapped[dict] = mapped_column("ai_feedback", JSON, default=dict)
+    teacher_feedback: Mapped[dict] = mapped_column("teacher_feedback", JSON, default=dict)
+    grade: Mapped[float | None] = mapped_column(Float, nullable=True)
+    attempt_number: Mapped[int] = mapped_column(Integer, default=1)
+    submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class Collection(Base):
+    __tablename__ = "collections"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_uuid)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("workspaces.id"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class Bookmark(Base):
+    __tablename__ = "bookmarks"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("users.id"), primary_key=True
+    )
+    ko_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("knowledge_objects.id"), primary_key=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

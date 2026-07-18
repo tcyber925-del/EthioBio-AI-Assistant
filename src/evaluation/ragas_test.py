@@ -11,8 +11,8 @@ Usage:
     python -m src.evaluation.ragas_test
 """
 
-import os
 import json
+import os
 from typing import Optional
 
 GOLD_SET_PATH = os.path.join(os.path.dirname(__file__), "gold_set.json")
@@ -108,10 +108,10 @@ async def evaluate_with_ragas(
         from datasets import Dataset
         from ragas import evaluate
         from ragas.metrics import (
-            faithfulness,
             answer_relevancy,
-            context_recall,
             context_precision,
+            context_recall,
+            faithfulness,
         )
 
         data = {
@@ -137,7 +137,9 @@ async def evaluate_with_ragas(
         return {"error": str(e)}
 
 
-def _heuristic_eval(questions: list[str], answers: list[str], contexts: list[list[str]], ground_truths: list[str]) -> dict:
+def _heuristic_eval(
+    questions: list[str], answers: list[str], contexts: list[list[str]], ground_truths: list[str]
+) -> dict:
     """Fallback heuristic evaluation when Ragas is not available."""
     faithfulness_scores = []
     for answer, context_list in zip(answers, contexts):

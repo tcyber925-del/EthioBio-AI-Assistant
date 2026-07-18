@@ -1,95 +1,46 @@
-"""
-LangSmith tracing for EthioBio AI Assistant.
+"""OTel GenAI semantic convention helpers for EthioBio spans.
 
-Provides decorators and helpers for tracing requests through the graph.
-Skips tracing if LANGCHAIN_API_KEY is not set (graceful fallback).
+Aligns with gen_ai.* attribute naming from OpenTelemetry GenAI semconv (v1.37+).
 """
 
-import os
-import functools
-import structlog
-from typing import Optional, Callable, Any
+from opentelemetry import trace
+from opentelemetry.trace import Span
 
-logger = structlog.get_logger()
+tracer = trace.get_tracer_provider().get_tracer(__name__)
 
-_initialized = False
+# Well-known span attribute names following OTel GenAI semconv
+GEN_AI_OPERATION_NAME = "gen_ai.operation.name"
+GEN_AI_REQUEST_MODEL = "gen_ai.request.model"
+GEN_AI_PROVIDER_NAME = "gen_ai.provider.name"
+GEN_AI_USAGE_INPUT_TOKENS = "gen_ai.usage.input_tokens"
+GEN_AI_USAGE_OUTPUT_TOKENS = "gen_ai.usage.output_tokens"
+GEN_AI_RESPONSE_FINISH_REASONS = "gen_ai.response.finish_reasons"
+GEN_AI_REQUEST_TEMPERATURE = "gen_ai.request.temperature"
+GEN_AI_EVALUATION_SCORE = "gen_ai.evaluation.score.value"
+GEN_AI_EVALUATION_LABEL = "gen_ai.evaluation.score.label"
+GEN_AI_EVALUATION_EXPLANATION = "gen_ai.evaluation.explanation"
 
-
-def init_tracing(project_name: str = "ethiobio-ai-assistant") -> bool:
-    global _initialized
-    if _initialized:
-        return True
-
-    api_key = os.environ.get("LANGCHAIN_API_KEY")
-    if not api_key:
-        logger.info("tracing_disabled - set LANGCHAIN_API_KEY to enable LangSmith")
-        _initialized = True
-        return False
-
-    try:
-        os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
-        os.environ.setdefault("LANGCHAIN_PROJECT", project_name)
-        _initialized = True
-        logger.info("langsmith_tracing_enabled", project=project_name)
-        return True
-    except Exception as e:
-        logger.warning("tracing_init_failed", error=str(e))
-        return False
+# Custom guardrail span attributes (extended namespace)
+GUARDRAIL_TYPE = "guardrail.type"
+GUARDRAIL_MODULE = "guardrail.module"
+GUARDRAIL_OUTCOME = "guardrail.outcome"
+GUARDRAIL_TRIGGERED = "gen_ai.guardrail.triggered"
 
 
-def traceable(name: Optional[str] = None) -> Callable:
-    """Decorator that wraps a function with LangSmith tracing if available."""
-    def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
-        async def async_wrapper(*args, **kwargs):
-            init_tracing()
-            try:
-                from langsmith import traceable as ls_traceable
-                traced = ls_traceable(name=name or func.__name__)(func)
-                return await traced(*args, **kwargs)
-            except (ImportError, Exception):
-                return await func(*args, **kwargs)
-
-        @functools.wraps(func)
-        def sync_wrapper(*args, **kwargs):
-            init_tracing()
-            try:
-                from langsmith import traceable as ls_traceable
-                traced = ls_traceable(name=name or func.__name__)(func)
-                return traced(*args, **kwargs)
-            except (ImportError, Exception):
-                return func(*args, **kwargs)
-
-        if asyncio.iscoroutinefunction(func):
-            return async_wrapper
-        return sync_wrapper
-
-    import asyncio
-    return decorator
+def start_guardrail_span(guardrail_type: str, module: str, outcome: str = "pass") -> Span:
+    """Create a guardrail sub-span attached to the current trace."""
+    span = tracer.start_span(f"guardrail.{guardrail_type}")
+    span.set_attribute(GUARDRAIL_TYPE, guardrail_type)
+    span.set_attribute(GUARDRAIL_MODULE, module)
+    span.set_attribute(GUARDRAIL_OUTCOME, outcome)
+    span.set_attribute(GUARDRAIL_TRIGGERED, outcome == "block")
+    return span
 
 
-class TraceContext:
-    """Context manager for tracing a block of code."""
-    def __init__(self, name: str, metadata: Optional[dict] = None):
-        self.name = name
-        self.metadata = metadata or {}
-
-    async def __aenter__(self):
-        init_tracing()
-        self.run_id = None
-        try:
-            from langsmith.run_trees import RunTree
-            self._run = RunTree(name=self.name, inputs=self.metadata)
-            self._run.post()
-            self.run_id = self._run.id
-        except Exception:
-            pass
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if hasattr(self, '_run'):
-            try:
-                self._run.end(outputs={"success": exc_type is None})
-                self._run.patch()
-            except Exception:
-                pass
+def set_eval_on_span(
+    span: Span, dimension: str, score: float, explanation: str | None = None
+) -> None:
+    """Attach evaluation score to an existing span (eval-as-span-attribute pattern)."""
+    span.set_attribute(f"gen_ai.evaluation.{dimension}.score", score)
+    if explanation:
+        span.set_attribute(f"gen_ai.evaluation.{dimension}.explanation", explanation)

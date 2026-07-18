@@ -11,8 +11,8 @@ The graph follows this sequence:
 7. Log the trace and outcome
 """
 
-from typing import Optional, Any
 from dataclasses import dataclass, field
+from typing import Optional
 from uuid import UUID
 
 
@@ -48,6 +48,101 @@ class AgentState:
 
     quiz_params: dict = field(default_factory=dict)
     lesson_params: dict = field(default_factory=dict)
+    preferred_model: str = ""
+
+    session_id: Optional[str] = None
+    memory_context: str = ""
+    socratic_mode: bool = False
+    guiding_question: str = ""
+    socratic_stage: str = ""
+    socratic_focus: str = ""
+    socratic_understanding: str = ""
+    socratic_next_question: str = ""
+
+    hint_level: int = 0
+    reveal_answer: bool = False
+    misconception_detected: bool = False
+    misconception_correction: str = ""
+
+    learner_profile_block: str = ""
+    use_learner_awareness: bool = False
+
+    # Claim Verification
+    groundedness_score: float = 0.0
+    safety_action: str = ""
+    safety_reason: str = ""
+    ungrounded_claims: list[str] = field(default_factory=list)
+    revision_count: int = 0
+
+    # Safety revision tracking
+    safety_revision_count: int = 0
+
+    # Tool/action gating
+    tool_call_history: list[dict] = field(default_factory=list)
+    tool_call_count: int = 0
+    step_count: int = 0
+
+    messages: list[dict] = field(default_factory=list)
+
+    # ============================================================
+    # Agentic RAG Fields (Phase 0 — safe defaults, backward-compatible)
+    # ============================================================
+
+    # Routing
+    requires_planning: bool = False
+
+    # Planning State
+    execution_plan: dict = field(default_factory=dict)
+    subtasks: list[dict] = field(default_factory=list)
+    complexity_score: float = 0.0
+
+    # Query State
+    rewritten_queries: list[str] = field(default_factory=list)
+    query_intents: list[str] = field(default_factory=list)
+    query_groups: dict[str, list[str]] = field(default_factory=dict)
+    query_source_types: list[str] = field(default_factory=list)
+    coverage_estimate: float = 0.0
+
+    # Retrieval State
+    retrieval_tasks: list[dict] = field(default_factory=list)
+    retrieval_iterations: int = 0
+    previous_evidence_count: int = 0
+    retrieval_strategy: dict = field(default_factory=dict)
+    retrieval_source_results: dict[str, list[dict]] = field(default_factory=dict)
+
+    # Evidence State
+    evidence_ids: list[str] = field(default_factory=list)
+    evidence_items: list[dict] = field(default_factory=list)
+    teaching_strategy: str = ""
+    citation_map: list[dict] = field(default_factory=list)
+    grounded_response: str = ""
+    recommendations: list[str] = field(default_factory=list)
+    hallucination_report: Optional[dict] = None
+    hallucination_rate: float = 0.0
+    evidence_synthesis: str = ""
+    evidence_summary: str = ""
+    coverage_score: float = 0.0
+
+    # Context Sufficiency
+    sufficiency_score: float = 0.0
+    sufficiency_reason: str = ""
+    missing_information: list[str] = field(default_factory=list)
+    requires_iteration: bool = False
+
+    # Iterative Retrieval Loop
+    max_iterations: int = 3
+    coverage_history: list[float] = field(default_factory=list)
+    termination_reason: str = ""
+    retrieval_feedback: list[str] = field(default_factory=list)
+
+    # Learner State (snapshot added explicitly for agentic flow)
+    learner_snapshot: dict = field(default_factory=dict)
+    learning_recommendations: list[dict] = field(default_factory=list)
+    readiness_score: float = 0.0
+
+    # Socratic Session Caching
+    socratic_session_active: bool = False
+    socratic_evidence_bundle_id: Optional[str] = None
 
 
 @dataclass
@@ -57,4 +152,16 @@ class GraphOutput:
     confidence: float
     sources: list[str]
     status: str
-    requires_teacher_review: bool
+    requires_teacher_review: bool = False
+    preferred_model: str = ""
+    session_id: str = ""
+    socratic_mode: bool = False
+    guiding_question: str = ""
+    socratic_stage: str = ""
+    socratic_focus: str = ""
+    socratic_understanding: str = ""
+    socratic_next_question: str = ""
+    hint_level: int = 0
+    reveal_answer: bool = False
+    misconception_detected: bool = False
+    misconception_correction: str = ""

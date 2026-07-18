@@ -1,8 +1,10 @@
 from typing import Optional
+
+import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.agents.base import BaseAgent
 from src.llm.router import ModelRouter
-import structlog
 
 logger = structlog.get_logger()
 
@@ -12,10 +14,11 @@ SAFETY_SYSTEM_PROMPT = """You are EthioBio Safety Agent, responsible for reviewi
 3. Safety (no harmful, dangerous, or inappropriate content)
 4. Curriculum match (does it follow Ethiopian biology curriculum)
 5. Clarity (is the explanation clear and understandable)
-6. Language quality (proper English/Amharic)
+6. Language quality (proper {language})
 
 Analyze the content and respond with a JSON object:
-{"safe": true/false, "issues": ["issue1", "issue2"], "score": 0.0-1.0, "suggestions": ["suggestion"]}
+{{"safe": true/false, "issues": ["issue1", "issue2"],
+ "score": 0.0-1.0, "suggestions": ["suggestion"]}}
 """
 
 
@@ -27,16 +30,21 @@ class SafetyAgent(BaseAgent):
         self,
         content: str,
         grade_level: Optional[int] = None,
+        language: str = "en",
         session: Optional[AsyncSession] = None,
     ) -> dict:
         grade_context = f" (Grade {grade_level})" if grade_level else ""
-        user_message = f"""Review the following biology content{grade_context} for safety, accuracy, and appropriateness.
-
-Content to review:
-{content}"""
+        lang_names = {"en": "English", "am": "Amharic", "both": "English/Amharic"}
+        lang_name = lang_names.get(language, "English")
+        safety_prompt = SAFETY_SYSTEM_PROMPT.format(language=lang_name)
+        user_message = (
+            f"Review the following biology content{grade_context} "
+            "for safety, accuracy, and appropriateness.\n\n"
+            f"Content to review:\n{content}"
+        )
 
         result = await self._call_llm(
-            system_prompt=SAFETY_SYSTEM_PROMPT,
+            system_prompt=safety_prompt,
             user_message=user_message,
             session=session,
             temperature=0.1,
@@ -45,6 +53,7 @@ Content to review:
         )
 
         import json
+
         try:
             content_text = result["content"]
             if "```json" in content_text:
@@ -76,16 +85,6 @@ Content to review:
         context: str,
         session: Optional[AsyncSession] = None,
     ) -> dict:
-        user_message = f"""Check if the following response is factually grounded in the provided curriculum context.
-
-Context:
-{context}
-
-Response:
-{response}
-
-Is the response supported by the context? Identify any unsupported claims."""
-
         return await self.review(
             content=f"Response: {response}\n\nContext: {context}",
             session=session,

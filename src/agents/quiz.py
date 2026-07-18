@@ -1,10 +1,12 @@
+import json
 from typing import Optional
+
+import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.agents.base import BaseAgent
 from src.llm.router import ModelRouter
-from src.retrieval.adapter import VectorStoreAdapter, RetrievalFilter
-import json
-import structlog
+from src.retrieval.adapter import RetrievalFilter, VectorStoreAdapter
 
 logger = structlog.get_logger()
 
@@ -47,20 +49,71 @@ class QuizAgent(BaseAgent):
         types: list[str] = None,
         language: str = "en",
         session: Optional[AsyncSession] = None,
+        weak_topics: Optional[list[dict]] = None,
+        target_difficulty: Optional[str] = None,
     ) -> dict:
         types_str = ", ".join(types or ["multiple_choice", "true_false"])
-        lang_instruction = "Generate all content in English." if language == "en" else "Generate questions in English with Amharic answer explanations."
+        if language == "am":
+            lang_instruction = "Generate all content in Amharic (አማርኛ). Questions, options, correct answer, and explanations must all be in Amharic."
+        elif language == "both":
+            lang_instruction = "Generate questions in English with Amharic answer explanations. Key terms in both languages."
+        else:
+            lang_instruction = "Generate all content in English."
 
         # Retrieve curriculum context to ground questions
         filter_obj = RetrievalFilter(grade_level=grade_level)
         results = await self.adapter.search(query=topic, n_results=5, filter_obj=filter_obj)
-        context = self.adapter.format_context(results) if results else f"Grade {grade_level} biology curriculum - {topic}"
+        context = (
+            self.adapter.format_context(results)
+            if results
+            else f"Grade {grade_level} biology curriculum - {topic}"
+        )
         system_prompt = QUIZ_SYSTEM_PROMPT.replace("{context}", context)
+
+        weak_topic_block = ""
+        if weak_topics:
+            weak_list = "\n".join(
+                f"- {wt['topic']}: {wt['average_score']:.0f}% mastery (severity: {wt['severity']})"
+                for wt in weak_topics
+            )
+            weak_topic_block = f"""
+STUDENT WEAK TOPICS (focus on these):
+{weak_list}
+
+"""
+
+        diff_instruction = ""
+        if target_difficulty == "easy":
+            diff_instruction = "Generate mostly EASY questions to build confidence."
+        elif target_difficulty == "hard":
+            diff_instruction = "Generate mostly HARD questions for advanced challenge."
+        elif target_difficulty == "medium":
+            diff_instruction = "Mix EASY, MEDIUM, and HARD questions in balanced proportion."
+        elif weak_topics:
+            critical = [wt for wt in weak_topics if wt["severity"] == "critical"]
+            moderate = [wt for wt in weak_topics if wt["severity"] == "moderate"]
+            mild = [wt for wt in weak_topics if wt["severity"] == "mild"]
+            hints = []
+            if critical:
+                hints.append(
+                    f"Focus on EASY questions for critical topics ({', '.join(w['topic'] for w in critical)})"
+                )
+            if moderate:
+                hints.append(
+                    f"Use MIXED difficulty for moderate topics ({', '.join(w['topic'] for w in moderate)})"
+                )
+            if mild:
+                hints.append(
+                    f"Include MEDIUM/HARD questions for mild topics ({', '.join(w['topic'] for w in mild)})"
+                )
+            if hints:
+                diff_instruction = " ".join(hints)
 
         user_message = f"""Generate a biology quiz for Grade {grade_level} on topic: {topic}.
 - Question count: {question_count}
 - Question types: {types_str}
 - {lang_instruction}
+{weak_topic_block}{diff_instruction}
 
 IMPORTANT: Base ALL questions on the curriculum context provided above. Do NOT use external knowledge.
 

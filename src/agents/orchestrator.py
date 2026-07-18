@@ -1,7 +1,7 @@
-from typing import Optional
+import structlog
+
 from src.agents.base import BaseAgent
 from src.llm.router import ModelRouter
-import structlog
 
 logger = structlog.get_logger()
 
@@ -32,6 +32,7 @@ Respond with ONLY a JSON object: {"intent": "tutor", "confidence": 0.95, "reason
         )
 
         import json
+
         try:
             parsed = json.loads(result["content"])
             return parsed

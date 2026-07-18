@@ -1,7 +1,6 @@
-import asyncio
+import structlog
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
-import structlog
 
 from src.config import settings
 
@@ -40,10 +39,10 @@ class Base(DeclarativeBase):
     @classmethod
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
-        if hasattr(cls, '__tablename__') and cls.__tablename__:
-            existing = getattr(cls, '__table_args__', None) or {}
+        if hasattr(cls, "__tablename__") and cls.__tablename__:
+            existing = getattr(cls, "__table_args__", None) or {}
             if isinstance(existing, dict):
-                existing.setdefault('extend_existing', True)
+                existing.setdefault("extend_existing", True)
                 cls.__table_args__ = existing
 
 
@@ -60,12 +59,26 @@ async def get_session() -> AsyncSession:
 
 
 async def init_db():
-    logger.info("database_init_deferred - waiting for first connection")
-    _get_engine()
-    logger.debug("engine_created")
+    logger.info("running_database_migrations")
+    import asyncio
+    from pathlib import Path
+
+    from alembic.command import upgrade as alembic_upgrade
+    from alembic.config import Config as AlembicConfig
+
+    alembic_cfg = AlembicConfig(Path(__file__).parents[2] / "alembic.ini")
+    await asyncio.to_thread(alembic_upgrade, alembic_cfg, "head")
+    logger.info("database_migrations_complete")
 
 
 async def close_db():
-    engine = _get_engine()
-    await engine.dispose()
+    global _engine, _async_session_factory
+    if _engine is not None:
+        try:
+            await _engine.dispose()
+        except Exception:
+            logger.warning("database_engine_dispose_error_ignored")
+        finally:
+            _engine = None
+    _async_session_factory = None
     logger.info("database engine disposed")

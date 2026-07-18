@@ -1,0 +1,6 @@
+# label|||query|||response|||context
+FAIL|||What is the function of mitochondria?|||Mitochondria are the powerhouse of the cell and also control the cell's DNA replication.|||Mitochondria are known as the powerhouse of the cell. They generate ATP through cellular respiration.
+PASS|||What is photosynthesis?|||Photosynthesis is the process by which plants convert light energy into chemical energy stored in glucose.|||Photosynthesis is the process where plants use sunlight, water, and carbon dioxide to produce glucose and oxygen.
+FAIL|||What is DNA made of?|||DNA is made of amino acids arranged in a double helix.|||DNA (deoxyribonucleic acid) is a molecule composed of nucleotides. Each nucleotide contains a sugar, a phosphate group, and a nitrogenous base.
+PASS|||What is the role of red blood cells?|||Red blood cells transport oxygen from the lungs to the body's tissues and carry carbon dioxide back to the lungs.|||Red blood cells, or erythrocytes, carry oxygen from the lungs to all body tissues and help transport carbon dioxide back to the lungs.
+FAIL|||What causes genetic variation?|||Genetic variation is primarily caused by the moon's gravitational pull during cell division.|||Genetic variation arises from mutations, gene flow, and sexual reproduction. During meiosis, crossing over and independent assortment create new combinations of alleles.

@@ -9,19 +9,33 @@ httpx==0.27.2
 pydantic-settings==2.5.2
 pydantic==2.9.2
 chromadb==0.5.5
-# sentence-transformers removed for Docker builds (pulls PyTorch + CUDA ~3GB)
-# Embedder falls back to Ollama (nomic-embed-text) when not available
+posthog>=3,<6  # pin for API compat: chromadb 0.5.5 uses old 3-arg capture(distinct_id, event, properties)
+# sentence-transformers installed in both Dockerfile and Dockerfile.bot
+# (CPU-only torch via --index-url https://download.pytorch.org/whl/cpu)
 openai==1.51.0
 anthropic==0.42.0
 python-multipart==0.0.12
 pypdf==5.0.0
+pymupdf>=1.24.0
+pypdfium2>=4.30.0
+rapidocr>=3.8.0
+docling>=2.12.0
+rank-bm25>=0.2.2
+sentence-transformers>=3.0.0
 python-docx==1.1.2
 pytesseract==0.3.13
 gtts==2.5.4
 speechrecognition==3.11.0
 pydub==0.25.1
-numpy==1.26.4
+numpy>=1.26.4,<2.0.0
 pytest==8.3.3
+
+# Observability
+opentelemetry-api>=1.30.0
+opentelemetry-sdk>=1.30.0
+opentelemetry-exporter-otlp-proto-grpc>=1.30.0
+traceloop-sdk>=0.40.0
+sentry-sdk[fastapi]>=2.0.0  # Free tier error monitoring (https://sentry.io)
 pytest-asyncio==0.24.0
 langgraph>=1.0.0
 httpx[socks]>=0.27
@@ -29,3 +43,11 @@ structlog==24.4.0
 tenacity==9.0.0
 alembic>=1.13
 psycopg2-binary>=2.9
+fpdf2==2.8.1
+Pillow>=10.0.0
+bcrypt>=4.0.0
+python-jose[cryptography]>=3.3.0
+cairosvg>=2.7.0
+aiosqlite>=0.20.0
+defusedxml>=0.7.1
+opencv-python-headless>=4.9.0.80

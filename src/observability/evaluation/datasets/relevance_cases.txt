@@ -1,0 +1,6 @@
+# label|||query|||response|||context
+PASS|||What is the function of mitochondria?|||Mitochondria generate ATP through cellular respiration, providing energy for the cell.|||
+FAIL|||What is the function of mitochondria?|||The mitochondria are organelles found in eukaryotic cells. The Great Wall of China was built over centuries by various Chinese dynasties.|||
+PASS|||Explain the water cycle.|||The water cycle describes how water evaporates from the Earth's surface, rises into the atmosphere, cools and condenses into clouds, and falls back as precipitation.|||
+FAIL|||Explain the water cycle.|||The water molecule H2O has a molar mass of 18.015 g/mol. Water is a polar molecule. Hydrogen bonds form between water molecules.|||
+PASS|||What is an ecosystem?|||An ecosystem is a community of living organisms interacting with their physical environment.|||

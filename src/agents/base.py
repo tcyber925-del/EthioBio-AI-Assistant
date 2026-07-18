@@ -1,7 +1,9 @@
 from typing import Optional
-from sqlalchemy.ext.asyncio import AsyncSession
-from src.llm.router import ModelRouter
+
 import structlog
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.llm.router import ModelRouter
 
 logger = structlog.get_logger()
 
@@ -19,6 +21,7 @@ class BaseAgent:
         temperature: float = 0.7,
         max_tokens: int = 2048,
         request_type: str = "chat",
+        preferred_model: str | None = None,
     ) -> dict:
         messages = [
             {"role": "system", "content": system_prompt},
@@ -30,4 +33,5 @@ class BaseAgent:
             session=session,
             temperature=temperature,
             max_tokens=max_tokens,
+            preferred_model=preferred_model,
         )

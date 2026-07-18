@@ -1,0 +1,116 @@
+'use client'
+
+import { useEffect, useState, useCallback } from 'react'
+import { fetchWithAuth } from '@/lib/fetchWithAuth'
+import ReviewQueue from '@/components/governance/ReviewQueue'
+import Card from '@/components/ui/Card'
+import Badge from '@/components/ui/Badge'
+import Button from '@/components/ui/Button'
+
+interface ReviewItem {
+  trace_id: string
+  user_message: string
+  response: string | null
+  intent: string
+  grade_level: number | null
+  language: string | null
+  safety_issues: string[]
+  safety_action: string
+  groundedness_score: number
+  hallucination_rate: number
+  requires_teacher_review: boolean
+  reviewed: boolean
+  review_notes: string | null
+  reviewed_at: string | null
+  created_at: string | null
+}
+
+interface ReviewListResponse {
+  traces: ReviewItem[]
+  total: number
+  limit: number
+  offset: number
+}
+
+type FilterTab = 'pending' | 'resolved'
+
+export default function AdminReviewPage() {
+  const [items, setItems] = useState<ReviewItem[]>([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [filter, setFilter] = useState<FilterTab>('pending')
+
+  const fetchItems = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const data: ReviewListResponse = await fetchWithAuth(
+        `/api/admin/review?status=${filter}&limit=50`
+      )
+      setItems(data.traces)
+      setTotal(data.total)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load review items')
+    } finally {
+      setLoading(false)
+    }
+  }, [filter])
+
+  useEffect(() => {
+    fetchItems()
+  }, [fetchItems])
+
+  const handleResolve = async (traceId: string, notes: string) => {
+    try {
+      await fetchWithAuth(`/api/admin/review/${traceId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ action: 'resolve', review_notes: notes }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+      fetchItems()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to resolve item')
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="text-heading text-foreground">Review Queue</h1>
+          <p className="text-small text-foreground-muted mt-1">
+            Pipeline responses flagged by the Safety Node for teacher review
+          </p>
+        </div>
+      </div>
+
+      <Card className="mb-6">
+        <div className="flex gap-2">
+          <Button
+            variant={filter === 'pending' ? 'primary' : 'secondary'}
+            size="sm"
+            onClick={() => setFilter('pending')}
+          >
+            Pending ({filter === 'pending' ? total : '...'})
+          </Button>
+          <Button
+            variant={filter === 'resolved' ? 'primary' : 'secondary'}
+            size="sm"
+            onClick={() => setFilter('resolved')}
+          >
+            Resolved
+          </Button>
+        </div>
+      </Card>
+
+      {error && (
+        <Card className="mb-4 flex items-center gap-2 text-red-400 bg-red-500/5 border-red-500/20">
+          {error}
+        </Card>
+      )}
+
+      <ReviewQueue items={items} onResolve={handleResolve} loading={loading} />
+    </div>
+  )
+}
