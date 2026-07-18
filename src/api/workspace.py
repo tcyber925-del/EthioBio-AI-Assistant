@@ -9,6 +9,7 @@ from src.core.workspace.models import Workspace, WorkspaceMember
 from src.database.session import async_session_factory
 
 logger = structlog.get_logger()
+print("WORKSPACE_MODULE_LOADED", flush=True)
 logger.info("workspace_module_loaded")
 router = APIRouter(prefix="/api/v1/workspaces", tags=["Workspace"])
 
