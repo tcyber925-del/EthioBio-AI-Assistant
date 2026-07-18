@@ -147,7 +147,7 @@ export default function StudentAssignmentDetailPage() {
           <div className="bg-v2-surface border border-v2-border rounded-[20px] p-6 text-center">
             <CheckCircle className="w-8 h-8 text-v2-text-secondary mx-auto mb-2" />
             <p className="text-sm text-v2-text-primary font-semibold">Max attempts reached</p>
-            <p className="text-xs text-v2-text-secondary mt-1">You've used all {assignment.max_attempts} allowed attempts.</p>
+            <p className="text-xs text-v2-text-secondary mt-1">You&apos;ve used all {assignment.max_attempts} allowed attempts.</p>
           </div>
         )}
       </div>
