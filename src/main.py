@@ -306,6 +306,18 @@ app = FastAPI(
 )
 
 
+async def _ping():
+    return "pong"
+
+
+async def _echo(data: dict):
+    return data
+
+
+app.add_api_route("/ping", _ping, methods=["GET"])
+app.add_api_route("/echo", _echo, methods=["POST"])
+
+
 @app.middleware("http")
 async def security_headers_middleware(request: Request, call_next):
     try:
@@ -387,16 +399,6 @@ diagram_static_dir = Path("data/diagrams")
 diagram_static_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/diagrams/static", StaticFiles(directory=str(diagram_static_dir)), name="diagrams")
 
-
-@app.get("/simple")
-async def simple():
-    return "hello"
-
-@app.get("/debug/workspace-source")
-async def debug_workspace_source():
-    import pathlib
-    p = pathlib.Path(__file__).parent / "api" / "workspace.py"
-    return Response(content=p.read_text(), media_type="text/plain")
 
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
