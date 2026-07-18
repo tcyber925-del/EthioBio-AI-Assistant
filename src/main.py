@@ -388,6 +388,18 @@ diagram_static_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/diagrams/static", StaticFiles(directory=str(diagram_static_dir)), name="diagrams")
 
 
+@app.get("/test-json")
+async def test_json():
+    return JSONResponse(content={"msg": "test ok"}, status_code=200)
+
+@app.get("/test-response")
+async def test_response():
+    return Response(content='{"msg": "test ok"}', status_code=200, media_type="application/json")
+
+@app.get("/test-httpexception")
+async def test_httpexception():
+    raise HTTPException(status_code=400, detail="test error")
+
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
     router = ModelRouter()
