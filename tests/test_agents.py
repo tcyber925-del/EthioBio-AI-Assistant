@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch
 from src.llm.router import ModelRouter
-from src.agents.tutor import TutorAgent
+from src.agents.tutor_agent import TutorAgent
 from src.agents.quiz import QuizAgent
 from src.agents.lesson_planner import LessonPlannerAgent
 from src.agents.orchestrator import OrchestratorAgent
@@ -29,8 +29,8 @@ async def test_tutor_agent_basic(mock_router, mock_retriever):
 
 
 @pytest.mark.asyncio
-async def test_quiz_generation(mock_router):
-    agent = QuizAgent(llm_router=mock_router)
+async def test_quiz_generation(mock_router, mock_adapter):
+    agent = QuizAgent(llm_router=mock_router, adapter=mock_adapter)
     agent._call_llm = AsyncMock()
     agent._call_llm.return_value = {
         "content": '{"title": "Biology Quiz", "questions": [{"question_type": "multiple_choice", "question_text": "What is DNA?", "correct_answer": "Deoxyribonucleic acid", "difficulty": "easy"}], "answer_key": "1. Deoxyribonucleic acid"}',
@@ -93,7 +93,8 @@ async def test_translator(mock_router):
     assert "model_used" in result
 
 
-def test_student_progress_analysis():
+@pytest.mark.asyncio
+async def test_student_progress_analysis():
     router = ModelRouter()
     agent = StudentProgressAgent(llm_router=router)
 
@@ -116,7 +117,7 @@ def test_student_progress_analysis():
         MockRecord("Ecology", 75, 100),
     ]
 
-    result = agent.analyze_progress(records, MockProfile())
+    result = await agent.analyze_progress(records, MockProfile())
     assert "topics" in result
     assert "weak_areas" in result
     assert "Genetics" in result["weak_areas"]

@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 
 @pytest.fixture
@@ -23,3 +23,11 @@ def mock_retriever():
     ]
     retriever.format_context.return_value = "[Source 1] Topic: Cell Biology | Grade: 10\nTest curriculum content"
     return retriever
+
+
+@pytest.fixture
+def mock_adapter():
+    adapter = MagicMock()
+    adapter.search = AsyncMock(return_value=[])
+    adapter.format_context.return_value = "Grade 10 biology curriculum - Genetics"
+    return adapter

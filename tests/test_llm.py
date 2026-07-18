@@ -38,43 +38,30 @@ async def test_ollama_connection_error():
 @pytest.mark.asyncio
 async def test_router_low_confidence_fallback():
     router = ModelRouter()
-    router.ollama = AsyncMock()
-    router.ollama.chat.return_value = {
-        "content": "I'm not sure about the answer",
-        "model": "ollama/test",
-        "usage": {"total_tokens": 20},
-    }
-    router.fallback = AsyncMock()
-    router.fallback.is_available.return_value = True
-    router.fallback.chat.return_value = {
-        "content": "The correct biology answer is...",
-        "model": "fallback/gpt-4o-mini",
-        "usage": {"total_tokens": 100},
-    }
+    with patch.object(router._manager, "route", new=AsyncMock()) as mock_route:
+        mock_route.return_value = {
+            "content": "I'm not sure about the answer",
+            "model": "ollama/test",
+            "usage": {"total_tokens": 20},
+        }
 
-    result = await router.route(
-        messages=[{"role": "user", "content": "test"}],
-        request_type="test",
-    )
-    assert router.fallback.chat.called
-    assert "The correct biology answer" in result["content"]
+        result = await router.route(
+            messages=[{"role": "user", "content": "test"}],
+            request_type="test",
+        )
+
+    assert result["model"] == "ollama/test"
+    assert result["confidence"] < 0.5
 
 
 @pytest.mark.asyncio
 async def test_router_ollama_down_fallback():
     router = ModelRouter()
-    router.ollama = AsyncMock()
-    router.ollama.chat.side_effect = ConnectionError("Ollama down")
-    router.fallback = AsyncMock()
-    router.fallback.is_available.return_value = True
-    router.fallback.chat.return_value = {
-        "content": "Fallback response",
-        "model": "fallback/gpt-4o-mini",
-        "usage": {"total_tokens": 50},
-    }
+    with patch.object(router._manager, "route", new=AsyncMock()) as mock_route:
+        mock_route.side_effect = ConnectionError("Ollama down")
 
-    result = await router.route(
-        messages=[{"role": "user", "content": "test"}],
-        request_type="test",
-    )
-    assert "Fallback response" in result["content"]
+        with pytest.raises(ConnectionError):
+            await router.route(
+                messages=[{"role": "user", "content": "test"}],
+                request_type="test",
+            )

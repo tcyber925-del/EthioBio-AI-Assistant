@@ -26,6 +26,8 @@ async def test_retriever_retrieve(mock_router, mock_retriever):
         "distances": [0.05],
         "ids": ["1"],
     }
+    retriever.embedder = AsyncMock()
+    retriever.embedder.embed_text.return_value = [0.1] * 384
 
     results = await retriever.retrieve("What is a cell?", grade_level=10, topic="Cell Biology")
     assert len(results) > 0
