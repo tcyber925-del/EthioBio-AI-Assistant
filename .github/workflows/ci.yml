@@ -39,7 +39,8 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
-      - run: pytest tests/ -v -k "not test_chat_endpoint and not test_quiz_generate_endpoint" --tb=short -x --timeout=120
+      - run: pip install pytest-timeout
+      - run: pytest tests/ -v -k "not test_chat_endpoint and not test_quiz_generate_endpoint" --tb=short --timeout=120
         env:
           PYTHONUNBUFFERED: "1"
 
