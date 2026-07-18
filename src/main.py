@@ -307,7 +307,6 @@ app = FastAPI(
 
 
 async def _ping():
-    print("MAIN.PY: _ping called!", flush=True)
     return "pong"
 
 
@@ -315,12 +314,8 @@ async def _echo(data: dict):
     return data
 
 
-print("MAIN.PY: registering /ping and /echo routes", flush=True)
 app.add_api_route("/ping", _ping, methods=["GET"])
 app.add_api_route("/echo", _echo, methods=["POST"])
-print(f"MAIN.PY: route_count={len(app.routes)}", flush=True)
-for r in app.routes:
-    print(f"  route: {getattr(r, 'path', r)}", flush=True)
 
 
 @app.middleware("http")
