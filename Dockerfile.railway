@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Dockerfile.railway — slimmer build for Railway Free tier.
+# Dockerfile.railway — slimmer build for Railway Free tier. BUILD_CACHE_BUST=1
 # Skips model preload (downloads on first request instead).
 # Multi-stage to strip build deps from the final image.
 
