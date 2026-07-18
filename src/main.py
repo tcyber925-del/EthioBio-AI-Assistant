@@ -388,17 +388,15 @@ diagram_static_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/diagrams/static", StaticFiles(directory=str(diagram_static_dir)), name="diagrams")
 
 
-@app.get("/test-json")
-async def test_json():
-    return JSONResponse(content={"msg": "test ok"}, status_code=200)
+@app.get("/simple")
+async def simple():
+    return "hello"
 
-@app.get("/test-response")
-async def test_response():
-    return Response(content='{"msg": "test ok"}', status_code=200, media_type="application/json")
-
-@app.get("/test-httpexception")
-async def test_httpexception():
-    raise HTTPException(status_code=400, detail="test error")
+@app.get("/debug/workspace-source")
+async def debug_workspace_source():
+    import pathlib
+    p = pathlib.Path(__file__).parent / "api" / "workspace.py"
+    return Response(content=p.read_text(), media_type="text/plain")
 
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
