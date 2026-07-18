@@ -52,7 +52,7 @@ export default function LessonsPage() {
     setError(null)
     try {
       const data = await fetchWithAuth(`/api/lesson-plan?teacher_id=${getUserId()}`)
-      setItems(data.items || [])
+      setItems(Array.isArray(data) ? data : data.items || [])
     } catch (err: any) {
       setError(err.message)
     } finally {

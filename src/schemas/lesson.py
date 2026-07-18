@@ -85,6 +85,9 @@ class LessonPlanResponse(SchemaModel):
     homework: Optional[str]
     teacher_notes: Optional[str]
     model_used: str
+    topic: Optional[str] = None
+    grade_level: Optional[int] = None
+    status: Optional[str] = None
     classroom_id: Optional[UUID] = None
     rating: Optional[int] = None
     feedback: Optional[str] = None
