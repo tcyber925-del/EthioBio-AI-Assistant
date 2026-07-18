@@ -22,6 +22,7 @@ RUN uv pip install --system -r requirements.txt \
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 
 COPY . .
+RUN find /app -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
 
 EXPOSE 8000
 

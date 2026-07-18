@@ -11,6 +11,11 @@ from src.database.session import async_session_factory
 logger = structlog.get_logger()
 router = APIRouter(prefix="/api/v1/workspaces", tags=["Workspace"])
 
+
+@router.get("/simple")
+async def simple():
+    return {"msg": "ok"}
+
 try:
     _factory = async_session_factory()
     service = WorkspaceService(_factory)
