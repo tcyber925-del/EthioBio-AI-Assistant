@@ -11,11 +11,6 @@ from src.database.session import async_session_factory
 logger = structlog.get_logger()
 router = APIRouter(prefix="/api/v1/workspaces", tags=["Workspace"])
 
-
-@router.get("/simple")
-async def simple():
-    return {"msg": "ok"}
-
 try:
     _factory = async_session_factory()
     service = WorkspaceService(_factory)
@@ -116,6 +111,11 @@ async def update_member_role(workspace_id: str, user_id: str, role: WorkspaceRol
     ok = await service.update_member_role(workspace_id, user_id, role)
     if not ok:
         raise HTTPException(status_code=404, detail="Membership not found")
+
+
+@router.get("/simple")
+async def simple():
+    return {"msg": "ok"}
 
 
 @router.post("/seed/{class_group_id}", response_model=Workspace, status_code=201)
