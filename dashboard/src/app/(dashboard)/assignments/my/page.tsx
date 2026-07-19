@@ -60,7 +60,7 @@ export default function MyAssignmentsPage() {
                 <Link key={a.id} href={`/assignments/my/${a.id}`}
                   className="bg-v2-surface border border-v2-border rounded-[20px] p-5 flex items-center justify-between hover:border-v2-accent transition-colors group">
                   <div className="flex items-center gap-4 min-w-0">
-                    <div className="p-3 rounded-xl bg-v2-accentMuted text-v2-accent border border-v2-accent/20 shrink-0">
+                    <div className="p-3 rounded-xl bg-v2-accent-muted text-v2-accent border border-v2-accent/20 shrink-0">
                       <FileText className="w-5 h-5" />
                     </div>
                     <div className="min-w-0">

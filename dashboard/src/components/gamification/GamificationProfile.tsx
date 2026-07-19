@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
-import { fetchWithTimeout } from '@/lib/fetch'
+import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { CardSkeleton } from '@/components/Skeleton'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
@@ -55,7 +55,7 @@ export default function GamificationProfile({ userId }: { userId: string }) {
   const fetchProfile = async () => {
     setLoading(true)
     try {
-      const d = await fetchWithTimeout(`/gamification/profile/${userId}`)
+      const d = await fetchWithAuth(`/gamification/profile/${userId}`)
       setData(d)
       setError(null)
     } catch (err: unknown) {

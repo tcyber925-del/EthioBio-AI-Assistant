@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { AlertTriangle, RefreshCw, ChevronDown, Shield } from 'lucide-react'
-import { fetchWithTimeout } from '@/lib/fetch'
+import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { HeroSection, InsightCard, MetricStrip, AIInsightPanel } from '@/components/dashboard-v2'
 
 interface SchoolItem { id: string; name: string }
@@ -47,7 +47,7 @@ export function SchoolDashboard() {
   const fetchSchools = async () => {
     setLoading(true); setError(null)
     try {
-      const d = await fetchWithTimeout('/teacher/schools')
+      const d = await fetchWithAuth('/teacher/schools')
       const schoolsList = d.schools || d || []
       setSchools(schoolsList)
       if (schoolsList[0]?.id) setSelectedId(schoolsList[0].id)
@@ -61,8 +61,8 @@ export function SchoolDashboard() {
     setTrends([])
     try {
       const [p, t] = await Promise.allSettled([
-        fetchWithTimeout(`/teacher/schools/${schoolId}/overview`),
-        fetchWithTimeout(`/teacher/schools/${schoolId}/trends?days=30`),
+        fetchWithAuth(`/teacher/schools/${schoolId}/overview`),
+        fetchWithAuth(`/teacher/schools/${schoolId}/trends?days=30`),
       ])
       if (p.status === 'fulfilled') setProfile(p.value)
       if (t.status === 'fulfilled') setTrends(t.value.trends || t.value || [])

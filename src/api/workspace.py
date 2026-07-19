@@ -2,7 +2,7 @@ from uuid import UUID as _UUID
 
 import structlog
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse
 
 from src.core.workspace import NewWorkspace, WorkspaceRole, WorkspaceService
 from src.core.workspace.models import Workspace, WorkspaceMember

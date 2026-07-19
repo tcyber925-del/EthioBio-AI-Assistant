@@ -213,7 +213,7 @@ export default function KnowledgeDetailPage() {
                 </h2>
                 <div className="flex flex-wrap gap-2">
                   {enrichment.key_terms.map(term => (
-                    <span key={term} className="text-xs px-2.5 py-1 rounded-full bg-v2-accentMuted text-v2-accent border border-v2-accent/20 font-medium">
+                    <span key={term} className="text-xs px-2.5 py-1 rounded-full bg-v2-accent-muted text-v2-accent border border-v2-accent/20 font-medium">
                       {term}
                     </span>
                   ))}

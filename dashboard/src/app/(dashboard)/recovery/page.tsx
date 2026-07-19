@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { Activity, ClipboardList, AlertTriangle, Loader2, Search, CheckCircle2, Clock, BookOpen, Lightbulb, ArrowRight, Target, Brain, TrendingUp, RotateCcw, Bell, PartyPopper, Sparkles, RefreshCw } from 'lucide-react'
-import { fetchWithTimeout } from '@/lib/fetch'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { CardSkeleton } from '@/components/Skeleton'
 import { isAuthenticated } from '@/lib/auth'
@@ -241,7 +240,7 @@ export default function RecoveryPage() {
     setLoading(true); setError(null); setData(null)
     setSelectedUserId(id)
     try {
-      const result = await fetchWithTimeout(`/recovery/dashboard/${id}`)
+      const result = await fetchWithAuth(`/recovery/dashboard/${id}`)
       setData(result)
     } catch (err: any) {
       setError(err.message)
@@ -257,7 +256,7 @@ export default function RecoveryPage() {
       const hist: TopicHistory = {}
       await Promise.all(data.weak_topics.map(async (wt) => {
         try {
-          const res = await fetchWithTimeout(`/recovery/history/${data.user_id}/${encodeURIComponent(wt.topic)}`)
+          const res = await fetchWithAuth(`/recovery/history/${data.user_id}/${encodeURIComponent(wt.topic)}`)
           if (res.history) hist[wt.topic] = res.history
         } catch { /* skip */ }
       }))
@@ -275,7 +274,7 @@ export default function RecoveryPage() {
   const markAllRead = async () => {
     if (!data) return
     try {
-      await fetchWithTimeout(`/recovery/notifications/read-all/${data.user_id}`, { method: 'PUT' })
+      await fetchWithAuth(`/recovery/notifications/read-all/${data.user_id}`, { method: 'PUT' })
       setData({ ...data, notifications: [], unread_notifications: 0 })
     } catch { /* ignore */ }
   }

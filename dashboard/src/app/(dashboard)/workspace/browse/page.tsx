@@ -166,7 +166,7 @@ export default function BrowseAssetsPage() {
                 <button
                   onClick={() => setSelectedCollection(null)}
                   className={`flex items-center justify-between p-2.5 rounded-xl text-sm font-medium transition-all ${
-                    selectedCollection === null ? 'bg-v2-accentMuted text-v2-accent border border-v2-accent/20' : 'text-v2-text-secondary hover:text-v2-text-primary'
+                    selectedCollection === null ? 'bg-v2-accent-muted text-v2-accent border border-v2-accent/20' : 'text-v2-text-secondary hover:text-v2-text-primary'
                   }`}
                 >
                   <span className="flex items-center gap-2">
