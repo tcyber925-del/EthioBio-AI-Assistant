@@ -10,7 +10,7 @@ import { DashboardLayout } from '@/components/dashboard-v2/DashboardLayout'
 import { ConversationSidebar } from '@/components/ConversationSidebar'
 import { useConversationHistory } from '@/hooks/useConversationHistory'
 import { fetchWithTimeout } from '@/lib/fetch'
-import { getUserId, isAuthenticated } from '@/lib/auth'
+import { getToken, getUserId, isAuthenticated } from '@/lib/auth'
 
 const isServerError = (msg: string) =>
   msg.includes('502') || msg.includes('504') || msg.includes('Application failed to respond')
@@ -52,13 +52,20 @@ export default function AskPage() {
 
     try {
       const endpoint = mode === 'graph' ? '/graph/chat' : '/chat'
-      const body = mode === 'graph'
-        ? { question: question.trim(), grade_level: grade, model: selectedModel }
-        : { user_id: getUserId() || '00000000-0000-0000-0000-000000000001', question: question.trim(), grade_level: grade, use_rag: true, model: selectedModel }
+      const body = {
+        user_id: getUserId() || '00000000-0000-0000-0000-000000000001',
+        question: question.trim(),
+        grade_level: grade,
+        model: selectedModel,
+        ...(mode !== 'graph' && { use_rag: true }),
+      }
+      const token = getToken()
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (token) headers['Authorization'] = `Bearer ${token}`
 
       const data = await fetchWithTimeout(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(body),
       }, 120000)
 
