@@ -465,7 +465,10 @@
     "no_questions_subtitle": "ለምሳሌ፡ \"ፕሮቲን ውህደት ምንድነው?\" ወይም \"ዝግመተ ለውጥን አስረዳ\"",
     "graph_mode": "ግራፍ",
     "chat_mode": "ቻት",
-    "grade_label": "ክፍል"
+    "grade_label": "ክፍል",
+    "recent_questions": "የቅርብ ጥያቄዎች",
+    "loading_history": "ታሪክ በመጫን ላይ...",
+    "load_history_error": "ታሪክ መጫን አልተቻለም"
   },
   "recovery": {
     "title": "የማገገሚያ ዳሽቦርድ",

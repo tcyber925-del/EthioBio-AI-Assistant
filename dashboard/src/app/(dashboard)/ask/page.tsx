@@ -1,15 +1,30 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Send, MessageSquare, AlertTriangle, BookOpen, Loader2 } from 'lucide-react'
+import { Clock, MessageSquare, AlertTriangle, BookOpen, Loader2, Send } from 'lucide-react'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import ModelSelector from '@/components/ModelSelector'
 import { fetchWithTimeout } from '@/lib/fetch'
-import { getUserId, isAuthenticated } from '@/lib/auth'
+import { getToken, getUserId, isAuthenticated } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
+
+interface HistoryTurn {
+  id: string
+  session_id: string | null
+  role: string
+  content: string
+  topic: string | null
+  created_at: string
+}
+
+interface QAPair {
+  question: HistoryTurn
+  answer: HistoryTurn | null
+  id: string
+}
 
 export default function AskPage() {
   const router = useRouter()
@@ -29,6 +44,43 @@ export default function AskPage() {
   const [error, setError] = useState<string | null>(null)
   const [grade, setGrade] = useState(12)
   const [mode, setMode] = useState<'graph' | 'chat'>('graph')
+  const [history, setHistory] = useState<QAPair[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(true)
+  const [historyError, setHistoryError] = useState(false)
+  const [showHistory, setShowHistory] = useState(true)
+  const historyReqId = useRef(0)
+
+  const fetchHistory = useCallback(async () => {
+    if (!isAuthenticated()) return
+    const reqId = ++historyReqId.current
+    setLoadingHistory(true)
+    setHistoryError(false)
+    try {
+      const token = getToken()
+      const data: HistoryTurn[] = await fetchWithTimeout('/api/v1/memory/conversations?limit=30', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (reqId !== historyReqId.current) return
+      const pairs: QAPair[] = []
+      const sorted = [...data].reverse()
+      for (let i = 0; i < sorted.length; i++) {
+        if (sorted[i].role === 'student' && i + 1 < sorted.length && sorted[i + 1].role === 'assistant') {
+          pairs.push({ question: sorted[i], answer: sorted[i + 1], id: sorted[i].id })
+        }
+      }
+      if (reqId !== historyReqId.current) return
+      setHistory(pairs)
+    } catch {
+      if (reqId !== historyReqId.current) return
+      setHistoryError(true)
+    } finally {
+      if (reqId === historyReqId.current) setLoadingHistory(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchHistory()
+  }, [fetchHistory])
 
   const askQuestion = async () => {
     if (!question.trim()) return
@@ -52,6 +104,7 @@ export default function AskPage() {
       setSelectedModel(data.model_used || '')
       setConfidence(data.confidence || 0)
       setSources(data.sources || [])
+      fetchHistory()
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -147,6 +200,47 @@ export default function AskPage() {
           <MessageSquare className="w-12 h-12 text-border mx-auto mb-3" />
           <p className="text-foreground-muted font-medium">{ta('no_questions')}</p>
           <p className="text-sm text-foreground-muted/60 mt-1">{ta('no_questions_subtitle')}</p>
+        </div>
+      )}
+
+      {history.length > 0 && (
+        <div className="mt-8 border-t border-border pt-6">
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="flex items-center gap-2 text-sm font-medium text-foreground-muted hover:text-foreground transition-colors mb-4"
+          >
+            <Clock className="w-4 h-4" />
+            {ta('recent_questions')} ({history.length})
+            <span className="text-xs ml-1">{showHistory ? '▲' : '▼'}</span>
+          </button>
+          {showHistory && (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {loadingHistory && (
+                <div className="flex items-center gap-2 text-sm text-foreground-muted py-2">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  {ta('loading_history')}
+                </div>
+              )}
+              {!loadingHistory && historyError && (
+                <p className="text-xs text-red-400 py-2">{ta('load_history_error')}</p>
+              )}
+              {!loadingHistory && history.map((pair) => (
+                <button
+                  key={pair.id}
+                  onClick={() => {
+                    setQuestion(pair.question.content)
+                    if (pair.answer) setAnswer(pair.answer.content)
+                  }}
+                  className="w-full text-left p-3 rounded-lg bg-card border border-border hover:border-primary/30 transition-colors"
+                >
+                  <p className="text-sm font-medium text-foreground line-clamp-1">{pair.question.content}</p>
+                  {pair.answer && (
+                    <p className="text-xs text-foreground-muted mt-1 line-clamp-1">{pair.answer.content}</p>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
