@@ -606,7 +606,14 @@
     "grade_label": "Grade",
     "recent_questions": "Recent Questions",
     "loading_history": "Loading history...",
-    "load_history_error": "Could not load history"
+    "load_history_error": "Could not load history",
+    "search_history": "Search history",
+    "no_history": "No questions yet",
+    "no_search_results": "No matching questions",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "this_week": "This Week",
+    "retry": "Retry"
   },
   "recovery": {
     "title": "Recovery Dashboard",
