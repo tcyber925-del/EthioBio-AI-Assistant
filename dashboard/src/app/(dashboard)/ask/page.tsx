@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Send, MessageSquare, AlertTriangle, BookOpen, Loader2 } from 'lucide-react'
+import { Send, MessageSquare, AlertTriangle, BookOpen, Loader2, RefreshCw } from 'lucide-react'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import ModelSelector from '@/components/ModelSelector'
 import { DashboardLayout } from '@/components/dashboard-v2/DashboardLayout'
@@ -11,6 +11,9 @@ import { ConversationSidebar } from '@/components/ConversationSidebar'
 import { useConversationHistory } from '@/hooks/useConversationHistory'
 import { fetchWithTimeout } from '@/lib/fetch'
 import { getUserId, isAuthenticated } from '@/lib/auth'
+
+const isServerError = (msg: string) =>
+  msg.includes('502') || msg.includes('504') || msg.includes('Application failed to respond')
 
 export const dynamic = 'force-dynamic'
 
@@ -83,39 +86,38 @@ export default function AskPage() {
 
   const chatArea = (
     <div className="lg:col-span-2 space-y-5">
-      <div className="flex items-center justify-between">
-        <div />
-        <div className="flex items-center gap-3">
-          <ModelSelector value={selectedModel} onChange={setSelectedModel} />
-          <select
-            value={grade}
-            onChange={e => setGrade(Number(e.target.value))}
-            className="px-3 py-2 border border-v2-border rounded-lg text-sm bg-v2-bg text-v2-text-primary focus:outline-none focus:ring-1 focus:ring-v2-accent"
-          >
-            {[7, 8, 9, 10, 11, 12].map(g => (
-              <option key={g} value={g}>{ta('grade_label')} {g}</option>
-            ))}
-          </select>
-          <div className="flex border border-v2-border rounded-lg overflow-hidden">
-            <button
-              onClick={() => setMode('graph')}
-              className={`px-3 py-2 text-xs font-medium transition-colors ${
-                mode === 'graph' ? 'bg-v2-accent text-v2-inverted' : 'bg-v2-bg text-v2-text-muted hover:text-v2-text-primary'
-              }`}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <ModelSelector value={selectedModel} onChange={setSelectedModel} />
+            <select
+              value={grade}
+              onChange={e => setGrade(Number(e.target.value))}
+              className="px-3 py-2 border border-v2-border rounded-lg text-sm bg-v2-bg text-v2-text-primary focus:outline-none focus:ring-1 focus:ring-v2-accent"
             >
-              {ta('graph_mode')}
-            </button>
-            <button
-              onClick={() => setMode('chat')}
-              className={`px-3 py-2 text-xs font-medium transition-colors ${
-                mode === 'chat' ? 'bg-v2-accent text-v2-inverted' : 'bg-v2-bg text-v2-text-muted hover:text-v2-text-primary'
-              }`}
-            >
-              {ta('chat_mode')}
-            </button>
+              {[7, 8, 9, 10, 11, 12].map(g => (
+                <option key={g} value={g}>{ta('grade_label')} {g}</option>
+              ))}
+            </select>
+            <div className="flex border border-v2-border rounded-lg shrink-0">
+              <button
+                onClick={() => setMode('graph')}
+                className={`px-3 py-2 text-xs font-medium transition-colors ${
+                  mode === 'graph' ? 'bg-v2-accent text-v2-inverted' : 'bg-v2-bg text-v2-text-muted hover:text-v2-text-primary'
+                }`}
+              >
+                {ta('graph_mode')}
+              </button>
+              <button
+                onClick={() => setMode('chat')}
+                className={`px-3 py-2 text-xs font-medium transition-colors ${
+                  mode === 'chat' ? 'bg-v2-accent text-v2-inverted' : 'bg-v2-bg text-v2-text-muted hover:text-v2-text-primary'
+                }`}
+              >
+                {ta('chat_mode')}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
       <div className="rounded-[20px] border border-v2-border bg-v2-bg p-4">
         <div className="flex gap-3">
@@ -154,6 +156,17 @@ export default function AskPage() {
           <div>
             <p className="font-medium text-red-400">{tc('error')}</p>
             <p className="text-sm text-red-400/80 mt-1">{error}</p>
+            {isServerError(error) && (
+              <p className="text-xs text-red-400/60 mt-2">{ta('server_error_hint')}</p>
+            )}
+            <button
+              onClick={askQuestion}
+              disabled={loading}
+              className="mt-3 px-4 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-xs font-medium hover:bg-red-500/30 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+              {tc('retry')}
+            </button>
           </div>
         </div>
       )}
