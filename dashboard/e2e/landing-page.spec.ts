@@ -41,9 +41,9 @@ test.describe('Landing Page', () => {
   test('interactive demo section has sample queries', async ({ page }) => {
     await page.goto(BASE_URL);
     await page.locator('a[href="#console"]').first().click();
-    await expect(page.locator('text=What is the difference between prokaryotic and eukaryotic cells?')).toBeVisible();
-    await expect(page.locator('text=Explain the main stages of cellular respiration.')).toBeVisible();
-    await expect(page.locator('text=How does natural selection drive biological evolution?')).toBeVisible();
+    await expect(page.locator('text=What is the difference between prokaryotic and eukaryotic cells?').first()).toBeVisible();
+    await expect(page.locator('text=Explain the main stages of cellular respiration.').first()).toBeVisible();
+    await expect(page.locator('text=How does natural selection drive biological evolution?').first()).toBeVisible();
   });
 
   test('footer has resources and portal links', async ({ page }) => {
