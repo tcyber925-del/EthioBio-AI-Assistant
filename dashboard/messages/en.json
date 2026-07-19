@@ -613,7 +613,8 @@
     "today": "Today",
     "yesterday": "Yesterday",
     "this_week": "This Week",
-    "retry": "Retry"
+    "retry": "Retry",
+    "server_error_hint": "The backend may be starting up. Please wait a moment and retry."
   },
   "recovery": {
     "title": "Recovery Dashboard",
