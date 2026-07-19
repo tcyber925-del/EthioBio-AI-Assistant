@@ -126,7 +126,7 @@ export default function SearchGatewayPage() {
                           <span>Score: {m.score.toFixed(3)}</span>
                         </div>
                         <p className="text-sm text-v2-text-primary leading-relaxed whitespace-pre-wrap italic">
-                          "{m.text}"
+                          &ldquo;{m.text}&rdquo;
                         </p>
                       </div>
                     ))}
@@ -148,7 +148,7 @@ export default function SearchGatewayPage() {
             <Search className="w-12 h-12 text-v2-text-secondary mx-auto mb-3" />
             <h3 className="text-lg font-bold text-v2-text-primary">No results found</h3>
             <p className="text-sm text-v2-text-secondary mt-1 max-w-xs mx-auto">
-              Your search query didn't return any matching context within this workspace's indexed documents.
+              Your search query didn&rsquo;t return any matching context within this workspace&rsquo;s indexed documents.
             </p>
           </div>
         ) : null}

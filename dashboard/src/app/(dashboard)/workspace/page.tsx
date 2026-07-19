@@ -118,7 +118,7 @@ export default function WorkspaceDashboard() {
             </div>
             <h3 className="text-lg font-bold text-v2-text-primary mt-2">Upload Files</h3>
             <p className="text-xs text-v2-text-secondary">
-              Ingest new textbooks, quizzes, lesson plans or school schedules into this workspace's knowledge pool.
+              Ingest new textbooks, quizzes, lesson plans or school schedules into this workspace&rsquo;s knowledge pool.
             </p>
           </Link>
 

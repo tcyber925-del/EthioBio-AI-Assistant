@@ -83,6 +83,43 @@ async def _verify_teacher_owns_classroom(
     return class_group
 
 
+@router.get("/students")
+async def list_students(
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role == UserRole.admin:
+        result = await session.execute(
+            select(User).where(User.role == UserRole.student).order_by(User.created_at.desc())
+        )
+    else:
+        enrolled = await session.execute(
+            select(ClassEnrollment.student_id).where(
+                ClassEnrollment.class_id.in_(
+                    select(ClassGroup.id).where(ClassGroup.teacher_id == current_user.id)
+                )
+            )
+        )
+        student_ids = [row[0] for row in enrolled.all()]
+        if not student_ids:
+            return []
+        result = await session.execute(
+            select(User).where(User.id.in_(student_ids), User.role == UserRole.student)
+        )
+    students = result.scalars().all()
+    return [
+        {
+            "id": str(s.id),
+            "telegram_id": s.telegram_id,
+            "role": s.role.value if s.role else "student",
+            "language_preference": s.language_preference or "en",
+            "grade_level": s.grade_level,
+            "created_at": s.created_at.isoformat() if s.created_at else None,
+        }
+        for s in students
+    ]
+
+
 @router.post("/classrooms")
 async def create_classroom(
     body: CreateClassroomRequest,

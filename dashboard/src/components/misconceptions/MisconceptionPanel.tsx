@@ -189,12 +189,12 @@ export function MisconceptionPanel({ userId }: { userId: string }) {
                     </div>
 
                     <p className="text-sm text-v2-text-primary mt-2 leading-relaxed italic">
-                      "{p.description}"
+                      &ldquo;{p.description}&rdquo;
                     </p>
 
                     {p.common_wrong_answer && (
                       <p className="text-xs text-v2-text-secondary mt-2 bg-v2-surface p-2.5 rounded-lg border border-v2-border/40">
-                        <strong className="text-v2-text-primary">Wrong Answer:</strong> "{p.common_wrong_answer}"
+                        <strong className="text-v2-text-primary">Wrong Answer:</strong> &ldquo;{p.common_wrong_answer}&rdquo;
                       </p>
                     )}
                   </div>

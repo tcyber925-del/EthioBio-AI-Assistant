@@ -3,9 +3,17 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import pytest_asyncio
+from sqlalchemy import ARRAY
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.compiler import compiles
 
 from src.database.session import Base
+
+
+@compiles(ARRAY, "sqlite")
+def _compile_array_sqlite(element, compiler, **kw):
+    from sqlalchemy.types import Text
+    return compiler.visit_text(Text(), **kw)
 
 
 @pytest.fixture(scope="session")

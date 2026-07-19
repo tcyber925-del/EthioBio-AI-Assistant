@@ -116,6 +116,9 @@ async def generate_lesson_plan(
             homework=result.get("homework"),
             teacher_notes=result.get("teacher_notes"),
             model_used=result.get("model_used", ""),
+            topic=db_plan.topic,
+            grade_level=db_plan.grade_level,
+            status=db_plan.status,
             classroom_id=db_plan.classroom_id,
             rating=db_plan.rating,
             feedback=db_plan.feedback,
@@ -161,6 +164,9 @@ async def rate_lesson_plan(
         homework=plan.homework,
         teacher_notes=plan.teacher_notes,
         model_used=plan.model_used or "",
+        topic=plan.topic,
+        grade_level=plan.grade_level,
+        status=plan.status,
         classroom_id=plan.classroom_id,
         rating=plan.rating,
         feedback=plan.feedback,
@@ -214,6 +220,9 @@ async def get_lesson_plan(
         homework=plan.homework,
         teacher_notes=plan.teacher_notes,
         model_used=plan.model_used or "",
+        topic=plan.topic,
+        grade_level=plan.grade_level,
+        status=plan.status,
         classroom_id=plan.classroom_id,
         rating=plan.rating,
         feedback=plan.feedback,
@@ -277,6 +286,9 @@ async def list_lesson_plans(
             homework=p.homework,
             teacher_notes=p.teacher_notes,
             model_used=p.model_used or "",
+            topic=p.topic,
+            grade_level=p.grade_level,
+            status=p.status,
             classroom_id=p.classroom_id,
             rating=p.rating,
             feedback=p.feedback,
@@ -375,6 +387,7 @@ async def generate_unit_plan(
             session.add(db_plan)
 
             lesson_resp = LessonPlanResponse(
+                id=db_plan.id,
                 objective=lesson_data.get("objective", ""),
                 prior_knowledge=lesson_data.get("prior_knowledge"),
                 explanation=lesson_data.get("explanation", ""),
@@ -383,6 +396,9 @@ async def generate_unit_plan(
                 homework=lesson_data.get("homework"),
                 teacher_notes=lesson_data.get("teacher_notes"),
                 model_used=lesson_data.get("model_used", ""),
+                topic=day.get("subtopic", ""),
+                grade_level=request.grade_level,
+                status=db_plan.status,
                 periods=(
                     [Period(**p) for p in lesson_data.get("periods")]
                     if lesson_data.get("periods")
@@ -491,6 +507,7 @@ async def get_unit_plan(
                     subtopic=dl.topic,
                     objective=dl.objective,
                     lesson=LessonPlanResponse(
+                        id=dl.id,
                         objective=dl.objective,
                         prior_knowledge=dl.prior_knowledge,
                         explanation=dl.explanation,
@@ -499,6 +516,9 @@ async def get_unit_plan(
                         homework=dl.homework,
                         teacher_notes=dl.teacher_notes,
                         model_used=dl.model_used or "",
+                        topic=dl.topic,
+                        grade_level=dl.grade_level,
+                        status=dl.status,
                         periods=(
                             [Period(**p) for p in dl.periods]
                             if (dl.periods and isinstance(dl.periods, list))

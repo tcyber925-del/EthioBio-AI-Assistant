@@ -60,7 +60,7 @@ export default function LessonDetailPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchWithAuth(`/api/admin/content/lesson/${params.id}`)
+      const data = await fetchWithAuth(`/api/lesson-plan/${params.id}`)
       setLesson(data)
     } catch (err: any) {
       setError(err.message)
@@ -72,7 +72,7 @@ export default function LessonDetailPage() {
   const updateStatus = async (newStatus: string) => {
     setUpdating(true)
     try {
-      await fetchWithAuth(`/api/admin/content/lesson/${params.id}/status?status=${newStatus}`, { method: 'PATCH' })
+      await fetchWithAuth(`/api/lesson-plan/${params.id}/rate?status=${newStatus}`, { method: 'PATCH' })
       setLesson(prev => prev ? { ...prev, status: newStatus } : prev)
     } catch (err: any) {
       setError(err.message)

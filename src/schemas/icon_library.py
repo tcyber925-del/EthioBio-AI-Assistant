@@ -9,6 +9,7 @@ class IconEntry(SchemaModel):
     category: str
     author: str
     license: str
+    path: str = ""
     filename: str = ""
     grade_tags: list[int] = []
 

@@ -67,7 +67,6 @@ export default function ExecutionPanel({ agents, onExecute }: ExecutionPanelProp
           </select>
         </div>
         <div>
-            id="agent-select"
           <label className="block text-small text-foreground-muted mb-1">Task</label>
           <textarea
             value={task}
