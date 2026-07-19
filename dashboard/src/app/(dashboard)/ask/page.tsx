@@ -86,38 +86,38 @@ export default function AskPage() {
 
   const chatArea = (
     <div className="lg:col-span-2 space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="flex items-center gap-3 flex-wrap">
-            <ModelSelector value={selectedModel} onChange={setSelectedModel} />
-            <select
-              value={grade}
-              onChange={e => setGrade(Number(e.target.value))}
-              className="px-3 py-2 border border-v2-border rounded-lg text-sm bg-v2-bg text-v2-text-primary focus:outline-none focus:ring-1 focus:ring-v2-accent"
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <ModelSelector value={selectedModel} onChange={setSelectedModel} />
+          <select
+            value={grade}
+            onChange={e => setGrade(Number(e.target.value))}
+            className="px-3 py-2 border border-v2-border rounded-lg text-sm bg-v2-bg text-v2-text-primary focus:outline-none focus:ring-1 focus:ring-v2-accent"
+          >
+            {[7, 8, 9, 10, 11, 12].map(g => (
+              <option key={g} value={g}>{ta('grade_label')} {g}</option>
+            ))}
+          </select>
+          <div className="flex border border-v2-border rounded-lg shrink-0">
+            <button
+              onClick={() => setMode('graph')}
+              className={`px-3 py-2 text-xs font-medium transition-colors ${
+                mode === 'graph' ? 'bg-v2-accent text-v2-inverted' : 'bg-v2-bg text-v2-text-muted hover:text-v2-text-primary'
+              }`}
             >
-              {[7, 8, 9, 10, 11, 12].map(g => (
-                <option key={g} value={g}>{ta('grade_label')} {g}</option>
-              ))}
-            </select>
-            <div className="flex border border-v2-border rounded-lg shrink-0">
-              <button
-                onClick={() => setMode('graph')}
-                className={`px-3 py-2 text-xs font-medium transition-colors ${
-                  mode === 'graph' ? 'bg-v2-accent text-v2-inverted' : 'bg-v2-bg text-v2-text-muted hover:text-v2-text-primary'
-                }`}
-              >
-                {ta('graph_mode')}
-              </button>
-              <button
-                onClick={() => setMode('chat')}
-                className={`px-3 py-2 text-xs font-medium transition-colors ${
-                  mode === 'chat' ? 'bg-v2-accent text-v2-inverted' : 'bg-v2-bg text-v2-text-muted hover:text-v2-text-primary'
-                }`}
-              >
-                {ta('chat_mode')}
-              </button>
-            </div>
+              {ta('graph_mode')}
+            </button>
+            <button
+              onClick={() => setMode('chat')}
+              className={`px-3 py-2 text-xs font-medium transition-colors ${
+                mode === 'chat' ? 'bg-v2-accent text-v2-inverted' : 'bg-v2-bg text-v2-text-muted hover:text-v2-text-primary'
+              }`}
+            >
+              {ta('chat_mode')}
+            </button>
           </div>
         </div>
+      </div>
 
       <div className="rounded-[20px] border border-v2-border bg-v2-bg p-4">
         <div className="flex gap-3">
