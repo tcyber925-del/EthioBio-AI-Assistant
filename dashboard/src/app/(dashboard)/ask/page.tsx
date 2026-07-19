@@ -64,7 +64,7 @@ export default function AskPage() {
       const pairs: QAPair[] = []
       const sorted = [...data].reverse()
       for (let i = 0; i < sorted.length; i++) {
-        if (sorted[i].role === 'student' && i + 1 < sorted.length && sorted[i + 1].role === 'assistant') {
+        if (sorted[i].role === 'user' && i + 1 < sorted.length && sorted[i + 1].role === 'assistant') {
           pairs.push({ question: sorted[i], answer: sorted[i + 1], id: sorted[i].id })
         }
       }
