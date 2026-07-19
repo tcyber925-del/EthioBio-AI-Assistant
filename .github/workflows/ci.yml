@@ -100,5 +100,4 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
       - name: Deploy frontend to Vercel
         run: |
-          npx vercel --prod --token ${{ secrets.VERCEL_TOKEN }} --yes
-        working-directory: dashboard
+          npx vercel deploy --prod --token ${{ secrets.VERCEL_TOKEN }} --yes dashboard --name ethio-bio-ai-assistant
