@@ -59,9 +59,9 @@ function groupByDate(pairs: QAPair[]): DateGroup[] {
   for (const key of order) {
     if (map.has(key)) groups.push({ label: key, items: map.get(key)! })
   }
-  for (const [key, items] of map) {
+  map.forEach((items, key) => {
     if (!order.includes(key)) groups.push({ label: key, items })
-  }
+  })
   return groups
 }
 
