@@ -100,7 +100,7 @@ export default function SearchGatewayPage() {
                   {/* Source Metadata */}
                   <div className="flex items-center justify-between border-b border-v2-border/40 pb-3">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="p-2 rounded-lg bg-v2-accentMuted text-v2-accent border border-v2-accent/20 shrink-0">
+                      <div className="p-2 rounded-lg bg-v2-accent-muted text-v2-accent border border-v2-accent/20 shrink-0">
                         <FileText className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
@@ -135,7 +135,7 @@ export default function SearchGatewayPage() {
                   {/* Structured Citation Badges */}
                   <div className="text-xs font-semibold uppercase text-v2-accent flex items-center gap-1 mt-1">
                     <span>Cited as:</span>
-                    <span className="font-mono bg-v2-accentMuted px-2 py-0.5 rounded border border-v2-accent/20">
+                    <span className="font-mono bg-v2-accent-muted px-2 py-0.5 rounded border border-v2-accent/20">
                       [{r.title} § Chunk {r.matches[0]?.chunk_index || 0}]
                     </span>
                   </div>

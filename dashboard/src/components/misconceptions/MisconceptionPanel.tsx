@@ -179,7 +179,7 @@ export function MisconceptionPanel({ userId }: { userId: string }) {
                       <span className={`text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full ${
                         p.severity === 'critical' ? 'bg-v2-error/10 text-v2-error border border-v2-error/20' :
                         p.severity === 'misunderstanding' ? 'bg-v2-warning/10 text-v2-warning border border-v2-warning/20' :
-                        'bg-v2-accentMuted text-v2-accent border border-v2-accent/20'
+                        'bg-v2-accent-muted text-v2-accent border border-v2-accent/20'
                       }`}>
                         {p.severity}
                       </span>

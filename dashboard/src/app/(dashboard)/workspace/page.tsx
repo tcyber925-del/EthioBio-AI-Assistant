@@ -113,7 +113,7 @@ export default function WorkspaceDashboard() {
             href="/workspace/upload"
             className="flex flex-col gap-3 p-6 bg-v2-surface border border-v2-border rounded-[20px] hover:border-v2-accent hover:-translate-y-0.5 transition-all group"
           >
-            <div className="p-3 w-fit rounded-xl bg-v2-accentMuted text-v2-accent group-hover:bg-v2-accent group-hover:text-v2-bg transition-colors">
+            <div className="p-3 w-fit rounded-xl bg-v2-accent-muted text-v2-accent group-hover:bg-v2-accent group-hover:text-v2-bg transition-colors">
               <Upload className="w-5 h-5" />
             </div>
             <h3 className="text-lg font-bold text-v2-text-primary mt-2">Upload Files</h3>
@@ -126,7 +126,7 @@ export default function WorkspaceDashboard() {
             href="/workspace/browse"
             className="flex flex-col gap-3 p-6 bg-v2-surface border border-v2-border rounded-[20px] hover:border-v2-accent hover:-translate-y-0.5 transition-all group"
           >
-            <div className="p-3 w-fit rounded-xl bg-v2-accentMuted text-v2-accent group-hover:bg-v2-accent group-hover:text-v2-bg transition-colors">
+            <div className="p-3 w-fit rounded-xl bg-v2-accent-muted text-v2-accent group-hover:bg-v2-accent group-hover:text-v2-bg transition-colors">
               <BookOpen className="w-5 h-5" />
             </div>
             <h3 className="text-lg font-bold text-v2-text-primary mt-2">Browse Assets</h3>
@@ -139,7 +139,7 @@ export default function WorkspaceDashboard() {
             href="/workspace/search"
             className="flex flex-col gap-3 p-6 bg-v2-surface border border-v2-border rounded-[20px] hover:border-v2-accent hover:-translate-y-0.5 transition-all group"
           >
-            <div className="p-3 w-fit rounded-xl bg-v2-accentMuted text-v2-accent group-hover:bg-v2-accent group-hover:text-v2-bg transition-colors">
+            <div className="p-3 w-fit rounded-xl bg-v2-accent-muted text-v2-accent group-hover:bg-v2-accent group-hover:text-v2-bg transition-colors">
               <Search className="w-5 h-5" />
             </div>
             <h3 className="text-lg font-bold text-v2-text-primary mt-2">Search Gateway</h3>
@@ -152,7 +152,7 @@ export default function WorkspaceDashboard() {
             href="/workspace/processing"
             className="flex flex-col gap-3 p-6 bg-v2-surface border border-v2-border rounded-[20px] hover:border-v2-accent hover:-translate-y-0.5 transition-all group"
           >
-            <div className="p-3 w-fit rounded-xl bg-v2-accentMuted text-v2-accent group-hover:bg-v2-accent group-hover:text-v2-bg transition-colors">
+            <div className="p-3 w-fit rounded-xl bg-v2-accent-muted text-v2-accent group-hover:bg-v2-accent group-hover:text-v2-bg transition-colors">
               <Activity className="w-5 h-5" />
             </div>
             <h3 className="text-lg font-bold text-v2-text-primary mt-2">Processing Queue</h3>
@@ -234,7 +234,7 @@ export default function WorkspaceDashboard() {
               <div className="flex flex-col gap-3">
                 {collections.slice(0, 5).map(c => (
                   <div key={c.id} className="flex items-center gap-3 p-3 rounded-xl border border-v2-border bg-v2-bg/40">
-                    <div className="p-2 bg-v2-accentMuted text-v2-accent rounded-lg border border-v2-accent/20">
+                    <div className="p-2 bg-v2-accent-muted text-v2-accent rounded-lg border border-v2-accent/20">
                       <Folder className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
