@@ -5,10 +5,17 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database.models import MemoryEducationalSummary, MemoryEvent, SemanticFact
+from src.api.auth import get_current_user
+from src.database.models import (
+    ConversationTurn,
+    MemoryEducationalSummary,
+    MemoryEvent,
+    SemanticFact,
+    User,
+)
 from src.database.session import get_session
 
 logger = structlog.get_logger()
@@ -163,3 +170,39 @@ async def get_memory_timeline(
     # Apply pagination offset & limit
     paginated_items = items[offset : offset + limit]
     return paginated_items
+
+
+class ConversationTurnResponse(BaseModel):
+    id: str
+    session_id: str | None
+    role: str
+    content: str
+    topic: str | None
+    created_at: datetime
+
+
+@router.get("/conversations", response_model=list[ConversationTurnResponse])
+async def get_recent_conversations(
+    limit: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    query = (
+        select(ConversationTurn)
+        .where(ConversationTurn.user_id == current_user.id)
+        .order_by(desc(ConversationTurn.created_at))
+        .limit(limit)
+    )
+    result = await db.execute(query)
+    turns = result.scalars().all()
+    return [
+        ConversationTurnResponse(
+            id=str(t.id),
+            session_id=str(t.session_id) if t.session_id else None,
+            role=t.role,
+            content=t.content,
+            topic=t.topic,
+            created_at=t.created_at,
+        )
+        for t in turns
+    ]

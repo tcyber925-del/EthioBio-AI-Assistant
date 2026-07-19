@@ -603,7 +603,8 @@
     "no_questions_subtitle": "Example: \"What is protein synthesis?\" or \"Explain evolution\"",
     "graph_mode": "Graph",
     "chat_mode": "Chat",
-    "grade_label": "Grade"
+    "grade_label": "Grade",
+    "recent_questions": "Recent Questions"
   },
   "recovery": {
     "title": "Recovery Dashboard",
