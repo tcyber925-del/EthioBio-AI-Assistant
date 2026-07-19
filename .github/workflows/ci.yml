@@ -99,5 +99,8 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
       - name: Deploy frontend to Vercel
+        env:
+          VERCEL_PROJECT_ID: prj_F91Xq3ucSgKiVzsmKE3aUT2rWjww
+          VERCEL_ORG_ID: team_DMSLs8BhU0hZivQWHISMU2a8
         run: |
-          npx vercel deploy --prod --token ${{ secrets.VERCEL_TOKEN }} --yes dashboard --name ethio-bio-ai-assistant
+          npx vercel deploy --prod --token ${{ secrets.VERCEL_TOKEN }} --yes
