@@ -37,6 +37,7 @@ interface NavSection {
 
 interface NavItem {
   label: string
+  subtitle?: string
   href: string
   icon: React.ElementType
   roles: string[]
@@ -60,8 +61,8 @@ const NAV_STRUCTURE: NavSection[] = [
   {
     section: 'Learning',
     items: [
-      { label: 'Lessons', href: '/lessons', icon: FileText, roles: ['admin', 'teacher'] },
-      { label: 'Unit Plans', href: '/unit-plans', icon: BookOpen, roles: ['admin', 'teacher'] },
+      { label: 'Single Lesson', subtitle: 'Quick plan by grade & topic', href: '/lessons', icon: FileText, roles: ['admin', 'teacher'] },
+      { label: 'Unit Plan', subtitle: 'Multi-day comprehensive plan', href: '/unit-plans', icon: BookOpen, roles: ['admin', 'teacher'] },
       { label: 'Assessment Studio', href: '/assessment-studio', icon: ClipboardCheck, roles: ['admin', 'teacher'] },
       { label: 'Knowledge Graph', href: '/knowledge-graph', icon: GitFork, roles: ['admin', 'teacher'] },
       { label: 'Quizzes', href: '/quizzes', icon: ClipboardCheck, roles: ['admin', 'teacher'] },
@@ -276,15 +277,18 @@ export function SidebarV2() {
                       <Icon className="h-5 w-5 shrink-0" />
                       <AnimatePresence mode="wait">
                         {!collapsed && (
-                          <motion.span
+                          <motion.div
                             key={`label-${item.href}`}
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="verge-label truncate"
+                            className="min-w-0"
                           >
-                            {item.label}
-                          </motion.span>
+                            <span className="verge-label truncate block">{item.label}</span>
+                            {item.subtitle && (
+                              <span className="text-[10px] text-v2-text-secondary/60 truncate block leading-tight">{item.subtitle}</span>
+                            )}
+                          </motion.div>
                         )}
                       </AnimatePresence>
                       {active && <span className="absolute -left-3 top-1/2 h-7 w-px -translate-y-1/2 bg-v2-purple-rule" />}
