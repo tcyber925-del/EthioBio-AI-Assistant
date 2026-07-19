@@ -1,4 +1,5 @@
 {
+  "name": "ethio-bio-ai-assistant",
   "installCommand": "npm ci --prefer-offline",
   "buildCommand": "next build",
   "outputDirectory": ".next",
