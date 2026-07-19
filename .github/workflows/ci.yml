@@ -90,8 +90,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Deploy backend to Railway
         run: |
-          curl -fsSL https://railway.app/install.sh | sh
+          npm install -g @railway/cli
           railway up --service ethiobio-api
+        shell: bash
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
       - name: Deploy frontend to Vercel
