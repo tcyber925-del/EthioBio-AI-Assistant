@@ -604,7 +604,9 @@
     "graph_mode": "Graph",
     "chat_mode": "Chat",
     "grade_label": "Grade",
-    "recent_questions": "Recent Questions"
+    "recent_questions": "Recent Questions",
+    "loading_history": "Loading history...",
+    "load_history_error": "Could not load history"
   },
   "recovery": {
     "title": "Recovery Dashboard",

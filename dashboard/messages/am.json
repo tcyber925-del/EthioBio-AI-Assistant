@@ -466,7 +466,9 @@
     "graph_mode": "ግራፍ",
     "chat_mode": "ቻት",
     "grade_label": "ክፍል",
-    "recent_questions": "የቅርብ ጥያቄዎች"
+    "recent_questions": "የቅርብ ጥያቄዎች",
+    "loading_history": "ታሪክ በመጫን ላይ...",
+    "load_history_error": "ታሪክ መጫን አልተቻለም"
   },
   "recovery": {
     "title": "የማገገሚያ ዳሽቦርድ",

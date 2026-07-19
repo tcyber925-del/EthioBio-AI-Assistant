@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Clock, MessageSquare, AlertTriangle, BookOpen, Loader2, Send } from 'lucide-react'
@@ -46,27 +46,35 @@ export default function AskPage() {
   const [mode, setMode] = useState<'graph' | 'chat'>('graph')
   const [history, setHistory] = useState<QAPair[]>([])
   const [loadingHistory, setLoadingHistory] = useState(true)
+  const [historyError, setHistoryError] = useState(false)
   const [showHistory, setShowHistory] = useState(true)
+  const historyReqId = useRef(0)
 
   const fetchHistory = useCallback(async () => {
     if (!isAuthenticated()) return
+    const reqId = ++historyReqId.current
     setLoadingHistory(true)
+    setHistoryError(false)
     try {
       const token = getToken()
       const data: HistoryTurn[] = await fetchWithTimeout('/api/v1/memory/conversations?limit=30', {
         headers: { Authorization: `Bearer ${token}` },
       })
+      if (reqId !== historyReqId.current) return
       const pairs: QAPair[] = []
-      const sorted = data.toReversed()
+      const sorted = [...data].reverse()
       for (let i = 0; i < sorted.length; i++) {
         if (sorted[i].role === 'student' && i + 1 < sorted.length && sorted[i + 1].role === 'assistant') {
           pairs.push({ question: sorted[i], answer: sorted[i + 1], id: sorted[i].id })
         }
       }
+      if (reqId !== historyReqId.current) return
       setHistory(pairs)
     } catch {
+      if (reqId !== historyReqId.current) return
+      setHistoryError(true)
     } finally {
-      setLoadingHistory(false)
+      if (reqId === historyReqId.current) setLoadingHistory(false)
     }
   }, [])
 
@@ -210,8 +218,11 @@ export default function AskPage() {
               {loadingHistory && (
                 <div className="flex items-center gap-2 text-sm text-foreground-muted py-2">
                   <Loader2 className="w-3 h-3 animate-spin" />
-                  Loading history...
+                  {ta('loading_history')}
                 </div>
+              )}
+              {!loadingHistory && historyError && (
+                <p className="text-xs text-red-400 py-2">{ta('load_history_error')}</p>
               )}
               {!loadingHistory && history.map((pair) => (
                 <button
