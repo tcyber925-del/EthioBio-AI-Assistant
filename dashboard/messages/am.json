@@ -468,7 +468,14 @@
     "grade_label": "ክፍል",
     "recent_questions": "የቅርብ ጥያቄዎች",
     "loading_history": "ታሪክ በመጫን ላይ...",
-    "load_history_error": "ታሪክ መጫን አልተቻለም"
+    "load_history_error": "ታሪክ መጫን አልተቻለም",
+    "search_history": "ታሪክ ፈልግ",
+    "no_history": "ገና ምንም ጥያቄዎች የሉም",
+    "no_search_results": "ምንም የሚዛመዱ ጥያቄዎች የሉም",
+    "today": "ዛሬ",
+    "yesterday": "ትናንት",
+    "this_week": "በዚህ ሳምንት",
+    "retry": "ደግሞ ሞክር"
   },
   "recovery": {
     "title": "የማገገሚያ ዳሽቦርድ",

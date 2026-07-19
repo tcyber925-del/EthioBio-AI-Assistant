@@ -1,30 +1,18 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Clock, MessageSquare, AlertTriangle, BookOpen, Loader2, Send } from 'lucide-react'
+import { Send, MessageSquare, AlertTriangle, BookOpen, Loader2 } from 'lucide-react'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import ModelSelector from '@/components/ModelSelector'
+import { DashboardLayout } from '@/components/dashboard-v2/DashboardLayout'
+import { ConversationSidebar } from '@/components/ConversationSidebar'
+import { useConversationHistory } from '@/hooks/useConversationHistory'
 import { fetchWithTimeout } from '@/lib/fetch'
-import { getToken, getUserId, isAuthenticated } from '@/lib/auth'
+import { getUserId, isAuthenticated } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
-
-interface HistoryTurn {
-  id: string
-  session_id: string | null
-  role: string
-  content: string
-  topic: string | null
-  created_at: string
-}
-
-interface QAPair {
-  question: HistoryTurn
-  answer: HistoryTurn | null
-  id: string
-}
 
 export default function AskPage() {
   const router = useRouter()
@@ -44,43 +32,14 @@ export default function AskPage() {
   const [error, setError] = useState<string | null>(null)
   const [grade, setGrade] = useState(12)
   const [mode, setMode] = useState<'graph' | 'chat'>('graph')
-  const [history, setHistory] = useState<QAPair[]>([])
-  const [loadingHistory, setLoadingHistory] = useState(true)
-  const [historyError, setHistoryError] = useState(false)
-  const [showHistory, setShowHistory] = useState(true)
-  const historyReqId = useRef(0)
+  const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null)
 
-  const fetchHistory = useCallback(async () => {
-    if (!isAuthenticated()) return
-    const reqId = ++historyReqId.current
-    setLoadingHistory(true)
-    setHistoryError(false)
-    try {
-      const token = getToken()
-      const data: HistoryTurn[] = await fetchWithTimeout('/api/v1/memory/conversations?limit=30', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (reqId !== historyReqId.current) return
-      const pairs: QAPair[] = []
-      const sorted = [...data].reverse()
-      for (let i = 0; i < sorted.length; i++) {
-        if (sorted[i].role === 'student' && i + 1 < sorted.length && sorted[i + 1].role === 'assistant') {
-          pairs.push({ question: sorted[i], answer: sorted[i + 1], id: sorted[i].id })
-        }
-      }
-      if (reqId !== historyReqId.current) return
-      setHistory(pairs)
-    } catch {
-      if (reqId !== historyReqId.current) return
-      setHistoryError(true)
-    } finally {
-      if (reqId === historyReqId.current) setLoadingHistory(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchHistory()
-  }, [fetchHistory])
+  const {
+    dateGroups,
+    loading: loadingHistory,
+    error: historyError,
+    fetchHistory,
+  } = useConversationHistory(50)
 
   const askQuestion = async () => {
     if (!question.trim()) return
@@ -104,6 +63,7 @@ export default function AskPage() {
       setSelectedModel(data.model_used || '')
       setConfidence(data.confidence || 0)
       setSources(data.sources || [])
+      setActiveHistoryId(null)
       fetchHistory()
     } catch (err: any) {
       setError(err.message)
@@ -112,26 +72,52 @@ export default function AskPage() {
     }
   }
 
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{ta('title')}</h1>
-          <p className="text-sm text-foreground-muted mt-1">{ta('ask_subtitle')}</p>
-        </div>
+  const handleHistorySelect = (pair: { question: { content: string }, answer: { content: string } | null, id: string }) => {
+    setQuestion(pair.question.content)
+    setAnswer(pair.answer?.content ?? null)
+    setActiveHistoryId(pair.id)
+    setSelectedModel('')
+    setConfidence(0)
+    setSources([])
+  }
+
+  const chatArea = (
+    <div className="lg:col-span-2 space-y-5">
+      <div className="flex items-center justify-between">
+        <div />
         <div className="flex items-center gap-3">
           <ModelSelector value={selectedModel} onChange={setSelectedModel} />
-          <select value={grade} onChange={e => setGrade(Number(e.target.value))} className="px-3 py-2 border border-border rounded-lg text-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
-            {[7, 8, 9, 10, 11, 12].map(g => <option key={g} value={g}>{ta('grade_label')} {g}</option>)}
+          <select
+            value={grade}
+            onChange={e => setGrade(Number(e.target.value))}
+            className="px-3 py-2 border border-v2-border rounded-lg text-sm bg-v2-bg text-v2-text-primary focus:outline-none focus:ring-1 focus:ring-v2-accent"
+          >
+            {[7, 8, 9, 10, 11, 12].map(g => (
+              <option key={g} value={g}>{ta('grade_label')} {g}</option>
+            ))}
           </select>
-          <div className="flex border border-border rounded-lg overflow-hidden">
-            <button onClick={() => setMode('graph')} className={`px-3 py-2 text-xs font-medium transition-colors ${mode === 'graph' ? 'bg-primary text-white' : 'bg-card text-foreground-muted hover:text-foreground'}`}>{ta('graph_mode')}</button>
-            <button onClick={() => setMode('chat')} className={`px-3 py-2 text-xs font-medium transition-colors ${mode === 'chat' ? 'bg-primary text-white' : 'bg-card text-foreground-muted hover:text-foreground'}`}>{ta('chat_mode')}</button>
+          <div className="flex border border-v2-border rounded-lg overflow-hidden">
+            <button
+              onClick={() => setMode('graph')}
+              className={`px-3 py-2 text-xs font-medium transition-colors ${
+                mode === 'graph' ? 'bg-v2-accent text-v2-inverted' : 'bg-v2-bg text-v2-text-muted hover:text-v2-text-primary'
+              }`}
+            >
+              {ta('graph_mode')}
+            </button>
+            <button
+              onClick={() => setMode('chat')}
+              className={`px-3 py-2 text-xs font-medium transition-colors ${
+                mode === 'chat' ? 'bg-v2-accent text-v2-inverted' : 'bg-v2-bg text-v2-text-muted hover:text-v2-text-primary'
+              }`}
+            >
+              {ta('chat_mode')}
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="bg-card rounded-xl border border-border p-5 mb-6">
+      <div className="rounded-[20px] border border-v2-border bg-v2-bg p-4">
         <div className="flex gap-3">
           <input
             type="text"
@@ -139,12 +125,12 @@ export default function AskPage() {
             onChange={e => setQuestion(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && askQuestion()}
             placeholder={ta('example_placeholder')}
-            className="flex-1 px-4 py-3 border border-border rounded-lg text-sm bg-background text-foreground placeholder:text-foreground-muted/50 focus:outline-none focus:ring-2 focus:ring-primary"
+            className="flex-1 px-4 py-3 border border-v2-border rounded-lg text-sm bg-v2-surface text-v2-text-primary placeholder:text-v2-text-muted/50 focus:outline-none focus:ring-1 focus:ring-v2-accent"
           />
           <button
             onClick={askQuestion}
             disabled={loading || !question.trim()}
-            className="px-6 py-3 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+            className="px-6 py-3 bg-v2-accent text-v2-inverted rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-opacity"
           >
             {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> {ta('thinking')}...</> : <><Send className="w-4 h-4" /> {ta('ask_button')}</>}
           </button>
@@ -152,19 +138,19 @@ export default function AskPage() {
       </div>
 
       {loading && (
-        <div className="bg-card rounded-xl border border-border p-8 text-center">
+        <div className="rounded-[20px] border border-v2-border bg-v2-bg p-8 text-center">
           <div className="animate-pulse space-y-3">
-            <div className="h-4 bg-border rounded w-3/4 mx-auto" />
-            <div className="h-4 bg-border rounded w-1/2 mx-auto" />
-            <div className="h-4 bg-border rounded w-2/3 mx-auto" />
+            <div className="h-4 bg-v2-surface rounded w-3/4 mx-auto" />
+            <div className="h-4 bg-v2-surface rounded w-1/2 mx-auto" />
+            <div className="h-4 bg-v2-surface rounded w-2/3 mx-auto" />
           </div>
-          <p className="text-sm text-foreground-muted mt-4">{ta('calling_model', { model: selectedModel || 'model' })}</p>
+          <p className="text-sm text-v2-text-muted mt-4">{ta('calling_model', { model: selectedModel || 'model' })}</p>
         </div>
       )}
 
       {error && (
-        <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-5 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5" />
+        <div className="rounded-[20px] border border-red-500/20 bg-red-500/10 p-5 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5 shrink-0" />
           <div>
             <p className="font-medium text-red-400">{tc('error')}</p>
             <p className="text-sm text-red-400/80 mt-1">{error}</p>
@@ -173,19 +159,21 @@ export default function AskPage() {
       )}
 
       {answer && !loading && (
-        <div className="bg-card rounded-xl border border-border p-6">
-          <div className="flex items-center gap-2 text-xs text-foreground-muted mb-4 pb-3 border-b border-border">
+        <div className="rounded-[20px] border border-v2-border bg-v2-bg p-6">
+          <div className="flex items-center gap-2 text-xs text-v2-text-muted mb-4 pb-3 border-b border-v2-border">
             <MessageSquare className="w-4 h-4" />
             <span className="font-mono">{selectedModel}</span>
-            <span className="px-2 py-0.5 bg-green-500/10 text-green-400 rounded-full text-xs">{Math.round(confidence * 100)}% {ta('confidence')}</span>
+            <span className="px-2 py-0.5 bg-v2-accent/10 text-v2-accent rounded-full text-xs">
+              {Math.round(confidence * 100)}% {ta('confidence')}
+            </span>
           </div>
           <MarkdownRenderer content={answer} />
           {sources.length > 0 && (
-            <div className="mt-4 pt-3 border-t border-border">
-              <p className="text-xs text-foreground-muted font-medium mb-2">{ta('sources')}</p>
+            <div className="mt-4 pt-3 border-t border-v2-border">
+              <p className="text-xs text-v2-text-muted font-medium mb-2">{ta('sources')}</p>
               <div className="flex flex-wrap gap-2">
                 {sources.map((s, i) => (
-                  <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-500/10 text-blue-400 rounded-full text-xs">
+                  <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 bg-v2-accent/10 text-v2-accent rounded-full text-xs">
                     <BookOpen className="w-3 h-3" /> {s}
                   </span>
                 ))}
@@ -197,52 +185,27 @@ export default function AskPage() {
 
       {!answer && !loading && !error && (
         <div className="text-center py-16">
-          <MessageSquare className="w-12 h-12 text-border mx-auto mb-3" />
-          <p className="text-foreground-muted font-medium">{ta('no_questions')}</p>
-          <p className="text-sm text-foreground-muted/60 mt-1">{ta('no_questions_subtitle')}</p>
-        </div>
-      )}
-
-      {history.length > 0 && (
-        <div className="mt-8 border-t border-border pt-6">
-          <button
-            onClick={() => setShowHistory(!showHistory)}
-            className="flex items-center gap-2 text-sm font-medium text-foreground-muted hover:text-foreground transition-colors mb-4"
-          >
-            <Clock className="w-4 h-4" />
-            {ta('recent_questions')} ({history.length})
-            <span className="text-xs ml-1">{showHistory ? '▲' : '▼'}</span>
-          </button>
-          {showHistory && (
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {loadingHistory && (
-                <div className="flex items-center gap-2 text-sm text-foreground-muted py-2">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  {ta('loading_history')}
-                </div>
-              )}
-              {!loadingHistory && historyError && (
-                <p className="text-xs text-red-400 py-2">{ta('load_history_error')}</p>
-              )}
-              {!loadingHistory && history.map((pair) => (
-                <button
-                  key={pair.id}
-                  onClick={() => {
-                    setQuestion(pair.question.content)
-                    if (pair.answer) setAnswer(pair.answer.content)
-                  }}
-                  className="w-full text-left p-3 rounded-lg bg-card border border-border hover:border-primary/30 transition-colors"
-                >
-                  <p className="text-sm font-medium text-foreground line-clamp-1">{pair.question.content}</p>
-                  {pair.answer && (
-                    <p className="text-xs text-foreground-muted mt-1 line-clamp-1">{pair.answer.content}</p>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
+          <MessageSquare className="w-12 h-12 text-v2-text-muted/20 mx-auto mb-3" />
+          <p className="text-v2-text-muted font-medium">{ta('no_questions')}</p>
+          <p className="text-sm text-v2-text-muted/60 mt-1">{ta('no_questions_subtitle')}</p>
         </div>
       )}
     </div>
+  )
+
+  return (
+    <DashboardLayout breadcrumbs={[{ label: ta('title') }]}>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {chatArea}
+        <ConversationSidebar
+          dateGroups={dateGroups}
+          loading={loadingHistory}
+          error={historyError}
+          activeId={activeHistoryId}
+          onSelect={handleHistorySelect}
+          onRefresh={fetchHistory}
+        />
+      </div>
+    </DashboardLayout>
   )
 }
