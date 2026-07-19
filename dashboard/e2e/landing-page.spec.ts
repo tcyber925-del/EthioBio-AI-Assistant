@@ -15,7 +15,7 @@ test.describe('Landing Page', () => {
     await page.goto(BASE_URL);
     await expect(page.locator('text=Features')).toBeVisible();
     await expect(page.locator('text=Interactive Demo').first()).toBeVisible();
-    await expect(page.locator('text=Numbers')).toBeVisible();
+    await expect(page.locator('text=Numbers').first()).toBeVisible();
   });
 
   test('language switcher toggles to Amharic', async ({ page }) => {
@@ -28,14 +28,14 @@ test.describe('Landing Page', () => {
     await page.goto(BASE_URL);
     await page.locator('a[href="/login"]').first().click();
     await expect(page).toHaveURL(/\/login/);
-    await expect(page.locator('text=Sign In')).toBeVisible();
+    await expect(page.locator('text=Sign In').first()).toBeVisible();
   });
 
   test('login page has email and password fields', async ({ page }) => {
     await page.goto(`${BASE_URL}/login`);
     await expect(page.locator('input[type="email"]')).toBeVisible();
     await expect(page.locator('input[type="password"]')).toBeVisible();
-    await expect(page.locator('text=Sign In')).toBeVisible();
+    await expect(page.locator('text=Sign In').first()).toBeVisible();
   });
 
   test('interactive demo section has sample queries', async ({ page }) => {
@@ -49,7 +49,7 @@ test.describe('Landing Page', () => {
   test('footer has resources and portal links', async ({ page }) => {
     await page.goto(BASE_URL);
     await expect(page.locator('footer')).toBeVisible();
-    await expect(page.locator('footer a[href="/login"]')).toBeVisible();
-    await expect(page.locator('footer a[href="/v2/overview"]')).toBeVisible();
+    await expect(page.locator('footer a[href="/login"]').first()).toBeVisible();
+    await expect(page.locator('footer a[href="/v2/overview"]').first()).toBeVisible();
   });
 });
