@@ -256,7 +256,7 @@ async def get_lesson_plan(
     )
 
 
-@router.get("/")
+@router.get("")
 async def list_lesson_plans(
     teacher_id: uuid.UUID | None = None,
     classroom_id: uuid.UUID | None = None,
