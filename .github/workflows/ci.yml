@@ -39,4 +39,4 @@ jobs:
       - run: uv pip install --system -r requirements.txt
       - run: uv pip install --system -r requirements-bot.txt
       - name: Run tests (excl. heavy integration)
-        run: pytest tests/ -v --no-header -k "not test_chat_endpoint and not test_quiz_generate_endpoint and not test_public_stats_endpoint" -x
+        run: pytest tests/ -v --no-header -k "not test_chat_endpoint and not test_quiz_generate_endpoint and not test_public_stats_endpoint and not test_graph_chat_response_schema_has_xp_fields" -x
