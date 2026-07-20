@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
@@ -10,17 +11,47 @@ from src.agents.weak_topic_detection import analyze_quiz_attempt, get_weak_topic
 from src.api.auth import get_current_user
 from src.api.gamification import award_xp, check_achievements, update_streak
 from src.database.models import MisconceptionPattern, Question, Quiz, QuizAttempt, User
-from src.database.session import get_session
+from src.database.session import async_session_factory, get_session
 from src.llm.router import ModelRouter
 from src.schemas.quiz import (
-    QuestionSchema,
     QuizGenerateRequest,
-    QuizGenerateResponse,
     QuizRecommendation,
     QuizRecommendResponse,
     QuizSubmitRequest,
     QuizSubmitResponse,
 )
+
+_task_store: dict[str, dict] = {}
+_task_lock = None
+
+
+def _get_lock():
+    global _task_lock
+    if _task_lock is None:
+        import asyncio
+        _task_lock = asyncio.Lock()
+    return _task_lock
+
+
+async def _create_task() -> str:
+    task_id = str(uuid.uuid4())
+    lock = _get_lock()
+    async with lock:
+        _task_store[task_id] = {"status": "pending", "created_at": datetime.now(timezone.utc)}
+    return task_id
+
+
+async def _update_task(task_id: str, **kwargs):
+    lock = _get_lock()
+    async with lock:
+        if task_id in _task_store:
+            _task_store[task_id].update(kwargs)
+
+
+async def _get_task(task_id: str) -> dict | None:
+    lock = _get_lock()
+    async with lock:
+        return _task_store.get(task_id)
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/quiz", tags=["Quiz"])
@@ -70,106 +101,121 @@ async def get_quiz_recommendations(user_id, session: AsyncSession = Depends(get_
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/generate", response_model=QuizGenerateResponse)
+@router.post("/generate")
 async def generate_quiz(
     request: QuizGenerateRequest,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    router_llm = ModelRouter(preferred_model=request.model)
-    agent = QuizAgent(llm_router=router_llm)
+    teacher_id = request.teacher_id or current_user.id
+    task_id = await _create_task()
 
+    import asyncio as _asyncio
+
+    _asyncio.ensure_future(_run_quiz_generation(task_id, request, teacher_id))
+
+    return {"task_id": task_id, "status": "pending"}
+
+
+@router.get("/generate/status/{task_id}")
+async def generate_quiz_status(task_id: str):
+    task = await _get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
+
+
+async def _run_quiz_generation(task_id: str, request: QuizGenerateRequest, teacher_id: uuid.UUID):
     try:
-        weak_topics = None
-        target_difficulty = None
-        if request.user_id:
-            all_weak = await get_weak_topics(request.user_id, session)
-            if all_weak:
-                # Pick the weakest matching topic for difficulty adaptation
-                topic_lower = request.topic.lower()
-                matching = [wt for wt in all_weak if wt["topic"].lower() == topic_lower]
-                if matching:
-                    weak_topics = matching
-                    top_severity = matching[0]["severity"]
-                    if top_severity == "critical":
+        router_llm = ModelRouter(preferred_model=request.model)
+        agent = QuizAgent(llm_router=router_llm)
+
+        factory = async_session_factory()
+        async with factory() as session:
+            weak_topics = None
+            target_difficulty = None
+            if request.user_id:
+                all_weak = await get_weak_topics(request.user_id, session)
+                if all_weak:
+                    topic_lower = request.topic.lower()
+                    matching = [wt for wt in all_weak if wt["topic"].lower() == topic_lower]
+                    if matching:
+                        weak_topics = matching
+                        top_severity = matching[0]["severity"]
+                        if top_severity == "critical":
+                            target_difficulty = "easy"
+                        elif top_severity == "moderate":
+                            target_difficulty = "medium"
+                    else:
+                        weak_topics = all_weak
+
+            if request.adaptive and request.user_id:
+                from src.agents.adaptive_quiz import select_adaptive_questions
+
+                selected = await select_adaptive_questions(
+                    session=session,
+                    user_id=request.user_id,
+                    topic=request.topic,
+                    count=request.question_count,
+                )
+                if selected:
+                    avg_difficulty = sum(q.difficulty_score for q in selected) / len(selected)
+                    if avg_difficulty < -0.3:
                         target_difficulty = "easy"
-                    elif top_severity == "moderate":
+                    elif avg_difficulty > 0.3:
+                        target_difficulty = "hard"
+                    else:
                         target_difficulty = "medium"
-                else:
-                    # No exact match - use all weak topics for focus
-                    weak_topics = all_weak
 
-        if request.adaptive and request.user_id:
-            from src.agents.adaptive_quiz import select_adaptive_questions
-
-            selected = await select_adaptive_questions(
-                session=session,
-                user_id=request.user_id,
-                topic=request.topic,
-                count=request.question_count,
-            )
-            if selected:
-                avg_difficulty = sum(q.difficulty_score for q in selected) / len(selected)
-                if avg_difficulty < -0.3:
-                    target_difficulty = "easy"
-                elif avg_difficulty > 0.3:
-                    target_difficulty = "hard"
-                else:
-                    target_difficulty = "medium"
-
-        result = await agent.generate(
-            grade_level=request.grade_level,
-            topic=request.topic,
-            question_count=request.question_count,
-            types=request.types,
-            language=request.language,
-            session=session,
-            weak_topics=weak_topics,
-            target_difficulty=target_difficulty,
-        )
-
-        db_quiz = Quiz(
-            teacher_id=request.teacher_id or current_user.id,
-            title=f"Grade {request.grade_level} - {request.topic}",
-            grade_level=request.grade_level,
-            topic=request.topic,
-            question_count=request.question_count,
-            model_used=result.get("model_used", ""),
-        )
-        session.add(db_quiz)
-        await session.flush()
-
-        _difficulty_map = {"easy": -1.0, "medium": 0.0, "hard": 1.0}
-        for q in result["questions"]:
-            diff_str = q.get("difficulty", "medium")
-            db_q = Question(
-                quiz_id=db_quiz.id,
-                question_type=q["question_type"],
-                question_text=q["question_text"],
-                options=q.get("options"),
-                correct_answer=q["correct_answer"],
-                explanation=q.get("explanation"),
+            result = await agent.generate(
                 grade_level=request.grade_level,
                 topic=request.topic,
-                difficulty=diff_str,
-                difficulty_score=_difficulty_map.get(diff_str, 0.0),
+                question_count=request.question_count,
+                types=request.types,
+                language=request.language,
+                session=session,
+                weak_topics=weak_topics,
+                target_difficulty=target_difficulty,
             )
-            session.add(db_q)
 
-        await session.commit()
+            db_quiz = Quiz(
+                teacher_id=teacher_id,
+                title=f"Grade {request.grade_level} - {request.topic}",
+                grade_level=request.grade_level,
+                topic=request.topic,
+                question_count=request.question_count,
+                model_used=result.get("model_used", ""),
+            )
+            session.add(db_quiz)
+            await session.flush()
 
-        return QuizGenerateResponse(
-            title=db_quiz.title,
-            grade_level=request.grade_level,
-            topic=request.topic,
-            questions=[QuestionSchema(**q) for q in result["questions"]],
-            answer_key=result.get("answer_key", ""),
-            model_used=result.get("model_used", ""),
-        )
+            _difficulty_map = {"easy": -1.0, "medium": 0.0, "hard": 1.0}
+            for q in result["questions"]:
+                diff_str = q.get("difficulty", "medium")
+                db_q = Question(
+                    quiz_id=db_quiz.id,
+                    question_type=q["question_type"],
+                    question_text=q["question_text"],
+                    options=q.get("options"),
+                    correct_answer=q["correct_answer"],
+                    explanation=q.get("explanation"),
+                    grade_level=request.grade_level,
+                    topic=request.topic,
+                    difficulty=diff_str,
+                    difficulty_score=_difficulty_map.get(diff_str, 0.0),
+                )
+                session.add(db_q)
+
+            await session.commit()
+
+            await _update_task(
+                task_id,
+                status="completed",
+                quiz_id=str(db_quiz.id),
+            )
     except Exception as e:
-        await session.rollback()
-        logger.error("quiz_generate_error", error=str(e))
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("quiz_generate_background_error", error=str(e))
+        await _update_task(task_id, status="failed", error=str(e))
 
 
 @router.get("")

@@ -59,16 +59,28 @@ export default function QuizzesPage() {
     setGenMsg(null)
     try {
       const types = genType === 'mixed' ? ['multiple_choice', 'true_false'] : [genType]
-      const data = await fetchWithAuth(`/quiz/generate`, {
+      const { task_id } = await fetchWithAuth(`/quiz/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ teacher_id: getUserId(), grade_level: genGrade, topic: genTopic, question_count: genCount, types, model: selectedModel }),
-      }, 120000)
-      setShowModal(false)
-      setGenTopic('')
-      setGenMsg(`Quiz generated for Grade ${genGrade} - ${genTopic}`)
-      setGenStatus('success')
-      fetchQuizzes()
+      })
+
+      for (let i = 0; i < 120; i++) {
+        await new Promise(r => setTimeout(r, 2000))
+        const task = await fetchWithAuth(`/quiz/generate/status/${task_id}`)
+        if (task.status === 'completed') {
+          setShowModal(false)
+          setGenTopic('')
+          setGenMsg(`Quiz generated for Grade ${genGrade} - ${genTopic}`)
+          setGenStatus('success')
+          fetchQuizzes()
+          return
+        }
+        if (task.status === 'failed') {
+          throw new Error(task.error || 'Generation failed')
+        }
+      }
+      throw new Error('Generation timed out')
     } catch (err: any) {
       setGenMsg(err.message)
       setGenStatus('error')

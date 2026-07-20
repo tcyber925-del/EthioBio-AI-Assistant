@@ -93,14 +93,20 @@ export default function AssessmentStudioPage() {
         adaptive: adaptive,
       }
 
-      // Quiz agent handles specific educational styles when configured via system prompt
-      const result = await fetchWithAuth('/quiz/generate', {
+      const { task_id } = await fetchWithAuth('/quiz/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-      }, 120000)
+      })
 
-      setPreviewQuestions(result.questions || [])
+      let task: any
+      for (let i = 0; i < 120; i++) {
+        await new Promise(r => setTimeout(r, 2000))
+        task = await fetchWithAuth(`/quiz/generate/status/${task_id}`)
+        if (task.status === 'completed') break
+        if (task.status === 'failed') throw new Error(task.error || 'Generation failed')
+      }
+      if (!task || task.status !== 'completed') throw new Error('Generation timed out')
       setSuccessMsg(`Successfully generated new ${assessmentType} assessment!`)
       fetchQuizzes()
     } catch (err: any) {
