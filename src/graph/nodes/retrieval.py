@@ -46,14 +46,13 @@ def _is_quality_content(text: str) -> bool:
     return has_sentence or has_text_block
 
 
-    def _push_status(self, state: AgentState, message: str):
-        if state.token_queue:
-            state.token_queue.put_nowait(TokenChunk(delta=message, node="retrieve", status=True))
-
-
 class RetrievalNode:
     def __init__(self, adapter: VectorStoreAdapter):
         self.adapter = adapter
+
+    def _push_status(self, state: AgentState, message: str):
+        if state.token_queue:
+            state.token_queue.put_nowait(TokenChunk(delta=message, node="retrieve", status=True))
 
     async def __call__(self, state: AgentState) -> AgentState:
         query = state.user_message
