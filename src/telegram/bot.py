@@ -2138,7 +2138,7 @@ async def model_command(update: Update, context):
 async def handle_model_selection(update: Update, context):
     query = update.callback_query
     await query.answer()
-    data = query.data
+    data: str = query.data or ""
     api_base = settings.api_base_url
 
     if data == "model:back":
@@ -2200,10 +2200,11 @@ async def handle_model_selection(update: Update, context):
         try:
             async with httpx.AsyncClient() as client:
                 resp = await client.get(f"{api_base}/models")
-                all_models = resp.json()
+                all_models: list[dict] = resp.json()
                 resp2 = await client.get(f"{api_base}/models/active")
-                active = resp2.json()["model"]
-            filtered = [m for m in all_models if m["provider"] == provider]
+                data2: dict = resp2.json()
+                active = data2.get("model", "")
+            filtered = [m for m in all_models if m.get("provider") == provider]
             context.user_data["provider_models"] = filtered
             try:
                 await query.edit_message_reply_markup(reply_markup=None)
