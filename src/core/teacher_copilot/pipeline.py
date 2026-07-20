@@ -11,6 +11,7 @@ from src.core.teacher_copilot.reasoning_engine import ReasoningEngine
 from src.core.teacher_copilot.state import TeacherCopilotState
 from src.database.session import async_session_factory
 from src.llm.router import ModelRouter
+from src.schemas.streaming import TokenChunk
 
 logger = structlog.get_logger()
 
@@ -20,6 +21,10 @@ class ClassifyIntentNode:
         self.router = router
 
     async def __call__(self, state: TeacherCopilotState) -> dict:
+        if state.token_queue:
+            state.token_queue.put_nowait(
+                TokenChunk(delta="Analyzing your question...", node="copilot", status=True)
+            )
         intent, confidence, reasoning = await self.router.classify(state.user_message)
         return {
             "intent": intent,
@@ -34,6 +39,10 @@ class GatherDataNode:
         self.session = session
 
     async def __call__(self, state: TeacherCopilotState) -> dict:
+        if state.token_queue:
+            state.token_queue.put_nowait(
+                TokenChunk(delta="Gathering student data...", node="copilot", status=True)
+            )
         session = self.session or async_session_factory()()
         close_session = self.session is None
 
@@ -133,6 +142,10 @@ class ReasonNode:
         self.engine = engine
 
     async def __call__(self, state: TeacherCopilotState) -> dict:
+        if state.token_queue:
+            state.token_queue.put_nowait(
+                TokenChunk(delta="Analyzing educational data...", node="copilot", status=True)
+            )
         rag_context = EvidenceEngine.format_citations(state.evidence) if state.evidence else ""
 
         reasoning, confidence = await self.engine.reason(
@@ -145,6 +158,7 @@ class ReasonNode:
             intervention_data=state.intervention_data,
             timeline_data=state.timeline_data or [],
             rag_context=rag_context,
+            token_queue=state.token_queue,
         )
         return {
             "reasoning": reasoning,

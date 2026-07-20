@@ -1,3 +1,5 @@
+from collections.abc import AsyncGenerator
+
 import httpx
 import structlog
 
@@ -27,18 +29,21 @@ class OllamaProvider(LLMProvider):
     def name(self) -> str:
         return "ollama"
 
+    def _resolve_model(self, messages: list[dict]) -> str:
+        model = self._default_model
+        for msg in messages:
+            if msg.get("role") == "system" and msg.get("content", "").startswith("__model__:"):
+                model = msg["content"].split(":", 1)[1]
+                break
+        return model
+
     async def chat(
         self,
         messages: list[dict],
         temperature: float = 0.7,
         max_tokens: int = 2048,
     ) -> ChatResponse:
-        model = self._default_model
-        for msg in messages:
-            if msg.get("role") == "system" and msg.get("content", "").startswith("__model__:"):
-                model = msg["content"].split(":", 1)[1]
-                break
-
+        model = self._resolve_model(messages)
         payload = {
             "model": model,
             "messages": messages,
@@ -59,6 +64,36 @@ class OllamaProvider(LLMProvider):
             ),
             provider="ollama",
         )
+
+    async def chat_stream(
+        self,
+        messages: list[dict],
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+    ) -> AsyncGenerator[str, None]:
+        model = self._resolve_model(messages)
+        payload = {
+            "model": model,
+            "messages": messages,
+            "stream": True,
+            "options": {
+                "temperature": temperature,
+                "num_predict": max_tokens,
+            },
+        }
+        async with self._client.stream(
+            "POST", f"{self.base_url}/api/chat", json=payload
+        ) as response:
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if not line.strip():
+                    continue
+                chunk = line  # line is already a str from httpx
+                import json as json_mod
+                data = json_mod.loads(chunk)
+                if data.get("done"):
+                    break
+                yield data.get("message", {}).get("content", "")
 
     async def is_available(self) -> bool:
         return await self.check_health()

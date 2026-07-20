@@ -11,9 +11,12 @@ The graph follows this sequence:
 7. Log the trace and outcome
 """
 
+import asyncio
 from dataclasses import dataclass, field
 from typing import Optional
 from uuid import UUID
+
+from src.schemas.streaming import TokenChunk
 
 
 @dataclass
@@ -143,6 +146,9 @@ class AgentState:
     # Socratic Session Caching
     socratic_session_active: bool = False
     socratic_evidence_bundle_id: Optional[str] = None
+
+    # Streaming support
+    token_queue: Optional["asyncio.Queue[TokenChunk | None]"] = None
 
 
 @dataclass

@@ -1,3 +1,5 @@
+from collections.abc import AsyncGenerator
+
 import httpx
 import structlog
 from openai import AsyncOpenAI
@@ -47,6 +49,26 @@ class OpenRouterProvider(OpenAIProvider):
             usage=usage,
             provider=self._name,
         )
+
+    async def chat_stream(
+        self,
+        messages: list[dict],
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+    ) -> AsyncGenerator[str, None]:
+        client = self._get_client()
+        stream = await client.chat.completions.create(
+            model=self._model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            extra_headers=self._extra_headers,
+            stream=True,
+        )
+        async for chunk in stream:
+            delta = chunk.choices[0].delta if chunk.choices else None
+            if delta and delta.content:
+                yield delta.content
 
     async def is_available(self) -> bool:
         available = bool(self._api_key)

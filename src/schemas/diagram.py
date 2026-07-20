@@ -33,6 +33,7 @@ class DiagramGenerateRequest(SchemaModel):
     difficulty: str = Field("beginner", pattern="^(beginner|intermediate|advanced)$")
     model: Optional[str] = Field(None, min_length=1)
     grade: int = Field(default=10, ge=7, le=12)
+    stream: bool = False
 
 
 class DiagramGenerateResponse(SchemaModel):

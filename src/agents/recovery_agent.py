@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import Any, Optional
 
@@ -8,6 +9,7 @@ from src.agents.base import BaseAgent
 from src.agents.weak_topic_detection import get_weak_topics
 from src.database.models import RecoveryPlan, RecoveryTask
 from src.llm.router import ModelRouter
+from src.schemas.streaming import TokenChunk
 
 logger = structlog.get_logger()
 
@@ -57,6 +59,7 @@ class RecoveryAgent(BaseAgent):
         user_id: Any,
         session: AsyncSession,
         topic_filter: Optional[str] = None,
+        token_queue: asyncio.Queue[TokenChunk | None] | None = None,
     ) -> dict:
         weak_topics = await get_weak_topics(user_id, session)
         if not weak_topics:
@@ -81,17 +84,30 @@ based on each topic's severity level.
 
 Respond with valid JSON only."""
 
-        result = await self._call_llm(
-            system_prompt=RECOVERY_SYSTEM_PROMPT,
-            user_message=user_message,
-            session=session,
-            temperature=0.7,
-            max_tokens=4096,
-            request_type="recovery_plan_generation",
-        )
+        if token_queue is not None:
+            buf: list[str] = []
+            async for token in self._call_llm_stream(
+                system_prompt=RECOVERY_SYSTEM_PROMPT,
+                user_message=user_message,
+                temperature=0.7,
+                max_tokens=4096,
+                request_type="recovery_plan_generation",
+            ):
+                buf.append(token)
+                token_queue.put_nowait(TokenChunk(delta=token, node="recovery"))
+            content = "".join(buf)
+        else:
+            result = await self._call_llm(
+                system_prompt=RECOVERY_SYSTEM_PROMPT,
+                user_message=user_message,
+                session=session,
+                temperature=0.7,
+                max_tokens=4096,
+                request_type="recovery_plan_generation",
+            )
+            content = result["content"]
 
         try:
-            content = result["content"]
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0].strip()
             elif "```" in content:
@@ -124,6 +140,9 @@ Respond with valid JSON only."""
             await session.commit()
             await session.refresh(plan)
 
+            if token_queue is not None:
+                token_queue.put_nowait(TokenChunk(delta="", node="recovery", done=True))
+
             return {
                 "plan": {
                     "id": str(plan.id),
@@ -151,6 +170,8 @@ Respond with valid JSON only."""
                 error=str(e),
                 content=result.get("content", "")[:200],
             )
+            if token_queue is not None:
+                token_queue.put_nowait(TokenChunk(delta="", node="recovery", done=True, error=str(e)))
             return {"plan": None, "error": f"Failed to generate plan: {str(e)}"}
 
     def _format_weak_topics(self, weak_topics: list[dict]) -> str:

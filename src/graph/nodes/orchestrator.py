@@ -10,6 +10,7 @@ import re
 
 from src.graph.state import AgentState
 from src.llm.router import ModelRouter
+from src.schemas.streaming import TokenChunk
 
 # ============================================================
 # Heuristic Patterns (Phase 0 — fast path classification)
@@ -136,11 +137,17 @@ def detect_requires_cross_session(user_message: str) -> bool:
     return any(re.search(p, msg_lower) for p in cross_session_signals)
 
 
+    def _push_status(self, state: AgentState, message: str):
+        if state.token_queue:
+            state.token_queue.put_nowait(TokenChunk(delta=message, node="orchestrator", status=True))
+
+
 class OrchestratorNode:
     def __init__(self, router: ModelRouter):
         self.router = router
 
     async def __call__(self, state: AgentState) -> AgentState:
+        self._push_status(state, "Analyzing your question...")
         prompt = f"""You are an intent classifier for an Ethiopian biology education assistant.
 Classify the user's message into exactly one of these intents:
 - "tutor": biology question, concept explanation, homework help

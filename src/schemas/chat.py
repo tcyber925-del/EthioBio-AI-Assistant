@@ -22,6 +22,7 @@ class TutorRequest(SchemaModel):
     misconception_correction: str = ""
     session_id: Optional[str] = None
     generate_diagram: bool = True
+    stream: bool = False
 
 
 class TutorResponse(SchemaModel):

@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import Optional
 
@@ -6,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.base import BaseAgent
 from src.llm.router import ModelRouter
+from src.schemas.streaming import TokenChunk
 
 logger = structlog.get_logger()
 
@@ -50,6 +52,7 @@ class DiagnosticAgent(BaseAgent):
         questions_per_topic: int = 3,
         language: str = "en",
         session: Optional[AsyncSession] = None,
+        token_queue: asyncio.Queue[TokenChunk | None] | None = None,
     ) -> dict:
         if language == "am":
             lang_instruction = "Generate all content in Amharic (አማርክ)."
@@ -71,17 +74,38 @@ class DiagnosticAgent(BaseAgent):
             f"Respond with valid JSON only."
         )
 
-        result = await self._call_llm(
-            system_prompt=system_prompt,
-            user_message=user_message,
-            session=session,
-            temperature=0.7,
-            max_tokens=4096,
-            request_type="diagnostic_generation",
-        )
+        content: str
+        model_used: str = ""
+
+        if token_queue is not None:
+            token_queue.put_nowait(
+                TokenChunk(delta="Generating diagnostic assessment...", node="diagnostic", status=True)
+            )
+            buf: list[str] = []
+            async for token in self._call_llm_stream(
+                system_prompt=system_prompt,
+                user_message=user_message,
+                temperature=0.7,
+                max_tokens=4096,
+                request_type="diagnostic_generation",
+            ):
+                buf.append(token)
+                token_queue.put_nowait(TokenChunk(delta=token, node="diagnostic"))
+            content = "".join(buf)
+            token_queue.put_nowait(TokenChunk(delta="", node="diagnostic", done=True))
+        else:
+            result = await self._call_llm(
+                system_prompt=system_prompt,
+                user_message=user_message,
+                session=session,
+                temperature=0.7,
+                max_tokens=4096,
+                request_type="diagnostic_generation",
+            )
+            content = result["content"]
+            model_used = result.get("model", "")
 
         try:
-            content = result["content"]
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0].strip()
             elif "```" in content:
@@ -91,12 +115,12 @@ class DiagnosticAgent(BaseAgent):
             return {
                 "assessments": parsed.get("assessments", []),
                 "answer_key": parsed.get("answer_key", ""),
-                "model_used": result.get("model", ""),
+                "model_used": model_used,
             }
         except (json.JSONDecodeError, KeyError) as e:
-            logger.error("diagnostic_parse_error", error=str(e), content=result["content"][:200])
+            logger.error("diagnostic_parse_error", error=str(e), content=content[:200])
             return {
                 "assessments": [],
                 "answer_key": "Error parsing diagnostic assessment",
-                "model_used": result.get("model", ""),
+                "model_used": model_used,
             }

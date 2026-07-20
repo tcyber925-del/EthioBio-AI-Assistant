@@ -1,9 +1,12 @@
+import asyncio
 import os
+from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
 from typing import Optional
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from jinja2 import Environment, FileSystemLoader
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -57,9 +60,31 @@ from src.schemas.recovery import (
     SpacedRepetitionScheduleResponse,
     WeakTopicsResponse,
 )
+from src.schemas.streaming import TokenChunk
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/recovery", tags=["Recovery"])
+
+
+async def _stream_events(
+    queue: asyncio.Queue[TokenChunk | None],
+    task: asyncio.Task,
+) -> AsyncGenerator[str, None]:
+    try:
+        while True:
+            chunk = await queue.get()
+            if chunk is None:
+                break
+            if chunk.error:
+                yield f"data: {chunk.model_dump_json()}\n\n"
+                break
+            yield f"data: {chunk.model_dump_json()}\n\n"
+            if chunk.done:
+                break
+        if task.done() and (exc := task.exception()):
+            yield f"data: {TokenChunk(delta='', done=True, error=str(exc)).model_dump_json()}\n\n"
+    except Exception as e:
+        yield f"data: {TokenChunk(delta='', done=True, error=str(e)).model_dump_json()}\n\n"
 
 MILESTONE_EMAIL_THRESHOLD = 10.0
 _MILESTONE_EMAIL_TITLE = "Milestone Achieved!"
@@ -282,7 +307,7 @@ async def complete_recovery_task(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/auto-generate/{user_id}", response_model=GenerateRecoveryPlanResponse)
+@router.post("/auto-generate/{user_id}")
 async def auto_generate_recovery_plan(
     user_id,
     request: Optional[GenerateRecoveryPlanRequest] = None,
@@ -290,6 +315,8 @@ async def auto_generate_recovery_plan(
 ):
     if request is None:
         request = GenerateRecoveryPlanRequest()
+    if request.stream:
+        return await _handle_recovery_stream(user_id, request, session)
     try:
         router = ModelRouter()
         agent = RecoveryAgent(router)
@@ -305,6 +332,35 @@ async def auto_generate_recovery_plan(
     except Exception as e:
         logger.error("auto_generate_recovery_plan_error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
+
+
+async def _handle_recovery_stream(
+    user_id,
+    request: GenerateRecoveryPlanRequest,
+    session: AsyncSession,
+) -> StreamingResponse:
+    router_llm = ModelRouter()
+    agent = RecoveryAgent(router_llm)
+
+    queue: asyncio.Queue[TokenChunk | None] = asyncio.Queue()
+    task = asyncio.create_task(
+        agent.generate_plan(
+            user_id=user_id,
+            session=session,
+            topic_filter=request.topic_filter,
+            token_queue=queue,
+        )
+    )
+
+    return StreamingResponse(
+        _stream_events(queue, task),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.get("/weak-topics/{user_id}", response_model=WeakTopicsResponse)

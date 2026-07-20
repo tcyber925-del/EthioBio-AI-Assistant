@@ -1,8 +1,13 @@
+import asyncio
+from collections.abc import AsyncGenerator
+from typing import Optional
+
 import structlog
 
 from src.core.learning_intelligence.readiness import ReadinessService
 from src.core.learning_intelligence.teacher import TeacherService
 from src.llm.router import ModelRouter
+from src.schemas.streaming import TokenChunk
 
 logger = structlog.get_logger()
 
@@ -12,6 +17,35 @@ class ReasoningEngine:
         self.readiness = ReadinessService()
         self.teacher = TeacherService()
         self.router = router or ModelRouter()
+
+    async def _reason_stream(
+        self,
+        intent: str,
+        combined_context: str,
+        token_queue: "asyncio.Queue[TokenChunk | None]",
+    ) -> AsyncGenerator[str, None]:
+        system_prompt = (
+            "You are Teacher Copilot, an educational intelligence assistant for teachers. "
+            "Analyze the provided educational data and produce a clear, actionable response. "
+            "Focus on: root causes, evidence-backed observations, and concrete recommendations. "
+            "Keep responses concise and teacher-friendly."
+        )
+        user_prompt = (
+            f"Intent: {intent}\n\n"
+            f"Educational Data:\n{combined_context}\n\n"
+            "Provide your analysis, evidence, and recommendations."
+        )
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+        async for token in self.router.route_stream(
+            messages=messages,
+            temperature=0.3,
+            max_tokens=1024,
+        ):
+            token_queue.put_nowait(TokenChunk(delta=token, node="copilot"))
+            yield token
 
     async def reason(
         self,
@@ -24,6 +58,7 @@ class ReasoningEngine:
         intervention_data: dict | None = None,
         timeline_data: list[dict] | None = None,
         rag_context: str = "",
+        token_queue: Optional["asyncio.Queue[TokenChunk | None]"] = None,
     ) -> tuple[str, float]:
         context_parts = []
 
@@ -60,18 +95,25 @@ class ReasoningEngine:
         )
 
         try:
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ]
-            result = await self.router.route(
-                messages=messages,
-                request_type="teacher_copilot",
-                temperature=0.3,
-                max_tokens=1024,
-            )
-            reasoning = result.get("content", "Unable to generate analysis.")
-            confidence = result.get("confidence", 0.7)
+            if token_queue is not None:
+                buf: list[str] = []
+                async for token in self._reason_stream(intent, combined_context, token_queue):
+                    buf.append(token)
+                reasoning = "".join(buf)
+                confidence = 0.85
+            else:
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ]
+                result = await self.router.route(
+                    messages=messages,
+                    request_type="teacher_copilot",
+                    temperature=0.3,
+                    max_tokens=1024,
+                )
+                reasoning = result.get("content", "Unable to generate analysis.")
+                confidence = result.get("confidence", 0.7)
             return reasoning, confidence
         except Exception as e:
             logger.error("reasoning_engine_error", intent=intent, error=str(e))

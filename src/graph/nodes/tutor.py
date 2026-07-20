@@ -8,6 +8,7 @@ from src.agents.tutor.tutor import TutorSynthesisAgent
 from src.core.memory.truncation import truncate_messages
 from src.graph.state import AgentState
 from src.llm.router import ModelRouter
+from src.schemas.streaming import TokenChunk
 
 MISCONCEPTION_INDICATORS = [
     "that's not quite right",
@@ -111,7 +112,7 @@ class TutorNode:
         self.agent = TutorSynthesisAgent(router)
 
     async def __call__(self, state: AgentState) -> AgentState:
-        if state.evidence_items:
+        if state.evidence_items and state.token_queue is None:
             return await self._agentic_call(state)
         return await self._legacy_call(state)
 
@@ -211,14 +212,29 @@ class TutorNode:
             {"role": "user", "content": user_message},
         ]
 
-        result = await self.router.route(
-            messages, request_type="tutor", temperature=0.7, max_tokens=2048
-        )
+        if state.token_queue is not None:
+            content = ""
+            queue = state.token_queue
+            async for token in self.router.route_stream(
+                messages,
+                request_type="tutor",
+                temperature=0.7,
+                max_tokens=2048,
+            ):
+                queue.put_nowait(TokenChunk(delta=token, node="tutor"))
+                content += token
+            queue.put_nowait(TokenChunk(delta="", node="tutor", done=True))
+        else:
+            result = await self.router.route(
+                messages, request_type="tutor", temperature=0.7, max_tokens=2048
+            )
+            content = result["content"]
+            state.model_used = result.get("model", "")
+            state.confidence = result.get("confidence", 0.0)
 
-        content = result["content"]
         state.draft = content
-        state.model_used = result.get("model", "")
-        state.confidence = result.get("confidence", 0.0)
+        if not state.model_used:
+            state.model_used = f"stream/{state.model_used or 'tutor'}"
 
         detected, correction = _detect_misconception(content)
         state.misconception_detected = detected

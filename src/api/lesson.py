@@ -1,7 +1,10 @@
+import asyncio
 import uuid
+from collections.abc import AsyncGenerator
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,17 +28,49 @@ from src.schemas.lesson import (
     UnitPlanGenerateRequest,
     UnitPlanResponse,
 )
+from src.schemas.streaming import TokenChunk
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/lesson-plan", tags=["Lesson Plan"])
 
 
-@router.post("/generate", response_model=LessonPlanResponse)
+async def _stream_events(
+    queue: asyncio.Queue[TokenChunk | None],
+    task: asyncio.Task,
+) -> AsyncGenerator[str, None]:
+    try:
+        while True:
+            chunk = await queue.get()
+            if chunk is None:
+                break
+            if chunk.error:
+                yield f"data: {chunk.model_dump_json()}\n\n"
+                break
+            yield f"data: {chunk.model_dump_json()}\n\n"
+            if chunk.done:
+                break
+        if task.done() and (exc := task.exception()):
+            yield f"data: {TokenChunk(delta='', done=True, error=str(exc)).model_dump_json()}\n\n"
+    except Exception as e:
+        yield f"data: {TokenChunk(delta='', done=True, error=str(e)).model_dump_json()}\n\n"
+
+
+@router.post("/generate")
 async def generate_lesson_plan(
     request: LessonPlanRequest,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
+    if request.stream:
+        return await _handle_lesson_stream(request, session, current_user)
+    return await _handle_lesson_blocking(request, session, current_user)
+
+
+async def _handle_lesson_blocking(
+    request: LessonPlanRequest,
+    session: AsyncSession,
+    current_user: User,
+) -> LessonPlanResponse:
     teacher_id = request.teacher_id or current_user.id
     router_llm = ModelRouter(preferred_model=request.model)
     agent = LessonPlannerAgent(llm_router=router_llm)
@@ -135,6 +170,53 @@ async def generate_lesson_plan(
         await session.rollback()
         logger.error("lesson_plan_error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
+
+
+async def _handle_lesson_stream(
+    request: LessonPlanRequest,
+    session: AsyncSession,
+    current_user: User,
+) -> StreamingResponse:
+    router_llm = ModelRouter(preferred_model=request.model)
+    agent = LessonPlannerAgent(llm_router=router_llm)
+
+    classroom_context = None
+    if request.classroom_id:
+        try:
+            intelligence = ClassroomIntelligenceService(session)
+            classroom_context = await intelligence.analyze(
+                classroom_id=request.classroom_id,
+                topic=request.topic,
+            )
+        except Exception:
+            logger.warning("classroom_intelligence_failed", exc_info=True)
+
+    queue: asyncio.Queue[TokenChunk | None] = asyncio.Queue()
+    task = asyncio.create_task(
+        agent.generate(
+            grade_level=request.grade_level,
+            topic=request.topic,
+            duration_minutes=request.duration_minutes,
+            language=request.language,
+            session=session,
+            generate_exit_ticket=request.generate_exit_ticket,
+            generate_differentiation=request.generate_differentiation,
+            generate_diagram_suggestions=request.generate_diagram_suggestions,
+            generate_misconception_activities=request.generate_misconception_activities,
+            classroom_context=classroom_context,
+            token_queue=queue,
+        )
+    )
+
+    return StreamingResponse(
+        _stream_events(queue, task),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.patch("/{plan_id}/rate", response_model=LessonPlanResponse)

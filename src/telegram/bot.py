@@ -1,3 +1,4 @@
+import asyncio
 import random
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -39,6 +40,7 @@ from src.database.session import async_session_factory
 from src.graph.orchestrator import run_graph
 from src.llm.router import ModelRouter
 from src.redis_client import get_redis
+from src.schemas.streaming import TokenChunk
 from src.telegram.formatter import format_for_telegram, sanitize_for_telegram, strip_markdown
 from src.telegram.i18n import t
 from src.telegram.keyboards import (
@@ -1041,7 +1043,8 @@ async def handle_question(update: Update, context):
     result = None
     memory_user_id = None
     memory_session_id = None
-    memory_context = ""
+    memory_context = None
+    conversation_messages = []
     try:
         telegram_id = update.effective_user.id if update.effective_user else None
         async with async_session_factory()() as _mem_db:
@@ -1056,8 +1059,6 @@ async def handle_question(update: Update, context):
                     context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
                     _mem_db,
                 )
-            else:
-                conversation_messages = []
 
             socratic = context.user_data.get("socratic_mode", False)
             hint_level = context.user_data.get("hint_level", 0)
@@ -1065,21 +1066,38 @@ async def handle_question(update: Update, context):
             learner_profile_block = (
                 await _build_learner_profile(memory_user_id, _mem_db) if memory_user_id else ""
             )
-            result = await run_graph(
-                user_message=question,
-                user_id=memory_user_id,
-                grade_level=context.user_data.pop("tutor_grade", None)
-                or context.user_data.get("grade_level"),
-                language=context.user_data.get("language", "en"),
-                socratic_mode=socratic,
-                hint_level=hint_level,
-                reveal_answer=reveal,
-                memory_context=memory_context,
-                learner_profile_block=learner_profile_block,
-                messages=conversation_messages,
-                db_session_factory=async_session_factory,
+
+            token_queue: asyncio.Queue[TokenChunk | None] = asyncio.Queue()
+
+            graph_task = asyncio.create_task(
+                run_graph(
+                    user_message=question,
+                    user_id=memory_user_id,
+                    grade_level=context.user_data.pop("tutor_grade", None)
+                    or context.user_data.get("grade_level"),
+                    language=context.user_data.get("language", "en"),
+                    socratic_mode=socratic,
+                    hint_level=hint_level,
+                    reveal_answer=reveal,
+                    memory_context=memory_context or "",
+                    learner_profile_block=learner_profile_block,
+                    messages=conversation_messages,
+                    db_session_factory=async_session_factory,
+                    token_queue=token_queue,
+                )
             )
-            response = result.answer
+
+            response = await _stream_and_edit(
+                thinking_msg,
+                token_queue,
+                graph_task,
+                parse_mode="HTML",
+            )
+
+            result = graph_task.result()
+
+            if response and not result.answer:
+                result.answer = response
 
             if memory_user_id and memory_session_id:
                 try:
@@ -1292,6 +1310,67 @@ async def handle_quiz_topic(update: Update, context):
         return ConversationHandler.END
 
     return QUIZ_ANSWERING
+
+
+STREAM_FLUSH_INTERVAL = 0.4
+
+
+async def _stream_and_edit(
+    msg,
+    token_queue: asyncio.Queue[TokenChunk | None],
+    graph_task: asyncio.Task,
+    final_markup=None,
+    parse_mode=None,
+):
+    """Read tokens from queue and progressively update the Telegram message."""
+    buffer = ""
+    last_edit = ""
+    last_update = 0.0
+    done = False
+
+    while True:
+        try:
+            chunk = await asyncio.wait_for(token_queue.get(), timeout=STREAM_FLUSH_INTERVAL)
+        except asyncio.TimeoutError:
+            chunk = None
+
+        now = asyncio.get_event_loop().time()
+
+        if chunk is not None:
+            if chunk.error:
+                buffer += f"\n\n❌ {chunk.error}"
+                done = True
+            elif chunk.done:
+                done = True
+            elif not chunk.status:
+                buffer += chunk.delta
+
+        should_flush = done or (buffer != last_edit and now - last_update >= STREAM_FLUSH_INTERVAL)
+
+        if should_flush and buffer and buffer != last_edit:
+            try:
+                display = sanitize_for_telegram(format_for_telegram(buffer))[:4096]
+                await msg.edit_text(display, parse_mode=parse_mode)
+            except Exception:
+                pass
+            last_edit = buffer
+            last_update = now
+
+        if done or (chunk is None and buffer != last_edit):
+            break
+
+    # Flush any remaining text
+    try:
+        display = sanitize_for_telegram(format_for_telegram(buffer))[:4096]
+        await msg.edit_text(display, reply_markup=final_markup, parse_mode=parse_mode)
+    except Exception:
+        pass
+
+    # Wait for graph task
+    if graph_task.done() and (exc := graph_task.exception()):
+        logger.error("graph_task_failed", error=str(exc))
+
+    return buffer
 
 
 async def _reply_long(

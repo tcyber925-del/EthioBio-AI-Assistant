@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime
 from typing import Optional
 
@@ -6,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.base import BaseAgent
 from src.llm.router import ModelRouter
+from src.schemas.streaming import TokenChunk
 
 logger = structlog.get_logger()
 
@@ -37,6 +39,7 @@ class ParentSummaryAgent(BaseAgent):
         week_end: datetime,
         language: str = "en",
         session: Optional[AsyncSession] = None,
+        token_queue: asyncio.Queue[TokenChunk | None] | None = None,
     ) -> dict:
         total_attempts = len(records)
         if total_attempts > 0:
@@ -71,30 +74,65 @@ Weak areas: {", ".join(profile.weak_areas) if profile and profile.weak_areas els
 
 {lang_instruction}"""
 
-        result = await self._call_llm(
-            system_prompt=SUMMARY_SYSTEM_PROMPT,
-            user_message=user_message,
-            session=session,
-            temperature=0.5,
-            max_tokens=1024,
-            request_type="parent_summary",
-        )
+        content: str
+        model_used: str = ""
+
+        if token_queue is not None:
+            buf: list[str] = []
+            async for token in self._call_llm_stream(
+                system_prompt=SUMMARY_SYSTEM_PROMPT,
+                user_message=user_message,
+                temperature=0.5,
+                max_tokens=1024,
+                request_type="parent_summary",
+            ):
+                buf.append(token)
+                token_queue.put_nowait(TokenChunk(delta=token, node="summary"))
+            content = "".join(buf)
+        else:
+            result = await self._call_llm(
+                system_prompt=SUMMARY_SYSTEM_PROMPT,
+                user_message=user_message,
+                session=session,
+                temperature=0.5,
+                max_tokens=1024,
+                request_type="parent_summary",
+            )
+            content = result["content"]
+            model_used = result.get("model", "")
 
         amharic_content = None
         if language in ("en", "both"):
-            bilingual = await self._call_llm(
-                system_prompt="Translate the following summary to Amharic. Keep the tone positive and constructive.",
-                user_message=result["content"],
-                session=session,
-                temperature=0.3,
-                max_tokens=1024,
-                request_type="summary_translation",
-            )
-            amharic_content = bilingual["content"]
+            if token_queue is not None:
+                token_queue.put_nowait(TokenChunk(delta="", node="summary", status=True))
+                trans_buf: list[str] = []
+                async for token in self._call_llm_stream(
+                    system_prompt="Translate the following summary to Amharic. Keep the tone positive and constructive.",
+                    user_message=content,
+                    temperature=0.3,
+                    max_tokens=1024,
+                    request_type="summary_translation",
+                ):
+                    trans_buf.append(token)
+                    token_queue.put_nowait(TokenChunk(delta=token, node="summary"))
+                amharic_content = "".join(trans_buf)
+            else:
+                bilingual = await self._call_llm(
+                    system_prompt="Translate the following summary to Amharic. Keep the tone positive and constructive.",
+                    user_message=content,
+                    session=session,
+                    temperature=0.3,
+                    max_tokens=1024,
+                    request_type="summary_translation",
+                )
+                amharic_content = bilingual["content"]
+
+        if token_queue is not None:
+            token_queue.put_nowait(TokenChunk(delta="", node="summary", done=True))
 
         return {
-            "summary_text": result["content"],
+            "summary_text": content,
             "summary_amharic": amharic_content,
             "is_low_performance_warning": is_low,
-            "model_used": result.get("model", ""),
+            "model_used": model_used,
         }

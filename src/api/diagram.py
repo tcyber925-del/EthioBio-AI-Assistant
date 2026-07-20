@@ -1,4 +1,6 @@
+import asyncio
 import base64
+from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -6,7 +8,7 @@ from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,6 +44,7 @@ from src.schemas.icon_library import (
     IconComposeResponse,
     IconListResponse,
 )
+from src.schemas.streaming import TokenChunk
 from src.services.cloudflare_images import CloudflareImageGenerator
 from src.services.icon_library import IconLibrary
 from src.services.svg_validator import SvgImageValidator
@@ -51,11 +54,41 @@ logger = structlog.get_logger()
 router = APIRouter(prefix="/diagram", tags=["Diagram"])
 
 
-@router.post("/generate", response_model=DiagramGenerateResponse)
+async def _stream_events(
+    queue: asyncio.Queue[TokenChunk | None],
+    task: asyncio.Task,
+) -> AsyncGenerator[str, None]:
+    try:
+        while True:
+            chunk = await queue.get()
+            if chunk is None:
+                break
+            if chunk.error:
+                yield f"data: {chunk.model_dump_json()}\n\n"
+                break
+            yield f"data: {chunk.model_dump_json()}\n\n"
+            if chunk.done:
+                break
+        if task.done() and (exc := task.exception()):
+            yield f"data: {TokenChunk(delta='', done=True, error=str(exc)).model_dump_json()}\n\n"
+    except Exception as e:
+        yield f"data: {TokenChunk(delta='', done=True, error=str(e)).model_dump_json()}\n\n"
+
+
+@router.post("/generate")
 async def generate_diagram(
     request: DiagramGenerateRequest,
     session: AsyncSession = Depends(get_session),
 ):
+    if request.stream:
+        return await _handle_diagram_stream(request, session)
+    return await _handle_diagram_blocking(request, session)
+
+
+async def _handle_diagram_blocking(
+    request: DiagramGenerateRequest,
+    session: AsyncSession,
+) -> DiagramGenerateResponse:
     router_llm = ModelRouter()
     agent = DiagramAgent(llm_router=router_llm)
 
@@ -83,6 +116,37 @@ async def generate_diagram(
     except Exception as e:
         logger.error("diagram_generate_error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
+
+
+async def _handle_diagram_stream(
+    request: DiagramGenerateRequest,
+    session: AsyncSession,
+) -> StreamingResponse:
+    router_llm = ModelRouter()
+    agent = DiagramAgent(llm_router=router_llm)
+
+    queue: asyncio.Queue[TokenChunk | None] = asyncio.Queue()
+    task = asyncio.create_task(
+        agent.generate(
+            prompt=request.prompt,
+            topic=request.topic,
+            difficulty=request.difficulty,
+            session=session,
+            preferred_model=request.model,
+            grade=request.grade,
+            token_queue=queue,
+        )
+    )
+
+    return StreamingResponse(
+        _stream_events(queue, task),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.post("/validate", response_model=DiagramValidateResponse)

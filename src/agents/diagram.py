@@ -1,3 +1,4 @@
+import asyncio
 import json
 import re
 from typing import Optional
@@ -9,6 +10,7 @@ from src.agents.base import BaseAgent
 from src.llm.router import ModelRouter
 from src.retrieval.adapter import RetrievalFilter, VectorStoreAdapter
 from src.schemas.diagram import DiagramPanel
+from src.schemas.streaming import TokenChunk
 
 logger = structlog.get_logger()
 
@@ -67,6 +69,10 @@ class DiagramAgent(BaseAgent):
         super().__init__(llm_router, name="diagram")
         self._adapter = adapter
 
+    def _push_status(self, queue: asyncio.Queue[TokenChunk | None] | None, message: str):
+        if queue:
+            queue.put_nowait(TokenChunk(delta=message, node="diagram", status=True))
+
     @property
     def adapter(self) -> VectorStoreAdapter:
         if self._adapter is None:
@@ -94,6 +100,7 @@ class DiagramAgent(BaseAgent):
         grade: int,
         session: Optional[AsyncSession] = None,
         preferred_model: str | None = None,
+        token_queue: asyncio.Queue[TokenChunk | None] | None = None,
     ) -> DiagramPanel:
         """Generate a single panel diagram. Returns a DiagramPanel instance."""
         caption = sub_prompt[:80] if len(sub_prompt) > 80 else sub_prompt
@@ -105,17 +112,30 @@ class DiagramAgent(BaseAgent):
             "Respond with valid JSON only."
         )
 
-        result = await self._call_llm(
-            system_prompt=DIAGRAM_SYSTEM_PROMPT,
-            user_message=user_message,
-            session=session,
-            temperature=0.7,
-            max_tokens=4096,
-            request_type="diagram_generation",
-            preferred_model=preferred_model,
-        )
-
-        content = result["content"]
+        if token_queue is not None:
+            buf: list[str] = []
+            async for token in self._call_llm_stream(
+                system_prompt=DIAGRAM_SYSTEM_PROMPT,
+                user_message=user_message,
+                temperature=0.7,
+                max_tokens=4096,
+                request_type="diagram_generation",
+                preferred_model=preferred_model,
+            ):
+                buf.append(token)
+                token_queue.put_nowait(TokenChunk(delta=token, node="diagram"))
+            content = "".join(buf)
+        else:
+            result = await self._call_llm(
+                system_prompt=DIAGRAM_SYSTEM_PROMPT,
+                user_message=user_message,
+                session=session,
+                temperature=0.7,
+                max_tokens=4096,
+                request_type="diagram_generation",
+                preferred_model=preferred_model,
+            )
+            content = result["content"]
         try:
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0].strip()
@@ -166,6 +186,7 @@ class DiagramAgent(BaseAgent):
         session: Optional[AsyncSession] = None,
         preferred_model: str | None = None,
         grade: int = 10,
+        token_queue: asyncio.Queue[TokenChunk | None] | None = None,
     ) -> dict:
         textbook_references = []
 
@@ -174,6 +195,8 @@ class DiagramAgent(BaseAgent):
             sub_prompts = await self._split_prompt(prompt)
             panels = []
             for i, sub in enumerate(sub_prompts):
+                if token_queue is not None:
+                    self._push_status(token_queue, f"Drawing panel {i+1}...")
                 panel = await self.generate_panel(
                     sub_prompt=sub,
                     panel_index=i,
@@ -182,8 +205,12 @@ class DiagramAgent(BaseAgent):
                     grade=grade,
                     session=session,
                     preferred_model=preferred_model,
+                    token_queue=token_queue,
                 )
                 panels.append(panel.model_dump())
+
+            if token_queue is not None:
+                token_queue.put_nowait(TokenChunk(delta="", node="diagram", done=True))
 
             return {
                 "title": prompt[:80] if len(prompt) > 80 else prompt,
@@ -229,18 +256,34 @@ For {difficulty} difficulty:
 
 Respond with valid JSON only."""
 
-        result = await self._call_llm(
-            system_prompt=system_prompt,
-            user_message=user_message,
-            session=session,
-            temperature=0.7,
-            max_tokens=4096,
-            request_type="diagram_generation",
-            preferred_model=preferred_model,
-        )
-
-        try:
+        if token_queue is not None:
+            self._push_status(token_queue, f"Drawing {topic} diagram...")
+            buf: list[str] = []
+            async for token in self._call_llm_stream(
+                system_prompt=system_prompt,
+                user_message=user_message,
+                temperature=0.7,
+                max_tokens=4096,
+                request_type="diagram_generation",
+                preferred_model=preferred_model,
+            ):
+                buf.append(token)
+                token_queue.put_nowait(TokenChunk(delta=token, node="diagram"))
+            content = "".join(buf)
+        else:
+            result = await self._call_llm(
+                system_prompt=system_prompt,
+                user_message=user_message,
+                session=session,
+                temperature=0.7,
+                max_tokens=4096,
+                request_type="diagram_generation",
+                preferred_model=preferred_model,
+            )
             content = result["content"]
+
+        model_used = "" if token_queue is not None else result.get("model", "")
+        try:
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0].strip()
             elif "```" in content:
@@ -253,20 +296,23 @@ Respond with valid JSON only."""
                 "labels": parsed.get("labels", []),
                 "topic": topic,
                 "difficulty": difficulty,
-                "model_used": result.get("model", ""),
+                "model_used": model_used,
                 "textbook_references": textbook_references,
             }
         except (json.JSONDecodeError, KeyError) as e:
-            logger.error("diagram_parse_error", error=str(e), content=result["content"][:300])
+            logger.error("diagram_parse_error", error=str(e), content=content[:300])
             return {
                 "title": f"{topic} - {prompt[:50]}",
-                "diagram_svg": result["content"],
+                "diagram_svg": content,
                 "labels": [],
                 "topic": topic,
                 "difficulty": difficulty,
-                "model_used": result.get("model", ""),
+                "model_used": model_used,
                 "textbook_references": textbook_references,
             }
+        finally:
+            if token_queue is not None:
+                token_queue.put_nowait(TokenChunk(delta="", node="diagram", done=True))
 
 
 def validate_labels(

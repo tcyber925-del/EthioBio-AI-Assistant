@@ -1,4 +1,5 @@
 import time
+from collections.abc import AsyncGenerator
 
 import structlog
 
@@ -177,6 +178,61 @@ class ProviderManager:
             latency_ms=latency,
         )
         raise ConnectionError(f"All LLM providers failed. Last error: {last_error}")
+
+    async def route_stream(
+        self,
+        messages: list[dict],
+        request_type: str = "chat",
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+        preferred_model: str | None = None,
+    ) -> AsyncGenerator[str, None]:
+        """Stream a response through the provider chain with fallback."""
+        model_to_use = preferred_model or self._active_model
+        last_error = None
+
+        if "/" not in model_to_use:
+            candidate = f"ollama/{model_to_use}"
+        else:
+            candidate = model_to_use
+
+        preferred_provider = candidate.split("/")[0] if "/" in candidate else "ollama"
+        ordered_providers = [preferred_provider] + [
+            p for p in self._fallback_chain if p != preferred_provider
+        ]
+
+        for provider_name in ordered_providers:
+            provider = self._providers.get(provider_name)
+            if not provider:
+                continue
+            if not await provider.is_available():
+                continue
+
+            try:
+                chat_messages = list(messages)
+                if provider_name == "ollama" and "/" in candidate:
+                    model_name = candidate.split("/", 1)[1]
+                    chat_messages = [
+                        {"role": "system", "content": f"__model__:{model_name}"},
+                    ] + chat_messages
+
+                async for token in provider.chat_stream(
+                    messages=chat_messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                ):
+                    yield token
+                return  # success
+            except Exception as e:
+                last_error = str(e)
+                logger.warning(
+                    "provider_manager_stream_failed",
+                    provider=provider_name,
+                    error=last_error,
+                )
+                continue
+
+        raise ConnectionError(f"All LLM providers failed for streaming. Last error: {last_error}")
 
     async def check_health(self) -> dict:
         """Check health of all providers."""

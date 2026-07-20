@@ -1,9 +1,12 @@
+import asyncio
+from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
 from typing import cast
 from uuid import uuid4
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.diagnostic_assessment import DiagnosticAgent
@@ -12,13 +15,37 @@ from src.database.session import get_session
 from src.llm.router import ModelRouter
 from src.schemas.diagnostic import DiagnosticRequest, DiagnosticResponse, TopicBaseline
 from src.schemas.quiz import QuestionSchema
+from src.schemas.streaming import TokenChunk
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/quiz", tags=["Diagnostic"])
 
 
+async def _stream_events(
+    queue: asyncio.Queue[TokenChunk | None],
+    task: asyncio.Task,
+) -> AsyncGenerator[str, None]:
+    try:
+        while True:
+            chunk = await queue.get()
+            if chunk is None:
+                break
+            if chunk.error:
+                yield f"data: {chunk.model_dump_json()}\n\n"
+                break
+            yield f"data: {chunk.model_dump_json()}\n\n"
+            if chunk.done:
+                break
+        if task.done() and (exc := task.exception()):
+            yield f"data: {TokenChunk(delta='', done=True, error=str(exc)).model_dump_json()}\n\n"
+    except Exception as e:
+        yield f"data: {TokenChunk(delta='', done=True, error=str(e)).model_dump_json()}\n\n"
+
+
 @router.post("/diagnostic", response_model=DiagnosticResponse)
 async def run_diagnostic(request: DiagnosticRequest, session: AsyncSession = Depends(get_session)):
+    if request.stream:
+        return await _handle_diagnostic_stream(request)
     router_llm = ModelRouter(preferred_model=request.model)
     agent = DiagnosticAgent(llm_router=router_llm)
 
@@ -117,3 +144,31 @@ async def run_diagnostic(request: DiagnosticRequest, session: AsyncSession = Dep
         await session.rollback()
         logger.error("diagnostic_error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
+
+
+async def _handle_diagnostic_stream(
+    request: DiagnosticRequest,
+) -> StreamingResponse:
+    router_llm = ModelRouter(preferred_model=request.model)
+    agent = DiagnosticAgent(llm_router=router_llm)
+
+    queue: asyncio.Queue[TokenChunk | None] = asyncio.Queue()
+    task = asyncio.create_task(
+        agent.generate(
+            grade_level=request.grade_level,
+            topics=request.topics,
+            questions_per_topic=request.questions_per_topic,
+            language=request.language,
+            token_queue=queue,
+        )
+    )
+
+    return StreamingResponse(
+        _stream_events(queue, task),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

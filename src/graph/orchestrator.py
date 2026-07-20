@@ -5,6 +5,7 @@ Builds the graph with dependency-injected nodes (router, adapter).
 Supports both the legacy pipeline and the new Agentic RAG pipeline.
 """
 
+import asyncio
 from collections.abc import Callable
 from typing import Any, Optional
 
@@ -26,6 +27,7 @@ from src.graph.nodes.tutor import TutorNode
 from src.graph.state import AgentState, GraphOutput
 from src.llm.router import ModelRouter
 from src.retrieval.adapter import VectorStoreAdapter
+from src.schemas.streaming import TokenChunk
 
 
 def build_agentic_graph(
@@ -122,10 +124,12 @@ async def run_graph(
     socratic_next_question: str = "",
     messages: list[dict] | None = None,
     db_session_factory: Optional[Callable[[], AsyncSession]] | None = None,
+    token_queue: asyncio.Queue[TokenChunk | None] | None = None,
 ) -> GraphOutput:
     """Run the unified graph with monitoring.
 
     Routes to either legacy or agentic pipeline based on query complexity.
+    Pass token_queue to enable streaming of LLM tokens to the caller.
     """
     trace = pipeline_monitor.start_trace(
         metadata={
@@ -135,8 +139,14 @@ async def run_graph(
         }
     )
 
+    if token_queue:
+        token_queue.put_nowait(TokenChunk(delta="Setting up the learning engine...", node="orchestrator", status=True))
+
     router = ModelRouter(preferred_model=preferred_model)
     adapter = VectorStoreAdapter()
+
+    if token_queue:
+        token_queue.put_nowait(TokenChunk(delta="Searching the curriculum...", node="orchestrator", status=True))
 
     # Resolve factory: callers pass src.database.session.async_session_factory
     # (a function returning async_sessionmaker). Call once to get the maker,
@@ -163,6 +173,7 @@ async def run_graph(
         socratic_understanding=socratic_understanding,
         socratic_next_question=socratic_next_question,
         messages=messages or [],
+        token_queue=token_queue,
     )
 
     graph = build_unified_graph(router, adapter, db_session_factory=session_maker)

@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import Optional
 
@@ -6,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.base import BaseAgent
 from src.llm.router import ModelRouter
+from src.schemas.streaming import TokenChunk
 
 logger = structlog.get_logger()
 
@@ -125,6 +127,11 @@ def _derive_activities_from_periods(periods: list[dict]) -> list[dict]:
     ]
 
 
+    def _push_status(self, queue: asyncio.Queue[TokenChunk | None] | None, message: str):
+        if queue:
+            queue.put_nowait(TokenChunk(delta=message, node="lesson_planner", status=True))
+
+
 class LessonPlannerAgent(BaseAgent):
     def __init__(self, llm_router: ModelRouter):
         super().__init__(llm_router, name="lesson_planner")
@@ -141,6 +148,7 @@ class LessonPlannerAgent(BaseAgent):
         generate_diagram_suggestions: bool = False,
         generate_misconception_activities: bool = False,
         classroom_context: Optional[dict] = None,
+        token_queue: asyncio.Queue[TokenChunk | None] | None = None,
     ) -> dict:
         if language == "am":
             lang_instruction = (
@@ -201,17 +209,35 @@ Lesson duration: {duration_minutes} minutes.
 
 Respond with valid JSON only."""
 
-        result = await self._call_llm(
-            system_prompt=LESSON_SYSTEM_PROMPT,
-            user_message=user_message,
-            session=session,
-            temperature=0.7,
-            max_tokens=4096,
-            request_type="lesson_planning",
-        )
+        content: str
+        model_used: str = ""
+
+        if token_queue is not None:
+            self._push_status(token_queue, "Generating lesson objective...")
+            buf: list[str] = []
+            async for token in self._call_llm_stream(
+                system_prompt=LESSON_SYSTEM_PROMPT,
+                user_message=user_message,
+                temperature=0.7,
+                max_tokens=4096,
+                request_type="lesson_planning",
+            ):
+                buf.append(token)
+                token_queue.put_nowait(TokenChunk(delta=token, node="lesson_planner"))
+            content = "".join(buf)
+        else:
+            result = await self._call_llm(
+                system_prompt=LESSON_SYSTEM_PROMPT,
+                user_message=user_message,
+                session=session,
+                temperature=0.7,
+                max_tokens=4096,
+                request_type="lesson_planning",
+            )
+            content = result["content"]
+            model_used = result.get("model", "")
 
         try:
-            content = result["content"]
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0].strip()
             elif "```" in content:
@@ -283,17 +309,17 @@ Respond with valid JSON only."""
 
             return output
         except (json.JSONDecodeError, KeyError) as e:
-            logger.error("lesson_parse_error", error=str(e), content=result["content"][:200])
+            logger.error("lesson_parse_error", error=str(e), content=content[:200])
             return {
                 "objective": "Error parsing lesson plan",
                 "prior_knowledge": "",
-                "explanation": result["content"],
+                "explanation": content,
                 "activities": [],
                 "periods": None,
                 "assessment": "",
                 "homework": None,
                 "teacher_notes": None,
-                "model_used": result.get("model", ""),
+                "model_used": model_used,
             }
 
     async def _generate_exit_ticket(

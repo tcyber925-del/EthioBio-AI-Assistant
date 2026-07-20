@@ -103,6 +103,7 @@ class GenerateRecoveryPlanResponse(SchemaModel):
 
 class GenerateRecoveryPlanRequest(SchemaModel):
     topic_filter: Optional[str] = None
+    stream: bool = False
 
 
 class RecommendationInfo(SchemaModel):

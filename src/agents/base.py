@@ -1,3 +1,4 @@
+from collections.abc import AsyncGenerator
 from typing import Optional
 
 import structlog
@@ -12,6 +13,26 @@ class BaseAgent:
     def __init__(self, llm_router: ModelRouter, name: str = "base"):
         self.llm_router = llm_router
         self.name = name
+
+    async def _call_llm_stream(
+        self,
+        system_prompt: str,
+        user_message: str,
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+        request_type: str = "chat",
+        preferred_model: str | None = None,
+    ) -> AsyncGenerator[str, None]:
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message},
+        ]
+        async for token in self.llm_router.route_stream(
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        ):
+            yield token
 
     async def _call_llm(
         self,
