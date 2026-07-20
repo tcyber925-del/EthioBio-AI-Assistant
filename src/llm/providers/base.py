@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 from typing import TypedDict
 
@@ -45,6 +46,24 @@ class LLMProvider(ABC):
     ) -> ChatResponse:
         """Send a chat completion request."""
         ...
+
+    async def chat_stream(
+        self,
+        messages: list[dict],
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+    ) -> AsyncGenerator[str, None]:
+        """Stream a chat completion response token by token.
+
+        Default implementation falls back to chat() and yields the full response
+        as a single token. Providers SHOULD override this for true streaming.
+        """
+        response = await self.chat(
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        yield response.content
 
     @abstractmethod
     async def is_available(self) -> bool:

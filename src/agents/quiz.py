@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import Optional
 
@@ -7,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.agents.base import BaseAgent
 from src.llm.router import ModelRouter
 from src.retrieval.adapter import RetrievalFilter, VectorStoreAdapter
+from src.schemas.streaming import TokenChunk
 
 logger = structlog.get_logger()
 
@@ -41,6 +43,10 @@ class QuizAgent(BaseAgent):
         super().__init__(llm_router, name="quiz")
         self.adapter = adapter or VectorStoreAdapter()
 
+    def _push_status(self, queue: asyncio.Queue[TokenChunk | None] | None, message: str):
+        if queue:
+            queue.put_nowait(TokenChunk(delta=message, node="quiz", status=True))
+
     async def generate(
         self,
         grade_level: int,
@@ -51,6 +57,7 @@ class QuizAgent(BaseAgent):
         session: Optional[AsyncSession] = None,
         weak_topics: Optional[list[dict]] = None,
         target_difficulty: Optional[str] = None,
+        token_queue: asyncio.Queue[TokenChunk | None] | None = None,
     ) -> dict:
         types_str = ", ".join(types or ["multiple_choice", "true_false"])
         if language == "am":
@@ -119,17 +126,36 @@ IMPORTANT: Base ALL questions on the curriculum context provided above. Do NOT u
 
 Respond with valid JSON only."""
 
-        result = await self._call_llm(
-            system_prompt=system_prompt,
-            user_message=user_message,
-            session=session,
-            temperature=0.8,
-            max_tokens=4096,
-            request_type="quiz_generation",
-        )
+        content: str
+        model_used: str = ""
+
+        if token_queue is not None:
+            self._push_status(token_queue, "Generating quiz questions...")
+            buf: list[str] = []
+            async for token in self._call_llm_stream(
+                system_prompt=system_prompt,
+                user_message=user_message,
+                temperature=0.8,
+                max_tokens=4096,
+                request_type="quiz_generation",
+            ):
+                buf.append(token)
+                token_queue.put_nowait(TokenChunk(delta=token, node="quiz"))
+            content = "".join(buf)
+            token_queue.put_nowait(TokenChunk(delta="", node="quiz", done=True))
+        else:
+            result = await self._call_llm(
+                system_prompt=system_prompt,
+                user_message=user_message,
+                session=session,
+                temperature=0.8,
+                max_tokens=4096,
+                request_type="quiz_generation",
+            )
+            content = result["content"]
+            model_used = result.get("model", "")
 
         try:
-            content = result["content"]
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0].strip()
             elif "```" in content:
@@ -142,13 +168,13 @@ Respond with valid JSON only."""
                 "title": parsed.get("title", f"Grade {grade_level} - {topic}"),
                 "questions": parsed.get("questions", []),
                 "answer_key": parsed.get("answer_key", ""),
-                "model_used": result.get("model", ""),
+                "model_used": model_used,
             }
         except (json.JSONDecodeError, KeyError) as e:
-            logger.error("quiz_parse_error", error=str(e), content=result["content"][:200])
+            logger.error("quiz_parse_error", error=str(e), content=content[:200])
             return {
                 "title": f"Grade {grade_level} - {topic}",
                 "questions": [],
                 "answer_key": "Error parsing generated quiz",
-                "model_used": result.get("model", ""),
+                "model_used": model_used,
             }

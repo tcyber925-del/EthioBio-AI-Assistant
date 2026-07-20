@@ -1,5 +1,9 @@
+import asyncio
 from dataclasses import dataclass, field
+from typing import Optional
 from uuid import UUID
+
+from src.schemas.streaming import TokenChunk
 
 
 @dataclass
@@ -32,3 +36,4 @@ class TeacherCopilotState:
     confidence: float = 0.0
     status: str = "pending"
     error: str | None = None
+    token_queue: Optional["asyncio.Queue[TokenChunk | None]"] = None

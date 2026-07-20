@@ -4,6 +4,7 @@ import re
 
 from src.graph.state import AgentState
 from src.retrieval.adapter import RetrievalFilter, RetrievalResult, VectorStoreAdapter
+from src.schemas.streaming import TokenChunk
 
 N_RESULTS = 8
 
@@ -45,6 +46,11 @@ def _is_quality_content(text: str) -> bool:
     return has_sentence or has_text_block
 
 
+    def _push_status(self, state: AgentState, message: str):
+        if state.token_queue:
+            state.token_queue.put_nowait(TokenChunk(delta=message, node="retrieve", status=True))
+
+
 class RetrievalNode:
     def __init__(self, adapter: VectorStoreAdapter):
         self.adapter = adapter
@@ -53,6 +59,8 @@ class RetrievalNode:
         query = state.user_message
         if state.retrieval_query:
             query = state.retrieval_query
+
+        self._push_status(state, "Searching your grade level...")
 
         # Search pipeline: exact grade → neighboring grades → no filter
         search_rounds = []
@@ -68,6 +76,7 @@ class RetrievalNode:
                 adj_grade = state.grade_level + offset
                 if adj_grade < 7 or adj_grade > 12:
                     continue
+                self._push_status(state, f"Checking Grade {adj_grade} materials...")
                 adj_filter = RetrievalFilter(grade_level=adj_grade)
                 adj_results = await self.adapter.search(
                     query, n_results=N_RESULTS, filter_obj=adj_filter
@@ -81,6 +90,7 @@ class RetrievalNode:
 
         # Round 3: no filter (only if we still need more)
         if len(set(r.content[:80] for r in all_raw)) < 6:
+            self._push_status(state, "Searching broader curriculum...")
             fallback = await self.adapter.search(
                 query, n_results=N_RESULTS, filter_obj=RetrievalFilter()
             )

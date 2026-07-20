@@ -1,8 +1,11 @@
+import asyncio
 import uuid
+from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +23,7 @@ from src.schemas.quiz import (
     QuizSubmitRequest,
     QuizSubmitResponse,
 )
+from src.schemas.streaming import TokenChunk
 
 _task_store: dict[str, dict] = {}
 _task_lock = None
@@ -107,6 +111,8 @@ async def generate_quiz(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
+    if request.stream:
+        return await _handle_quiz_stream(request, session, current_user)
     teacher_id = request.teacher_id or current_user.id
     task_id = await _create_task()
 
@@ -123,6 +129,58 @@ async def generate_quiz_status(task_id: str):
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     return task
+
+
+async def _stream_events(
+    queue: asyncio.Queue[TokenChunk | None],
+    task: asyncio.Task,
+) -> AsyncGenerator[str, None]:
+    try:
+        while True:
+            chunk = await queue.get()
+            if chunk is None:
+                break
+            if chunk.error:
+                yield f"data: {chunk.model_dump_json()}\n\n"
+                break
+            yield f"data: {chunk.model_dump_json()}\n\n"
+            if chunk.done:
+                break
+        if task.done() and (exc := task.exception()):
+            yield f"data: {TokenChunk(delta='', done=True, error=str(exc)).model_dump_json()}\n\n"
+    except Exception as e:
+        yield f"data: {TokenChunk(delta='', done=True, error=str(e)).model_dump_json()}\n\n"
+
+
+async def _handle_quiz_stream(
+    request: QuizGenerateRequest,
+    session: AsyncSession,
+    current_user: User,
+) -> StreamingResponse:
+    router_llm = ModelRouter(preferred_model=request.model)
+    agent = QuizAgent(llm_router=router_llm)
+
+    queue: asyncio.Queue[TokenChunk | None] = asyncio.Queue()
+    task = asyncio.create_task(
+        agent.generate(
+            grade_level=request.grade_level,
+            topic=request.topic,
+            question_count=request.question_count,
+            types=request.types,
+            language=request.language,
+            token_queue=queue,
+        )
+    )
+
+    return StreamingResponse(
+        _stream_events(queue, task),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 async def _run_quiz_generation(task_id: str, request: QuizGenerateRequest, teacher_id: uuid.UUID):

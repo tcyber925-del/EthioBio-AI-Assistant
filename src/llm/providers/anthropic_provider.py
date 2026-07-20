@@ -1,3 +1,5 @@
+from collections.abc import AsyncGenerator
+
 import structlog
 from anthropic import AsyncAnthropic
 from anthropic.types import TextBlock
@@ -63,6 +65,36 @@ class AnthropicProvider(LLMProvider):
             usage=usage,
             provider="anthropic",
         )
+
+    async def chat_stream(
+        self,
+        messages: list[dict],
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+    ) -> AsyncGenerator[str, None]:
+        client = self._get_client()
+        system_msg: str | None = None
+        chat_messages: list[dict] = messages
+        if messages and messages[0].get("role") == "system":
+            system_msg = messages[0]["content"]
+            chat_messages = messages[1:]
+
+        kwargs: dict = {
+            "model": self._model,
+            "messages": chat_messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+        }
+        if system_msg:
+            kwargs["system"] = system_msg
+
+        async with client.messages.stream(**kwargs) as stream:
+            async for event in stream:
+                if (
+                    event.type == "content_block_delta"
+                    and hasattr(event.delta, "text")
+                ):
+                    yield event.delta.text
 
     async def is_available(self) -> bool:
         available = bool(self._api_key)

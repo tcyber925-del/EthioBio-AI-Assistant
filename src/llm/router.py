@@ -1,6 +1,7 @@
 # src/llm/router.py
 import re
 import time
+from collections.abc import AsyncGenerator
 from typing import Optional
 
 import structlog
@@ -152,6 +153,28 @@ class ModelRouter:
                     prompt_version="v2.0",
                 )
                 session.add(log_entry)
+            raise
+
+    async def route_stream(
+        self,
+        messages: list[dict],
+        request_type: str = "chat",
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+        preferred_model: str | None = None,
+    ) -> AsyncGenerator[str, None]:
+        """Stream a chat response token by token through the provider chain."""
+        try:
+            async for token in self._manager.route_stream(
+                messages=messages,
+                request_type=request_type,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                preferred_model=preferred_model,
+            ):
+                yield token
+        except Exception as e:
+            logger.error("router_stream_error", error=str(e))
             raise
 
     async def check_health(self) -> bool:

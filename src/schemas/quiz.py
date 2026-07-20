@@ -29,6 +29,7 @@ class QuizGenerateRequest(SchemaModel):
     model: Optional[str] = None
     user_id: Optional[UUID] = None
     adaptive: bool = False
+    stream: bool = False
 
 
 class QuizGenerateResponse(SchemaModel):

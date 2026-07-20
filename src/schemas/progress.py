@@ -11,6 +11,7 @@ from src.schemas.common import LanguageEnum
 class ProgressRequest(SchemaModel):
     student_id: UUID
     days: int = Field(30, ge=1, le=365)
+    stream: bool = False
 
 
 class ProgressResponse(SchemaModel):
@@ -25,6 +26,7 @@ class ParentSummaryRequest(SchemaModel):
     parent_id: UUID
     student_id: UUID
     language: LanguageEnum = LanguageEnum.EN
+    stream: bool = False
 
 
 class ParentSummaryResponse(SchemaModel):

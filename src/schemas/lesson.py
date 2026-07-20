@@ -15,6 +15,7 @@ class LessonPlanRequest(SchemaModel):
     teacher_id: Optional[UUID] = None
     classroom_id: Optional[UUID] = None
     model: Optional[str] = None
+    stream: bool = False
     generate_exit_ticket: bool = False
     generate_differentiation: bool = False
     generate_diagram_suggestions: bool = False

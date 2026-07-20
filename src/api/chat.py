@@ -1,7 +1,10 @@
-from typing import Optional
+import asyncio
+from collections.abc import AsyncGenerator
+from typing import Optional, Union
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,6 +25,7 @@ from src.guardrails.input.sanitizer import InputSanitizer
 from src.guardrails.output import OutputGuardrailRunner
 from src.schemas.chat import TutorRequest, TutorResponse
 from src.schemas.common import LanguageEnum
+from src.schemas.streaming import TokenChunk
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -38,7 +42,7 @@ conversation_tracker = ConversationTracker()
 output_guardrails = OutputGuardrailRunner()
 
 
-@router.post("", response_model=TutorResponse)
+@router.post("")
 async def chat_tutor(
     request: TutorRequest,
     session: AsyncSession = Depends(get_session),
@@ -51,13 +55,20 @@ async def handle_chat_request(
     request: TutorRequest,
     session: AsyncSession,
     current_user: Optional[User] = None,
-) -> TutorResponse:
-    user_id = request.user_id or (current_user.id if current_user else None)
+) -> Union[TutorResponse, StreamingResponse]:
+    if request.stream:
+        return await _handle_chat_stream(request, session, current_user)
+    return await _handle_chat_blocking(request, session, current_user)
 
-    # Input guardrails — sanitize, injection detect, conversation context
+
+# ---------------------------------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------------------------------
+
+def _validate_input(request: TutorRequest, user_id: Optional[str]) -> Optional[str]:
     sanitized = input_sanitizer.sanitize(request.question)
     if not input_sanitizer.validate_length(sanitized):
-        raise HTTPException(status_code=400, detail="Message is empty after sanitization")
+        return None
 
     inj_result = prompt_injection_detector.check(sanitized)
     if user_id:
@@ -76,6 +87,14 @@ async def handle_chat_request(
         )
         raise HTTPException(status_code=403, detail="Message blocked by content safety filter")
 
+    return sanitized
+
+
+async def _resolve_language(
+    request: TutorRequest,
+    user_id: Optional[str],
+    session: AsyncSession,
+) -> LanguageEnum:
     effective_language = request.language
     if user_id and effective_language == LanguageEnum.EN:
         result = await session.execute(
@@ -84,63 +103,192 @@ async def handle_chat_request(
         db_lang = result.scalar_one_or_none()
         if db_lang and db_lang != "en":
             effective_language = LanguageEnum(db_lang)
+    return effective_language
+
+
+async def _build_context(
+    request: TutorRequest,
+    user_id: Optional[str],
+    effective_language: LanguageEnum,
+    session: AsyncSession,
+):
+    mem_session = None
+    socratic_state_rec = None
+    conversation_messages: list[dict] = []
+    if user_id:
+        mem_session = await session_manager.get_or_create_active_session(
+            user_id,
+            topic=request.topic,
+            db=session,
+        )
+        if mem_session:
+            conversation_messages = session_manager.get_messages(mem_session)
+
+        if request.socratic_mode and request.topic and mem_session:
+            socratic_state_rec = await socratic_manager.get_state(
+                user_id,
+                request.topic,
+                session,
+            )
+
+    memory_context = ""
+    if user_id and mem_session:
+        memory_context = await context_assembler.assemble(
+            user_id=user_id,
+            topic=request.topic,
+            db=session,
+            session_state={
+                "active_topic": mem_session.active_topic,
+                "tutoring_mode": mem_session.tutoring_mode,
+                "educational_context": mem_session.educational_context,
+                "unresolved_questions": mem_session.unresolved_questions,
+            }
+            if mem_session
+            else None,
+            socratic_state={
+                "socratic_stage": socratic_state_rec.socratic_stage,
+                "current_focus": socratic_state_rec.current_focus,
+                "student_understanding": socratic_state_rec.student_understanding,
+                "conceptual_gaps": socratic_state_rec.conceptual_gaps,
+            }
+            if socratic_state_rec
+            else None,
+        )
+
+    learner_profile_block = ""
+    if user_id:
+        try:
+            package = await context_adapter.build(
+                session,
+                user_id,
+                current_topic=request.topic,
+            )
+            learner_profile_block = package.formatted_block
+        except Exception:
+            logger.warning("tutor_context_build_failed", user_id=str(user_id))
+
+    return (
+        mem_session,
+        socratic_state_rec,
+        conversation_messages,
+        memory_context,
+        learner_profile_block,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Streaming path
+# ---------------------------------------------------------------------------
+
+async def _handle_chat_stream(
+    request: TutorRequest,
+    session: AsyncSession,
+    current_user: Optional[User] = None,
+) -> StreamingResponse:
+    user_id = request.user_id or (current_user.id if current_user else None)
+
+    sanitized = _validate_input(request, user_id)
+    if sanitized is None:
+        raise HTTPException(status_code=400, detail="Message is empty after sanitization")
+
+    effective_language = await _resolve_language(request, user_id, session)
+    ctx = await _build_context(request, user_id, effective_language, session)
+    mem_session = ctx[0]
+    socratic_state_rec = ctx[1]
+    conversation_messages = ctx[2]
+    memory_context = ctx[3]
+    learner_profile_block = ctx[4]
+
+    queue: asyncio.Queue[TokenChunk | None] = asyncio.Queue()
+
+    # Push immediate status so the user sees something right away
+    queue.put_nowait(
+        TokenChunk(delta="Analyzing your question...", node="orchestrator", status=True)
+    )
+
+    graph_task = asyncio.create_task(
+        run_graph(
+            user_message=sanitized,
+            user_id=user_id,
+            grade_level=request.grade_level,
+            topic=request.topic,
+            language=effective_language,
+            preferred_model=request.model,
+            socratic_mode=request.socratic_mode,
+            hint_level=request.hint_level,
+            reveal_answer=request.reveal_answer,
+            session_id=str(mem_session.session_id) if mem_session else None,
+            memory_context=memory_context,
+            learner_profile_block=learner_profile_block,
+            socratic_stage=socratic_state_rec.socratic_stage if socratic_state_rec else "",
+            socratic_focus=socratic_state_rec.current_focus if socratic_state_rec else "",
+            socratic_understanding=(
+                socratic_state_rec.student_understanding if socratic_state_rec else ""
+            ),
+            socratic_next_question=socratic_state_rec.next_question if socratic_state_rec else "",
+            messages=conversation_messages,
+            db_session_factory=async_session_factory,
+            token_queue=queue,
+        )
+    )
+
+    return StreamingResponse(
+        _stream_events(queue, graph_task),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+async def _stream_events(
+    queue: asyncio.Queue[TokenChunk | None],
+    graph_task: asyncio.Task,
+) -> AsyncGenerator[str, None]:
+    try:
+        while True:
+            chunk = await queue.get()
+            if chunk is None:
+                break
+            if chunk.error:
+                yield f"data: {chunk.model_dump_json()}\n\n"
+                break
+            yield f"data: {chunk.model_dump_json()}\n\n"
+            if chunk.done:
+                break
+
+        if graph_task.done() and (exc := graph_task.exception()):
+            yield f"data: {TokenChunk(delta='', done=True, error=str(exc)).model_dump_json()}\n\n"
+    except Exception as e:
+        yield f"data: {TokenChunk(delta='', done=True, error=str(e)).model_dump_json()}\n\n"
+
+
+# ---------------------------------------------------------------------------
+# Blocking (non-streaming) path — original behavior
+# ---------------------------------------------------------------------------
+
+async def _handle_chat_blocking(
+    request: TutorRequest,
+    session: AsyncSession,
+    current_user: Optional[User] = None,
+) -> TutorResponse:
+    user_id = request.user_id or (current_user.id if current_user else None)
+
+    sanitized = _validate_input(request, user_id)
+    if sanitized is None:
+        raise HTTPException(status_code=400, detail="Message is empty after sanitization")
+
+    effective_language = await _resolve_language(request, user_id, session)
+    ctx = await _build_context(request, user_id, effective_language, session)
+    mem_session = ctx[0]
+    socratic_state_rec = ctx[1]
+    conversation_messages = ctx[2]
+    memory_context = ctx[3]
+    learner_profile_block = ctx[4]
 
     try:
-        mem_session = None
-        socratic_state_rec = None
-        conversation_messages: list[dict] = []
-        if user_id:
-            mem_session = await session_manager.get_or_create_active_session(
-                user_id,
-                topic=request.topic,
-                db=session,
-            )
-            if mem_session:
-                conversation_messages = session_manager.get_messages(mem_session)
-
-            if request.socratic_mode and request.topic and mem_session:
-                socratic_state_rec = await socratic_manager.get_state(
-                    user_id,
-                    request.topic,
-                    session,
-                )
-
-        memory_context = ""
-        if user_id and mem_session:
-            memory_context = await context_assembler.assemble(
-                user_id=user_id,
-                topic=request.topic,
-                db=session,
-                session_state={
-                    "active_topic": mem_session.active_topic,
-                    "tutoring_mode": mem_session.tutoring_mode,
-                    "educational_context": mem_session.educational_context,
-                    "unresolved_questions": mem_session.unresolved_questions,
-                }
-                if mem_session
-                else None,
-                socratic_state={
-                    "socratic_stage": socratic_state_rec.socratic_stage,
-                    "current_focus": socratic_state_rec.current_focus,
-                    "student_understanding": socratic_state_rec.student_understanding,
-                    "conceptual_gaps": socratic_state_rec.conceptual_gaps,
-                }
-                if socratic_state_rec
-                else None,
-            )
-
-        learner_profile_block = ""
-        if user_id:
-            try:
-                package = await context_adapter.build(
-                    session,
-                    user_id,
-                    current_topic=request.topic,
-                )
-                learner_profile_block = package.formatted_block
-            except Exception:
-                logger.warning("tutor_context_build_failed", user_id=str(user_id))
-
         result = await run_graph(
             user_message=sanitized,
             user_id=user_id,

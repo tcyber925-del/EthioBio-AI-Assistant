@@ -16,6 +16,7 @@ class DiagnosticRequest(SchemaModel):
     questions_per_topic: int = Field(3, ge=1, le=10)
     language: LanguageEnum = LanguageEnum.EN
     model: Optional[str] = None
+    stream: bool = False
 
 
 class TopicBaseline(SchemaModel):
