@@ -21,8 +21,9 @@ jobs:
       - run: pip install uv
       - run: uv pip install --system -r requirements.txt
       - run: uv pip install --system -r requirements-bot.txt
+      - run: uv pip install --system ruff mypy
       - name: Ruff check
-        run: ruff check .
+        run: ruff check src/
       - name: Mypy
         run: mypy src/
 
