@@ -368,3 +368,52 @@ async def submit_quiz(request: QuizSubmitRequest, session: AsyncSession = Depend
         await session.rollback()
         logger.error("quiz_submit_error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{quiz_id}")
+async def get_quiz(
+    quiz_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    from uuid import UUID
+    try:
+        item_uuid = UUID(quiz_id)
+        quiz = await session.get(Quiz, item_uuid)
+        if not quiz:
+            raise HTTPException(status_code=404, detail="Quiz not found")
+
+        questions_result = await session.execute(
+            select(Question).where(Question.quiz_id == item_uuid).order_by(Question.created_at)
+        )
+        questions = questions_result.scalars().all()
+
+        return {
+            "id": str(quiz.id),
+            "title": quiz.title,
+            "grade_level": quiz.grade_level,
+            "topic": quiz.topic,
+            "question_count": quiz.question_count,
+            "status": quiz.status,
+            "model_used": quiz.model_used,
+            "created_at": quiz.created_at.isoformat() if quiz.created_at else None,
+            "questions": [
+                {
+                    "id": str(q.id),
+                    "question_type": q.question_type,
+                    "question_text": q.question_text,
+                    "options": q.options,
+                    "correct_answer": q.correct_answer,
+                    "explanation": q.explanation,
+                    "difficulty": q.difficulty,
+                }
+                for q in questions
+            ],
+        }
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid UUID")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("quiz_detail_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
