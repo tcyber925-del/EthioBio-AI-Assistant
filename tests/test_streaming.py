@@ -184,9 +184,19 @@ class TestTutorNodeStreaming:
 class TestRouteStream:
     async def test_mock_router_streams(self):
         """ModelRouter.route_stream should yield tokens from the provider chain."""
+        from src.llm.manager import ProviderManager
         from src.llm.router import ModelRouter
 
+        mock_provider = AsyncMock(spec=LLMProvider)
+        mock_provider.is_available = AsyncMock(return_value=True)
+        mock_provider.chat_stream.return_value.__aiter__.return_value = iter(
+            ["mock ", "token ", "stream"]
+        )
+
         router = ModelRouter()
+        router._manager = ProviderManager()
+        router._manager._providers = {"mock_test": mock_provider}
+        router._manager._fallback_chain = ["mock_test"]
         tokens = []
         async for token in router.route_stream(
             messages=[{"role": "user", "content": "Say hello in 3 words"}],
@@ -197,6 +207,7 @@ class TestRouteStream:
 
         assert len(tokens) > 0
         assert isinstance(tokens[0], str)
+        assert "".join(tokens) == "mock token stream"
 
 
 # ---------------------------------------------------------------------------
