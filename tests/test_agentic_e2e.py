@@ -21,9 +21,14 @@ _ROUTE_RESPONSE = {
 }
 
 
+async def _fake_stream(*args, **kwargs):
+    yield _ROUTE_RESPONSE["content"]
+
+
 def _make_router():
     mock = AsyncMock()
     mock.route.return_value = _ROUTE_RESPONSE
+    mock.route_stream = _fake_stream
     mock.generate = AsyncMock()
     mock.close = AsyncMock()
     return mock
