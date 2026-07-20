@@ -9,8 +9,8 @@ import ModelSelector from '@/components/ModelSelector'
 import { DashboardLayout } from '@/components/dashboard-v2/DashboardLayout'
 import { ConversationSidebar } from '@/components/ConversationSidebar'
 import { useConversationHistory } from '@/hooks/useConversationHistory'
-import { fetchWithTimeout } from '@/lib/fetch'
-import { getToken, getUserId, isAuthenticated } from '@/lib/auth'
+import { streamFetch } from '@/lib/fetch'
+import { getUserId, isAuthenticated } from '@/lib/auth'
 
 const isServerError = (msg: string) =>
   msg.includes('502') || msg.includes('504') || msg.includes('Application failed to respond')
@@ -32,6 +32,7 @@ export default function AskPage() {
   const [confidence, setConfidence] = useState(0)
   const [sources, setSources] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
+  const [statusText, setStatusText] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [grade, setGrade] = useState(12)
   const [mode, setMode] = useState<'graph' | 'chat'>('graph')
@@ -47,39 +48,49 @@ export default function AskPage() {
   const askQuestion = async () => {
     if (!question.trim()) return
     setLoading(true)
+    setStatusText('Analyzing your question...')
     setError(null)
     setAnswer(null)
+    setSources([])
 
-    try {
-      const endpoint = mode === 'graph' ? '/graph/chat' : '/chat'
-      const body = {
-        user_id: getUserId() || '00000000-0000-0000-0000-000000000001',
-        question: question.trim(),
-        grade_level: grade,
-        model: selectedModel,
-        ...(mode !== 'graph' && { use_rag: true }),
-      }
-      const token = getToken()
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (token) headers['Authorization'] = `Bearer ${token}`
-
-      const data = await fetchWithTimeout(endpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-      }, 120000)
-
-      setAnswer(data.answer || '')
-      setSelectedModel(data.model_used || '')
-      setConfidence(data.confidence || 0)
-      setSources(data.sources || [])
-      setActiveHistoryId(null)
-      fetchHistory()
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
+    const endpoint = mode === 'graph' ? '/graph/chat' : '/chat'
+    const body = {
+      user_id: getUserId() || '00000000-0000-0000-0000-000000000001',
+      question: question.trim(),
+      grade_level: grade,
+      model: selectedModel,
+      ...(mode !== 'graph' && { use_rag: true }),
     }
+
+    let accumulated = ''
+    let gotMetadata = false
+
+    await streamFetch(endpoint, body, {
+      onStatus: (status) => {
+        setStatusText(status)
+      },
+      onToken: (token) => {
+        if (gotMetadata) return
+        accumulated += token
+        setAnswer(accumulated)
+      },
+      onMetadata: (meta) => {
+        gotMetadata = true
+        if (meta.model_used) setSelectedModel(meta.model_used as string)
+        if (meta.confidence != null) setConfidence(meta.confidence as number)
+        if (meta.sources) setSources(meta.sources as string[])
+      },
+      onError: (err) => {
+        setError(err)
+        setLoading(false)
+      },
+      onDone: () => {
+        setStatusText(null)
+        setLoading(false)
+        setActiveHistoryId(null)
+        fetchHistory()
+      },
+    })
   }
 
   const handleHistorySelect = (pair: { question: { content: string }, answer: { content: string } | null, id: string }) => {
@@ -146,17 +157,6 @@ export default function AskPage() {
         </div>
       </div>
 
-      {loading && (
-        <div className="rounded-[20px] border border-v2-border bg-v2-bg p-8 text-center">
-          <div className="animate-pulse space-y-3">
-            <div className="h-4 bg-v2-surface rounded w-3/4 mx-auto" />
-            <div className="h-4 bg-v2-surface rounded w-1/2 mx-auto" />
-            <div className="h-4 bg-v2-surface rounded w-2/3 mx-auto" />
-          </div>
-          <p className="text-sm text-v2-text-muted mt-4">{ta('calling_model', { model: selectedModel || 'model' })}</p>
-        </div>
-      )}
-
       {error && (
         <div className="rounded-[20px] border border-red-500/20 bg-red-500/10 p-5 flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5 shrink-0" />
@@ -178,17 +178,34 @@ export default function AskPage() {
         </div>
       )}
 
-      {answer && !loading && (
-        <div className="rounded-[20px] border border-v2-border bg-v2-bg p-6">
-          <div className="flex items-center gap-2 text-xs text-v2-text-muted mb-4 pb-3 border-b border-v2-border">
-            <MessageSquare className="w-4 h-4" />
-            <span className="font-mono">{selectedModel}</span>
-            <span className="px-2 py-0.5 bg-v2-accent/10 text-v2-accent rounded-full text-xs">
-              {Math.round(confidence * 100)}% {ta('confidence')}
-            </span>
+      {loading && !answer && (
+        <div className="rounded-[20px] border border-v2-border bg-v2-bg p-8 text-center">
+          <div className="flex items-center justify-center gap-3">
+            <Loader2 className="w-5 h-5 animate-spin text-v2-accent" />
+            <p className="text-sm text-v2-text-muted">{statusText || ta('calling_model', { model: selectedModel || 'model' })}</p>
           </div>
+        </div>
+      )}
+
+      {answer && (
+        <div className="rounded-[20px] border border-v2-border bg-v2-bg p-6">
+          {!loading && (
+            <div className="flex items-center gap-2 text-xs text-v2-text-muted mb-4 pb-3 border-b border-v2-border">
+              <MessageSquare className="w-4 h-4" />
+              <span className="font-mono">{selectedModel}</span>
+              <span className="px-2 py-0.5 bg-v2-accent/10 text-v2-accent rounded-full text-xs">
+                {Math.round(confidence * 100)}% {ta('confidence')}
+              </span>
+            </div>
+          )}
           <MarkdownRenderer content={answer} />
-          {sources.length > 0 && (
+          {loading && (
+            <div className="flex items-center gap-2 mt-4 text-xs text-v2-text-muted">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span>{statusText || ta('calling_model', { model: selectedModel || 'model' })}</span>
+            </div>
+          )}
+          {!loading && sources.length > 0 && (
             <div className="mt-4 pt-3 border-t border-v2-border">
               <p className="text-xs text-v2-text-muted font-medium mb-2">{ta('sources')}</p>
               <div className="flex flex-wrap gap-2">

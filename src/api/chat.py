@@ -261,6 +261,20 @@ async def _stream_events(
 
         if graph_task.done() and (exc := graph_task.exception()):
             yield f"data: {TokenChunk(delta='', done=True, error=str(exc)).model_dump_json()}\n\n"
+        elif graph_task.done():
+            result = graph_task.result()
+            yield f"data: {TokenChunk(
+                delta='',
+                done=True,
+                metadata={
+                    'model_used': result.model_used,
+                    'confidence': result.confidence,
+                    'sources': result.sources,
+                    'xp_awarded': getattr(result, 'xp_awarded', 0),
+                    'level_up': getattr(result, 'level_up', False),
+                    'status': result.status,
+                },
+            ).model_dump_json()}\n\n"
     except Exception as e:
         yield f"data: {TokenChunk(delta='', done=True, error=str(e)).model_dump_json()}\n\n"
 
