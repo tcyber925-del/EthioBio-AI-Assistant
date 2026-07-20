@@ -1,3 +1,5 @@
+from typing import Optional
+
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -8,7 +10,9 @@ from src.api.gamification import XP_SOURCES, award_xp, check_achievements, updat
 from src.core.learning_intelligence.tutor.tutor_context_adapter import TutorContextAdapter
 from src.core.memory.context_assembler import ContextAssembler
 from src.core.memory.cross_session_recall import CrossSessionRecall
+from src.core.memory.event_logger import EventLogger
 from src.core.memory.session_manager import SessionManager
+from src.core.memory.socratic_manager import SocraticManager
 from src.database.models import User
 from src.database.session import async_session_factory, get_session
 from src.graph.orchestrator import run_graph
@@ -23,7 +27,9 @@ logger = structlog.get_logger()
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
 session_manager = SessionManager()
+socratic_manager = SocraticManager()
 context_assembler = ContextAssembler()
+event_logger = EventLogger()
 context_adapter = TutorContextAdapter()
 
 input_sanitizer = InputSanitizer()
@@ -38,7 +44,16 @@ async def chat_tutor(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    user_id = request.user_id or current_user.id
+    return await handle_chat_request(request, session, current_user)
+
+
+async def handle_chat_request(
+    request: TutorRequest,
+    session: AsyncSession,
+    current_user: Optional[User] = None,
+) -> TutorResponse:
+    user_id = request.user_id or (current_user.id if current_user else None)
+
     # Input guardrails — sanitize, injection detect, conversation context
     sanitized = input_sanitizer.sanitize(request.question)
     if not input_sanitizer.validate_length(sanitized):
@@ -72,7 +87,7 @@ async def chat_tutor(
 
     try:
         mem_session = None
-        memory_context = ""
+        socratic_state_rec = None
         conversation_messages: list[dict] = []
         if user_id:
             mem_session = await session_manager.get_or_create_active_session(
@@ -81,21 +96,38 @@ async def chat_tutor(
                 db=session,
             )
             if mem_session:
-                memory_context = await context_assembler.assemble(
-                    user_id=user_id,
-                    topic=request.topic,
-                    db=session,
-                    session_state={
-                        "active_topic": mem_session.active_topic,
-                        "tutoring_mode": mem_session.tutoring_mode,
-                        "educational_context": mem_session.educational_context,
-                        "unresolved_questions": mem_session.unresolved_questions,
-                    }
-                    if mem_session
-                    else None,
-                    socratic_state=None,
-                )
                 conversation_messages = session_manager.get_messages(mem_session)
+
+            if request.socratic_mode and request.topic and mem_session:
+                socratic_state_rec = await socratic_manager.get_state(
+                    user_id,
+                    request.topic,
+                    session,
+                )
+
+        memory_context = ""
+        if user_id and mem_session:
+            memory_context = await context_assembler.assemble(
+                user_id=user_id,
+                topic=request.topic,
+                db=session,
+                session_state={
+                    "active_topic": mem_session.active_topic,
+                    "tutoring_mode": mem_session.tutoring_mode,
+                    "educational_context": mem_session.educational_context,
+                    "unresolved_questions": mem_session.unresolved_questions,
+                }
+                if mem_session
+                else None,
+                socratic_state={
+                    "socratic_stage": socratic_state_rec.socratic_stage,
+                    "current_focus": socratic_state_rec.current_focus,
+                    "student_understanding": socratic_state_rec.student_understanding,
+                    "conceptual_gaps": socratic_state_rec.conceptual_gaps,
+                }
+                if socratic_state_rec
+                else None,
+            )
 
         learner_profile_block = ""
         if user_id:
@@ -122,6 +154,12 @@ async def chat_tutor(
             session_id=str(mem_session.session_id) if mem_session else None,
             memory_context=memory_context,
             learner_profile_block=learner_profile_block,
+            socratic_stage=socratic_state_rec.socratic_stage if socratic_state_rec else "",
+            socratic_focus=socratic_state_rec.current_focus if socratic_state_rec else "",
+            socratic_understanding=(
+                socratic_state_rec.student_understanding if socratic_state_rec else ""
+            ),
+            socratic_next_question=socratic_state_rec.next_question if socratic_state_rec else "",
             messages=conversation_messages,
             db_session_factory=async_session_factory,
         )
@@ -130,6 +168,19 @@ async def chat_tutor(
         if output_check.blocked:
             logger.warning("output_guardrail_triggered", reasons=output_check.reasons)
             raise HTTPException(status_code=422, detail="Response blocked by output safety filter")
+
+        if request.socratic_mode and request.topic and user_id:
+            await socratic_manager.update_state(
+                user_id=user_id,
+                topic=request.topic,
+                db=session,
+                updates={
+                    "socratic_stage": result.socratic_stage,
+                    "current_focus": result.socratic_focus,
+                    "student_understanding": result.socratic_understanding,
+                    "next_question": result.socratic_next_question,
+                },
+            )
 
         if mem_session:
             conversation_messages.append({"role": "user", "content": request.question})
@@ -144,8 +195,23 @@ async def chat_tutor(
                 db=session,
             )
 
+            mem_session.unresolved_questions = [
+                getattr(result, attr, "")
+                for attr in ("guiding_question",)
+                if getattr(result, "guiding_question", "")
+            ]
+            await session_manager.heartbeat(mem_session.session_id, session)
+
+        if user_id:
+            await event_logger.log(
+                user_id,
+                "tutor_interaction",
+                topic=request.topic,
+                db=session,
+            )
+
         diagram_data: dict = {}
-        if request.topic and request.grade_level:
+        if request.generate_diagram and request.topic and request.grade_level:
             try:
                 from src.agents.diagram_tutor_integration import (
                     generate_tutor_diagram,
@@ -176,6 +242,9 @@ async def chat_tutor(
             xp_awarded = xp_amount
             new_level = gam.level if level_up else 0
             await check_achievements(user_id, gam, session)
+
+        await session.commit()
+
         return TutorResponse(
             answer=result.answer,
             language=effective_language.value
@@ -184,7 +253,14 @@ async def chat_tutor(
             sources=result.sources,
             model_used=result.model_used,
             confidence=result.confidence,
+            status=result.status,
+            requires_teacher_review=result.requires_teacher_review,
+            session_id=result.session_id or "",
             socratic_mode=result.socratic_mode,
+            socratic_stage=result.socratic_stage,
+            socratic_focus=result.socratic_focus,
+            socratic_understanding=result.socratic_understanding,
+            socratic_next_question=result.socratic_next_question,
             hint_level=result.hint_level,
             reveal_answer=result.reveal_answer,
             misconception_detected=result.misconception_detected,
@@ -197,6 +273,9 @@ async def chat_tutor(
             diagram_title=diagram_data.get("title", ""),
             diagram_textbook_ref=diagram_data.get("textbook_ref", ""),
         )
+    except HTTPException:
+        raise
     except Exception as e:
+        await session.rollback()
         logger.error("chat_error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
