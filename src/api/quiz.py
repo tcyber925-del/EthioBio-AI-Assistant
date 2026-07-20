@@ -172,7 +172,7 @@ async def generate_quiz(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/")
+@router.get("")
 async def list_quizzes(
     teacher_id: uuid.UUID | None = None,
     limit: int = 20,
@@ -189,16 +189,20 @@ async def list_quizzes(
     )
     result = await session.execute(stmt)
     quizzes = result.scalars().all()
-    return [
-        {
-            "id": str(q.id),
-            "topic": q.topic,
-            "grade_level": q.grade_level,
-            "status": q.status,
-            "created_at": q.created_at.isoformat() if q.created_at else None,
-        }
-        for q in quizzes
-    ]
+    return {
+        "items": [
+            {
+                "id": str(q.id),
+                "title": q.title,
+                "topic": q.topic,
+                "grade_level": q.grade_level,
+                "question_count": q.question_count,
+                "status": q.status,
+                "created_at": q.created_at.isoformat() if q.created_at else None,
+            }
+            for q in quizzes
+        ]
+    }
 
 
 @router.post("/submit", response_model=QuizSubmitResponse)
