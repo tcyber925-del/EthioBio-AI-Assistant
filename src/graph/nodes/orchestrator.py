@@ -137,14 +137,13 @@ def detect_requires_cross_session(user_message: str) -> bool:
     return any(re.search(p, msg_lower) for p in cross_session_signals)
 
 
-    def _push_status(self, state: AgentState, message: str):
-        if state.token_queue:
-            state.token_queue.put_nowait(TokenChunk(delta=message, node="orchestrator", status=True))
-
-
 class OrchestratorNode:
     def __init__(self, router: ModelRouter):
         self.router = router
+
+    def _push_status(self, state: AgentState, message: str):
+        if state.token_queue:
+            state.token_queue.put_nowait(TokenChunk(delta=message, node="orchestrator", status=True))
 
     async def __call__(self, state: AgentState) -> AgentState:
         self._push_status(state, "Analyzing your question...")

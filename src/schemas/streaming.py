@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass
 
 
@@ -10,7 +11,6 @@ class TokenChunk:
     status: bool = False
 
     def model_dump_json(self) -> str:
-        import json
         return json.dumps({
             "delta": self.delta,
             "node": self.node,

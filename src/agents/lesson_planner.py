@@ -127,14 +127,13 @@ def _derive_activities_from_periods(periods: list[dict]) -> list[dict]:
     ]
 
 
-    def _push_status(self, queue: asyncio.Queue[TokenChunk | None] | None, message: str):
-        if queue:
-            queue.put_nowait(TokenChunk(delta=message, node="lesson_planner", status=True))
-
-
 class LessonPlannerAgent(BaseAgent):
     def __init__(self, llm_router: ModelRouter):
         super().__init__(llm_router, name="lesson_planner")
+
+    def _push_status(self, queue: asyncio.Queue[TokenChunk | None] | None, message: str):
+        if queue:
+            queue.put_nowait(TokenChunk(delta=message, node="lesson_planner", status=True))
 
     async def generate(
         self,
@@ -225,6 +224,7 @@ Respond with valid JSON only."""
                 buf.append(token)
                 token_queue.put_nowait(TokenChunk(delta=token, node="lesson_planner"))
             content = "".join(buf)
+            token_queue.put_nowait(TokenChunk(delta="", node="lesson_planner", done=True))
         else:
             result = await self._call_llm(
                 system_prompt=LESSON_SYSTEM_PROMPT,
@@ -266,7 +266,7 @@ Respond with valid JSON only."""
                 "homework": parsed.get("homework"),
                 "teacher_notes": parsed.get("teacher_notes"),
                 "periods": periods,
-                "model_used": result.get("model", ""),
+                "model_used": model_used,
             }
 
             if generate_exit_ticket:

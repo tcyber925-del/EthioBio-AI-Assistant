@@ -1,3 +1,4 @@
+import json
 from collections.abc import AsyncGenerator
 
 import httpx
@@ -88,9 +89,8 @@ class OllamaProvider(LLMProvider):
             async for line in response.aiter_lines():
                 if not line.strip():
                     continue
-                chunk = line  # line is already a str from httpx
-                import json as json_mod
-                data = json_mod.loads(chunk)
+                chunk = line
+                data = json.loads(chunk)
                 if data.get("done"):
                     break
                 yield data.get("message", {}).get("content", "")

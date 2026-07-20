@@ -1356,7 +1356,7 @@ async def _stream_and_edit(
             last_edit = buffer
             last_update = now
 
-        if done or (chunk is None and buffer != last_edit):
+        if done or (chunk is None and buffer != last_edit) or (chunk is None and graph_task.done()):
             break
 
     # Flush any remaining text

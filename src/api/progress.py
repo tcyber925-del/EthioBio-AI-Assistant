@@ -1,4 +1,5 @@
 import asyncio
+import json
 from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
@@ -30,6 +31,7 @@ from src.schemas.progress import (
 from src.schemas.streaming import TokenChunk
 
 logger = structlog.get_logger()
+
 router = APIRouter(prefix="/progress", tags=["Progress"])
 
 
@@ -178,7 +180,6 @@ async def _compute_progress_data(
         record_list = records.scalars().all()
 
         result = await agent.analyze_progress(record_list, profile)
-        import json
         queue.put_nowait(TokenChunk(delta=json.dumps(result), node="progress", done=True))
     except Exception as e:
         logger.error("progress_stream_error", error=str(e))
