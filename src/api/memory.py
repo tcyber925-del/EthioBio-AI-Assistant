@@ -13,6 +13,7 @@ from src.database.models import (
     ConversationTurn,
     MemoryEducationalSummary,
     MemoryEvent,
+    MemorySession,
     SemanticFact,
     User,
 )
@@ -187,6 +188,7 @@ async def get_recent_conversations(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
+    # Try ConversationTurn table first
     query = (
         select(ConversationTurn)
         .where(ConversationTurn.user_id == current_user.id)
@@ -195,14 +197,42 @@ async def get_recent_conversations(
     )
     result = await db.execute(query)
     turns = result.scalars().all()
-    return [
-        ConversationTurnResponse(
-            id=str(t.id),
-            session_id=str(t.session_id) if t.session_id else None,
-            role=t.role,
-            content=t.content,
-            topic=t.topic,
-            created_at=t.created_at,
-        )
-        for t in turns
-    ]
+    if turns:
+        return [
+            ConversationTurnResponse(
+                id=str(t.id),
+                session_id=str(t.session_id) if t.session_id else None,
+                role=t.role,
+                content=t.content,
+                topic=t.topic,
+                created_at=t.created_at,
+            )
+            for t in turns
+        ]
+
+    # Fallback: read from MemorySession educational_context.messages
+    ms_query = (
+        select(MemorySession)
+        .where(MemorySession.user_id == current_user.id, MemorySession.summary.is_(None))
+        .order_by(desc(MemorySession.last_active_at))
+        .limit(limit)
+    )
+    ms_result = await db.execute(ms_query)
+    sessions = ms_result.scalars().all()
+    items: list[ConversationTurnResponse] = []
+    for s in sessions:
+        ctx = s.educational_context or {}
+        messages = ctx.get("messages") or ctx.get("recent_turns") or []
+        for msg in messages[-limit:]:
+            items.append(
+                ConversationTurnResponse(
+                    id=str(s.session_id),
+                    session_id=str(s.session_id),
+                    role=msg.get("role", "user"),
+                    content=msg.get("content", ""),
+                    topic=s.active_topic,
+                    created_at=s.last_active_at,
+                )
+            )
+    items.reverse()
+    return items[-limit:]
