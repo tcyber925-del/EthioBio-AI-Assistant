@@ -16,7 +16,7 @@ from src.core.memory.cross_session_recall import CrossSessionRecall
 from src.core.memory.event_logger import EventLogger
 from src.core.memory.session_manager import SessionManager
 from src.core.memory.socratic_manager import SocraticManager
-from src.database.models import User
+from src.database.models import MemorySession as _MemorySessionModel, User
 from src.database.session import async_session_factory, get_session
 from src.graph.orchestrator import run_graph
 from src.guardrails.input.conversation_context import ConversationTracker
@@ -373,6 +373,13 @@ async def _persist_chat_history(
         try:
             turn_factory = async_session_factory()
             async with turn_factory() as turn_session:
+                _ms_obj = await turn_session.get(_MemorySessionModel, mem_session.session_id)
+                if _ms_obj is None:
+                    logger.warning(
+                        "record_turns_mem_session_missing",
+                        session_id=str(mem_session.session_id),
+                        user_id=str(user_id),
+                    )
                 await CrossSessionRecall().record_turns(
                     user_id=user_id,
                     session_id=mem_session.session_id,
