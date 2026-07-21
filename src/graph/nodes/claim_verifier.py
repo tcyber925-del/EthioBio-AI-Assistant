@@ -184,7 +184,8 @@ async def _llm_verify(
         elif "```" in content:
             content = content.split("```")[1].split("```")[0].strip()
         return json.loads(content)
-    except (json.JSONDecodeError, KeyError):
+    except (json.JSONDecodeError, KeyError, Exception) as e:
+        logger.warning("llm_verify_failed", error=str(e))
         return {
             "verdict": "unknown",
             "ungrounded_claims": [],
