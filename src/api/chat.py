@@ -270,39 +270,44 @@ async def _stream_events(
             if chunk.error:
                 yield f"data: {chunk.model_dump_json()}\n\n"
                 break
-            yield f"data: {chunk.model_dump_json()}\n\n"
             if chunk.done:
+                # Queue done — graph finished streaming tokens.
+                # Don't yield yet; we'll yield our own done:true
+                # after persisting history, so the sidebar fetch sees it.
                 break
+            yield f"data: {chunk.model_dump_json()}\n\n"
 
-        if graph_task.done() and (exc := graph_task.exception()):
+        # Await graph task — it may still be running safety/post-processing
+        try:
+            result = await graph_task
+        except Exception as exc:
             yield f"data: {TokenChunk(delta='', done=True, error=str(exc)).model_dump_json()}\n\n"
-        elif graph_task.done():
-            result = graph_task.result()
+            return
 
-            # Persist conversation history BEFORE sending done so sidebar refresh sees it
-            if _session and result and _user_id and _mem_session and _request:
-                await _persist_chat_history(
-                    request=_request,
-                    session=_session,
-                    user_id=_user_id,
-                    mem_session=_mem_session,
-                    conversation_messages=_conversation_messages or [],
-                    result=result,
-                    socratic_state_rec=_socratic_state_rec,
-                )
+        # Persist conversation history BEFORE sending done so sidebar refresh sees it
+        if _session and _user_id and _mem_session and _request:
+            await _persist_chat_history(
+                request=_request,
+                session=_session,
+                user_id=_user_id,
+                mem_session=_mem_session,
+                conversation_messages=_conversation_messages or [],
+                result=result,
+                socratic_state_rec=_socratic_state_rec,
+            )
 
-            yield f"data: {TokenChunk(
-                delta='',
-                done=True,
-                metadata={
-                    'model_used': result.model_used,
-                    'confidence': result.confidence,
-                    'sources': result.sources,
-                    'xp_awarded': getattr(result, 'xp_awarded', 0),
-                    'level_up': getattr(result, 'level_up', False),
-                    'status': result.status,
-                },
-            ).model_dump_json()}\n\n"
+        yield f"data: {TokenChunk(
+            delta='',
+            done=True,
+            metadata={
+                'model_used': result.model_used,
+                'confidence': result.confidence,
+                'sources': result.sources,
+                'xp_awarded': getattr(result, 'xp_awarded', 0),
+                'level_up': getattr(result, 'level_up', False),
+                'status': result.status,
+            },
+        ).model_dump_json()}\n\n"
     except Exception as e:
         yield f"data: {TokenChunk(delta='', done=True, error=str(e)).model_dump_json()}\n\n"
 
