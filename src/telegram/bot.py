@@ -882,17 +882,26 @@ async def quiz_command(update: Update, context):
 
 async def menu(update: Update, context):
     query = update.callback_query
-    await query.answer()
-    try:
-        await query.edit_message_reply_markup(reply_markup=None)
-    except Exception:
-        pass
-    await query.message.reply_text(
+    if query:
+        try:
+            await query.answer()
+        except Exception:
+            pass
+        try:
+            await query.edit_message_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+        msg = query.message
+    else:
+        msg = update.message
+    await msg.reply_text(
         t("common.choose_option", _lang(context)),
         reply_markup=main_menu_keyboard(
             context.user_data.get("socratic_mode", False), language=_lang(context)
         ),
     )
+    if not query:
+        return ConversationHandler.END
 
 
 async def _get_user_role(telegram_id: int) -> str | None:
@@ -1214,25 +1223,26 @@ async def handle_question(update: Update, context):
             pass
         return ConversationHandler.END
 
-    from src.database.models import MessageThread
+    if memory_user_id:
+        from src.database.models import MessageThread
 
-    async def _save():
-        factory = async_session_factory()
-        async with factory() as session:
-            session.add(
-                MessageThread(
-                    user_id=None,
-                    channel="telegram",
-                    messages=[
-                        {"role": "user", "content": question},
-                        {"role": "assistant", "content": result.answer},
-                    ],
-                    topic="biology_question",
+        async def _save():
+            factory = async_session_factory()
+            async with factory() as session:
+                session.add(
+                    MessageThread(
+                        user_id=memory_user_id,
+                        channel="telegram",
+                        messages=[
+                            {"role": "user", "content": question},
+                            {"role": "assistant", "content": result.answer},
+                        ],
+                        topic="biology_question",
+                    )
                 )
-            )
-            await session.commit()
+                await session.commit()
 
-    await _db_try(_save)
+        await _db_try(_save)
 
     return ConversationHandler.END
 

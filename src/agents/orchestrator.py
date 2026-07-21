@@ -33,8 +33,14 @@ Respond with ONLY a JSON object: {"intent": "tutor", "confidence": 0.95, "reason
 
         import json
 
+        content = result["content"]
+        if "```" in content:
+            content = content.split("```")[1]
+            if content.startswith("json"):
+                content = content[4:]
+            content = content.strip()
         try:
-            parsed = json.loads(result["content"])
+            parsed = json.loads(content)
             return parsed
         except (json.JSONDecodeError, KeyError):
             logger.warning("intent_parse_fallback", content=result["content"][:100])
