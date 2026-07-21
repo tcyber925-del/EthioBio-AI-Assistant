@@ -33,7 +33,12 @@ class CrossSessionRecall:
                     db.add(record)
                 await db.flush()
         except Exception as e:
-            logger.warning("record_turns_error", error=str(e))
+            logger.warning(
+                "record_turns_error",
+                error=str(e),
+                user_id=str(user_id),
+                session_id=str(session_id),
+            )
 
     async def recall_by_topic(
         self,
