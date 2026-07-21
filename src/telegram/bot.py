@@ -1147,7 +1147,11 @@ async def handle_question(update: Update, context):
             if socratic
             else main_menu_keyboard(socratic, language=_lang(context))
         )
-        await _reply_long(thinking_msg, response, reply_markup=reply_markup, parse_mode="HTML")
+        try:
+            display = sanitize_for_telegram(format_for_telegram(response))[:4096]
+            await thinking_msg.edit_text(display, reply_markup=reply_markup, parse_mode="HTML")
+        except Exception:
+            pass
 
         diagram_keywords = frozenset(
             [
@@ -1313,6 +1317,7 @@ async def handle_quiz_topic(update: Update, context):
 
 
 STREAM_FLUSH_INTERVAL = 0.4
+STREAM_TIMEOUT = 120.0
 
 
 async def _stream_and_edit(
@@ -1322,13 +1327,24 @@ async def _stream_and_edit(
     final_markup=None,
     parse_mode=None,
 ):
-    """Read tokens from queue and progressively update the Telegram message."""
+    """Read tokens from queue and progressively update the Telegram message.
+
+    Exits when:
+    - done:true received from the graph (normal completion)
+    - graph task fails (exception raised during streaming)
+    - overall STREAM_TIMEOUT reached (safety valve)
+    """
     buffer = ""
     last_edit = ""
     last_update = 0.0
     done = False
+    start = asyncio.get_event_loop().time()
 
     while True:
+        if asyncio.get_event_loop().time() - start > STREAM_TIMEOUT:
+            logger.warning("stream_timeout_reached")
+            break
+
         try:
             chunk = await asyncio.wait_for(token_queue.get(), timeout=STREAM_FLUSH_INTERVAL)
         except asyncio.TimeoutError:
@@ -1359,16 +1375,17 @@ async def _stream_and_edit(
         if done or (chunk is None and buffer != last_edit):
             break
 
+        # If the graph task failed while we were waiting, no more tokens will come
+        if chunk is None and graph_task.done() and graph_task.exception() is not None:
+            logger.warning("stream_aborted_graph_failed")
+            break
+
     # Flush any remaining text
     try:
         display = sanitize_for_telegram(format_for_telegram(buffer))[:4096]
         await msg.edit_text(display, reply_markup=final_markup, parse_mode=parse_mode)
     except Exception:
         pass
-
-    # Wait for graph task
-    if graph_task.done() and (exc := graph_task.exception()):
-        logger.error("graph_task_failed", error=str(exc))
 
     return buffer
 
