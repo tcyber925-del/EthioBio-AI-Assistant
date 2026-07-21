@@ -278,6 +278,19 @@ async def _stream_events(
             yield f"data: {TokenChunk(delta='', done=True, error=str(exc)).model_dump_json()}\n\n"
         elif graph_task.done():
             result = graph_task.result()
+
+            # Persist conversation history BEFORE sending done so sidebar refresh sees it
+            if _session and result and _user_id and _mem_session and _request:
+                await _persist_chat_history(
+                    request=_request,
+                    session=_session,
+                    user_id=_user_id,
+                    mem_session=_mem_session,
+                    conversation_messages=_conversation_messages or [],
+                    result=result,
+                    socratic_state_rec=_socratic_state_rec,
+                )
+
             yield f"data: {TokenChunk(
                 delta='',
                 done=True,
@@ -290,18 +303,6 @@ async def _stream_events(
                     'status': result.status,
                 },
             ).model_dump_json()}\n\n"
-
-            # Persist conversation history after streaming completes
-            if _session and result and _user_id and _mem_session and _request:
-                await _persist_chat_history(
-                    request=_request,
-                    session=_session,
-                    user_id=_user_id,
-                    mem_session=_mem_session,
-                    conversation_messages=_conversation_messages or [],
-                    result=result,
-                    socratic_state_rec=_socratic_state_rec,
-                )
     except Exception as e:
         yield f"data: {TokenChunk(delta='', done=True, error=str(e)).model_dump_json()}\n\n"
 
