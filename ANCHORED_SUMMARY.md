@@ -1,36 +1,44 @@
-# Anchored Summary — PR #59 Bug Fixes & Docker Rebuild
-
-PR #59 fixes complete. Telegram-bot rebuild pending (see Remaining section).
+# Anchored Summary — Streaming + Persistence + Sidebar
 
 ## Completed
 
-### 1. PR #59 Code Review — 20+ Bugs Fixed (9 Rounds)
-OpenCode review agent found bugs on GitHub PR #59; fixed iteratively push → review → fix → push → review until clean.
+### Streaming (SSE)
+- All 4 providers (Ollama, OpenAI, Anthropic, OpenRouter) stream tokens via `asyncio.Queue` + `StreamingResponse(text/event-stream)`
+- Only 1 `done: true` event per request (intermediate duplicate from `TutorNode._legacy_call` skipped)
+- Metadata (`model_used`, `confidence`, `sources`, `xp_awarded`, `level_up`) sent with final event
+- Web UI consumes SSE via `streamFetch()` in `dashboard/src/lib/fetch.ts`
+- Telegram bot `_stream_and_edit()` with 400ms flush
 
-| Round | Commit | Fixes |
-|-------|--------|-------|
-| 1 | `68581f4` | Route shadowing, SQL boolean op, filter mutual exclusion, deprecated `utcnow()`, type annotation, blank-line style |
-| 2 | `a3cc2e6` | Published-status guard, 404 on missing assignment, `is_active == True` consistency (3 locations), `data.status is not None` guard |
-| 3 | `c62c861` | Trailing slash on route, `@model_validator` on `NewSubmission`, full UUID display, hide raw errors |
-| 4 | `4aeb8c2` | `UniqueConstraint` + `index=True`, soft-delete guard, `str()` safety in consumer, `AsyncClient` timeout=30.0 |
-| 5 | `825bc2e` | Due-date enforcement, `is_active == True` at 2 more locations, UUID validation in `submit_command` |
-| 6 | `efb44e2` | Agent test names, FK indexes, soft-delete filter, trailing slash in bot URL, missing assertion |
-| 7 | `b85f9a5` | `structlog>=24.4.0` dep, `import json` top-level (2 files), `Assignment.status` / `Submission.status` Literal types, `AssignmentStatus` param validation, soft-delete filter |
-| 8 | `da31f5f` | `my_assignments` status type consistency |
-| 9 | `c02b1a9` | Explicit `.join()`, response model `Literal` types |
+### Persistence
+- `_persist_chat_history()` extracts full save logic from blocking path and calls it after graph completes
+- Savepoint (`begin_nested()`) in `CrossSessionRecall.record_turns` isolates FK failures from the outer transaction — prevents `PendingRollbackError` cascade
+- Separate-session `record_turns` runs after main `session.commit()` as best-effort
+- MemorySession `set_messages()` + `heartbeat()` + XP/streak/achievements all persist correctly
 
-Review confirmed "No remaining issues with clear, unambiguous diffs" (run 28811536183).
+### Sidebar (Conversation History)
+- `/api/v1/memory/conversations` falls back to `MemorySession.educational_context["messages"]` when `ConversationTurn` table is empty
+- Verified: MemorySession messages persist correctly (local test shows 2 messages in educational_context)
+- `ConversationTurn` records work locally (8 records) but silently fail on Railway due to FK issue
 
-### 2. PR Merged + Docker Rebuild (Round 10 Bugfix)
-- Squash-merged PR #59 into `main` (`dcc84e2`)
-- App image rebuilt, container recreated with all fixes
-- **Round 10**: Fixed pre-existing `redis.asyncio.Redis.xreadgroup` API mismatch (`group=` → `groupname=`, `consumer=` → `consumername=`) that surfaced after fresh build with redis-py 5.1.1
+### Deployment
+- Railway auto-deploys from `main`; 7+ successful deploys of streaming + persistence code
+- Vercel auto-deploys dashboard from `main` with conditional `output: 'standalone'`
+- Local Docker container (`ethiobio-app`) updated via `docker cp` for rapid iteration
+- `output: 'standalone'` made conditional on `!process.env.VERCEL`
 
-### 3. Verification
-- Health endpoint responds: `{"status":"ok","ollama":true,"database":true}`
-- App container healthy
-- Bot container running (old image, not rebuilt due to Docker Hub/PyPI network timeouts)
+## Open Issues
 
-## Remaining
-- **Telegram-bot rebuild**: Blocked by Docker Hub/PyPI network timeouts. Old container runs 6+ hours with old bot code (is_active fixes, UUID validation missing).
-- **Telegram-bot Dockerfile**: `pip install uv` step times out at ~11KB/s download speed. Needs local PyPI mirror or pre-cached wheel.
+### ConversationTurn FK Violation on Railway
+**Root cause**: `MemorySession` row does not persist in PostgreSQL even though `session.commit()` returns without error. Confirmed via debug logging: `turn_session.get(MemorySession, mem_session.session_id)` returns `None` **after** commit. 
+**Impact**: `ConversationTurn` inserts silently fail with FK error. Sidebar fallback reads from `MemorySession.educational_context["messages"]` instead.
+**Next steps**: Needs Railway support or direct DB inspection to understand why committed MemorySession rows are invisible to new transactions.
+
+## Relevant Files
+- `src/api/chat.py`: `_handle_chat_stream`, `_stream_events`, `_persist_chat_history`
+- `src/api/memory.py`: `get_recent_conversations` with MemorySession fallback
+- `src/core/memory/cross_session_recall.py`: `record_turns` with savepoint
+- `src/core/memory/session_manager.py`: `get_or_create_active_session`, `heartbeat`, `set_messages`
+- `src/database/models.py`: `MemorySession`, `ConversationTurn`
+- `src/schemas/streaming.py`: `TokenChunk`
+- `dashboard/src/lib/fetch.ts`: `streamFetch()` SSE consumer
+- `dashboard/src/app/(dashboard)/ask/page.tsx`: streaming ask page

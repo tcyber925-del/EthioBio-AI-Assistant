@@ -1094,7 +1094,7 @@ async def handle_question(update: Update, context):
                 parse_mode="HTML",
             )
 
-            result = graph_task.result()
+            result = await graph_task
 
             if response and not result.answer:
                 result.answer = response
