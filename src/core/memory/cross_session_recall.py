@@ -39,6 +39,23 @@ class CrossSessionRecall:
                 user_id=str(user_id),
                 session_id=str(session_id),
             )
+            # Retry without session_id FK when the FK to memory_sessions
+            # fails (known issue on Railway — committed MemorySession rows
+            # are invisible to new transactions).
+            try:
+                async with db.begin_nested():
+                    for turn in turns:
+                        record = ConversationTurn(
+                            user_id=user_id,
+                            session_id=None,
+                            role=turn.get("role", "user"),
+                            content=turn.get("content", ""),
+                            topic=topic,
+                        )
+                        db.add(record)
+                    await db.flush()
+            except Exception:
+                pass
 
     async def recall_by_topic(
         self,
