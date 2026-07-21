@@ -233,7 +233,16 @@ async def _handle_chat_stream(
     )
 
     return StreamingResponse(
-        _stream_events(queue, graph_task),
+        _stream_events(
+            queue,
+            graph_task,
+            _request=request,
+            _session=session,
+            _user_id=user_id,
+            _mem_session=mem_session,
+            _conversation_messages=conversation_messages,
+            _socratic_state_rec=socratic_state_rec,
+        ),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -246,6 +255,12 @@ async def _handle_chat_stream(
 async def _stream_events(
     queue: asyncio.Queue[TokenChunk | None],
     graph_task: asyncio.Task,
+    _request: Optional[TutorRequest] = None,
+    _session: Optional[AsyncSession] = None,
+    _user_id: Optional[str] = None,
+    _mem_session=None,
+    _conversation_messages: Optional[list] = None,
+    _socratic_state_rec=None,
 ) -> AsyncGenerator[str, None]:
     try:
         while True:
@@ -275,8 +290,87 @@ async def _stream_events(
                     'status': result.status,
                 },
             ).model_dump_json()}\n\n"
+
+            # Persist conversation history after streaming completes
+            if _session and result and _user_id and _mem_session and _request:
+                await _persist_chat_history(
+                    request=_request,
+                    session=_session,
+                    user_id=_user_id,
+                    mem_session=_mem_session,
+                    conversation_messages=_conversation_messages or [],
+                    result=result,
+                    socratic_state_rec=_socratic_state_rec,
+                )
     except Exception as e:
         yield f"data: {TokenChunk(delta='', done=True, error=str(e)).model_dump_json()}\n\n"
+
+
+async def _persist_chat_history(
+    request: TutorRequest,
+    session: AsyncSession,
+    user_id: str,
+    mem_session,
+    conversation_messages: list,
+    result,
+    socratic_state_rec=None,
+) -> None:
+    try:
+        if request.socratic_mode and request.topic:
+            await socratic_manager.update_state(
+                user_id=user_id,
+                topic=request.topic,
+                db=session,
+                updates={
+                    "socratic_stage": result.socratic_stage,
+                    "current_focus": result.socratic_focus,
+                    "student_understanding": result.socratic_understanding,
+                    "next_question": result.socratic_next_question,
+                },
+            )
+
+        conversation_messages.append({"role": "user", "content": request.question})
+        if result.answer:
+            conversation_messages.append({"role": "assistant", "content": result.answer})
+        session_manager.set_messages(mem_session, conversation_messages[-20:])
+
+        await CrossSessionRecall().record_turns(
+            user_id=user_id,
+            session_id=mem_session.session_id,
+            turns=conversation_messages[-2:],
+            topic=request.topic,
+            db=session,
+        )
+
+        mem_session.unresolved_questions = [
+            getattr(result, attr, "")
+            for attr in ("guiding_question",)
+            if getattr(result, "guiding_question", "")
+        ]
+        await session_manager.heartbeat(mem_session.session_id, session)
+
+        await event_logger.log(
+            user_id,
+            "tutor_interaction",
+            topic=request.topic,
+            db=session,
+        )
+
+        await update_streak(user_id, session)
+        xp_amount = XP_SOURCES.get("tutor_interaction", 5)
+        gam, _, _ = await award_xp(
+            user_id,
+            "tutor_interaction",
+            xp_amount,
+            {"question_topic": request.topic or ""},
+            session,
+        )
+        await check_achievements(user_id, gam, session)
+
+        await session.commit()
+    except Exception as e:
+        logger.error("stream_chat_history_save_failed", error=str(e))
+        await session.rollback()
 
 
 # ---------------------------------------------------------------------------
