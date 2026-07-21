@@ -340,14 +340,7 @@ async def _persist_chat_history(
             conversation_messages.append({"role": "assistant", "content": result.answer})
         session_manager.set_messages(mem_session, conversation_messages[-20:])
 
-        await CrossSessionRecall().record_turns(
-            user_id=user_id,
-            session_id=mem_session.session_id,
-            turns=conversation_messages[-2:],
-            topic=request.topic,
-            db=session,
-        )
-
+        await session.flush()
         mem_session.unresolved_questions = [
             getattr(result, attr, "")
             for attr in ("guiding_question",)
@@ -374,6 +367,22 @@ async def _persist_chat_history(
         await check_achievements(user_id, gam, session)
 
         await session.commit()
+
+        # Record conversation turns in a separate session so the FK to
+        # memory_sessions sees the just-committed MemorySession row.
+        try:
+            turn_factory = async_session_factory()
+            async with turn_factory() as turn_session:
+                await CrossSessionRecall().record_turns(
+                    user_id=user_id,
+                    session_id=mem_session.session_id,
+                    turns=conversation_messages[-2:],
+                    topic=request.topic,
+                    db=turn_session,
+                )
+                await turn_session.commit()
+        except Exception as turn_e:
+            logger.warning("record_turns_async_error", error=str(turn_e))
     except Exception as e:
         logger.error("stream_chat_history_save_failed", error=str(e))
         await session.rollback()
