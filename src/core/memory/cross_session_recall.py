@@ -21,16 +21,17 @@ class CrossSessionRecall:
         if not turns or not user_id:
             return
         try:
-            for turn in turns:
-                record = ConversationTurn(
-                    user_id=user_id,
-                    session_id=session_id,
-                    role=turn.get("role", "user"),
-                    content=turn.get("content", ""),
-                    topic=topic,
-                )
-                db.add(record)
-            await db.flush()
+            async with db.begin_nested():
+                for turn in turns:
+                    record = ConversationTurn(
+                        user_id=user_id,
+                        session_id=session_id,
+                        role=turn.get("role", "user"),
+                        content=turn.get("content", ""),
+                        topic=topic,
+                    )
+                    db.add(record)
+                await db.flush()
         except Exception as e:
             logger.warning("record_turns_error", error=str(e))
 
