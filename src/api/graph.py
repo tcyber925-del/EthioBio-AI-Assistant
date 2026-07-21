@@ -17,7 +17,7 @@ logger = structlog.get_logger()
 router = APIRouter(prefix="/graph", tags=["Graph"])
 
 
-@router.post("/chat", response_model=TutorResponse)
+@router.post("/chat")
 async def graph_chat(request: TutorRequest, db: AsyncSession = Depends(get_session)):
     return await handle_chat_request(request, db, current_user=None)
 
