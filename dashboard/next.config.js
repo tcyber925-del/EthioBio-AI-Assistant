@@ -3,7 +3,7 @@ const createNextIntlPlugin = require('next-intl/plugin');
 const withNextIntl = createNextIntlPlugin('./i18n.ts');
 
 const nextConfig = {
-  output: 'standalone',
+  ...(!process.env.VERCEL && { output: 'standalone' }),
   async rewrites() {
     const api = process.env.NEXT_PUBLIC_API_URL || 'http://app:8000'
     return [
