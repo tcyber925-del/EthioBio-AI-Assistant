@@ -52,6 +52,7 @@ from src.api.intelligence.continue_learning_router import (
 from src.api.models import router as models_router
 from src.api.retrieval import router as retrieval_router
 from src.config import settings
+from src.core.errors import AppError
 from src.core.memory.router import router as memory_router
 from src.core.monitoring import pipeline_monitor
 from src.core.tracing import TraceRepository
@@ -353,6 +354,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(AppError)
+async def app_error_handler(request: Request, exc: AppError):
+    return JSONResponse(status_code=exc.status, content=exc.to_dict())
+
+
+@app.exception_handler(Exception)
+async def generic_error_handler(request: Request, exc: Exception):
+    logger.exception("unhandled_error", path=str(request.url))
+    return JSONResponse(
+        status_code=500,
+        content={"error": {"code": "internal_error", "detail": "An unexpected error occurred"}},
+    )
 
 
 app.include_router(chat.router)
