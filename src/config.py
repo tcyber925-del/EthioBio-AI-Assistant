@@ -57,7 +57,9 @@ class Settings(BaseSettings):
     email_use_tls: bool = True
     jwt_secret: str = "change-me-jwt-secret"
     jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 480
+    access_token_expire_minutes: int = 15
+    refresh_token_expire_days: int = 7
+    internal_api_key: str = ""
 
     # Guardrail settings
     rate_limit_enabled: bool = True

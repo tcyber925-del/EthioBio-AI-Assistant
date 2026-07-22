@@ -1,7 +1,6 @@
 from uuid import uuid4
 
 import pytest
-from fastapi import HTTPException
 
 from src.api.auth import (
     _create_access_token,
@@ -10,6 +9,7 @@ from src.api.auth import (
     decode_access_token,
 )
 from src.config import settings
+from src.core.errors import AuthError
 
 
 def test_hash_and_verify_password():
@@ -32,7 +32,7 @@ def test_create_and_decode_token():
 
 
 def test_decode_invalid_token_raises():
-    with pytest.raises(HTTPException):
+    with pytest.raises(AuthError):
         decode_access_token("invalid.token.here")
 
 
@@ -42,7 +42,7 @@ def test_token_expiry():
     try:
         user_id = str(uuid4())
         token = _create_access_token(user_id, "teacher")
-        with pytest.raises(HTTPException):
+        with pytest.raises(AuthError):
             decode_access_token(token)
     finally:
         settings.access_token_expire_minutes = old_expire
