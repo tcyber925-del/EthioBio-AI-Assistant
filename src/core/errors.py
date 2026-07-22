@@ -16,7 +16,7 @@ class AppError(Exception):
         super().__init__(self.detail)
 
     def to_dict(self) -> dict:
-        return {"error": {"code": self.code, "detail": self.detail, **self.context}}
+        return {"error": {"code": self.code, "detail": self.detail, "context": self.context}}
 
 
 class AuthError(AppError):
