@@ -3,6 +3,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
 
+from src.core.errors import RateLimitError
 from src.guardrails.input.rate_limiter import TieredRateLimiter
 
 logger = structlog.get_logger()
@@ -37,10 +38,11 @@ def add_rate_limit_middleware(app: FastAPI, redis_client: Redis):
             except Exception:
                 pass
 
-        ip = request.headers.get(
-            "X-Forwarded-For",
-            request.client.host if request.client else "unknown",
-        )
+        raw_ip = request.headers.get("X-Forwarded-For", "")
+        if raw_ip:
+            ip = raw_ip.split(",")[0].strip()
+        else:
+            ip = request.client.host if request.client else "unknown"
         key = f"{user_id}:{ip}" if user_id else ip
 
         allowed, headers = await limiter.check_and_get_headers(
@@ -49,15 +51,10 @@ def add_rate_limit_middleware(app: FastAPI, redis_client: Redis):
         if not allowed:
             tier = limiter.resolve_tier(request.url.path, request.method)
             logger.warning("rate_limit_exceeded", path=request.url.path, tier=tier)
+            err = RateLimitError(tier, retry_after=int(headers.get("Retry-After", 60)))
             return JSONResponse(
                 status_code=429,
-                content={
-                    "error": {
-                        "code": "rate_limit_exceeded",
-                        "detail": "Too many requests",
-                        "tier": tier,
-                    }
-                },
+                content=err.to_dict(),
                 headers=headers,
             )
 

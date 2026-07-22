@@ -28,6 +28,7 @@ async def test_rate_limit_allowed():
     allowed, headers = await limiter.check_and_get_headers("test_key", "/auth/login", "POST")
     assert allowed
     assert "X-RateLimit-Limit" in headers
+    assert "X-RateLimit-Reset" in headers
 
 
 @pytest.mark.asyncio
@@ -40,3 +41,5 @@ async def test_rate_limit_blocked():
     allowed, headers = await limiter.check_and_get_headers("test_key", "/auth/login", "POST")
     assert not allowed
     assert headers["X-RateLimit-Remaining"] == "0"
+    assert "X-RateLimit-Reset" in headers
+    assert "Retry-After" in headers

@@ -25,51 +25,6 @@ RATE_LIMIT_TIERS: dict[str, RateLimitRule] = {
 }
 
 
-class RateLimiter:
-    def __init__(self, redis_client: Redis):
-        self.redis = redis_client
-        self._enabled = settings.rate_limit_enabled
-
-    async def check(
-        self,
-        key: str,
-        max_requests: int,
-        window_seconds: int,
-    ) -> bool:
-        if not self._enabled:
-            return True
-
-        now = time.time()
-        window_start = now - window_seconds
-        redis_key = f"ratelimit:{key}"
-
-        await self.redis.zremrangebyscore(redis_key, 0, window_start)
-        count = await self.redis.zcard(redis_key)
-
-        if count >= max_requests:
-            return False
-
-        await self.redis.zadd(redis_key, {str(now): now})
-        await self.redis.expire(redis_key, window_seconds * 2)
-        return True
-
-    async def get_remaining(
-        self,
-        key: str,
-        max_requests: int,
-        window_seconds: int,
-    ) -> int:
-        if not self._enabled:
-            return max_requests
-
-        now = time.time()
-        window_start = now - window_seconds
-        redis_key = f"ratelimit:{key}"
-
-        await self.redis.zremrangebyscore(redis_key, 0, window_start)
-        count = await self.redis.zcard(redis_key)
-        return max(0, max_requests - count)
-
 
 class TieredRateLimiter:
     def __init__(self, redis_client: Redis):
@@ -105,11 +60,13 @@ class TieredRateLimiter:
         count = await self.redis.zcard(redis_key)
 
         remaining = max(0, rule.max_requests - count)
+        reset_time = int(now + rule.window_seconds)
 
         if count >= rule.max_requests:
             return False, {
                 "X-RateLimit-Limit": str(rule.max_requests),
                 "X-RateLimit-Remaining": "0",
+                "X-RateLimit-Reset": str(reset_time),
                 "Retry-After": str(rule.window_seconds),
             }
 
@@ -119,4 +76,5 @@ class TieredRateLimiter:
         return True, {
             "X-RateLimit-Limit": str(rule.max_requests),
             "X-RateLimit-Remaining": str(remaining - 1),
+            "X-RateLimit-Reset": str(reset_time),
         }
