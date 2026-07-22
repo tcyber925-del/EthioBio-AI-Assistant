@@ -9,6 +9,7 @@ from src.observability.guardrail_instrumentation import observe_guardrail
 class PIIScanResult:
     flagged: bool
     findings: list[dict] = field(default_factory=list)
+    redacted_text: str = ""
 
 
 PII_PATTERNS: list[tuple[re.Pattern, str, str]] = [
@@ -30,22 +31,28 @@ class PIIScanner:
         self._enabled = settings.output_pii_detection_enabled
 
     @observe_guardrail(module="pii_scanner", guardrail_type="output")
-    def scan(self, text: str) -> PIIScanResult:
+    def scan(self, text: str, redact: bool = True) -> PIIScanResult:
         if not self._enabled:
-            return PIIScanResult(flagged=False)
+            return PIIScanResult(flagged=False, redacted_text=text)
 
         findings: list[dict] = []
+        redacted = text
 
         for pattern, pii_type, description in PII_PATTERNS:
-            matches = pattern.findall(text)
-            for match in matches:
+            for match in pattern.finditer(text):
                 findings.append(
                     {
                         "type": pii_type,
                         "description": description,
-                        "match": match,
-                        "position": text.index(match),
+                        "match": match.group(),
+                        "position": match.start(),
                     }
                 )
+                if redact:
+                    redacted = redacted.replace(match.group(), f"[REDACTED {pii_type}]")
 
-        return PIIScanResult(flagged=len(findings) > 0, findings=findings)
+        return PIIScanResult(
+            flagged=len(findings) > 0,
+            findings=findings,
+            redacted_text=redacted,
+        )

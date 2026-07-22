@@ -437,6 +437,7 @@ async def _handle_chat_blocking(
         )
 
         output_check = output_guardrails.check(result.answer or "", topic=request.topic)
+        answer_text = output_check.redacted_text or result.answer or ""
         if output_check.blocked:
             logger.warning("output_guardrail_triggered", reasons=output_check.reasons)
             raise HTTPException(status_code=422, detail="Response blocked by output safety filter")
@@ -456,8 +457,8 @@ async def _handle_chat_blocking(
 
         if mem_session:
             conversation_messages.append({"role": "user", "content": request.question})
-            if result.answer:
-                conversation_messages.append({"role": "assistant", "content": result.answer})
+            if answer_text:
+                conversation_messages.append({"role": "assistant", "content": answer_text})
             session_manager.set_messages(mem_session, conversation_messages[-20:])
             await CrossSessionRecall().record_turns(
                 user_id=user_id,
@@ -518,7 +519,7 @@ async def _handle_chat_blocking(
         await session.commit()
 
         return TutorResponse(
-            answer=result.answer,
+            answer=answer_text,
             language=effective_language.value
             if hasattr(effective_language, "value")
             else str(effective_language),

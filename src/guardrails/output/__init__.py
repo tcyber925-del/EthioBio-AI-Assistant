@@ -11,6 +11,7 @@ class OutputGuardrailResult:
     passed: bool
     blocked: bool
     reasons: list[str] = field(default_factory=list)
+    redacted_text: str = ""
 
 
 class OutputGuardrailRunner:
@@ -23,15 +24,17 @@ class OutputGuardrailRunner:
     def check(self, text: str, topic: str | None = None) -> OutputGuardrailResult:
         reasons: list[str] = []
 
-        tox = self.toxicity.check(text)
+        pii_result = self.pii.scan(text)
+        safe_text = pii_result.redacted_text or text
+
+        tox = self.toxicity.check(safe_text)
         if tox.flagged:
             reasons.append(f"Toxic content detected (score={tox.score:.2f})")
 
-        topic_result = self.topic.check(text, topic)
+        topic_result = self.topic.check(safe_text, topic)
         if not topic_result.on_topic:
             reasons.extend(topic_result.off_topic_segments)
 
-        pii_result = self.pii.scan(text)
         if pii_result.flagged:
             types = {f["type"] for f in pii_result.findings}
             reasons.append(f"PII detected: {', '.join(types)}")
@@ -40,4 +43,5 @@ class OutputGuardrailRunner:
             passed=len(reasons) == 0,
             blocked=len(reasons) > 0,
             reasons=reasons,
+            redacted_text=safe_text,
         )
