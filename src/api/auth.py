@@ -1,3 +1,4 @@
+import asyncio
 import random
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -29,13 +30,6 @@ class RegisterRequest(BaseModel):
     email: str
     password: str
     role: str = "teacher"
-
-
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    user_id: str
-    role: str
 
 
 class LoginRequest(BaseModel):
@@ -177,6 +171,7 @@ async def register(body: RegisterRequest, session: AsyncSession = Depends(get_se
     await redis_conn.setex(
         f"refresh:{refresh_jti}", settings.refresh_token_expire_days * 86400, str(user.id)
     )
+    await redis_conn.sadd(f"refresh_tokens:{str(user.id)}", refresh_jti)
 
     response = Response(status_code=201)
     _set_auth_cookies(response, access_token, refresh_token)
@@ -201,6 +196,7 @@ async def login(body: LoginRequest, session: AsyncSession = Depends(get_session)
     await redis_conn.setex(
         f"refresh:{refresh_jti}", settings.refresh_token_expire_days * 86400, str(user.id)
     )
+    await redis_conn.sadd(f"refresh_tokens:{str(user.id)}", refresh_jti)
 
     response = Response(status_code=200)
     _set_auth_cookies(response, access_token, refresh_token)
@@ -238,11 +234,11 @@ async def refresh_token(request: Request, session: AsyncSession = Depends(get_se
     if stored is None:
         logger.warning("refresh_token_reuse_attempt", user_id=user_id, jti=jti)
         await _revoke_all_refresh_tokens(user_id, redis_conn)
-        response = Response(status_code=401)
-        _clear_auth_cookies(response)
-        return response
+        msg = "Refresh token has been revoked — all sessions invalidated"
+        raise AuthError("refresh_reused", msg)
 
     await redis_conn.delete(f"refresh:{jti}")
+    await redis_conn.srem(f"refresh_tokens:{user_id}", jti)
 
     result = await session.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
@@ -261,16 +257,11 @@ async def refresh_token(request: Request, session: AsyncSession = Depends(get_se
 
 
 async def _revoke_all_refresh_tokens(user_id: str, redis_conn) -> None:
-    cursor = 0
-    pattern = "refresh:*"
-    while True:
-        cursor, keys = await redis_conn.scan(cursor=cursor, match=pattern, count=100)
-        for key in keys:
-            val = await redis_conn.get(key)
-            if val and val == user_id:
-                await redis_conn.delete(key)
-        if cursor == 0:
-            break
+    key = f"refresh_tokens:{user_id}"
+    jtis = await redis_conn.smembers(key)
+    if jtis:
+        await asyncio.gather(*[redis_conn.delete(f"refresh:{jti}") for jti in jtis])
+        await redis_conn.delete(key)
 
 
 @router.post("/logout")
@@ -286,9 +277,11 @@ async def logout(request: Request):
                 options={"verify_exp": False},
             )
             jti = payload.get("jti")
-            if jti:
+            user_id = payload.get("sub")
+            if jti and user_id:
                 redis_conn = await get_redis()
                 await redis_conn.delete(f"refresh:{jti}")
+                await redis_conn.srem(f"refresh_tokens:{user_id}", jti)
         except JWTError:
             pass
     _clear_auth_cookies(response)
@@ -371,6 +364,7 @@ async def verify_otp(body: OtpVerifyRequest, session: AsyncSession = Depends(get
     await redis_conn.setex(
         f"refresh:{refresh_jti}", settings.refresh_token_expire_days * 86400, str(user.id)
     )
+    await redis_conn.sadd(f"refresh_tokens:{str(user.id)}", refresh_jti)
 
     response = Response(status_code=200)
     _set_auth_cookies(response, access_token, refresh_token)
