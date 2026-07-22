@@ -36,20 +36,23 @@ class PIIScanner:
             return PIIScanResult(flagged=False, redacted_text=text)
 
         findings: list[dict] = []
-        redacted = text
+        all_spans: list[tuple[int, int, str]] = []
 
         for pattern, pii_type, description in PII_PATTERNS:
             for match in pattern.finditer(text):
-                findings.append(
-                    {
-                        "type": pii_type,
-                        "description": description,
-                        "match": match.group(),
-                        "position": match.start(),
-                    }
-                )
+                findings.append({
+                    "type": pii_type,
+                    "description": description,
+                    "match": match.group(),
+                    "position": match.start(),
+                })
                 if redact:
-                    redacted = redacted.replace(match.group(), f"[REDACTED {pii_type}]")
+                    all_spans.append((match.start(), match.end(), pii_type))
+
+        all_spans.sort(key=lambda x: x[0], reverse=True)
+        redacted = text
+        for start, end, pii_type in all_spans:
+            redacted = redacted[:start] + f"[REDACTED {pii_type}]" + redacted[end:]
 
         return PIIScanResult(
             flagged=len(findings) > 0,

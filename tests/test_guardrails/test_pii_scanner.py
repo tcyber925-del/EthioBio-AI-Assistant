@@ -68,3 +68,12 @@ def test_pii_multiple_redactions():
     assert "[REDACTED email]" in result.redacted_text
     assert "[REDACTED ethiopian_phone]" in result.redacted_text
     assert "user@example.com" not in result.redacted_text
+
+
+def test_pii_overlapping_patterns():
+    """Two patterns matching overlapping text should both be handled."""
+    scanner = PIIScanner()
+    text = "Card: 4111 1111 1111 1111"
+    result = scanner.scan(text, redact=True)
+    assert "[REDACTED credit_card]" in result.redacted_text
+    assert "4111" not in result.redacted_text

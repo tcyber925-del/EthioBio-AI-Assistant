@@ -25,7 +25,7 @@ class OutputGuardrailRunner:
         reasons: list[str] = []
 
         pii_result = self.pii.scan(text)
-        safe_text = pii_result.redacted_text or text
+        safe_text = pii_result.redacted_text
 
         tox = self.toxicity.check(safe_text)
         if tox.flagged:
