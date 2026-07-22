@@ -894,11 +894,11 @@ async def menu(update: Update, context):
         try:
             await query.answer()
         except Exception:
-            pass
+            logger.warning("menu_ans_fail", user_id=update.effective_user.id, exc_info=True)
         try:
             await query.edit_message_reply_markup(reply_markup=None)
         except Exception:
-            pass
+            logger.warning("menu_edit_fail", user_id=update.effective_user.id, exc_info=True)
         msg = query.message
     else:
         msg = update.message
@@ -960,7 +960,7 @@ async def handle_tutor(update: Update, context):
         try:
             await query.answer()
         except Exception:
-            pass
+            logger.warning("tutor_ans_fail", user_id=update.effective_user.id, exc_info=True)
         await query.message.reply_text(
             t("tutor.grade_select", _lang(context)),
             reply_markup=grade_keyboard("tutor_grade", language=_lang(context)),
@@ -978,7 +978,7 @@ async def handle_tutor_grade(update: Update, context):
     try:
         await query.answer()
     except Exception:
-        pass
+        logger.warning("tutor_grade_ans_fail", user_id=update.effective_user.id, exc_info=True)
     grade = int(query.data.split("_")[-1])
     context.user_data["tutor_grade"] = grade
     await query.edit_message_text(
@@ -993,11 +993,11 @@ async def end_conversation(update: Update, context):
     try:
         await query.answer()
     except Exception:
-        pass
+        logger.warning("end_conv_ans_fail", user_id=update.effective_user.id, exc_info=True)
     try:
         await query.edit_message_reply_markup(reply_markup=None)
     except Exception:
-        pass
+        logger.warning("end_conv_edit_fail", user_id=update.effective_user.id, exc_info=True)
     await query.message.reply_text(
         t("common.choose_option", _lang(context)),
         reply_markup=main_menu_keyboard(
@@ -1047,6 +1047,7 @@ async def _build_learner_profile(user_id, db):
         package = await _context_adapter.build(db, user_id)
         return package.formatted_block
     except Exception:
+        logger.warning("learner_profile_build_failed", user_id=user_id, exc_info=True)
         return ""
 
 
@@ -1168,7 +1169,7 @@ async def handle_question(update: Update, context):
             display = sanitize_for_telegram(format_for_telegram(response))[:4096]
             await thinking_msg.edit_text(display, reply_markup=reply_markup, parse_mode="HTML")
         except Exception:
-            pass
+            logger.warning("final_edit_failed", user_id=update.effective_user.id, exc_info=True)
 
         diagram_keywords = frozenset(
             [
@@ -1228,7 +1229,11 @@ async def handle_question(update: Update, context):
                 ),
             )
         except Exception:
-            pass
+            logger.warning(
+                "error_edit_failed",
+                user_id=update.effective_user.id if update.effective_user else None,
+                exc_info=True,
+            )
         return ConversationHandler.END
 
     if memory_user_id:
@@ -1386,7 +1391,7 @@ async def _stream_and_edit(
                 display = sanitize_for_telegram(format_for_telegram(buffer))[:4096]
                 await msg.edit_text(display, parse_mode=parse_mode)
             except Exception:
-                pass
+                logger.warning("stream_flush_edit_failed", exc_info=True)
             last_edit = buffer
             last_update = now
 
@@ -1403,7 +1408,7 @@ async def _stream_and_edit(
         display = sanitize_for_telegram(format_for_telegram(buffer))[:4096]
         await msg.edit_text(display, reply_markup=final_markup, parse_mode=parse_mode)
     except Exception:
-        pass
+        logger.warning("stream_final_flush_edit_failed", exc_info=True)
 
     return buffer
 
@@ -1431,7 +1436,7 @@ async def _reply_long(
                     )
                     continue
                 except Exception:
-                    pass
+                    logger.warning("reply_long_edit_failed", exc_info=True)
             try:
                 await update_or_msg_or_query.reply_text(
                     chunk, reply_markup=reply_markup, parse_mode=parse_mode
@@ -1671,7 +1676,11 @@ async def _show_quiz_result(update: Update, context, msg=None):
                         new_buttons = list(reply_markup.inline_keyboard) + [tuple(recovery_row)]
                         reply_markup = InlineKeyboardMarkup(new_buttons)
     except Exception:
-        pass
+        logger.warning(
+            "quiz_recovery_plan_fail",
+            user_id=update.effective_user.id if update.effective_user else None,
+            exc_info=True,
+        )
     await dest.reply_text(text, reply_markup=reply_markup, parse_mode="HTML")
 
 
@@ -1718,7 +1727,7 @@ async def handle_quiz_answer(update: Update, context):
     try:
         await query.edit_message_reply_markup(reply_markup=None)
     except Exception:
-        pass
+        logger.warning("quiz_ans_edit_fail", user_id=update.effective_user.id, exc_info=True)
     await query.message.reply_text(
         f"{feedback}\n\n{_get_explanation(q)}",
         reply_markup=quiz_next_keyboard(language=_lang(context)),
@@ -1784,7 +1793,7 @@ async def handle_quiz_next(update: Update, context):
     try:
         await query.edit_message_reply_markup(reply_markup=None)
     except Exception:
-        pass
+        logger.warning("quiz_next_edit_failed", user_id=update.effective_user.id, exc_info=True)
     await _send_quiz_question(update, context, query.message, new_message=True)
     return QUIZ_ANSWERING
 
@@ -1795,7 +1804,7 @@ async def handle_quiz_end(update: Update, context):
     try:
         await query.edit_message_reply_markup(reply_markup=None)
     except Exception:
-        pass
+        logger.warning("quiz_end_edit_failed", user_id=update.effective_user.id, exc_info=True)
     await _show_quiz_result(update, context, query.message)
     context.user_data.pop("quiz_session", None)
     return ConversationHandler.END
@@ -1811,7 +1820,7 @@ async def handle_quiz_retry(update: Update, context):
     try:
         await query.edit_message_reply_markup(reply_markup=None)
     except Exception:
-        pass
+        logger.warning("quiz_retry_edit_failed", user_id=update.effective_user.id, exc_info=True)
     await _send_quiz_question(update, context, query.message, new_message=True)
     return QUIZ_ANSWERING
 
@@ -2001,7 +2010,7 @@ async def handle_diagram_topic(update: Update, context):
             try:
                 await _save_diagram_rewards(telegram_id, context)
             except Exception:
-                pass
+                logger.warning("diagram_rewards_fail", telegram_id=telegram_id, exc_info=True)
 
         xp_text = ""
         xp_awarded = context.user_data.get("last_xp_awarded")
@@ -2081,7 +2090,7 @@ async def handle_progress(update: Update, context):
         try:
             await query.edit_message_reply_markup(reply_markup=None)
         except Exception:
-            pass
+            logger.warning("progress_edit_failed", user_id=update.effective_user.id, exc_info=True)
         await query.message.reply_text(
             text,
             reply_markup=main_menu_keyboard(
@@ -2142,7 +2151,7 @@ async def handle_socratic_toggle(update: Update, context):
     try:
         await query.edit_message_reply_markup(reply_markup=None)
     except Exception:
-        pass
+        logger.warning("soc_toggle_edit_fail", user_id=update.effective_user.id, exc_info=True)
     await query.message.reply_text(
         t(
             "tutor.socratic_on" if context.user_data["socratic_mode"] else "tutor.socratic_off",
@@ -2180,7 +2189,7 @@ async def handle_model_selection(update: Update, context):
         try:
             await query.edit_message_reply_markup(reply_markup=None)
         except Exception:
-            pass
+            logger.warning("model_back_edit_fail", user_id=update.effective_user.id, exc_info=True)
         await query.message.reply_text(
             t("common.main_menu", _lang(context)),
             reply_markup=main_menu_keyboard(language=_lang(context)),
@@ -2195,7 +2204,11 @@ async def handle_model_selection(update: Update, context):
             try:
                 await query.edit_message_reply_markup(reply_markup=None)
             except Exception:
-                pass
+                logger.warning(
+                    "model_bproviders_edit_fail",
+                    user_id=update.effective_user.id,
+                    exc_info=True,
+                )
             await query.message.reply_text(
                 "Select a provider:",
                 reply_markup=InlineKeyboardMarkup(model_providers_keyboard(models)),
@@ -2217,7 +2230,11 @@ async def handle_model_selection(update: Update, context):
             try:
                 await query.edit_message_reply_markup(reply_markup=None)
             except Exception:
-                pass
+                logger.warning(
+                    "model_refresh_edit_fail",
+                    user_id=update.effective_user.id,
+                    exc_info=True,
+                )
             await query.message.reply_text(
                 "Select a provider:",
                 reply_markup=InlineKeyboardMarkup(model_providers_keyboard(models)),
@@ -2244,7 +2261,11 @@ async def handle_model_selection(update: Update, context):
             try:
                 await query.edit_message_reply_markup(reply_markup=None)
             except Exception:
-                pass
+                logger.warning(
+                    "model_prov_models_edit_fail",
+                    user_id=update.effective_user.id,
+                    exc_info=True,
+                )
             await query.message.reply_text(
                 f"Models from {provider.capitalize()}:",
                 reply_markup=InlineKeyboardMarkup(provider_models_keyboard(filtered, active)),
@@ -2273,7 +2294,11 @@ async def handle_model_selection(update: Update, context):
             try:
                 await query.edit_message_reply_markup(reply_markup=None)
             except Exception:
-                pass
+                logger.warning(
+                    "model_set_edit_fail",
+                    user_id=update.effective_user.id,
+                    exc_info=True,
+                )
             await query.message.reply_text(
                 f"✅ Active model is now: {model_id}",
                 reply_markup=main_menu_keyboard(language=_lang(context)),
@@ -2296,7 +2321,11 @@ async def handle_hint(update: Update, context):
         try:
             await query.edit_message_reply_markup(reply_markup=None)
         except Exception:
-            pass
+            logger.warning(
+                "hint_revealed_edit_fail",
+                user_id=update.effective_user.id,
+                exc_info=True,
+            )
         await query.message.reply_text(
             t("tutor.hint_revealed", _lang(context)),
             reply_markup=main_menu_keyboard(
@@ -2309,7 +2338,7 @@ async def handle_hint(update: Update, context):
         try:
             await query.edit_message_reply_markup(reply_markup=None)
         except Exception:
-            pass
+            logger.warning("hint_no_q_edit_fail", user_id=update.effective_user.id, exc_info=True)
         await query.message.reply_text(
             t("tutor.no_question", _lang(context)),
             reply_markup=main_menu_keyboard(
@@ -2396,7 +2425,7 @@ async def handle_reveal_answer(update: Update, context):
         try:
             await query.edit_message_reply_markup(reply_markup=None)
         except Exception:
-            pass
+            logger.warning("reveal_no_q_edit_fail", user_id=update.effective_user.id, exc_info=True)
         await query.message.reply_text(
             t("tutor.no_question", _lang(context)),
             reply_markup=main_menu_keyboard(
