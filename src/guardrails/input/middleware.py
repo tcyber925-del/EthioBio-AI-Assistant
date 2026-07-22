@@ -3,79 +3,67 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
 
-from src.config import settings
-from src.guardrails.input.rate_limiter import RateLimiter
+from src.guardrails.input.rate_limiter import TieredRateLimiter
 
 logger = structlog.get_logger()
 
 
-def add_rate_limit_middleware(app: FastAPI, redis_client: Redis) -> None:
-    limiter = RateLimiter(redis_client)
+SKIP_PATHS = frozenset({"/health", "/liveness", "/readiness", "/metrics", "/ping"})
+
+
+def add_rate_limit_middleware(app: FastAPI, redis_client: Redis):
+    limiter = TieredRateLimiter(redis_client)
 
     @app.middleware("http")
     async def rate_limit_middleware(request: Request, call_next):
-        if not settings.rate_limit_enabled:
+        if request.url.path in SKIP_PATHS:
             return await call_next(request)
 
-        if not request.url.path.startswith("/chat"):
-            return await call_next(request)
+        user_id = None
+        access_cookie = request.cookies.get("access_token")
+        if access_cookie:
+            try:
+                from jose import jwt as jose_jwt
 
-        user_id = request.headers.get("X-User-ID", "")
-        if user_id:
-            allowed = await limiter.check(
-                f"user:{user_id}:chat",
-                settings.rate_limit_user_max,
-                settings.rate_limit_user_window,
-            )
-            if not allowed:
-                remaining = await limiter.get_remaining(
-                    f"user:{user_id}:chat",
-                    settings.rate_limit_user_max,
-                    settings.rate_limit_user_window,
-                )
-                logger.warning("rate_limit_exceeded", user_id=user_id, scope="user")
-                return JSONResponse(
-                    status_code=429,
-                    content={
-                        "detail": "Rate limit exceeded. Please wait before sending another message."
-                    },
-                    headers={
-                        "Retry-After": str(settings.rate_limit_user_window),
-                        "X-RateLimit-Limit": str(settings.rate_limit_user_max),
-                        "X-RateLimit-Remaining": str(remaining),
-                    },
-                )
+                from src.config import settings as app_settings
 
-        forwarded = request.headers.get("X-Forwarded-For", "")
-        ip = (
-            forwarded.split(",")[0].strip()
-            if forwarded
-            else request.client.host
-            if request.client
-            else "unknown"
+                payload = jose_jwt.decode(
+                    access_cookie,
+                    app_settings.jwt_secret,
+                    algorithms=[app_settings.jwt_algorithm],
+                    options={"verify_exp": False},
+                )
+                user_id = payload.get("sub")
+            except Exception:
+                pass
+
+        ip = request.headers.get(
+            "X-Forwarded-For",
+            request.client.host if request.client else "unknown",
         )
-        allowed = await limiter.check(
-            f"ip:{ip}:chat",
-            settings.rate_limit_ip_max,
-            settings.rate_limit_ip_window,
+        key = f"{user_id}:{ip}" if user_id else ip
+
+        allowed, headers = await limiter.check_and_get_headers(
+            key, request.url.path, request.method
         )
         if not allowed:
-            remaining = await limiter.get_remaining(
-                f"ip:{ip}:chat",
-                settings.rate_limit_ip_max,
-                settings.rate_limit_ip_window,
-            )
-            logger.warning("rate_limit_exceeded", ip=ip, scope="ip")
+            tier = limiter.resolve_tier(request.url.path, request.method)
+            logger.warning("rate_limit_exceeded", path=request.url.path, tier=tier)
             return JSONResponse(
                 status_code=429,
                 content={
-                    "detail": "Rate limit exceeded. Please wait before sending another message."
+                    "error": {
+                        "code": "rate_limit_exceeded",
+                        "detail": "Too many requests",
+                        "tier": tier,
+                    }
                 },
-                headers={
-                    "Retry-After": str(settings.rate_limit_ip_window),
-                    "X-RateLimit-Limit": str(settings.rate_limit_ip_max),
-                    "X-RateLimit-Remaining": str(remaining),
-                },
+                headers=headers,
             )
 
-        return await call_next(request)
+        response = await call_next(request)
+        for h, v in headers.items():
+            response.headers[h] = v
+        return response
+
+    return limiter
