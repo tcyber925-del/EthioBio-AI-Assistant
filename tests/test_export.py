@@ -136,7 +136,7 @@ class TestExportEndpoints:
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             fake_id = str(uuid4())
             response = await client.get(f"/export/quiz/{fake_id}")
-            assert response.status_code in (404, 500)
+            assert response.status_code == 404
 
     async def test_export_quiz_invalid_uuid(self):
         transport = ASGITransport(app=app)
@@ -149,7 +149,7 @@ class TestExportEndpoints:
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             fake_id = str(uuid4())
             response = await client.get(f"/export/lesson-plan/{fake_id}")
-            assert response.status_code in (404, 500)
+            assert response.status_code == 404
 
     async def test_export_lesson_plan_invalid_uuid(self):
         transport = ASGITransport(app=app)
