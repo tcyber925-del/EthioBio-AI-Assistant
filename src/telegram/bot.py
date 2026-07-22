@@ -64,6 +64,14 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 
 logger = structlog.get_logger()
 
+
+def _api_client(**kwargs):
+    headers = kwargs.pop("headers", {})
+    if settings.internal_api_key:
+        headers.setdefault("X-API-Key", settings.internal_api_key)
+    return httpx.AsyncClient(headers=headers, **kwargs)
+
+
 (
     TUTOR,
     QUIZ_TYPE,
@@ -2110,7 +2118,7 @@ async def handle_language_select(update: Update, context):
     context.user_data["language"] = code
 
     async def _sync_language():
-        async with httpx.AsyncClient() as client:
+        async with _api_client() as client:
             api_base = settings.api_base_url
             await client.patch(
                 f"{api_base}/users/{update.effective_user.id}/language",
@@ -2147,7 +2155,7 @@ async def handle_socratic_toggle(update: Update, context):
 async def model_command(update: Update, context):
     api_base = settings.api_base_url
     try:
-        async with httpx.AsyncClient() as client:
+        async with _api_client() as client:
             resp = await client.get(f"{api_base}/models")
             models = resp.json()
         await update.message.reply_text(
@@ -2181,7 +2189,7 @@ async def handle_model_selection(update: Update, context):
 
     if data == "model:back_providers":
         try:
-            async with httpx.AsyncClient() as client:
+            async with _api_client() as client:
                 resp = await client.get(f"{api_base}/models")
                 models = resp.json()
             try:
@@ -2202,7 +2210,7 @@ async def handle_model_selection(update: Update, context):
 
     if data == "model:refresh":
         try:
-            async with httpx.AsyncClient() as client:
+            async with _api_client() as client:
                 await client.post(f"{api_base}/models/refresh")
                 resp = await client.get(f"{api_base}/models")
                 models = resp.json()
@@ -2225,7 +2233,7 @@ async def handle_model_selection(update: Update, context):
     if data.startswith("model:provider:"):
         provider = data[len("model:provider:") :]
         try:
-            async with httpx.AsyncClient() as client:
+            async with _api_client() as client:
                 resp = await client.get(f"{api_base}/models")
                 all_models: list[dict] = resp.json()
                 resp2 = await client.get(f"{api_base}/models/active")
@@ -2260,7 +2268,7 @@ async def handle_model_selection(update: Update, context):
             return
         model_id = provider_models[idx]["id"]
         try:
-            async with httpx.AsyncClient() as client:
+            async with _api_client() as client:
                 await client.post(f"{api_base}/models/active", json={"model": model_id})
             try:
                 await query.edit_message_reply_markup(reply_markup=None)
@@ -3106,7 +3114,7 @@ def _format_copilot_response(result: dict, language: str) -> str:
 async def assignments_command(update: Update, context):
     api_base = settings.api_base_url
     user_id = update.effective_user.id
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with _api_client(timeout=30.0) as client:
         try:
             user_resp = await client.get(f"{api_base}/users/by_telegram/{user_id}")
         except httpx.RequestError:
@@ -3186,7 +3194,7 @@ async def submit_command(update: Update, context):
         await _reply_long(update, "❌ Invalid assignment ID. Use the full UUID from /assignments.")
         return
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with _api_client(timeout=30.0) as client:
         try:
             user_resp = await client.get(f"{api_base}/users/by_telegram/{update.effective_user.id}")
         except httpx.RequestError:
@@ -3237,7 +3245,7 @@ async def handle_document_upload(update: Update, context):
     user_id = update.effective_user.id
     api_base = settings.api_base_url
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with _api_client(timeout=30.0) as client:
         try:
             user_resp = await client.get(f"{api_base}/users/by_telegram/{user_id}")
         except httpx.RequestError:
@@ -3275,7 +3283,7 @@ async def handle_document_upload(update: Update, context):
 
     title = file_name.rsplit(".", 1)[0] if "." in file_name else file_name
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
+    async with _api_client(timeout=120.0) as client:
         files = {"file": (file_name, file_bytes, doc.mime_type or "application/octet-stream")}
         params = {
             "workspace_id": workspace_id,

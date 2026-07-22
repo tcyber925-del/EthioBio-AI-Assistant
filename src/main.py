@@ -49,6 +49,7 @@ from src.api.graph import router as graph_router
 from src.api.intelligence.continue_learning_router import (
     router as continue_learning_router,
 )
+from src.api.internal import router as internal_router
 from src.api.models import router as models_router
 from src.api.retrieval import router as retrieval_router
 from src.config import settings
@@ -402,6 +403,7 @@ app.include_router(assignment.router)
 app.include_router(bookmark.router)
 app.include_router(agent_orchestrator.router)
 app.include_router(auth.router)
+app.include_router(internal_router)
 
 app.include_router(parent.router)
 
