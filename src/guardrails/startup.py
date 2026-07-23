@@ -18,7 +18,10 @@ async def run_startup_checks() -> list[str]:
         )
 
     if settings.secret_key in ("change-me", "dev-secret-key-change-in-production"):
-        warnings.append("SECRET_KEY is set to a default/development value — change in production")
+        raise SystemExit(
+            "FATAL: SECRET_KEY is set to a default value. "
+            "Generate a strong secret: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+        )
 
     if settings.telegram_webhook_url and not settings.telegram_webhook_secret:
         warnings.append("TELEGRAM_WEBHOOK_URL is set but TELEGRAM_WEBHOOK_SECRET is empty")
