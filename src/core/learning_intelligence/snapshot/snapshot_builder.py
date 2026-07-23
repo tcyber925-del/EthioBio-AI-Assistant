@@ -28,8 +28,9 @@ class SnapshotBuilder:
     ]
 
     async def build(self, session: AsyncSession, user_id: str | UUID) -> LearnerSnapshot:
+        uid = UUID(user_id) if isinstance(user_id, str) else user_id
         results = await asyncio.gather(
-            *(loader(session, user_id) for _, loader in self.LOADERS),
+            *(loader(session, uid) for _, loader in self.LOADERS),
             return_exceptions=True,
         )
 
@@ -48,7 +49,7 @@ class SnapshotBuilder:
         snapshot_kwargs.pop("learning_goals", None)
 
         return LearnerSnapshot(
-            user_id=user_id,
+            user_id=uid,
             generated_at=datetime.now(timezone.utc),
             educational_memory=edu_memory or EducationalMemorySummary(),
             learning_goals=learning_goals,

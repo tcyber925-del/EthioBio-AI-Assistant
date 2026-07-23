@@ -1,6 +1,7 @@
 import asyncio
 from collections.abc import AsyncGenerator
 from typing import Optional, Union
+from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
@@ -115,9 +116,10 @@ async def _build_context(
     mem_session = None
     socratic_state_rec = None
     conversation_messages: list[dict] = []
-    if user_id:
+    uid = UUID(user_id) if user_id else None
+    if uid:
         mem_session = await session_manager.get_or_create_active_session(
-            user_id,
+            uid,
             topic=request.topic,
             db=session,
         )
@@ -126,13 +128,13 @@ async def _build_context(
 
         if request.socratic_mode and request.topic and mem_session:
             socratic_state_rec = await socratic_manager.get_state(
-                user_id,
+                uid,
                 request.topic,
                 session,
             )
 
     memory_context = ""
-    if user_id and mem_session:
+    if uid and mem_session:
         memory_context = await context_assembler.assemble(
             user_id=user_id,
             topic=request.topic,
@@ -156,11 +158,11 @@ async def _build_context(
         )
 
     learner_profile_block = ""
-    if user_id:
+    if uid:
         try:
             package = await context_adapter.build(
                 session,
-                user_id,
+                uid,
                 current_topic=request.topic,
             )
             learner_profile_block = package.formatted_block
@@ -185,7 +187,7 @@ async def _handle_chat_stream(
     session: AsyncSession,
     current_user: Optional[User] = None,
 ) -> StreamingResponse:
-    user_id = request.user_id or (current_user.id if current_user else None)
+    user_id = str(request.user_id) if request.user_id else (str(current_user.id) if current_user else None)
 
     sanitized = _validate_input(request, user_id)
     if sanitized is None:
@@ -322,9 +324,10 @@ async def _persist_chat_history(
     socratic_state_rec=None,
 ) -> None:
     try:
-        if request.socratic_mode and request.topic:
+        uid = UUID(user_id) if user_id else None
+        if request.socratic_mode and request.topic and uid:
             await socratic_manager.update_state(
-                user_id=user_id,
+                user_id=uid,
                 topic=request.topic,
                 db=session,
                 updates={
@@ -348,12 +351,13 @@ async def _persist_chat_history(
         ]
         await session_manager.heartbeat(mem_session.session_id, session)
 
-        await event_logger.log(
-            user_id,
-            "tutor_interaction",
-            topic=request.topic,
-            db=session,
-        )
+        if uid:
+            await event_logger.log(
+                uid,
+                "tutor_interaction",
+                topic=request.topic,
+                db=session,
+            )
 
         await update_streak(user_id, session)
         xp_amount = XP_SOURCES.get("tutor_interaction", 5)
@@ -398,7 +402,7 @@ async def _handle_chat_blocking(
     session: AsyncSession,
     current_user: Optional[User] = None,
 ) -> TutorResponse:
-    user_id = request.user_id or (current_user.id if current_user else None)
+    user_id = str(request.user_id) if request.user_id else (str(current_user.id) if current_user else None)
 
     sanitized = _validate_input(request, user_id)
     if sanitized is None:
@@ -442,9 +446,10 @@ async def _handle_chat_blocking(
             logger.warning("output_guardrail_triggered", reasons=output_check.reasons)
             raise HTTPException(status_code=422, detail="Response blocked by output safety filter")
 
-        if request.socratic_mode and request.topic and user_id:
+        uid = UUID(user_id) if user_id else None
+        if request.socratic_mode and request.topic and uid:
             await socratic_manager.update_state(
-                user_id=user_id,
+                user_id=uid,
                 topic=request.topic,
                 db=session,
                 updates={
@@ -475,9 +480,9 @@ async def _handle_chat_blocking(
             ]
             await session_manager.heartbeat(mem_session.session_id, session)
 
-        if user_id:
+        if uid:
             await event_logger.log(
-                user_id,
+                uid,
                 "tutor_interaction",
                 topic=request.topic,
                 db=session,

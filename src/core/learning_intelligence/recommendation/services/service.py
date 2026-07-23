@@ -43,6 +43,7 @@ class RecommendationService:
         user_id: str | UUID,
     ) -> list[LearningRecommendation]:
         user_id_str = str(user_id)
+        uid = UUID(user_id_str) if isinstance(user_id, str) else user_id
         cached = await self._cache.get(user_id_str)
         if cached is not None:
             logger.info(CACHE_HIT, user_id=user_id)
@@ -50,20 +51,20 @@ class RecommendationService:
             return [LearningRecommendation(**r) for r in raw_list]
 
         logger.info(CACHE_MISS, user_id=user_id)
-        snapshot = await self._snapshot_service.get_snapshot(session, user_id)
+        snapshot = await self._snapshot_service.get_snapshot(session, uid)
 
         readiness_profile = None
         try:
             readiness_profile = await self._readiness_service.get_readiness(
                 session,
-                user_id,
+                uid,
             )
         except Exception:
             logger.warning("readiness_fetch_failed", user_id=user_id)
 
         recommendations = await self._engine.generate(
             snapshot,
-            user_id,
+            uid,
             readiness_profile=readiness_profile,
             session=session,
         )
