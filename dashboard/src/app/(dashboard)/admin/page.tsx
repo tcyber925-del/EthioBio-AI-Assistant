@@ -27,6 +27,7 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     fetchWithAuth('/api/admin/dashboard')
+      .then(res => res.json())
       .then(setData)
       .catch(err => setError(err instanceof Error ? err.message : String(err)))
   }, [])

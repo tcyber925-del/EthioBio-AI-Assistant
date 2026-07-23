@@ -38,7 +38,8 @@ export default function QuizDetailPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchWithAuth(`/api/quiz/${params.id}`)
+      const response = await fetchWithAuth(`/api/quiz/${params.id}`)
+      const data = await response.json()
       setQuiz(data)
     } catch (err: any) {
       setError(err.message)

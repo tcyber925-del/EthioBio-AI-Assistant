@@ -51,7 +51,8 @@ export default function UnitPlanDetailPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchWithAuth(`/api/lesson-plan/unit/${params.id}`)
+      const response = await fetchWithAuth(`/api/lesson-plan/unit/${params.id}`)
+      const data = await response.json()
       setPlan(data)
     } catch (err: any) {
       setError(err.message)

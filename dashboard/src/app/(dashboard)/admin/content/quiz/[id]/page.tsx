@@ -38,6 +38,7 @@ export default function AdminQuizDetailPage() {
 
   useEffect(() => {
     fetchWithAuth(`/api/admin/content/quiz/${id}`)
+      .then(res => res.json())
       .then(setQuiz)
       .catch(err => setError(err instanceof Error ? err.message : String(err)))
   }, [id])

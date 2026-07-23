@@ -39,7 +39,8 @@ export default function QuizzesPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchWithAuth(`/api/quiz?teacher_id=${getUserId()}`)
+      const response = await fetchWithAuth(`/api/quiz?teacher_id=${getUserId()}`)
+      const data = await response.json()
       setItems(data.items || [])
     } catch (err: any) {
       setError(err.message)
@@ -59,15 +60,17 @@ export default function QuizzesPage() {
     setGenMsg(null)
     try {
       const types = genType === 'mixed' ? ['multiple_choice', 'true_false'] : [genType]
-      const { task_id } = await fetchWithAuth(`/quiz/generate`, {
+      const genResponse = await fetchWithAuth(`/quiz/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ teacher_id: getUserId(), grade_level: genGrade, topic: genTopic, question_count: genCount, types, model: selectedModel }),
       })
+      const { task_id } = await genResponse.json()
 
       for (let i = 0; i < 120; i++) {
         await new Promise(r => setTimeout(r, 2000))
-        const task = await fetchWithAuth(`/quiz/generate/status/${task_id}`)
+        const taskResponse = await fetchWithAuth(`/quiz/generate/status/${task_id}`)
+        const task = await taskResponse.json()
         if (task.status === 'completed') {
           setShowModal(false)
           setGenTopic('')

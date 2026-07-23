@@ -29,7 +29,8 @@ export default function NewAssignmentPage() {
     setError(null)
     try {
       const userId = getUserId()
-      const workspaces = await fetchWithAuth(`/api/v1/workspaces?user_id=${userId}`)
+      const wsResponse = await fetchWithAuth(`/api/v1/workspaces?user_id=${userId}`)
+      const workspaces = await wsResponse.json()
       if (workspaces.length === 0) throw new Error('No workspace found')
 
       await fetchWithAuth(`/api/v1/assignments?teacher_id=${userId}`, {

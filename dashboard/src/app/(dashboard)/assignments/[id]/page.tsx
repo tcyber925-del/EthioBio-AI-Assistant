@@ -38,8 +38,8 @@ export default function AssignmentDetailPage() {
     setLoading(true); setError(null)
     try {
       const [a, subs] = await Promise.all([
-        fetchWithAuth(`/api/v1/assignments/${id}`),
-        isTeacher ? fetchWithAuth(`/api/v1/assignments/${id}/submissions`) : Promise.resolve([]),
+        fetchWithAuth(`/api/v1/assignments/${id}`).then(r => r.json()),
+        isTeacher ? fetchWithAuth(`/api/v1/assignments/${id}/submissions`).then(r => r.json()) : Promise.resolve([]),
       ])
       setAssignment(a); setSubmissions(subs)
     } catch (err: any) {

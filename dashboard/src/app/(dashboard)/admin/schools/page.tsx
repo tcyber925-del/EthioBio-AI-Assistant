@@ -28,7 +28,8 @@ export default function AdminSchoolsPage() {
 
   const load = async () => {
     try {
-      const data = await fetchWithAuth('/api/admin/schools')
+      const response = await fetchWithAuth('/api/admin/schools')
+      const data = await response.json()
       setSchools(data)
     } catch (err: any) {
       setError(err instanceof Error ? err.message : String(err))

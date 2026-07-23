@@ -42,7 +42,8 @@ export function MisconceptionPanel({ userId }: { userId: string }) {
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchWithAuth(`/api/misconceptions/${userId}/profile`)
+      const response = await fetchWithAuth(`/api/misconceptions/${userId}/profile`)
+      const data = await response.json()
       setProfile(data)
     } catch (err: any) {
       setError(err.message || 'Failed to fetch misconception profile')

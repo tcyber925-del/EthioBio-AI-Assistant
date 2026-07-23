@@ -46,8 +46,9 @@ export default function ReflectionTable({ refreshKey }: { refreshKey: number }) 
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchWithAuth('/agents/reflections?limit=20')
+      const response = await fetchWithAuth('/agents/reflections?limit=20')
       if (requestId === requestIdRef.current) {
+        const data = await response.json()
         setReflections(data as ReflectionInfo[])
       }
     } catch (err: unknown) {

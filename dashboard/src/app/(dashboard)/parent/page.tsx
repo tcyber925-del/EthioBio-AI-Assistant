@@ -84,6 +84,7 @@ export default function ParentDashboardPage() {
       return
     }
     fetchWithAuth('/api/parent/children')
+      .then(res => res.json())
       .then(data => {
         setChildren(data)
         if (data.length > 0) setSelectedId(data[0].student_id)
@@ -96,6 +97,7 @@ export default function ParentDashboardPage() {
     setLoadingProgress(true)
     setError(null)
     fetchWithAuth(`/api/parent/children/${childId}/progress`)
+      .then(res => res.json())
       .then(setProgress)
       .catch(err => setError(err.message))
       .finally(() => setLoadingProgress(false))
@@ -103,6 +105,7 @@ export default function ParentDashboardPage() {
 
   const loadSummary = useCallback((childId: string) => {
     fetchWithAuth(`/api/parent/children/${childId}/weekly-summary`)
+      .then(res => res.json())
       .then(setSummary)
       .catch(() => {})
   }, [])
@@ -118,6 +121,7 @@ export default function ParentDashboardPage() {
     if (!selectedId) return
     setGeneratingSummary(true)
     fetchWithAuth(`/api/parent/children/${selectedId}/weekly-summary?language=en`)
+      .then(res => res.json())
       .then(s => {
         setSummary(s)
         setGeneratingSummary(false)

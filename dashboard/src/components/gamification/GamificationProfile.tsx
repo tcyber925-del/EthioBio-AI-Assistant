@@ -55,7 +55,8 @@ export default function GamificationProfile({ userId }: { userId: string }) {
   const fetchProfile = async () => {
     setLoading(true)
     try {
-      const d = await fetchWithAuth(`/gamification/profile/${userId}`)
+      const response = await fetchWithAuth(`/gamification/profile/${userId}`)
+      const d = await response.json()
       setData(d)
       setError(null)
     } catch (err: unknown) {

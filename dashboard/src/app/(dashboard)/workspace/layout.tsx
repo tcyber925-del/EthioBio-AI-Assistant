@@ -18,7 +18,8 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
     try {
       const userId = getUserId()
       if (!userId) return
-      const list = await fetchWithAuth(`/api/v1/workspaces?user_id=${userId}`)
+      const response = await fetchWithAuth(`/api/v1/workspaces?user_id=${userId}`)
+      const list = await response.json()
       setWorkspaces(list)
       
       const savedId = localStorage.getItem('ethiobio_active_workspace_id')

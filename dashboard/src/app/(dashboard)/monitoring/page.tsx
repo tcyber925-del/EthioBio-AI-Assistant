@@ -32,10 +32,10 @@ export default function MonitoringPage() {
     setError(null)
     try {
       const [mon, dash, prov, active] = await Promise.all([
-        fetchWithAuth('/api/admin/monitoring'),
-        fetchWithAuth('/api/admin/dashboard'),
-        fetchWithAuth('/models/providers'),
-        fetchWithAuth('/models/active'),
+        fetchWithAuth('/api/admin/monitoring').then(r => r.json()),
+        fetchWithAuth('/api/admin/dashboard').then(r => r.json()),
+        fetchWithAuth('/models/providers').then(r => r.json()),
+        fetchWithAuth('/models/active').then(r => r.json()),
       ])
       setData(mon)
       setLogs(dash.recent_logs || [])

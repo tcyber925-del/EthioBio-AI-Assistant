@@ -45,7 +45,8 @@ export function ParentDashboard() {
   const fetchChildren = async () => {
     setLoading(true); setError(null)
     try {
-      const d = await fetchWithAuth('/api/parent/children')
+      const response = await fetchWithAuth('/api/parent/children')
+      const d = await response.json()
       setChildren(d.children || [])
       if (d.children?.length > 0) {
         setSelectedId(d.children[0].student_id)
@@ -61,8 +62,8 @@ export function ParentDashboard() {
     setSummary(null)
     try {
       const [p, s] = await Promise.allSettled([
-        fetchWithAuth(`/api/parent/children/${studentId}/progress`),
-        fetchWithAuth(`/api/parent/children/${studentId}/weekly-summary`),
+        fetchWithAuth(`/api/parent/children/${studentId}/progress`).then(r => r.json()),
+        fetchWithAuth(`/api/parent/children/${studentId}/weekly-summary`).then(r => r.json()),
       ])
       if (p.status === 'fulfilled') setProgress(p.value)
       if (s.status === 'fulfilled') setSummary(s.value)

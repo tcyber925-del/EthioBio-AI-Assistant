@@ -59,6 +59,7 @@ export default function AdminLessonDetailPage() {
 
   useEffect(() => {
     fetchWithAuth(`/api/admin/content/lesson/${id}`)
+      .then(res => res.json())
       .then(setLesson)
       .catch(err => setError(err instanceof Error ? err.message : String(err)))
   }, [id])

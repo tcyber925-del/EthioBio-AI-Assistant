@@ -34,11 +34,12 @@ export default function ExecutionPanel({ agents, onExecute }: ExecutionPanelProp
     setError(null)
     setResult(null)
     try {
-      const data = await fetchWithAuth('/agents/execute', {
+      const response = await fetchWithAuth('/agents/execute', {
         method: 'POST',
         body: JSON.stringify({ task: task.trim(), preferred_agent: selectedAgent }),
         headers: { 'Content-Type': 'application/json' },
       })
+      const data = await response.json()
       setResult(data as ExecutionResult)
       onExecute()
     } catch (err: unknown) {

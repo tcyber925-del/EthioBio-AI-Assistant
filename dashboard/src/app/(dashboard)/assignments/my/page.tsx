@@ -24,7 +24,8 @@ export default function MyAssignmentsPage() {
     setLoading(true); setError(null)
     try {
       const userId = getUserId()
-      const list = await fetchWithAuth(`/api/v1/assignments/my?student_id=${userId}`)
+      const response = await fetchWithAuth(`/api/v1/assignments/my?student_id=${userId}`)
+      const list = await response.json()
       setAssignments(list)
     } catch (err: any) {
       setError(err.message || 'Failed to load assignments')

@@ -45,9 +45,10 @@ export default function AdminReviewPage() {
     setLoading(true)
     setError(null)
     try {
-      const data: ReviewListResponse = await fetchWithAuth(
+      const response = await fetchWithAuth(
         `/api/admin/review?status=${filter}&limit=50`
       )
+      const data: ReviewListResponse = await response.json()
       setItems(data.traces)
       setTotal(data.total)
     } catch (err) {

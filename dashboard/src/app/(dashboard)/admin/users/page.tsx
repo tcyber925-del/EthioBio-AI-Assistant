@@ -43,7 +43,8 @@ export default function AdminUsersPage() {
       if (role !== 'all') params.set('role', role)
       params.set('page', String(page))
       params.set('per_page', String(perPage))
-      const data = await fetchWithAuth(`/api/admin/users?${params}`)
+      const response = await fetchWithAuth(`/api/admin/users?${params}`)
+      const data = await response.json()
       setUsers(data.users || [])
       setTotal(data.total || 0)
     } catch (err: any) {

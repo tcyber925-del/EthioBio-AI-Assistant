@@ -108,8 +108,8 @@ export default function DigitalTwinPage() {
     setLoading(true)
     try {
       const [twin, fc] = await Promise.all([
-        fetchWithAuth(`/digital-twin/${userId}/dashboard`),
-        fetchWithAuth(`/digital-twin/${userId}/forecast`).catch(() => null),
+        fetchWithAuth(`/digital-twin/${userId}/dashboard`).then(r => r.json()),
+        fetchWithAuth(`/digital-twin/${userId}/forecast`).then(r => r.json()).catch(() => null),
       ])
       setData(twin)
       setForecast(fc)
@@ -124,7 +124,7 @@ export default function DigitalTwinPage() {
     if (!userId) return
     setRebuilding(true)
     try {
-      await fetchWithAuth(`/digital-twin/${userId}/rebuild`, { method: 'POST' }, 60000)
+      await fetchWithAuth(`/digital-twin/${userId}/rebuild`, { method: 'POST' })
       await fetchTwin()
     } catch {
       // ignore
@@ -137,10 +137,11 @@ export default function DigitalTwinPage() {
     if (!userId || simActions.length === 0) return
     setSimRunning(true)
     try {
-      const result = await fetchWithAuth(`/digital-twin/${userId}/simulate?weeks_ahead=4`, {
+      const simResponse = await fetchWithAuth(`/digital-twin/${userId}/simulate?weeks_ahead=4`, {
         method: 'POST',
         body: JSON.stringify(simActions),
       })
+      const result = await simResponse.json()
       setSimResult(result)
     } catch {
       setSimResult(null)

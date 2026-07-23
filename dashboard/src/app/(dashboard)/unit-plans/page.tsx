@@ -51,7 +51,8 @@ export default function UnitPlansPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchWithAuth(`/api/lesson-plan/unit/list`)
+      const response = await fetchWithAuth(`/api/lesson-plan/unit/list`)
+      const data = await response.json()
       setItems(data.items || [])
     } catch (err: any) {
       setError(err.message)
@@ -62,7 +63,8 @@ export default function UnitPlansPage() {
 
   const fetchClassrooms = async () => {
     try {
-      const data = await fetchWithAuth('/api/teacher/classrooms')
+      const classResponse = await fetchWithAuth('/api/teacher/classrooms')
+      const data = await classResponse.json()
       setClassrooms(data || [])
     } catch (err) {
       console.error('Failed to fetch classrooms', err)
@@ -80,7 +82,7 @@ export default function UnitPlansPage() {
     setGenerating(true)
     setGenMsg(null)
     try {
-      const data = await fetchWithAuth(`/lesson-plan/unit/generate`, {
+      const genResponse = await fetchWithAuth(`/lesson-plan/unit/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -96,7 +98,8 @@ export default function UnitPlansPage() {
           generate_misconception_activities: genMisconceptions,
           classroom_id: selectedClassroomId || null,
         }),
-      }, 180000)
+      })
+      const data = await genResponse.json()
       setShowModal(false)
       setGenTitle('')
       setGenTopic('')

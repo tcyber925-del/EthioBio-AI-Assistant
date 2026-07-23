@@ -29,7 +29,8 @@ export default function StudentsPage() {
     setLoading(true)
     setError(null)
     try {
-      const d = await fetchWithAuth('/api/teacher/students')
+      const response = await fetchWithAuth('/api/teacher/students')
+      const d = await response.json()
       setStudents(d || [])
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err))

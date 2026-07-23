@@ -37,8 +37,8 @@ export default function WorkspaceDashboard() {
     setError(null)
     try {
       const [assetList, collectionList] = await Promise.all([
-        fetchWithAuth(`/api/v1/knowledge?workspace_id=${activeWorkspace.id}`),
-        fetchWithAuth(`/api/v1/collections?workspace_id=${activeWorkspace.id}`),
+        fetchWithAuth(`/api/v1/knowledge?workspace_id=${activeWorkspace.id}`).then(r => r.json()),
+        fetchWithAuth(`/api/v1/collections?workspace_id=${activeWorkspace.id}`).then(r => r.json()),
       ])
       setAssets(assetList)
       setCollections(collectionList)

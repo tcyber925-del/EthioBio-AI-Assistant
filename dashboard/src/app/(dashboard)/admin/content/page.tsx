@@ -35,7 +35,8 @@ export default function AdminContentPage() {
       const params = new URLSearchParams()
       params.set('content_type', ct)
       if (status !== 'all') params.set('status', status)
-      const data = await fetchWithAuth(`/api/admin/content/review?${params}`)
+      const response = await fetchWithAuth(`/api/admin/content/review?${params}`)
+      const data = await response.json()
       return data.items || []
     }
     if (type === 'all') {

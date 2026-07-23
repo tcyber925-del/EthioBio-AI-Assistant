@@ -22,6 +22,7 @@ export default function AdminMonitoringPage() {
 
   useEffect(() => {
     fetchWithAuth('/api/admin/monitoring')
+      .then(res => res.json())
       .then(setData)
       .catch(err => setError(err instanceof Error ? err.message : String(err)))
   }, [])

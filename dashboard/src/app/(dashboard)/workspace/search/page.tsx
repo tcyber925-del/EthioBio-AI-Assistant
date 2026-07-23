@@ -33,9 +33,10 @@ export default function SearchGatewayPage() {
     setSearching(true)
     setError(null)
     try {
-      const list = await fetchWithAuth(
+      const response = await fetchWithAuth(
         `/api/v1/knowledge/search?q=${encodeURIComponent(query)}&workspace_id=${activeWorkspace.id}`
       )
+      const list = await response.json()
       setResults(list)
     } catch (err: any) {
       setError(err.message || 'Search execution failed')

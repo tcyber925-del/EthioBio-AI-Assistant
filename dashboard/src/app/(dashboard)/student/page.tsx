@@ -77,7 +77,8 @@ export default function StudentDashboardPage() {
     setLoading(true)
     setError(null)
     try {
-      const d = await fetchWithAuth('/api/student/dashboard')
+      const response = await fetchWithAuth('/api/student/dashboard')
+      const d = await response.json()
       setData(d)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err))

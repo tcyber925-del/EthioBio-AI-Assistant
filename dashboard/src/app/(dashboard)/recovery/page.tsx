@@ -227,7 +227,8 @@ export default function RecoveryPage() {
   const fetchDashboardData = async () => {
     setStudentsLoading(true)
     try {
-      const d = await fetchWithAuth('/api/teacher/students')
+      const response = await fetchWithAuth('/api/teacher/students')
+      const d = await response.json()
       setStudents(d || [])
     } catch (err: unknown) {
       console.error('Failed to load students for recovery:', err)
@@ -240,7 +241,8 @@ export default function RecoveryPage() {
     setLoading(true); setError(null); setData(null)
     setSelectedUserId(id)
     try {
-      const result = await fetchWithAuth(`/recovery/dashboard/${id}`)
+      const response = await fetchWithAuth(`/recovery/dashboard/${id}`)
+      const result = await response.json()
       setData(result)
     } catch (err: any) {
       setError(err.message)
@@ -256,7 +258,8 @@ export default function RecoveryPage() {
       const hist: TopicHistory = {}
       await Promise.all(data.weak_topics.map(async (wt) => {
         try {
-          const res = await fetchWithAuth(`/recovery/history/${data.user_id}/${encodeURIComponent(wt.topic)}`)
+          const histResponse = await fetchWithAuth(`/recovery/history/${data.user_id}/${encodeURIComponent(wt.topic)}`)
+          const res = await histResponse.json()
           if (res.history) hist[wt.topic] = res.history
         } catch { /* skip */ }
       }))

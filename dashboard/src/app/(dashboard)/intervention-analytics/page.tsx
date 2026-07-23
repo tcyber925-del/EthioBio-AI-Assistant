@@ -44,9 +44,9 @@ export default function InterventionAnalyticsPage() {
     setError(null)
     try {
       const [ins, lead, trendData] = await Promise.all([
-        fetchWithAuth('/api/interventions/learning-insights'),
-        fetchWithAuth('/api/interventions/analytics/leaderboard?limit=10'),
-        fetchWithAuth('/api/interventions/analytics/trends?months=6'),
+        fetchWithAuth('/api/interventions/learning-insights').then(r => r.json()),
+        fetchWithAuth('/api/interventions/analytics/leaderboard?limit=10').then(r => r.json()),
+        fetchWithAuth('/api/interventions/analytics/trends?months=6').then(r => r.json()),
       ])
       setInsights(ins)
       setLeaderboard(lead)

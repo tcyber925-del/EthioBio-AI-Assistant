@@ -90,6 +90,7 @@ export default function ClassroomOverviewPage() {
     setLoading(true)
     setError(null)
     fetchWithAuth(`/teacher/classrooms/${classroomId}/overview`)
+      .then(res => res.json())
       .then(d => setData(d))
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))

@@ -47,10 +47,12 @@ export default function BrowseAssetsPage() {
     setLoading(true)
     setError(null)
     try {
-      const assetList = await fetchWithAuth(`/api/v1/knowledge?workspace_id=${activeWorkspace.id}`)
+      const assetResponse = await fetchWithAuth(`/api/v1/knowledge?workspace_id=${activeWorkspace.id}`)
+      const assetList = await assetResponse.json()
       setAssets(assetList)
 
-      const collectionList = await fetchWithAuth(`/api/v1/collections?workspace_id=${activeWorkspace.id}`)
+      const collectionResponse = await fetchWithAuth(`/api/v1/collections?workspace_id=${activeWorkspace.id}`)
+      const collectionList = await collectionResponse.json()
       setCollections(collectionList)
     } catch (err: any) {
       setError(err.message || 'Failed to load assets and collections')

@@ -26,8 +26,9 @@ export default function AdminAgentsPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchWithAuth('/agents', { signal: controller.signal })
-      setAgents(data as AgentInfo[])
+      const response = await fetchWithAuth('/agents', { signal: controller.signal })
+      const data = await response.json() as AgentInfo[]
+      setAgents(data)
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return
       setError(err instanceof Error ? err.message : String(err))

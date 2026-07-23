@@ -51,7 +51,8 @@ export default function AssessmentStudioPage() {
   const fetchQuizzes = async () => {
     setLoadingList(true)
     try {
-      const data = await fetchWithAuth('/api/admin/content/review?type=quiz&status=published')
+      const response = await fetchWithAuth('/api/admin/content/review?type=quiz&status=published')
+      const data = await response.json()
       setQuizzes(data.items || [])
     } catch (err: any) {
       console.error(err)
@@ -93,16 +94,18 @@ export default function AssessmentStudioPage() {
         adaptive: adaptive,
       }
 
-      const { task_id } = await fetchWithAuth('/quiz/generate', {
+      const genResponse = await fetchWithAuth('/quiz/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
+      const { task_id } = await genResponse.json()
 
       let task: any
       for (let i = 0; i < 120; i++) {
         await new Promise(r => setTimeout(r, 2000))
-        task = await fetchWithAuth(`/quiz/generate/status/${task_id}`)
+        const taskResponse = await fetchWithAuth(`/quiz/generate/status/${task_id}`)
+        task = await taskResponse.json()
         if (task.status === 'completed') break
         if (task.status === 'failed') throw new Error(task.error || 'Generation failed')
       }

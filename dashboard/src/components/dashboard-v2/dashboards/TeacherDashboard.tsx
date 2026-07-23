@@ -39,7 +39,8 @@ export function TeacherDashboard() {
     const endpoint = role === 'admin' ? '/api/admin/dashboard' : '/api/teacher/dashboard'
     setLoading(true); setError(null)
     try {
-      const d = await fetchWithAuth(endpoint)
+      const response = await fetchWithAuth(endpoint)
+      const d = await response.json()
       setData(d)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err))

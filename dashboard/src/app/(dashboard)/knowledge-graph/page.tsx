@@ -71,7 +71,8 @@ export default function KnowledgeGraphPage() {
     setLoading(true)
     setError(null)
     try {
-      const topicData = await fetchWithAuth('/api/ekg/topics')
+      const topicResponse = await fetchWithAuth('/api/ekg/topics')
+      const topicData = await topicResponse.json()
       setTopics(topicData)
 
       // Pre-select first topic if available
@@ -81,7 +82,8 @@ export default function KnowledgeGraphPage() {
 
       // Try to load students for gap analysis
       try {
-        const studentData = await fetchWithAuth('/api/admin/dashboard')
+        const studentResponse = await fetchWithAuth('/api/admin/dashboard')
+        const studentData = await studentResponse.json()
         setStudents(studentData.recent_users?.filter((u: any) => u.role === 'student') || [])
       } catch {
         // Suppress failure, default to empty students list
@@ -101,16 +103,19 @@ export default function KnowledgeGraphPage() {
     setLoadingGraph(true)
     setError(null)
     try {
-      const prereqs = await fetchWithAuth(`/api/ekg/chain/${topicId}/prerequisites?max_depth=3`)
+      const prereqsResponse = await fetchWithAuth(`/api/ekg/chain/${topicId}/prerequisites?max_depth=3`)
+      const prereqs = await prereqsResponse.json()
       if (version !== fetchVersion.current) return
       setPrereqChain(prereqs)
 
-      const dependents = await fetchWithAuth(`/api/ekg/chain/${topicId}/dependents?max_depth=3`)
+      const dependentsResponse = await fetchWithAuth(`/api/ekg/chain/${topicId}/dependents?max_depth=3`)
+      const dependents = await dependentsResponse.json()
       if (version !== fetchVersion.current) return
       setDependentChain(dependents)
 
       if (studentId) {
-        const gaps = await fetchWithAuth(`/api/ekg/gap-analysis/${topicId}/${studentId}`)
+        const gapsResponse = await fetchWithAuth(`/api/ekg/gap-analysis/${topicId}/${studentId}`)
+        const gaps = await gapsResponse.json()
         if (version !== fetchVersion.current) return
         setGapAnalysis(gaps)
       } else {
@@ -177,7 +182,8 @@ export default function KnowledgeGraphPage() {
     setSuccess(null)
     try {
       // Find the edge in topic prerequisites list
-      const prereqs = await fetchWithAuth(`/api/ekg/prerequisites/${selectedTopicId}`)
+      const prereqsResponse = await fetchWithAuth(`/api/ekg/prerequisites/${selectedTopicId}`)
+      const prereqs = await prereqsResponse.json()
       const matching = prereqs.find((p: any) => p.prerequisite_topic_id === prereqId)
       if (!matching) {
         setDeleting(null)

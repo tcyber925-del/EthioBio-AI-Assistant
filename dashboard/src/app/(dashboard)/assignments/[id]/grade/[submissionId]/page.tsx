@@ -18,6 +18,7 @@ export default function GradeSubmissionPage() {
 
   useEffect(() => {
     fetchWithAuth(`/api/v1/assignments/submissions/${submissionId}`)
+      .then(res => res.json())
       .then(setSubmission)
       .catch(err => setError(err.message))
   }, [submissionId])

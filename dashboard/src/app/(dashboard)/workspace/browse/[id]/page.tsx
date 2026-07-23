@@ -54,7 +54,8 @@ export default function KnowledgeDetailPage() {
     if (!userId) return
     try {
       const res = await fetchWithAuth(`/api/v1/bookmarks/check?ko_id=${id}&user_id=${userId}`)
-      setBookmarked(res.bookmarked)
+      const bookmarkData = await res.json()
+      setBookmarked(bookmarkData.bookmarked)
     } catch { /* ignore */ }
   }
 
@@ -75,8 +76,8 @@ export default function KnowledgeDetailPage() {
     setError(null)
     try {
       const [ko, enc] = await Promise.all([
-        fetchWithAuth(`/api/v1/knowledge/${id}`),
-        fetchWithAuth(`/api/v1/knowledge/${id}/enrichment`),
+        fetchWithAuth(`/api/v1/knowledge/${id}`).then(r => r.json()),
+        fetchWithAuth(`/api/v1/knowledge/${id}/enrichment`).then(r => r.json()),
       ])
       setDetail(ko)
       setEnrichment(enc)
@@ -94,7 +95,8 @@ export default function KnowledgeDetailPage() {
     setLoadingContent(true)
     try {
       const res = await fetchWithAuth(`/api/v1/knowledge/${id}/content`)
-      setContent(res.content || '')
+      const contentData = await res.json()
+      setContent(contentData.content || '')
       setShowContent(true)
     } catch {
       setContent('Failed to load content.')

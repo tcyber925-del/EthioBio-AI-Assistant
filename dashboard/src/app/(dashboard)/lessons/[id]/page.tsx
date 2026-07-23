@@ -60,7 +60,8 @@ export default function LessonDetailPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchWithAuth(`/api/lesson-plan/${params.id}`)
+      const response = await fetchWithAuth(`/api/lesson-plan/${params.id}`)
+      const data = await response.json()
       setLesson(data)
     } catch (err: any) {
       setError(err.message)

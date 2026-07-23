@@ -25,8 +25,8 @@ export default function StudentAssignmentDetailPage() {
     const fetch = async () => {
       try {
         const [a, subs] = await Promise.all([
-          fetchWithAuth(`/api/v1/assignments/${id}`),
-          fetchWithAuth(`/api/v1/assignments/submissions/my?student_id=${userId}`),
+          fetchWithAuth(`/api/v1/assignments/${id}`).then(r => r.json()),
+          fetchWithAuth(`/api/v1/assignments/submissions/my?student_id=${userId}`).then(r => r.json()),
         ])
         setAssignment(a)
         setMySubmissions(subs.filter((s: any) => s.assignment_id === id))

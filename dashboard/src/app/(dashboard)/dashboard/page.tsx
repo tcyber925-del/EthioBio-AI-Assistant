@@ -54,7 +54,8 @@ export default function Dashboard() {
     setLoading(true)
     try {
       const endpoint = getUserRole() === 'admin' ? '/api/admin/dashboard' : '/api/teacher/dashboard'
-      const d = await fetchWithAuth(endpoint)
+      const response = await fetchWithAuth(endpoint)
+      const d = await response.json()
       setData(d)
       setError(null)
     } catch (err: unknown) {

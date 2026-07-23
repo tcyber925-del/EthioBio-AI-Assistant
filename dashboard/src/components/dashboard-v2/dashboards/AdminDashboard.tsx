@@ -37,7 +37,8 @@ export function AdminDashboard() {
   const fetchData = async () => {
     setLoading(true); setError(null)
     try {
-      const d = await fetchWithAuth('/api/admin/dashboard')
+      const response = await fetchWithAuth('/api/admin/dashboard')
+      const d = await response.json()
       setData(d)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err))

@@ -47,7 +47,8 @@ export function SchoolDashboard() {
   const fetchSchools = async () => {
     setLoading(true); setError(null)
     try {
-      const d = await fetchWithAuth('/teacher/schools')
+      const response = await fetchWithAuth('/teacher/schools')
+      const d = await response.json()
       const schoolsList = d.schools || d || []
       setSchools(schoolsList)
       if (schoolsList[0]?.id) setSelectedId(schoolsList[0].id)
@@ -61,8 +62,8 @@ export function SchoolDashboard() {
     setTrends([])
     try {
       const [p, t] = await Promise.allSettled([
-        fetchWithAuth(`/teacher/schools/${schoolId}/overview`),
-        fetchWithAuth(`/teacher/schools/${schoolId}/trends?days=30`),
+        fetchWithAuth(`/teacher/schools/${schoolId}/overview`).then(r => r.json()),
+        fetchWithAuth(`/teacher/schools/${schoolId}/trends?days=30`).then(r => r.json()),
       ])
       if (p.status === 'fulfilled') setProfile(p.value)
       if (t.status === 'fulfilled') setTrends(t.value.trends || t.value || [])
