@@ -3,7 +3,6 @@ from uuid import uuid4
 
 import bcrypt
 import pytest
-import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from src.api.auth import (
@@ -11,14 +10,12 @@ from src.api.auth import (
     _hash_password,
     _verify_password,
     decode_access_token,
-    get_current_user,
 )
 from src.config import settings
 from src.core.errors import AuthError
 from src.database.models import User, UserRole
 from src.database.session import get_session
 from src.main import app
-from src.redis_client import get_redis
 
 
 def test_hash_and_verify_password():
@@ -66,12 +63,28 @@ def test_different_tokens_for_different_users():
     assert token_a != token_b
 
 
-def test_otp_verify_rejects_missing_otp():
-    pass
+@pytest.mark.asyncio
+async def test_otp_verify_rejects_missing_otp():
+    redis_mock = _mock_redis()
+    _override_session(user=None)
+    transport = ASGITransport(app=app)
+
+    # Missing telegram_id
+    with patch("src.api.auth.get_redis", return_value=redis_mock):
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post("/auth/verify-otp", json={"otp": "123456"})
+    app.dependency_overrides.clear()
+    assert response.status_code == 422, f"Expected 422 got {response.status_code}: {response.text}"
+
+    # Empty body
+    with patch("src.api.auth.get_redis", return_value=redis_mock):
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post("/auth/verify-otp", json={})
+    app.dependency_overrides.clear()
+    assert response.status_code == 422, f"Expected 422 got {response.status_code}: {response.text}"
 
 
-def test_otp_request_rejects_unknown_telegram_id():
-    pass
+# Covered by test_request_otp_unknown_telegram_id_returns_404 (line 232)
 
 
 # ---------------------------------------------------------------------------
@@ -177,8 +190,9 @@ async def test_refresh_with_valid_cookie_returns_200():
     _override_session(user=_build_mock_user())
     transport = ASGITransport(app=app)
 
-    from jose import jwt as jose_jwt
     from datetime import datetime, timedelta, timezone
+
+    from jose import jwt as jose_jwt
     refresh_payload = {
         "sub": str(_USER_ID),
         "jti": "test-jti-123",
