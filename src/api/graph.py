@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.chat import handle_chat_request
 from src.core.monitoring import pipeline_monitor
 from src.database.session import get_session
-from src.schemas.chat import TutorRequest, TutorResponse
+from src.schemas.chat import TutorRequest
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/graph", tags=["Graph"])

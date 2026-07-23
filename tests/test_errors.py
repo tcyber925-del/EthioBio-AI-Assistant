@@ -1,4 +1,3 @@
-import pytest
 from src.core.errors import AppError, AuthError, ConflictError, NotFoundError, RateLimitError
 
 
