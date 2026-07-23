@@ -16,7 +16,7 @@ services:
         condition: service_started
     env_file: .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://ethiobio:ethiobio_pass@postgres:5432/ethiobio
+      DATABASE_URL: postgresql+asyncpg://${PG_USER:-ethiobio}:${PG_PASSWORD}@postgres:5432/${PG_DB:-ethiobio}
       REDIS_URL: redis://redis:6379/0
       OLLAMA_BASE_URL: http://ollama:11434
       OTEL_ENDPOINT: http://jaeger:4317
@@ -44,7 +44,7 @@ services:
         condition: service_started
     env_file: .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://ethiobio:ethiobio_pass@postgres:5432/ethiobio
+      DATABASE_URL: postgresql+asyncpg://${PG_USER:-ethiobio}:${PG_PASSWORD}@postgres:5432/${PG_DB:-ethiobio}
       REDIS_URL: redis://redis:6379/0
       OLLAMA_BASE_URL: http://ollama:11434
       OTEL_ENDPOINT: http://jaeger:4317
@@ -57,9 +57,9 @@ services:
     container_name: ethiobio-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ethiobio
-      POSTGRES_PASSWORD: ethiobio_pass
-      POSTGRES_DB: ethiobio
+      POSTGRES_USER: ${PG_USER:-ethiobio}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      POSTGRES_DB: ${PG_DB:-ethiobio}
     ports:
       - "5432:5432"
     volumes:
@@ -86,7 +86,7 @@ services:
       retries: 5
 
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:${OLLAMA_VERSION:-0.5.12}
     container_name: ethiobio-ollama
     restart: unless-stopped
     ports:
@@ -111,7 +111,7 @@ services:
         condition: service_started
     env_file: .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://ethiobio:ethiobio_pass@postgres:5432/ethiobio
+      DATABASE_URL: postgresql+asyncpg://${PG_USER:-ethiobio}:${PG_PASSWORD}@postgres:5432/${PG_DB:-ethiobio}
       REDIS_URL: redis://redis:6379/0
     command: sh -c "while true; do echo 'Running proactive reminders...'; python -m scripts.send_proactive_reminders; echo 'Sleeping 24h...'; sleep 86400; done"
 
@@ -157,8 +157,8 @@ services:
     depends_on:
       - prometheus
     environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: ethiobio
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
 
   dashboard:
     build:
