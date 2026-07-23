@@ -4,6 +4,7 @@ from collections.abc import AsyncGenerator
 import structlog
 
 from src.config import settings
+from src.llm.circuit_breaker import CircuitBreaker
 from src.llm.providers.anthropic_provider import AnthropicProvider
 from src.llm.providers.base import LLMProvider
 from src.llm.providers.ollama import OllamaProvider
@@ -22,7 +23,13 @@ class ProviderManager:
         self._fallback_chain: list[str] = []
         self._active_model: str = settings.ollama_chat_model
         self._registry = ModelRegistry()
+        self.breakers: dict[str, CircuitBreaker] = {}
         self._init_providers()
+
+    def _get_breaker(self, name: str) -> CircuitBreaker:
+        if name not in self.breakers:
+            self.breakers[name] = CircuitBreaker(name)
+        return self.breakers[name]
 
     def _init_providers(self):
         """Initialize all configured providers."""
@@ -130,6 +137,9 @@ class ProviderManager:
             provider = self._providers.get(provider_name)
             if not provider:
                 continue
+            breaker = self._get_breaker(provider_name)
+            if not breaker.is_available:
+                continue
             if not await provider.is_available():
                 continue
 
@@ -146,6 +156,7 @@ class ProviderManager:
                     temperature=temperature,
                     max_tokens=max_tokens,
                 )
+                breaker.record_success()
                 latency = int((time.monotonic() - start_time) * 1000)
 
                 logger.info(
@@ -164,6 +175,7 @@ class ProviderManager:
                 }
             except Exception as e:
                 last_error = str(e)
+                breaker.record_failure()
                 logger.warning(
                     "provider_manager_provider_failed",
                     provider=provider_name,
@@ -205,6 +217,9 @@ class ProviderManager:
             provider = self._providers.get(provider_name)
             if not provider:
                 continue
+            breaker = self._get_breaker(provider_name)
+            if not breaker.is_available:
+                continue
             if not await provider.is_available():
                 continue
 
@@ -222,9 +237,11 @@ class ProviderManager:
                     max_tokens=max_tokens,
                 ):
                     yield token
+                breaker.record_success()
                 return  # success
             except Exception as e:
                 last_error = str(e)
+                breaker.record_failure()
                 logger.warning(
                     "provider_manager_stream_failed",
                     provider=provider_name,
