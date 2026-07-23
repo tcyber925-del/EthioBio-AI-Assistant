@@ -6,14 +6,14 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        background: 'var(--background)',
-        'background-secondary': 'var(--background-secondary)',
-        foreground: 'var(--foreground)',
-        'foreground-muted': 'var(--foreground-muted)',
-        border: 'var(--border)',
-        'border-light': 'var(--border-light)',
-        card: 'var(--card)',
-        'card-hover': 'var(--card-hover)',
+        background: 'var(--v2-bg)',
+        'background-secondary': 'var(--v2-surface)',
+        foreground: 'var(--v2-text-primary)',
+        'foreground-muted': 'var(--v2-text-secondary)',
+        border: 'var(--v2-border)',
+        'border-light': 'var(--v2-border-strong)',
+        card: 'var(--v2-surface)',
+        'card-hover': 'color-mix(in srgb, var(--v2-surface) 97%, var(--v2-text-primary) 3%)',
         primary: {
           DEFAULT: '#10b981',
           50: '#ecfdf5',
