@@ -1,56 +1,29 @@
-const TOKEN_KEY = 'ethiobio_token'
-
-export interface AuthUser {
-  user_id: string
-  email: string
-  role: string
+export function isAuthenticated(): boolean {
+  const tokenMatch = document.cookie.includes("access_token=");
+  const flagMatch = document.cookie.includes("auth_ready=1");
+  return tokenMatch && flagMatch;
 }
 
 export function getToken(): string | null {
-  if (typeof window === 'undefined') return null
-  return localStorage.getItem(TOKEN_KEY)
+  return null;
 }
 
 export function setToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token)
 }
 
 export function clearToken(): void {
-  localStorage.removeItem(TOKEN_KEY)
+  fetch("/auth/logout", { method: "POST", credentials: "include" });
 }
 
-export function decodeToken(token: string): Record<string, any> | null {
-  try {
-    const payload = token.split('.')[1]
-    return JSON.parse(atob(payload))
-  } catch {
-    return null
-  }
-}
-
-export function isAuthenticated(): boolean {
-  const token = getToken()
-  if (!token) return false
-  const payload = decodeToken(token)
-  if (!payload) return false
-  const exp = payload.exp as number
-  if (Date.now() >= exp * 1000) {
-    clearToken()
-    return false
-  }
-  return true
+export function decodeToken(): { sub?: string; role?: string } | null {
+  return null;
 }
 
 export function getUserId(): string | null {
-  const token = getToken()
-  if (!token) return null
-  const payload = decodeToken(token)
-  return payload?.sub || null
+  return null;
 }
 
-export function getUserRole(): string | null {
-  const token = getToken()
-  if (!token) return null
-  const payload = decodeToken(token)
-  return payload?.role || null
+export function getUserRole(): string {
+  const match = document.cookie.match(/(?:^|;\s*)user_role=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : "";
 }
