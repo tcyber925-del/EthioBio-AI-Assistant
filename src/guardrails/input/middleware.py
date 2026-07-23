@@ -1,7 +1,6 @@
 import structlog
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from redis.asyncio import Redis
 
 from src.core.errors import RateLimitError
 from src.guardrails.input.rate_limiter import TieredRateLimiter
@@ -12,8 +11,8 @@ logger = structlog.get_logger()
 SKIP_PATHS = frozenset({"/health", "/liveness", "/readiness", "/metrics", "/ping"})
 
 
-def add_rate_limit_middleware(app: FastAPI, redis_client: Redis):
-    limiter = TieredRateLimiter(redis_client)
+def add_rate_limit_middleware(app: FastAPI, redis_url: str):
+    limiter = TieredRateLimiter(redis_url)
 
     @app.middleware("http")
     async def rate_limit_middleware(request: Request, call_next):

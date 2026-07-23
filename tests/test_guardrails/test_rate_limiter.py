@@ -1,13 +1,14 @@
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
+from src.config import settings
 from src.guardrails.input.rate_limiter import TieredRateLimiter
 
 
 @pytest.mark.asyncio
 async def test_tier_resolution():
-    limiter = TieredRateLimiter(MagicMock())
+    limiter = TieredRateLimiter()
     assert limiter.resolve_tier("/auth/login", "POST") == "auth"
     assert limiter.resolve_tier("/auth/request-otp", "POST") == "otp"
     assert limiter.resolve_tier("/auth/verify-otp", "POST") == "otp"
@@ -18,13 +19,15 @@ async def test_tier_resolution():
 
 
 @pytest.mark.asyncio
-async def test_rate_limit_allowed():
+async def test_rate_limit_allowed(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(settings, "rate_limit_enabled", True)
     mock_redis = AsyncMock()
     mock_redis.zremrangebyscore.return_value = 0
     mock_redis.zcard.return_value = 0
     mock_redis.zadd.return_value = 1
 
-    limiter = TieredRateLimiter(mock_redis)
+    limiter = TieredRateLimiter()
+    limiter._redis = mock_redis
     allowed, headers = await limiter.check_and_get_headers("test_key", "/auth/login", "POST")
     assert allowed
     assert "X-RateLimit-Limit" in headers
@@ -32,12 +35,14 @@ async def test_rate_limit_allowed():
 
 
 @pytest.mark.asyncio
-async def test_rate_limit_blocked():
+async def test_rate_limit_blocked(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(settings, "rate_limit_enabled", True)
     mock_redis = AsyncMock()
     mock_redis.zremrangebyscore.return_value = 0
     mock_redis.zcard.return_value = 5
 
-    limiter = TieredRateLimiter(mock_redis)
+    limiter = TieredRateLimiter()
+    limiter._redis = mock_redis
     allowed, headers = await limiter.check_and_get_headers("test_key", "/auth/login", "POST")
     assert not allowed
     assert headers["X-RateLimit-Remaining"] == "0"

@@ -338,8 +338,7 @@ async def security_headers_middleware(request: Request, call_next):
     return response
 
 
-_redis = Redis.from_url(settings.redis_url)
-add_rate_limit_middleware(app, _redis)
+add_rate_limit_middleware(app, settings.redis_url)
 
 _dev_origins = [
     "http://localhost:3000",

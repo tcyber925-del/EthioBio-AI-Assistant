@@ -1,4 +1,3 @@
-import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -16,13 +15,6 @@ def _compile_array_sqlite(element, compiler, **kw):
     return compiler.visit_text(Text(), **kw)
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
-
-
 @pytest_asyncio.fixture
 async def db_session():
     engine = create_async_engine("sqlite+aiosqlite://", echo=False)
@@ -32,6 +24,11 @@ async def db_session():
     async with factory() as session:
         yield session
     await engine.dispose()
+
+
+@pytest.fixture(autouse=True)
+def _disable_rate_limit(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr("src.config.settings.rate_limit_enabled", False)
 
 
 @pytest.fixture
