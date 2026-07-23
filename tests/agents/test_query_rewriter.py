@@ -58,9 +58,9 @@ class TestRewrittenQuery:
     def test_priority_range(self):
         RewrittenQuery(query="low", priority=1)
         RewrittenQuery(query="high", priority=10)
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError, match="Input should be greater than or equal to 1"):
             RewrittenQuery(query="too low", priority=0)
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError, match="Input should be less than or equal to 10"):
             RewrittenQuery(query="too high", priority=11)
 
     def test_serialization(self):
@@ -99,9 +99,9 @@ class TestQueryBundle:
     def test_coverage_range(self):
         QueryBundle(original_query="t", estimated_coverage=0.0)
         QueryBundle(original_query="t", estimated_coverage=1.0)
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError, match="Input should be greater than or equal to 0"):
             QueryBundle(original_query="t", estimated_coverage=-0.1)
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError, match="Input should be less than or equal to 1"):
             QueryBundle(original_query="t", estimated_coverage=1.1)
 
 

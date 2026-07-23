@@ -19,20 +19,20 @@ NOW = datetime.now(timezone.utc)
 
 
 def _snapshot(**overrides) -> LearnerSnapshot:
-    defaults = dict(
-        user_id=USER_ID,
-        generated_at=NOW,
-        mastery_by_topic={},
-        ability_by_topic={},
-        weak_topics=[],
-        strong_topics=[],
-        misconceptions=[],
-        active_recovery_plans=[],
-        due_reviews=[],
-        educational_memory=EducationalMemorySummary(),
-        gamification=GamificationSummary(),
-        learning_goals=[],
-    )
+    defaults = {
+        "user_id": USER_ID,
+        "generated_at": NOW,
+        "mastery_by_topic": {},
+        "ability_by_topic": {},
+        "weak_topics": [],
+        "strong_topics": [],
+        "misconceptions": [],
+        "active_recovery_plans": [],
+        "due_reviews": [],
+        "educational_memory": EducationalMemorySummary(),
+        "gamification": GamificationSummary(),
+        "learning_goals": [],
+    }
     defaults.update(overrides)
     return LearnerSnapshot(**defaults)
 

@@ -19,7 +19,22 @@ python_files = ["test_*.py"]
 markers = [
     "smoke: quick smoke-test scenarios",
     "integration: integration and journey tests",
+    "slow: tests requiring external services (Ollama, etc.) - excluded from CI",
 ]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["src/agents/*", "src/ingestion/*", "src/notifications/templates/*"]
+concurrency = ["asyncio"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise SystemExit",
+    "if __name__ == .__main__.:",
+]
+fail_under = 50
 
 [tool.ruff]
 line-length = 100
@@ -33,16 +48,32 @@ extend-exclude = [
 ]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W"]
+select = ["E", "F", "I", "N", "W", "B", "C4", "PT", "S"]
 
 [tool.ruff.lint.per-file-ignores]
-"src/agents/*" = ["E501"]
+"src/agents/*" = ["E501", "S101", "S110"]
 "src/evaluation/*" = ["E501"]
 "src/graph/*" = ["E501"]
-"tests/*" = ["E501", "N803", "N806"]
+"tests/*" = ["E501", "N803", "N806", "S101", "S105", "S106", "S110", "S311"]
+"src/api/*" = ["B008", "B904", "S110"]
+"src/core/memory/router.py" = ["B008", "B904"]
+"src/core/workspace/dependencies.py" = ["B904"]
+"src/config.py" = ["S105"]
+"src/main.py" = ["E402", "S104"]
+"src/core/event_infrastructure/consumer.py" = ["S101"]
+"src/llm/ollama_client.py" = ["B904"]
+"src/llm/providers/ollama.py" = ["S110"]
+"src/guardrails/input/middleware.py" = ["S110"]
+"src/core/pipeline/service.py" = ["S110"]
+"src/core/memory/cross_session_recall.py" = ["S110"]
+"src/core/learning_intelligence/tests/*" = ["S101"]
+"src/rag/pgvector_store.py" = ["S608", "B905"]
+"src/retrieval/bm25.py" = ["S301"]
+"src/retrieval/adapter.py" = ["B007"]
+"src/services/icon_library.py" = ["S310"]
+"src/telegram/bot.py" = ["S311"]
 "alembic/*" = ["E501", "E402"]
 "evaluation/*" = ["E501", "F841"]
-"src/main.py" = ["E402"]
 "scripts/*" = ["E501", "E402", "E701", "F841", "F821", "E741", "N806"]
 
 [tool.mypy]
@@ -52,4 +83,4 @@ ignore_missing_imports = true
 explicit_package_bases = true
 implicit_optional = true
 warn_unused_ignores = false
-disable_error_code = ["call-arg", "arg-type", "attr-defined", "dict-item", "misc", "union-attr", "valid-type", "var-annotated", "assignment", "return-value"]
+disable_error_code = ["attr-defined", "dict-item", "misc", "union-attr", "valid-type", "var-annotated", "assignment"]

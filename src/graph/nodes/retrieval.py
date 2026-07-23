@@ -88,7 +88,7 @@ class RetrievalNode:
             all_raw.extend(results)
 
         # Round 3: no filter (only if we still need more)
-        if len(set(r.content[:80] for r in all_raw)) < 6:
+        if len({r.content[:80] for r in all_raw}) < 6:
             self._push_status(state, "Searching broader curriculum...")
             fallback = await self.adapter.search(
                 query, n_results=N_RESULTS, filter_obj=RetrievalFilter()

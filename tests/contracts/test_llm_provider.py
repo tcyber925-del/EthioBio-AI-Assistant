@@ -5,6 +5,8 @@ These tests do NOT instantiate a real provider — they validate
 that the abstract interface contract is sound.
 """
 
+import pytest
+
 from src.llm.providers.base import LLMProvider
 
 
@@ -28,11 +30,8 @@ def test_llm_provider_has_all_abstract_methods():
 
 def test_llm_provider_cannot_be_instantiated():
     """LLMProvider ABC raises TypeError on direct instantiation."""
-    try:
+    with pytest.raises(TypeError):
         LLMProvider()  # type: ignore
-        assert False, "Should have raised TypeError"
-    except TypeError:
-        pass
 
 
 def test_chat_response_has_required_fields():

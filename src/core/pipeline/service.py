@@ -35,7 +35,7 @@ class PipelineError(Exception):
 def _chunk_text(text: str, ko_id: str, max_chars: int = 1500) -> list[dict]:
     paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
     chunks: list[dict] = []
-    for i, para in enumerate(paragraphs):
+    for _i, para in enumerate(paragraphs):
         if len(para) <= max_chars:
             chunks.append({"text": para, "heading": "", "page_number": None})
         else:

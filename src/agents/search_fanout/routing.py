@@ -111,5 +111,5 @@ def derive_strategy(query_groups: dict[str, list[str]]) -> RetrievalStrategy:
         strategy_name=name,
         retrieval_mode=mode,
         parallel_execution=parallel,
-        expected_sources=list(set(_resolve_source(s) for s in expected)),
+        expected_sources=list({_resolve_source(s) for s in expected}),
     )

@@ -218,7 +218,7 @@ class MisconceptionProfiler:
         )
         patterns = list(patterns_result.scalars().all())
 
-        students_with_misconceptions = len(set(p.user_id for p in patterns))
+        students_with_misconceptions = len({p.user_id for p in patterns})
 
         topic_data: dict[str, dict] = {}
         for p in patterns:

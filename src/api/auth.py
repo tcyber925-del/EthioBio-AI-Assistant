@@ -1,5 +1,4 @@
 import asyncio
-import random
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -331,7 +330,7 @@ async def request_otp(body: OtpRequest, session: AsyncSession = Depends(get_sess
     if not user or not user.is_active:
         raise NotFoundError("telegram_id", "User not found for this Telegram ID")
 
-    code = f"{random.randint(100000, 999999)}"
+    code = f"{secrets.randbelow(900000) + 100000}"
     redis_conn = await get_redis()
     await redis_conn.setex(f"otp:{body.telegram_id}", 300, code)
 

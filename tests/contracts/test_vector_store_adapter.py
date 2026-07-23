@@ -67,8 +67,5 @@ def test_vector_store_adapter_has_search_method():
 
 def test_vector_store_adapter_is_swappable():
     """VectorStoreAdapter can be constructed with minimal deps."""
-    try:
-        adapter = VectorStoreAdapter.__new__(VectorStoreAdapter)
-        assert isinstance(adapter, VectorStoreAdapter)
-    except Exception as e:
-        assert False, f"VectorStoreAdapter instantiation failed: {e}"
+    adapter = VectorStoreAdapter.__new__(VectorStoreAdapter)
+    assert isinstance(adapter, VectorStoreAdapter)

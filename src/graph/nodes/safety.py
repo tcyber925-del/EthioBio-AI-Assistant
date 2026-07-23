@@ -70,7 +70,7 @@ def _verify_citations(text: str, grade_level: int | None = None) -> list[str]:
     """Verify that citations in the response are plausible. Returns list of issues found."""
     issues = []
     citations = CITATION_RE.findall(text)
-    for cited_grade, cited_unit, cited_section, cited_page in citations:
+    for cited_grade, cited_unit, cited_section, _cited_page in citations:
         cited_grade_num = int(cited_grade)
         if cited_grade_num < 7 or cited_grade_num > 12:
             issues.append(f"Hallucinated citation: Grade {cited_grade_num} is outside 7-12 range")

@@ -124,7 +124,7 @@ async def test_build_merges_all_loader_data(mock_session):
 
 async def test_build_all_loaders_return_none_produces_empty_snapshot(mock_session):
     user_id = uuid4()
-    loaders = _make_loaders({name: None for name in LOADER_NAMES})
+    loaders = _make_loaders(dict.fromkeys(LOADER_NAMES, None))
 
     builder = SnapshotBuilder()
     builder.LOADERS = loaders

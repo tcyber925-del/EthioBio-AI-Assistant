@@ -875,11 +875,8 @@ def test_diagram_schema_validates_difficulty():
     valid = DiagramGenerateRequest(prompt="Test", topic="cells", difficulty="advanced")
     assert valid.difficulty == "advanced"
 
-    try:
+    with pytest.raises(ValidationError):
         DiagramGenerateRequest(prompt="Test", topic="cells", difficulty="expert")
-        assert False, "Should have raised ValidationError"
-    except ValidationError:
-        pass
 
 
 def test_diagram_validate_request_schema():
@@ -906,7 +903,7 @@ def test_diagram_validate_request_schema():
             topic="cells",
             difficulty="invalid",
         )
-        assert False, "Should have raised ValidationError"
+        pytest.fail("Should have raised ValidationError")
     except ValidationError:
         pass
 

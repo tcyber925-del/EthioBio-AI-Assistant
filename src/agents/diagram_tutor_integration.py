@@ -124,7 +124,6 @@ DIAGRAM_KEYWORDS = frozenset(
         "eye",
         "ear",
         "leaf",
-        "flower",
         "stem",
         "root",
         "chloroplast",

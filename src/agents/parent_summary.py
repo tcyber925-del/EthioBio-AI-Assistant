@@ -49,7 +49,7 @@ class ParentSummaryAgent(BaseAgent):
         else:
             avg_score = 0
 
-        topics = set(r.topic for r in records) if records else set()
+        topics = {r.topic for r in records} if records else set()
         is_low = avg_score < 60
 
         if language == "am":

@@ -66,7 +66,7 @@ async def get_quiz_recommendations(user_id, session: AsyncSession = Depends(get_
     try:
         weak_topics = await get_weak_topics(user_id, session)
         recommendations: list[QuizRecommendation] = []
-        for i, wt in enumerate(weak_topics):
+        for _i, wt in enumerate(weak_topics):
             severity = wt["severity"]
             avg = wt["average_score"]
             if severity == "critical":
@@ -426,7 +426,7 @@ async def submit_quiz(request: QuizSubmitRequest, session: AsyncSession = Depend
         recommendations: list[QuizRecommendation] = []
         try:
             fresh_weak = await get_weak_topics(request.user_id, session)
-            for i, wt in enumerate(fresh_weak):
+            for _i, wt in enumerate(fresh_weak):
                 sev = wt["severity"]
                 if sev == "critical":
                     rec_diff = "easy"

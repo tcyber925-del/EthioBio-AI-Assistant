@@ -42,7 +42,7 @@ class SchoolService:
         class_results = await asyncio.gather(*readiness_tasks, return_exceptions=True)
 
         valid_classes = []
-        for cg, result in zip(class_groups, class_results):
+        for cg, result in zip(class_groups, class_results, strict=False):
             if isinstance(result, list):
                 valid_classes.append((cg, result))
             elif isinstance(result, Exception):
@@ -246,7 +246,7 @@ class SchoolService:
         all_teachers = 0
         health_scores: list[float] = []
 
-        for school, profile_or_err in zip(schools, profiles):
+        for school, profile_or_err in zip(schools, profiles, strict=False):
             if isinstance(profile_or_err, Exception):
                 logger.warning(
                     "school_overview_failed",

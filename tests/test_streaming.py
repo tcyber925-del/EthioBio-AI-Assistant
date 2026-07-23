@@ -240,7 +240,8 @@ class TestSSEFormat:
         assert chunks[0].startswith("data: ")
         assert chunks[0].endswith("\n\n")
         assert '"delta": "Hello"' in chunks[0]
-        assert chunks[1].startswith("data: ") and chunks[1].endswith("\n\n")
+        assert chunks[1].startswith("data: ")
+        assert chunks[1].endswith("\n\n")
 
 
 # ---------------------------------------------------------------------------

@@ -36,7 +36,7 @@ class SnapshotBuilder:
         snapshot_kwargs: dict = {}
         degraded_sources: list[str] = []
 
-        for (source_name, _), result in zip(self.LOADERS, results):
+        for (source_name, _), result in zip(self.LOADERS, results, strict=False):
             if isinstance(result, BaseException):
                 degraded_sources.append(source_name)
             elif result is not None:

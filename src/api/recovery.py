@@ -89,7 +89,7 @@ async def _stream_events(
 MILESTONE_EMAIL_THRESHOLD = 10.0
 _MILESTONE_EMAIL_TITLE = "Milestone Achieved!"
 _TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "..", "notifications", "templates")
-_TEMPLATE_ENV = Environment(loader=FileSystemLoader(_TEMPLATE_DIR))
+_TEMPLATE_ENV = Environment(loader=FileSystemLoader(_TEMPLATE_DIR), autoescape=True)
 
 
 @router.post("/plan", response_model=RecoveryPlanResponse)

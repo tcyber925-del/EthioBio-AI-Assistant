@@ -23,20 +23,20 @@ from src.core.learning_intelligence.tutor.learner_profile_builder import (
 
 
 def _snapshot(**overrides) -> LearnerSnapshot:
-    defaults = dict(
-        user_id=uuid4(),
-        generated_at=datetime.now(timezone.utc),
-        mastery_by_topic={},
-        ability_by_topic={},
-        weak_topics=[],
-        strong_topics=[],
-        misconceptions=[],
-        active_recovery_plans=[],
-        due_reviews=[],
-        educational_memory=EducationalMemorySummary(),
-        gamification=GamificationSummary(),
-        learning_goals=[],
-    )
+    defaults = {
+        "user_id": uuid4(),
+        "generated_at": datetime.now(timezone.utc),
+        "mastery_by_topic": {},
+        "ability_by_topic": {},
+        "weak_topics": [],
+        "strong_topics": [],
+        "misconceptions": [],
+        "active_recovery_plans": [],
+        "due_reviews": [],
+        "educational_memory": EducationalMemorySummary(),
+        "gamification": GamificationSummary(),
+        "learning_goals": [],
+    }
     defaults.update(overrides)
     return LearnerSnapshot(**defaults)
 

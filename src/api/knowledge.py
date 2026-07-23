@@ -278,7 +278,7 @@ async def get_knowledge_content(ko_id: str):
         return {"ko_id": ko_id, "content": "", "chunk_count": 0}
 
     chunks = sorted(
-        zip(raw["documents"], raw["metadatas"]),
+        zip(raw["documents"], raw["metadatas"], strict=False),
         key=lambda x: x[1].get("chunk_index", 0),
     )
     full_text = "\n\n".join(text for text, _ in chunks)

@@ -43,7 +43,7 @@ class TestPlanModel:
         assert plan.estimated_iterations == 1
 
     def test_plan_validates_complexity_range(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError, match="Input should be less than or equal to 1"):
             Plan(objective="Test", complexity_score=1.5)  # Exceeds 1.0
 
     def test_plan_serialization(self):

@@ -30,7 +30,7 @@ class PGVectorStore:
     ):
         factory = async_session_factory()
         async with factory() as session:
-            for i, (text, emb, meta, doc_id) in enumerate(zip(texts, embeddings, metadatas, ids)):
+            for i, (text, emb, meta, _doc_id) in enumerate(zip(texts, embeddings, metadatas, ids)):
                 ko_id = meta.get("knowledge_object_id")
                 embedding = KnowledgeEmbedding(
                     id=uuid.uuid4(),

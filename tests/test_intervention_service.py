@@ -24,24 +24,24 @@ def mock_session():
 
 def make_assignment(**overrides):
     now = datetime.now(timezone.utc)
-    attrs = dict(
-        id=uuid4(),
-        user_id=uuid4(),
-        classroom_id=None,
-        teacher_id=None,
-        intervention_type="REVIEW_TOPIC",
-        topic="Cell Biology",
-        status="planned",
-        priority=0.8,
-        estimated_impact=60.0,
-        effectiveness_score=None,
-        notes="Needs review",
-        assigned_at=now,
-        started_at=None,
-        completed_at=None,
-        created_at=now,
-        updated_at=now,
-    )
+    attrs = {
+        "id": uuid4(),
+        "user_id": uuid4(),
+        "classroom_id": None,
+        "teacher_id": None,
+        "intervention_type": "REVIEW_TOPIC",
+        "topic": "Cell Biology",
+        "status": "planned",
+        "priority": 0.8,
+        "estimated_impact": 60.0,
+        "effectiveness_score": None,
+        "notes": "Needs review",
+        "assigned_at": now,
+        "started_at": None,
+        "completed_at": None,
+        "created_at": now,
+        "updated_at": now,
+    }
     attrs.update(overrides)
     return MagicMock(**attrs)
 

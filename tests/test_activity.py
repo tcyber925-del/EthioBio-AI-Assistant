@@ -89,7 +89,7 @@ class TestActivityEndpoint:
     @pytest.mark.asyncio
     async def test_invalid_uuid_returns_error(self):
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError, match="badly formed hexadecimal UUID string"):
             UUID("not-a-uuid")
 
     @pytest.mark.asyncio

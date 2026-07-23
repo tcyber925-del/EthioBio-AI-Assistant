@@ -19,10 +19,10 @@ from src.core.learning_intelligence.recommendation.rules.readiness_rules import 
 
 
 def _snapshot(**overrides) -> LearnerSnapshot:
-    defaults = dict(
-        user_id=uuid4(),
-        generated_at=datetime.now(timezone.utc),
-    )
+    defaults = {
+        "user_id": uuid4(),
+        "generated_at": datetime.now(timezone.utc),
+    }
     defaults.update(overrides)
     return LearnerSnapshot(**defaults)
 
@@ -32,7 +32,7 @@ def _readiness_profile(
     topic_scores: dict[str, float] | None = None,
 ) -> ExamReadinessProfile:
     if topic_scores is None:
-        topic_scores = {t: 40.0 for t in risk_topics} if risk_topics else {}
+        topic_scores = dict.fromkeys(risk_topics, 40.0) if risk_topics else {}
     return ExamReadinessProfile(
         user_id=uuid4(),
         generated_at=datetime.now(timezone.utc),
