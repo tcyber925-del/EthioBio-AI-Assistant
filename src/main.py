@@ -132,30 +132,32 @@ async def _save_trace_from_pipeline(trace, repo):
 
 _eval_judge = None
 _eval_sampler = None
+_eval_semaphore = asyncio.Semaphore(5)
 
 
 async def _evaluate_trace(trace):
-    global _eval_judge, _eval_sampler
-    from src.observability.evaluation.judge import LLMJudge
-    from src.observability.evaluation.sampler import EvalSampler
-    from src.observability.evaluation.writer import evaluate_and_write
+    async with _eval_semaphore:
+        global _eval_judge, _eval_sampler
+        from src.observability.evaluation.judge import LLMJudge
+        from src.observability.evaluation.sampler import EvalSampler
+        from src.observability.evaluation.writer import evaluate_and_write
 
-    if _eval_sampler is None:
-        _eval_sampler = EvalSampler()
-    user_message = trace.metadata.get("user_message", "")
-    response = trace.metadata.get("response", "")
-    if not user_message or not response:
-        return
-    context = trace.metadata.get("context", "")
-    is_error = trace.status == "failed"
-    if not _eval_sampler.should_evaluate(is_error=is_error):
-        return
-    if _eval_judge is None:
-        _eval_judge = LLMJudge()
-    try:
-        await evaluate_and_write(_eval_judge, user_message, response, context)
-    except Exception:
-        logger.exception("eval_trace_failed", trace_id=trace.trace_id)
+        if _eval_sampler is None:
+            _eval_sampler = EvalSampler()
+        user_message = trace.metadata.get("user_message", "")
+        response = trace.metadata.get("response", "")
+        if not user_message or not response:
+            return
+        context = trace.metadata.get("context", "")
+        is_error = trace.status == "failed"
+        if not _eval_sampler.should_evaluate(is_error=is_error):
+            return
+        if _eval_judge is None:
+            _eval_judge = LLMJudge()
+        try:
+            await evaluate_and_write(_eval_judge, user_message, response, context)
+        except Exception:
+            logger.exception("eval_trace_failed", trace_id=trace.trace_id)
 
 
 def _preload_models():

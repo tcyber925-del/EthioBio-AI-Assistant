@@ -117,6 +117,9 @@ class PipelineMetrics:
     avg_node_duration_ms: dict[str, float] = field(default_factory=dict)
 
 
+MAX_TRACES = 1000
+
+
 class PipelineMonitor:
     """Monitors Agentic RAG pipeline execution.
 
@@ -137,6 +140,9 @@ class PipelineMonitor:
             metadata=metadata or {},
         )
         self.traces[trace_id] = trace
+        if len(self.traces) > MAX_TRACES:
+            oldest = sorted(self.traces.values(), key=lambda t: t.start_time)[0]
+            self.traces.pop(oldest.trace_id, None)
         return trace
 
     def set_on_complete(self, callback: Callable[[Any], None]) -> None:
