@@ -38,7 +38,7 @@ class Settings(BaseSettings):
 
     vector_store_path: str = "./data/vectors_new"
     collection_name: str = "ethiobio_curriculum"
-    store_backend: str = "chroma"  # "chroma" or "pgvector"
+    store_backend: str = "pgvector"  # always pgvector
 
     whisper_model: str = "base"
 
