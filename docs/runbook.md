@@ -91,7 +91,7 @@ pg_restore -d "$DATABASE_URL" --clean /tmp/ethiobio_prod_2026-07-12.sql
 curl https://ethiobio-api-production.up.railway.app/health   # expect 200
 curl https://ethiobio-api-production.up.railway.app/models   # expect model list
 # Telegram: send /start to bot — expect reply
-# Dashboard: login at https://ethiobio-ai-assistant.vercel.app
+# Dashboard: login at https://ethio-bio-ai-assistant.vercel.app
 ```
 
 ## Common Incidents
@@ -143,7 +143,7 @@ railway logs --service ethiobio-api --search "ollama|rate|429" --limit 20
 
 ### Dashboard blank / 500
 
-**Symptoms:** https://ethiobio-ai-assistant.vercel.app shows blank page or server error.
+**Symptoms:** https://ethio-bio-ai-assistant.vercel.app shows blank page or server error.
 
 **Triage:**
 ```bash
@@ -151,7 +151,7 @@ railway logs --service ethiobio-api --search "ollama|rate|429" --limit 20
 vercel logs --deploy=<deployment-id>
 # Check browser console for JS errors (F12 → Console)
 # Check if API proxy works:
-curl https://ethiobio-ai-assistant.vercel.app/api/health
+curl https://ethio-bio-ai-assistant.vercel.app/api/health
 ```
 
 **Resolution:**
@@ -199,7 +199,7 @@ pg_dump "$DATABASE_URL" | gzip | b2 upload-file ethiobio-db-backups - "manual_$(
 | Component | Location                          | URL                                                            |
 |-----------|-----------------------------------|----------------------------------------------------------------|
 | API       | Railway — `ethiobio-api` service  | https://ethiobio-api-production.up.railway.app                 |
-| Dashboard | Vercel — `ethiobio-ai-assistant`  | https://ethiobio-ai-assistant.vercel.app                       |
+| Dashboard | Vercel — `ethiobio-ai-assistant`  | https://ethio-bio-ai-assistant.vercel.app                       |
 | Bot       | Railway — runs in `ethiobio-api`  | Telegram: @EthioBioBot                                         |
 | DB        | Railway — PostgreSQL + pgvector    | `DATABASE_URL` env var                                          |
 | Cache     | Railway — Redis                    | `REDIS_URL` env var                                             |

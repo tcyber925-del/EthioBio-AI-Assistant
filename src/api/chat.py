@@ -187,7 +187,8 @@ async def _handle_chat_stream(
     session: AsyncSession,
     current_user: Optional[User] = None,
 ) -> StreamingResponse:
-    user_id = str(request.user_id) if request.user_id else (str(current_user.id) if current_user else None)
+    uid = request.user_id or (current_user.id if current_user else None)
+    user_id = str(uid) if uid else None
 
     sanitized = _validate_input(request, user_id)
     if sanitized is None:
@@ -402,7 +403,8 @@ async def _handle_chat_blocking(
     session: AsyncSession,
     current_user: Optional[User] = None,
 ) -> TutorResponse:
-    user_id = str(request.user_id) if request.user_id else (str(current_user.id) if current_user else None)
+    uid = request.user_id or (current_user.id if current_user else None)
+    user_id = str(uid) if uid else None
 
     sanitized = _validate_input(request, user_id)
     if sanitized is None:

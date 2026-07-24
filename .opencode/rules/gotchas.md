@@ -16,7 +16,7 @@ Read when: debugging, getting unexpected behavior, or working in an unfamiliar m
 
 7. **`telegram_id` must be BIGINT** — large user IDs overflow Integer.
 
-8. **QuizAgent generates from RAG context** — retrieves 5 ChromaDB chunks, injects into system prompt, instructs LLM to answer strictly from context (see `src/agents/quiz.py:54-58`).
+8. **QuizAgent generates from RAG context** — retrieves 5 pgvector chunks, injects into system prompt, instructs LLM to answer strictly from context (see `src/agents/quiz.py:54-58`).
 
 9. **Bidirectional safety revision** — SafetyNode can route `"revise"` or `"reject"` back to TutorNode for regeneration.
 

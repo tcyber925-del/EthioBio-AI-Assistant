@@ -22,31 +22,44 @@ tutor → hallucination → claim_verifier → route_after_verification
 
 | What | How | Process |
 |------|-----|---------|
-| API server | `python -m src.main` (FastAPI :8000) | uvicorn |
-| Telegram bot | `python -m src.telegram.bot` | PTB polling |
-| Full stack | `docker compose up --build` | app + bot + postgres + redis + ollama + dashboard |
+| API server | `python -m src.main` (FastAPI :8000) | uvicorn, includes bot webhook |
+| Telegram bot | `python -m src.telegram.bot` | PTB polling (or webhook via API) |
+| Full stack | `docker compose up --build` | app + bot + postgres + redis + ollama + cron + jaeger + prometheus + grafana + dashboard |
 | CLI | `ethiobio` / `ethiobio-bot` | pyproject.toml `[project.scripts]` |
 
 ## Commands
 
 ```bash
-python -m src.main                               # API :8000
-python -m src.telegram.bot                       # bot (separate terminal)
-pytest tests/ -v -k "not test_chat_endpoint and not test_quiz_generate_endpoint"
+python -m src.main                               # API :8000 (+ bot webhook)
+python -m src.telegram.bot                       # bot (separate terminal, polling)
+pytest tests/ -v -k "not slow"                   # unit tests (skip slow endpoint tests)
 ruff check . && mypy src/                         # lint + typecheck
+pre-commit run --all-files                       # pre-commit hooks
 docker compose up -d postgres redis               # infra
 curl http://localhost:8000/models                  # list models
 curl -X POST http://localhost:8000/models/refresh  # refresh Ollama cache
+curl http://localhost:8000/health                  # health check
+curl http://localhost:8000/readiness               # readiness check
+```
+
+## Deployment
+
+```bash
+railway up                                       # deploy API+bot to Railway
+vercel deploy --prod                              # deploy dashboard to Vercel
 ```
 
 ## Tooling
 
 | Tool | Config |
 |------|--------|
-| Ruff | `line-length=100`, `select=E,F,I,N,W` |
+| Ruff | `line-length=100`, `select=E,F,I,N,W,B,C4,PT,S` |
 | Mypy | `strict=false`, `ignore_missing_imports=true` |
 | Python | 3.12+, async everywhere (asyncpg, httpx) |
-| Providers | Ollama (primary), OpenAI, Anthropic, OpenAI-compatible (LM Studio, vLLM) |
+| Providers | Ollama (primary), OpenRouter, OpenAI, Anthropic, OpenAI-compatible (LM Studio, vLLM) |
+| Testing | pytest, pytest-asyncio (module-scoped), pytest-cov (50% floor) |
+| CI/CD | GitHub Actions: lint+typecheck, tests (-m "not slow"), security (pip-audit+bandit) |
+| Pre-commit | ruff lint+format, trailing-whitespace, EOF fixer, check-yaml, check-added-large-files |
 
 ## Module Index
 
@@ -64,10 +77,14 @@ Read the relevant file before working in that area:
 ## Cross-Cutting Gotchas
 
 1. **`topic` filter returns empty** — PDF chunks lack `topic` metadata. Use `grade_level` only.
-2. **Telegram 4096-char limit** — use `_reply_long()` at `bot.py:313` to split.
+2. **Telegram 4096-char limit** — use `_reply_long()` at `bot.py:1416` to split.
 3. **`send_email()` silently returns False** — check return value when `email_host` is unset.
 4. **`requires_planning` from subtasks, NOT intent** — OrchestratorNode derives from `subtasks` count.
 5. **Weak topic detection order** — wire AFTER gamification, BEFORE `session.commit()`.
+6. **SECRET_KEY / JWT_SECRET defaults are fatal** — `guardrails/startup.py` calls `SystemExit` if defaults are unchanged.
+7. **Rate limiting disabled in tests** — conftest sets `rate_limit_enabled=False` via Settings override.
+8. **Chat/lesson-plan 500 without LLM** — these require running Ollama; marked `@pytest.mark.slow` and excluded from CI.
+9. **Redis lazy connection** — `redis_client.py` creates connection on first use; tests use `rate_limit_enabled=False` so Redis is optional.
 
 ## Maintenance
 
@@ -76,8 +93,9 @@ This file is kept under ~120 lines. When adding a module, create a file in `.ope
 ## References
 
 - `README.md` — API endpoints, full setup guide
-- `.env.example` — all env vars
-- `docker-compose.yml` — service topology (postgres+pgvector, redis, ollama with GPU)
+- `.env.example` — all env vars (80+)
+- `docker-compose.yml` — service topology (postgres+pgvector, redis, ollama, jaeger, prometheus, grafana)
+- `docs/runbook.md` — Deployment, rollback, backup, incident response
 - `scripts/Git-Worktree/README.md` — `gt` worktree orchestrator docs
 - `~/.opencode/skills/gt/SKILL.md` — `gt` agent skill (auto-loaded for worktree tasks)
 

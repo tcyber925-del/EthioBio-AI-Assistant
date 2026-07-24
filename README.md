@@ -1,6 +1,6 @@
 # EthioBio AI Assistant
 
-AI-powered biology learning and teaching assistant for Ethiopian middle and high school education (Grades 7-12). Uses LangGraph orchestration, hybrid RAG (Dense + BM25 + Cross-encoder reranker), ChromaDB, Docling+OCR PDF extraction, and dynamic multi-provider AI system (Ollama, OpenAI, Anthropic).
+AI-powered biology learning and teaching assistant for Ethiopian middle and high school education (Grades 7-12). Uses LangGraph orchestration (unified graph with 12+ nodes), hybrid RAG (Dense + BM25 + Cross-encoder reranker), pgvector, and dynamic multi-provider AI system (Ollama, OpenRouter, OpenAI, Anthropic, OpenAI-compatible).
 
 ## Features
 
@@ -11,13 +11,13 @@ AI-powered biology learning and teaching assistant for Ethiopian middle and high
 - **Student Progress Tracking** — Monitor performance, identify weak areas, trend detection
 - **Parent Summaries** — Weekly progress reports in English and Amharic
 - **Amharic Support** — Bilingual explanations and translations
-- **LangGraph Orchestration** — Intent classification → RAG retrieval → tutor → safety check → revise/finalize
+- **LangGraph Orchestration** — Unified graph: intent classification → planner/retrieve/skip → plan_executor → evidence_graph → sufficient_context → synthesis → tutor → hallucination → claim_verifier → safety → finalize/revise/reject
+- **Agentic RAG** — Query rewriting, multi-index parallel search, iterative retrieval, claim verification
 - **Telegram Bot** — Primary user interface with interactive menus, commands, inline keyboards, conversation flows
 - **Teacher Dashboard** — Next.js web dashboard (9 pages) for content review, approval workflow, monitoring
-- **Hybrid RAG** — Dense (ChromaDB) + Sparse (BM25) + Cross-encoder reranker for accurate retrieval
-- **Docling+OCR Extraction** — PyPdfium2 with RapidOCR fallback to handle garbled PDF font encoding
+- **Hybrid RAG** — Dense (pgvector) + Sparse (BM25) + Cross-encoder reranker for accurate retrieval
 - **Source Citations** — Every answer cites `(Grade X, Unit Y: Title, p. Z)` format
-- **Multi-Provider AI** — Ollama primary with OpenAI/Anthropic fallback chain, runtime model switching
+- **Multi-Provider AI** — Ollama primary with OpenRouter/OpenAI/Anthropic fallback chain, circuit breakers per provider
 - **Model Auto-Detection** — Discovers all locally installed Ollama models automatically
 - **Model Selection UI** — Choose models in dashboard (Ask, Quiz, Lesson) and Telegram bot (`/model`)
 - **Extensible Providers** — Clean `LLMProvider` interface for adding LM Studio, vLLM, llama.cpp
@@ -29,15 +29,20 @@ AI-powered biology learning and teaching assistant for Ethiopian middle and high
 - **DOCX/PDF Export** — Downloadable quizzes and lesson plans in Word and PDF formats
 - **Spaced Repetition** — SM-2 based review scheduling for optimal memory retention
 - **Activity Feed** — Recent user activity tracking across all learning interactions
+- **Cookie-Based JWT Auth** — Secure HTTP-only cookie authentication with refresh token rotation and Redis JTI revocation
+- **Tiered Rate Limiting** — 6-tier Redis-backed rate limiting with X-RateLimit-* headers
+- **PII Redaction** — Right-to-left position-based string slicing for PII in outputs
+- **LLM Circuit Breaker** — Per-provider CLOSED/OPEN/HALF_OPEN state machine with automatic recovery
 
 ## Architecture
 
 ```
 src/
 ├── main.py                     # FastAPI server entry point
-├── config.py                   # Pydantic Settings (env-based)
+├── config.py                   # Pydantic Settings (env-based), ~80 vars
+├── redis_client.py             # Global lazy Redis singleton (async)
 ├── database/
-│   ├── models.py               # 31 SQLAlchemy entities (UUID PKs, asyncpg, JSON columns)
+│   ├── models.py               # 31+ SQLAlchemy entities (UUID PKs, asyncpg, JSON columns)
 │   └── session.py              # Async session with lazy engine, auto-create tables
 ├── llm/
 │   ├── providers/              # Provider abstraction layer
@@ -46,14 +51,15 @@ src/
 │   │   ├── openai_provider.py  # OpenAIProvider (OpenAI, LM Studio, vLLM)
 │   │   ├── anthropic_provider.py # AnthropicProvider (Claude)
 │   │   └── openrouter.py       # OpenRouter-compatible provider
-│   ├── manager.py              # ProviderManager — fallback chain orchestration
+│   ├── manager.py              # ProviderManager — fallback chain orchestration + circuit breakers
+│   ├── circuit_breaker.py      # Per-provider circuit breaker (threshold=5, recovery_timeout=30s, half_open_max=3)
 │   ├── registry.py             # ModelRegistry — auto-detect Ollama models
 │   ├── ollama_client.py        # Ollama API wrapper (chat, embeddings, health)
-│   ├── fallback.py             # OpenAI/Anthropic fallback adapter (legacy)
 │   └── router.py               # ModelRouter — backward-compat wrapper over ProviderManager
 ├── rag/
 │   ├── embedder.py             # Embedding via Ollama or sentence-transformers (dual backend)
-│   ├── vector_store.py         # ChromaDB operations (PersistentClient)
+│   ├── vector_store.py         # pgvector wrapper (delegating — ChromaDB removed)
+│   ├── pgvector_store.py       # Raw pgvector operations
 │   └── retriever.py            # Curriculum search with grade/topic/unit filters
 ├── retrieval/                  # Hybrid search layer
 │   ├── adapter.py              # VectorStoreAdapter — dense + BM25 + rerank merge
@@ -74,87 +80,152 @@ src/
 │   ├── spaced_repetition.py    # SM-2 spaced repetition scheduling
 │   ├── weak_topic_detection.py # Post-quiz weak topic analysis + mastery sync
 │   └── adaptive_quiz.py        # Bayesian IRT ability estimation + adaptive selection
+│   └── planner/                # Agentic RAG planner
+│       ├── planner.py          # PlannerAgent — generates execution plans
+│       ├── query_rewriter.py   # QueryRewriterAgent — query expansion
+│       └── search_fanout.py    # SearchFanoutAgent — multi-index parallel search
 ├── graph/                      # LangGraph orchestration
-│   ├── state.py                # AgentState (20+ fields), GraphOutput
-│   ├── orchestrator.py         # Compiled graph: orchestrator → retrieve/skip → tutor → safety → revise/finalize
+│   ├── state.py                # AgentState (50+ fields), GraphOutput
+│   ├── orchestrator.py         # Compiled graph: build_unified_graph() (production)
 │   └── nodes/
-│       ├── orchestrator.py     # Intent classifier, needs_retrieval routing
+│       ├── orchestrator.py     # Intent classifier, complexity scoring, routing
+│       ├── planner.py          # Plan generation (complex queries)
+│       ├── plan_executor.py    # Iterates subtasks, calls QueryRewriter + SearchFanout
+│       ├── query_rewriter.py   # LLM-based query expansion
+│       ├── search_fanout.py    # Parallel multi-index retrieval
+│       ├── evidence_graph.py   # Dedup, persist, select, analyze
+│       ├── sufficient_context.py # Coverage evaluation + loop controller
+│       ├── synthesis.py        # Evidence synthesis
 │       ├── retrieval.py        # RetrievalNode + SkipRetrievalNode
-│       ├── tutor.py            # Answer generation with citations
-│       └── safety.py           # Self-check + revision loop (reject/revise/finalize)
-├── schemas/                    # 11 Pydantic schema files
-├── api/
+│       ├── tutor.py            # Dual-mode tutor (legacy or agentic synthesis)
+│       ├── hallucination.py    # Hallucination detection
+│       ├── claim_verifier.py   # Claim extraction + verification against evidence
+│       └── safety.py           # LLM safety check + citation/quote verification
+├── schemas/                    # Pydantic schema files
+│   ├── common.py               # HealthResponse, etc.
+│   ├── streaming.py            # TokenChunk for SSE streaming
+│   └── ...                     # Other schemas
+├── api/                        # FastAPI route modules
+│   ├── auth.py                 # Cookie-based JWT auth (register, token, refresh, logout, me, OTP)
+│   ├── internal.py             # Internal API key auth (/internal/health)
 │   ├── chat.py                 # POST /chat
 │   ├── quiz.py                 # POST /quiz/generate, /quiz/submit, /quiz/recommend
 │   ├── lesson.py               # POST /lesson-plan/generate
 │   ├── progress.py             # Progress + parent summary endpoints
 │   ├── admin.py                # Dashboard, content review, monitoring, approve/reject
-│   ├── graph.py                # POST /graph/chat, GET /graph/status
+│   ├── graph.py                # POST /graph/chat, GET /graph/status, traces
 │   ├── diagram.py              # POST /diagram/generate, /diagram/validate, GET /diagram/textbook
 │   ├── export.py               # GET /export/quiz, /export/lesson-plan (DOCX/PDF)
 │   ├── gamification.py         # XP, streaks, levels, achievements, profile
 │   ├── recovery.py             # Recovery plans, tasks, dashboard, schedule, notifications
 │   ├── notifications.py        # Email preferences, verification, milestone alerts
-│   └── activity.py             # GET /activity/{user_id}
+│   ├── activity.py             # GET /activity/{user_id}
+│   ├── models.py               # Model listing, health, active model, refresh
+│   ├── students.py             # Student operations (teacher-facing)
+│   ├── teacher.py              # Teacher operations
+│   ├── parent.py               # Parent dashboard operations
+│   ├── users.py                # User management
+│   ├── workspace.py            # Workspace management
+│   ├── collection.py           # Content collections
+│   ├── assignment.py           # Assignments
+│   ├── bookmark.py             # Bookmarks
+│   ├── memory.py               # Memory management
+│   ├── agent_orchestrator.py   # Agent orchestration
+│   ├── knowledge.py            # Knowledge platform
+│   ├── tracing.py              # Trace viewing API
+│   ├── retrieval.py            # Retrieval API
+│   ├── intelligence/           # Adaptive intelligence
+│   │   ├── continue_learning_router.py
+│   │   └── ...
+│   ├── misconceptions.py       # Misconception detection
+│   └── ekg.py                  # Educational knowledge graph
 ├── telegram/
-│   ├── bot.py                  # PTB Application (70 handlers, polling mode)
-│   ├── keyboards.py            # Inline keyboard layouts (9 factory functions)
+│   ├── bot.py                  # PTB Application (3600+ lines, 50+ handlers, 6 conversation flows)
+│   ├── keyboards.py            # Inline keyboard layouts (9+ factory functions)
 │   └── formatter.py            # Message formatting helpers
+├── guardrails/
+│   ├── input/
+│   │   ├── middleware.py       # App-wide rate-limit middleware (6 tiers)
+│   │   ├── rate_limiter.py     # TieredRateLimiter with Redis sorted sets
+│   │   ├── sanitizer.py        # Input sanitization
+│   │   └── prompt_injection.py # Prompt injection detection
+│   ├── output/
+│   │   ├── pii_scanner.py      # PII redaction (position-based)
+│   │   ├── toxicity.py         # Toxicity detection
+│   │   └── topic_enforcer.py   # Topic enforcement
+│   ├── tool_guard.py           # Tool usage guardrails
+│   └── startup.py              # Startup checks (fatal on default SECRET_KEY)
+├── core/
+│   ├── errors.py               # AppError hierarchy with structured dict serialization
+│   ├── monitoring.py           # PipelineMonitor, LRU trace eviction
+│   ├── tracing.py              # TraceRepository, Trace dataclass
+│   ├── memory/                 # Cross-session memory, router
+│   ├── evidence/               # Evidence graph, selector, scoring, summarizer
+│   ├── pipeline/               # Document ingestion pipeline (PDF/DOCX → chunks → embed → index)
+│   ├── knowledge_registry.py   # Lifecycle management for knowledge items
+│   ├── storage.py              # LocalFileStorage
+│   ├── event_infrastructure/   # Event bus
+│   └── workspace/              # Workspace dependencies
 ├── export/
 │   ├── docx_exporter.py        # python-docx DOCX generation for quizzes/lessons
 │   └── pdf_exporter.py         # fpdf2 PDF generation for quizzes/lessons
 ├── notifications/
 │   ├── email_service.py        # Async SMTP sender (asyncio.to_thread)
-│   └── templates/              # 3 Jinja2 HTML email templates
+│   └── templates/              # Jinja2 HTML email templates
 ├── ingestion/
 │   ├── docling_extractor.py    # PyPdfium2 + RapidOCR extraction, garbled detection, HybridChunker
 │   └── diagram_extractor.py    # Diagram extraction from textbooks
-├── evaluation/
-│   └── ragas_test.py           # Ragas evaluation + heuristic fallback + gold dataset
 ├── observability/
 │   ├── tracing.py              # OTel span helpers + GenAI semconv constants
 │   ├── metrics.py              # Counter/Gauge/Histogram registry + Prometheus text export
 │   ├── structured_logging.py   # Consistent log_event schema via structlog
 │   ├── health.py               # ModuleHealthRegistry for per-module health checks
 │   ├── alerting.py             # Threshold-driven alert manager
-│   ├── instrumentation.py      # OTel SDK init + OpenLLMetry (optional, requires TRACELOOP_API_KEY)
+│   ├── instrumentation.py      # OTel SDK init + OpenLLMetry (optional)
 │   ├── guardrail_instrumentation.py  # @observe_guardrail decorator
-│   └── evaluation/             # Async eval pipeline (sampler, LLM judge, drift, datasets)
-│       ├── sampler.py
-│       ├── judge.py
-│       ├── writer.py
-│       ├── drift.py
-│       ├── runner.py
-│       └── datasets/
-dashboard/                      # Next.js teacher dashboard (7 routes)
-scripts/
-├── ingest_curriculum.py        # PDF → ChromaDB + BM25 ingestion with Docling/OCR
-├── ingest_diagrams.py          # Ingest textbook diagrams into vector store
-├── index_diagrams.py           # Index diagrams for search
-├── label_textbook_diagrams.py  # Label textbook diagrams
-├── send_digests.py             # Cron-ready daily/weekly digest email sender
-├── init-db.sql                 # pgvector extension init
-└── ralph/                      # Autonomous agent PRD tasks
-tests/                          # pytest suite (20 test files, asyncio_mode=auto)
-data/
-├── textbooks/                  # Ethiopian curriculum PDFs (Grades 9-12)
-├── evaluation/
-│   └── gold_set.json           # Ragas gold QA dataset
-└── vectors_new/                # ChromaDB persist + BM25 index
+│   └── evaluation/             # Async eval pipeline
+│       ├── sampler.py          # EvalSampler with sampling rate
+│       ├── judge.py            # LLMJudge for answer quality
+│       ├── writer.py           # evaluate_and_write
+│       ├── drift.py            # Drift detection
+│       ├── runner.py           # Batch evaluation runner
+│       └── datasets/           # Gold datasets
+├── data/                       # Data directory
+│   ├── textbooks/              # Ethiopian curriculum PDFs (Grades 9-12)
+│   ├── evaluation/             # Gold datasets
+│   └── vectors_new/            # BM25 index + vector store artifacts
+├── services/                   # Domain services
+├── retrieval/                  # Search layer
+├── schemas/                    # Pydantic schemas
+├── utils/                      # Utility functions
+└── agents/                     # LLM agents
 ```
 
-### LangGraph Pipeline
+### Unified LangGraph Pipeline
 
 ```
-entry → orchestrator → needs_retrieval? → retrieve ─┐
-                  │                       skip_retr. ┤
-                  └──────────────────────────────────→ tutor → safety → END / revise→tutor
+entry → orchestrator → _route_after_orchestrator
+           │
+           ├── "planner" → plan_executor → evidence_graph → sufficient_context
+           │       └── route_after_sufficiency:
+           │           ├── "synthesis" → synthesis → tutor
+           │           ├── "rewrite" → plan_executor
+           │           └── "replan" → planner
+           │
+           ├── "retrieve" → tutor
+           └── "skip_retrieval" → tutor
+
+tutor → hallucination → claim_verifier → route_after_verification
+    ├── "finalize" → safety → END
+    ├── "revise" → tutor (max 2)
+    └── "reject" → safety → END
+         safety ←───────────────────┘
 ```
 
 ### Hybrid RAG Pipeline
 
 ```
-query → embed → dense search (ChromaDB) + sparse search (BM25) → merge (0.6/0.4) → rerank (cross-encoder) → top-k → format context
+query → embed → dense search (pgvector) + sparse search (BM25) → merge (0.6/0.4) → rerank (cross-encoder) → top-k → format context
 ```
 
 ### Citation Format
@@ -209,10 +280,10 @@ ollama pull nomic-embed-text   # embeddings
 source .venv/bin/activate
 pip install -r requirements.txt
 
-# Start the API server
+# Start the API server (includes bot when TELEGRAM_BOT_TOKEN is set)
 python -m src.main
 
-# In another terminal, start the Telegram bot
+# Or start bot separately (polling mode)
 python -m src.telegram.bot
 ```
 
@@ -239,8 +310,6 @@ python scripts/ingest_curriculum.py --stats
 python scripts/ingest_curriculum.py --query "What is DNA replication?" --grade 12
 ```
 
-**Note:** Grade 10 textbooks with font encoding issues require full OCR extraction (RapidOCR). The ingestion script auto-detects garbled pages (alpha character ratio < 40%) and falls back to OCR automatically.
-
 ### Docker (full stack)
 
 ```bash
@@ -248,11 +317,15 @@ docker compose up --build
 ```
 
 Services:
-- **App** — FastAPI on `:8000`
-- **Telegram Bot** — PTB polling mode
+- **App** — FastAPI on `:8000` (API + bot in webhook mode)
+- **Telegram Bot** — Separate container in polling mode
 - **PostgreSQL** — pgvector/pg16 on `:5432`
 - **Redis** — caching on `:6379`
 - **Ollama** — model serving on `:11435` (host) / `:11434` (container)
+- **Cron** — Daily proactive reminders
+- **Jaeger** — Trace collection on `:16686`
+- **Prometheus** — Metric scraping on `:9090`
+- **Grafana** — Dashboards on `:3001` (default: admin/ethiobio)
 - **Dashboard** — Next.js on `:3000`
 
 ## Environment Variables
@@ -262,138 +335,257 @@ Key environment variables (see `.env.example` for full list):
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `TELEGRAM_BOT_TOKEN` | Telegram bot token | (required) |
-| `OLLAMA_CHAT_MODEL` | Primary LLM model | `gemma4:31b-cloud` |
+| `OLLAMA_CHAT_MODEL` | Primary LLM model | `tinyllama` |
 | `OLLAMA_BASE_URL` | Ollama server URL | `http://localhost:11434` |
+| `OLLAMA_API_KEY` | Ollama Cloud API key | (optional) |
 | `OLLAMA_EMBED_MODEL` | Embedding model | `nomic-embed-text` |
 | `DATABASE_URL` | PostgreSQL async connection | `postgresql+asyncpg://...` |
 | `REDIS_URL` | Redis connection | `redis://localhost:6379/0` |
+| `OPENROUTER_API_KEY` | OpenRouter API key | (optional) |
 | `FALLBACK_PROVIDER` | Fallback provider | `openai` or `anthropic` |
 | `FALLBACK_API_KEY` | Fallback API key | (required if fallback enabled) |
-| `VECTOR_STORE_PATH` | ChromaDB persist directory | `./data/vectors_new` |
-| `OTEL_ENDPOINT` | OTLP gRPC endpoint | (optional, e.g. `http://jaeger:4317`) |
-| `OTEL_SERVICE_NAME` | OTel service name | `ethiobio-ai-assistant` |
-| `TRACELOOP_API_KEY` | OpenLLMetry API key | (optional — set to enable auto-instrumentation) |
+| `JWT_SECRET` | JWT signing secret | (required — hard-blocks with SystemExit if default) |
+| `SECRET_KEY` | App secret key | (required — hard-blocks with SystemExit if default) |
+| `SENTRY_DSN` | Sentry DSN for error tracking | (optional) |
+| `OTEL_ENDPOINT` | OTLP gRPC endpoint | (optional) |
+| `DASHBOARD_URL` | Frontend URL for CORS | `http://localhost:3000` |
 | `API_BASE_URL` | Backend API URL for Telegram bot | `http://app:8000` |
-| `PROVIDER_OPENAI_COMPATIBLE_NAME` | OpenAI-compatible provider name | (optional) |
-| `PROVIDER_OPENAI_COMPATIBLE_URL` | OpenAI-compatible provider URL | (optional) |
-| `PROVIDER_OPENAI_COMPATIBLE_API_KEY` | OpenAI-compatible API key | (optional) |
-| `PROVIDER_OPENAI_COMPATIBLE_MODEL` | OpenAI-compatible model name | (optional) |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare for image gen | (optional) |
+| `EMAIL_HOST` | SMTP host for notifications | (optional) |
+| `INTERNAL_API_KEY` | Inter-service auth key | (optional) |
+| `RATE_LIMIT_ENABLED` | Enable rate limiting | `true` |
+| `EVAL_ENABLED` | Enable async evaluation | `true` |
 
 ## API Endpoints
 
-| Method | Path | Module | Description |
-|--------|------|--------|-------------|
-| GET | `/health` | — | Health check (Ollama + DB status) |
-| POST | `/chat` | Chat | Biology Q&A with RAG |
-| POST | `/graph/chat` | Graph | LangGraph pipeline (intent → RAG → tutor → safety) |
-| GET | `/graph/status` | Graph | Graph structure (nodes + edges) |
-| GET | `/quiz/recommend/{user_id}` | Quiz | Recommend quiz parameters |
-| POST | `/quiz/generate` | Quiz | Generate RAG-grounded quiz |
-| POST | `/quiz/submit` | Quiz | Submit quiz answers, record attempts, update ability |
-| POST | `/lesson-plan/generate` | Lesson | Create lesson plan |
-| GET | `/progress/student/{student_id}` | Progress | Get student progress |
-| POST | `/progress/student/{student_id}` | Progress | Record progress entry |
-| POST | `/progress/parent-summary` | Progress | Generate parent summary |
-| GET | `/admin/dashboard` | Admin | Dashboard overview |
-| GET | `/admin/content/review` | Admin | Review content (use `type=quiz\|lesson`) |
-| GET | `/admin/monitoring` | Admin | System monitoring |
-| GET | `/admin/content/quiz/{item_id}` | Admin | Quiz detail with all questions |
-| GET | `/admin/content/lesson/{item_id}` | Admin | Lesson detail with full content |
-| PATCH | `/admin/content/{type}/{id}/status` | Admin | Approve/reject content |
-| GET | `/models` | Models | List available models across all providers |
-| GET | `/models/providers` | Models | Provider health and info |
-| GET | `/models/active` | Models | Get currently active model |
-| POST | `/models/active` | Models | Set active model |
-| GET | `/models/health` | Models | Health check for all providers |
-| POST | `/models/refresh` | Models | Force refresh Ollama model cache |
-| POST | `/diagram/generate` | Diagram | Generate diagram analysis |
-| POST | `/diagram/validate` | Diagram | Validate diagram labels |
-| GET | `/diagram/textbook` | Diagram | List textbook diagrams |
-| GET | `/export/quiz/{quiz_id}` | Export | Download quiz as DOCX/PDF |
-| GET | `/export/lesson-plan/{lesson_id}` | Export | Download lesson plan as DOCX/PDF |
-| POST | `/gamification/xp` | Gamification | Award XP (internal) |
-| GET | `/gamification/profile/{user_id}` | Gamification | XP, level, streak, mastery, achievements |
-| POST | `/gamification/activity` | Gamification | Log activity + update streak |
-| GET | `/gamification/events/{user_id}` | Gamification | List XP events |
-| GET | `/gamification/achievements/{user_id}` | Gamification | Achievement definitions + progress |
-| POST | `/recovery/plan` | Recovery | Create recovery plan |
-| GET | `/recovery/plan/{user_id}` | Recovery | List recovery plans |
-| POST | `/recovery/task/complete` | Recovery | Complete task (XP + milestone check + email) |
-| POST | `/recovery/auto-generate/{user_id}` | Recovery | Auto-generate plan from weak topics |
-| GET | `/recovery/weak-topics/{user_id}` | Recovery | Get weak topics with severity |
-| GET | `/recovery/history/{user_id}/{topic}` | Recovery | Mastery history for a topic |
-| GET | `/recovery/dashboard/{user_id}` | Recovery | Combined weak topics + plans + recommendations |
-| GET | `/recovery/schedule/{user_id}` | Recovery | Get spaced repetition schedule |
-| GET | `/recovery/schedule/due/{user_id}` | Recovery | Get due reviews |
-| POST | `/recovery/schedule/generate/{user_id}` | Recovery | Generate review schedule |
-| POST | `/recovery/schedule/review` | Recovery | Record review result |
-| GET | `/recovery/notifications/{user_id}` | Recovery | List recovery notifications |
-| PATCH | `/recovery/notifications/{notification_id}/read` | Recovery | Mark notification read |
-| PUT | `/recovery/notifications/read-all/{user_id}` | Recovery | Mark all notifications read |
-| GET | `/notifications/preferences/{user_id}` | Notifications | Get email preferences |
-| PUT | `/notifications/preferences/{user_id}` | Notifications | Update email preferences |
-| POST | `/notifications/preferences/{user_id}/verify` | Notifications | Send verification code |
-| POST | `/notifications/preferences/{user_id}/verify/{code}` | Notifications | Confirm verification code |
-| GET | `/activity/{user_id}` | Activity | Get recent activity feed |
-| GET | `/graph/traces` | Graph | List recent pipeline traces |
-| GET | `/graph/traces/{trace_id}` | Graph | Get specific trace details |
-| GET | `/health/modules` | — | Per-module health status (guardrails, eval) |
-| GET | `/metrics` | — | Prometheus-format metrics export |
+### Core
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Health check (Ollama + DB status) |
+| GET | `/health/modules` | Per-module health (guardrails, eval) |
+| GET | `/liveness` | Process liveness check |
+| GET | `/readiness` | External dependency readiness (DB, Redis, Ollama) |
+| GET | `/metrics` | Prometheus-format metrics |
+| GET | `/ping` | Ping |
+| POST | `/echo` | Echo (debug) |
+
+### Chat & Graph
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/chat` | Biology Q&A with RAG (legacy) |
+| POST | `/graph/chat` | Unified LangGraph pipeline (intent → planner/retrieve → tutor → safety) |
+| GET | `/graph/status` | Graph structure (nodes + edges) |
+| GET | `/graph/traces` | List recent pipeline traces |
+| GET | `/graph/traces/{trace_id}` | Get specific trace details |
+
+### Auth
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/auth/register` | Create user account |
+| POST | `/auth/token` | Login (email/password) |
+| POST | `/auth/refresh` | Token rotation (refresh cookie) |
+| POST | `/auth/logout` | Logout (revoke refresh token) |
+| GET | `/auth/me` | Current user info |
+| POST | `/auth/request-otp` | Request OTP for dashboard login (via Telegram) |
+| POST | `/auth/verify-otp` | Verify OTP, issue JWT |
+| GET | `/auth/public-stats` | Aggregated public stats |
+
+### Internal
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/internal/health` | Internal health (API key required) |
+
+### Quiz
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/quiz/generate` | Generate RAG-grounded quiz |
+| POST | `/quiz/submit` | Submit quiz answers, record attempts, update ability |
+| GET | `/quiz/recommend/{user_id}` | Recommend quiz parameters |
+
+### Lesson Plans
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/lesson-plan/generate` | Create lesson plan |
+
+### Progress
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/progress/student/{student_id}` | Get student progress |
+| POST | `/progress/student/{student_id}` | Record progress entry |
+| POST | `/progress/parent-summary` | Generate parent summary |
+| GET | `/progress/trends` | Progress trends |
+
+### Admin
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/admin/dashboard` | Dashboard overview |
+| GET | `/admin/content/review` | Review content (use `type=quiz\|lesson`) |
+| GET | `/admin/monitoring` | System monitoring |
+| GET | `/admin/content/quiz/{item_id}` | Quiz detail |
+| GET | `/admin/content/lesson/{item_id}` | Lesson detail |
+| PATCH | `/admin/content/{type}/{id}/status` | Approve/reject content |
+
+### Models
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/models` | List available models across all providers |
+| GET | `/models/providers` | Provider health and info |
+| GET | `/models/active` | Get currently active model |
+| POST | `/models/active` | Set active model |
+| GET | `/models/health` | Health check for all providers |
+| POST | `/models/refresh` | Force refresh Ollama model cache |
+
+### Diagram
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/diagram/generate` | Generate diagram analysis |
+| POST | `/diagram/validate` | Validate diagram labels |
+| GET | `/diagram/textbook` | List textbook diagrams |
+
+### Export
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/export/quiz/{quiz_id}` | Download quiz as DOCX/PDF |
+| GET | `/export/lesson-plan/{lesson_id}` | Download lesson plan as DOCX/PDF |
+
+### Gamification
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/gamification/xp` | Award XP (internal) |
+| GET | `/gamification/profile/{user_id}` | XP, level, streak, mastery, achievements |
+| POST | `/gamification/activity` | Log activity + update streak |
+| GET | `/gamification/events/{user_id}` | List XP events |
+| GET | `/gamification/achievements/{user_id}` | Achievement definitions + progress |
+
+### Recovery
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/recovery/plan` | Create recovery plan |
+| GET | `/recovery/plan/{user_id}` | List recovery plans |
+| POST | `/recovery/task/complete` | Complete task (XP + milestone check) |
+| POST | `/recovery/auto-generate/{user_id}` | Auto-generate plan from weak topics |
+| GET | `/recovery/weak-topics/{user_id}` | Get weak topics with severity |
+| GET | `/recovery/history/{user_id}/{topic}` | Mastery history |
+| GET | `/recovery/dashboard/{user_id}` | Combined view |
+| GET | `/recovery/schedule/{user_id}` | Spaced repetition schedule |
+| GET | `/recovery/schedule/due/{user_id}` | Due reviews |
+| POST | `/recovery/schedule/generate/{user_id}` | Generate review schedule |
+| POST | `/recovery/schedule/review` | Record review result |
+| GET | `/recovery/notifications/{user_id}` | List notifications |
+| PATCH | `/recovery/notifications/{notification_id}/read` | Mark read |
+| PUT | `/recovery/notifications/read-all/{user_id}` | Mark all read |
+
+### Notifications
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/notifications/preferences/{user_id}` | Get email preferences |
+| PUT | `/notifications/preferences/{user_id}` | Update email preferences |
+| POST | `/notifications/preferences/{user_id}/verify` | Send verification code |
+| POST | `/notifications/preferences/{user_id}/verify/{code}` | Confirm verification code |
+
+### Activity
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/activity/{user_id}` | Get recent activity feed |
+
+### User Management
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/users/{user_id}` | Get user info |
+| PUT | `/users/{user_id}` | Update user |
+| POST | `/users/lookup` | Find user by email or telegram_id |
+
+### Student (Teacher operations)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/students` | List students (teacher) |
+| GET | `/students/{student_id}` | Get student profile |
+| GET | `/students/{student_id}/progress` | Student progress |
+| POST | `/students/bulk-assign` | Bulk assign to teacher |
+
+### Teacher
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/teacher/profile` | Get teacher profile |
+| POST | `/teacher/students` | Teacher-student operations |
+
+### Parent
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/parent/children` | List linked children |
+| GET | `/parent/children/{child_id}/progress` | Child progress |
+| POST | `/parent/link` | Link child by code |
+
+### Workspace / Collection / Assignment / Bookmark
+
+| Method | Path | Description |
+|--------|------|-------------|
+| * | `/workspace/*` | Workspace management |
+| * | `/collection/*` | Content collections |
+| * | `/assignment/*` | Assignments |
+| * | `/bookmark/*` | Bookmarks |
+
+### Knowledge Platform
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/knowledge/upload` | Upload document |
+| GET | `/knowledge/items` | List knowledge items |
+| GET | `/knowledge/{item_id}` | Get item details |
+
+### Webhook
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/webhook` | Telegram bot webhook endpoint |
+
+### Telemetry
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/tracing/traces` | List traces |
+| GET | `/tracing/traces/{trace_id}` | Get trace |
+| GET | `/ekg/*` | Educational knowledge graph |
+| GET | `/digital-twin/*` | Digital twin operations |
 
 ## Agentic RAG Pipeline
 
-The EthioBio AI Assistant now includes a Google-style Multi-Agent Agentic RAG platform for handling complex educational queries.
-
 ### Features
 
-- **Hybrid Routing** — Simple queries use legacy pipeline, complex queries use agentic pipeline
+- **Hybrid Routing** — Simple queries use direct retrieval, complex queries use agentic pipeline
 - **Query Rewriting** — LLM-based query expansion and decomposition
 - **Multi-Index Search** — Parallel retrieval from curriculum, evidence, and cross-session indices
 - **Iterative Retrieval** — Re-plan and re-retrieve when evidence is insufficient
 - **Claim Verification** — Verify factual claims against evidence for accuracy
 - **Performance Monitoring** — Trace ID generation and node-level timing
 
-### Graph Topology
-
-```
-orchestrator → planner → query_rewriter → search_fanout
-    → sufficient_context → tutor → claim_verifier → safety
-```
-
 ### Routing Logic
 
 | Query Complexity | Pipeline | Nodes |
 |------------------|----------|-------|
-| Simple (fact lookup) | Legacy | orchestrator → retrieve → tutor → safety |
-| Complex (multi-hop) | Agentic | orchestrator → planner → query_rewriter → search_fanout → sufficient_context → tutor → claim_verifier → safety |
-
-### API Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/graph/chat` | Unified endpoint (routes to legacy or agentic) |
-| GET | `/graph/status` | Graph structure and features |
-| GET | `/graph/traces` | List recent pipeline traces |
-| GET | `/graph/traces/{trace_id}` | Get specific trace details |
-
-### Configuration
-
-Enable/disable agentic features via environment variables:
-
-```bash
-# Enable agentic RAG (default: true)
-AGENTIC_RAG_ENABLED=true
-
-# Complexity threshold for agentic routing (0.0-1.0)
-AGENTIC_RAG_THRESHOLD=0.5
-
-# Maximum retrieval iterations
-AGENTIC_RAG_MAX_ITERATIONS=3
-```
+| Simple (fact lookup) | Direct | orchestrator → retrieve → tutor → hallucination → claim_verifier → safety |
+| Complex (multi-hop) | Agentic | orchestrator → planner → plan_executor → evidence_graph → sufficient_context → synthesis → tutor → hallucination → claim_verifier → safety |
 
 ### Monitoring
-
-Check pipeline performance:
 
 ```bash
 # List recent traces
@@ -405,7 +597,7 @@ curl http://localhost:8000/graph/traces/trace_abc123
 
 ## Telegram Bot
 
-The bot runs on **polling mode**. Search `@ethiobioaiassistant_bot` on Telegram.
+The bot runs in **webhook mode** (production) or **polling mode** (development). It's deployed as a unified Railway service with the API (webhook mode).
 
 ### Interactive Quiz Flow
 
@@ -436,6 +628,14 @@ User taps answer → instant feedback (✅ Correct / ❌ Wrong + explanation)
 | `/email <address>` | Set email address for notifications |
 | `/recovery` | View recovery plans and tasks |
 | `/progress` | Show mastery progress per topic (text bar charts) |
+| `/diagram` | Start diagram conversation |
+| `/dashboard_login` | Generate OTP for dashboard login |
+| `/parent_register <email>` | Link parent account |
+| `/children` | List linked children (parent) |
+| `/child_progress` | Show child's progress (parent) |
+| `/link <email>` | Link teacher dashboard account |
+| `/assignments` | List assignments |
+| `/submit <id> <answer>` | Submit assignment answer |
 
 ### Menu Layout
 
@@ -452,13 +652,6 @@ Main Menu
 └── ❓ Help
 ```
 
-### Start the Bot
-
-```bash
-source .venv/bin/activate
-python -m src.telegram.bot
-```
-
 ### Troubleshooting
 
 **Bot doesn't respond:**
@@ -470,38 +663,34 @@ python -m src.telegram.bot
    ```
 3. Check for Conflict errors in the bot log
 
-**Long messages cropped:** The bot automatically splits responses >4096 chars into multiple messages via `_reply_long()`.
+**Long messages cropped:** The bot automatically splits responses >4096 chars via `_reply_long()`.
 
-**Teacher Tools buttons don't work:** The submenu uses `callback_data` instead of `url` buttons (Telegram blocks HTTP URLs). URL buttons require HTTPS which isn't available on localhost.
+## Authentication
 
-**Garbled textbook text:** Grade 10 textbooks have font encoding issues. The ingestion script auto-detects garbled pages (alpha ratio < 40%) and uses RapidOCR. If needed, force full OCR with `--use-docling` flag.
+The project uses cookie-based JWT authentication:
 
-**Quiz/Lesson re-entry from grade buttons:** Callback patterns must anchor at end (`^quiz$` not `^quiz`). This is fixed in the current codebase.
+- **Access token** — Short-lived (15 min), stored in `access_token` cookie (path=/)
+- **Refresh token** — Long-lived (7 days), stored in `refresh_token` cookie (path=/auth/refresh)
+- **Refresh rotation** — Each refresh invalidates the old token and issues new pair
+- **Redis JTI revocation** — Token reuse detection via Redis `refresh:{jti}` key
+- **OTP flow** — Telegram → `/dashboard_login` generates OTP → `/auth/verify-otp` issues JWT
+- **Internal API key** — `X-API-Key` header for service-to-service auth
 
 ## Testing
 
 ```bash
-# Run unit tests (skip endpoint tests that hit real Ollama)
-pytest tests/ -v -k "not test_chat_endpoint and not test_quiz_generate_endpoint"
+# Run unit tests (skip slow endpoint tests)
+pytest tests/ -v -k "not slow"
 
-# RAG verification
-python scripts/ingest_curriculum.py --query "What is protein synthesis?" --grade 12
+# Full test suite with coverage
+pytest tests/ -v -m "not slow" --cov=src --cov-report=term
 
-# Live agent test
-python -c "
-import asyncio
-from src.graph.orchestrator import run_graph
-result = asyncio.run(run_graph('What is a cell?', grade_level=12))
-print(result.answer)
-"
+# Lint + typecheck
+ruff check . && mypy src/
 
-# Evaluation (requires datasets + ragas)
-pip install datasets ragas
-python -c "from src.evaluation.ragas_test import run_evaluation; import asyncio; asyncio.run(run_evaluation())"
+# Pre-commit hooks
+pre-commit run --all-files
 ```
-
-Set `OTEL_ENDPOINT` to export traces to Jaeger or another OTLP collector.
-Set `TRACELOOP_API_KEY` to enable OpenLLMetry auto-instrumentation (optional).
 
 ## Observability Stack
 
@@ -513,80 +702,66 @@ The project ships with a full observability stack in `docker-compose.yml`:
 | Prometheus (metrics) | `:9090` | — |
 | Grafana (dashboards) | `:3001` | `admin` / `ethiobio` |
 
-- **Traces**: OTel spans exported via OTLP gRPC (`:4317`) to Jaeger. GenAI semantic conventions for LLM calls.
-- **Metrics**: Prometheus-format at `/metrics` (counters, gauges, histograms). Scraped by Prometheus on 15s interval.
+- **Traces**: OTel spans exported via OTLP gRPC (`:4317`) to Jaeger. GenAI semantic conventions.
+- **Metrics**: Prometheus-format at `/metrics`. Scraped by Prometheus on 15s interval.
 - **Dashboards**: Pre-built Grafana dashboard auto-provisioned in `grafana/dashboards/`.
+- **Sentry**: Optional error tracking with Sentry SDK (free tier).
+- **Health checks**: Per-module health registry at `/health/modules`, readiness endpoint at `/readiness`.
 
-## Bug Fixes Applied
+## Rate Limiting
 
-- Multi-provider system: LLMProvider ABC, ProviderManager, ModelRegistry, runtime model switching
-- Model selection UI: Dashboard (Ask, Quiz, Lesson pages) + Telegram bot (/model command)
-- /models/* API endpoints: list, health, active model, refresh
-- Next.js proxy: Added /models/* rewrite rule for dashboard model selector
-- api_base_url config: Dedicated setting for Telegram bot to reach FastAPI backend
-- `_get_or_create_user`: Session parameter was `None` — now creates its own session
-- `handle_question`: DB save was inside the answer try/except — now independent
-- `main()`: Missing `await app.start()` after `start_polling()` — handlers never fired
-- Quiz handler pattern: `pattern="^quiz"` matched grade buttons too — fixed to `pattern="^quiz$"`
-- Lesson handler pattern: `pattern="^lesson_plan"` — same fix, added `$` anchor
-- `_reply_long()` helper: Long LLM responses >4096 chars are now split into multiple messages
-- Teacher Tools URLs: HTTP URLs rejected by Telegram — changed to `callback_data` buttons
-- QuizAgent RAG grounding: Quiz questions now generated from textbook content, not general knowledge
-- `LessonPlan.teacher_id`: Changed to nullable for unauthenticated requests
-- `telegram_id`: Changed from `Integer` to `BigInteger` for large Telegram user IDs
-- Database `init_db()`: Deferred to first connection to allow server start without DB
-- QuizAgent JSON parsing: Handles LLM returning `list` instead of `dict`
-- `/admin/content/review`: Accepts both `type` and `content_type` params for dashboard compatibility
-- Dashboard API calls: Bypass Next.js proxy for generation endpoints (socket hang-up fix)
-- DB table auto-creation: `Base.metadata.create_all()` on startup eliminates manual init step
-- Garbled PDF text: PyPdfium2 + RapidOCR fallback with auto-detection (alpha ratio < 40%)
-- Grade 10 OCR: Full RapidOCR extraction required (176/182 pages garbled due to font encoding)
-- Hybrid RAG: Dense + BM25 + cross-encoder reranker replaces single-vector retrieval
-- Citation format: Explicit `(Grade X, Unit Y: Title, p. Z)` citations in all RAG responses
-- Per-page chunking: Preserves accurate page numbers instead of full-text splitting
-- Vector store path: `data/vectors_new/` (old `data/vectors/` had permission issues)
-- Gamification module: XP, streaks, levels, achievements across quiz/tutor/recovery activities
-- Recovery plans: Auto-generated remediation plans from weak topic detection, task completion flow, milestone bonus XP
-- Adaptive quiz engine: Bayesian IRT ability estimation with logit model, per-topic StudentAbility tracking, difficulty_score column
-- Weak topic detection: Post-quiz analysis updates StudentMastery, detects MisconceptionPattern, syncs StudentProfile
-- Notification preferences: User email management with 6-digit verification code, digi frequency options
-- Email service: Async SMTP via asyncio.to_thread(), Jinja2 HTML templates, milestone alerts at 10%+ progress
-- Digest script: Cron-ready `scripts/send_digests.py` for daily/weekly mastery change + review reminder emails
-- Bot notification commands: `/settings` and `/email` commands with inline keyboard flows for preference management
-- Bot command menu: Registered via `set_my_commands()` at startup for discoverable command list
+Six-tier Redis-backed rate limiting (configurable, disabled during tests):
 
-## Evaluation
+| Tier | Window | Max | Routes |
+|------|--------|-----|--------|
+| `auth` | 60s | 5 | `/auth/*` (except OTP) |
+| `otp` | 300s | 3 | `/auth/request-otp`, `/auth/verify-otp` |
+| `chat` | 60s | 20 | `/chat/*` |
+| `write` | 60s | 30 | POST/PUT/PATCH/DELETE |
+| `read` | 60s | 100 | Everything else |
+| `internal` | 60s | 500 | `/internal/*` |
 
-```bash
-pip install datasets ragas
-python -c "from src.evaluation.ragas_test import run_evaluation; import asyncio; print(asyncio.run(run_evaluation(...)))"
-```
-
-Set `OTEL_ENDPOINT` and `TRACELOOP_API_KEY` to enable tracing (optional).
+Response headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`.
 
 ## Deployment
 
-1. Configure `.env` with production values (secret keys, tokens)
-2. Start infrastructure: `docker compose up -d postgres redis jaeger prometheus grafana`
-3. Ingest curriculum: `python scripts/ingest_curriculum.py`
-4. Start API: `python -m uvicorn src.main:app --host 0.0.0.0 --port 8000`
-5. Start bot: `python -m src.telegram.bot`
-6. Start dashboard: `cd dashboard && npm run build && npx next start -p 3000`
-7. (Optional) Set `TELEGRAM_WEBHOOK_URL` for production webhook mode
+### Backend (Railway)
+
+The API + Telegram bot run as a unified Railway service:
+
+```bash
+railway up                    # deploy from local directory
+railway redeploy --yes        # redeploy last image
+railway deployment list       # check status
+```
+
+Push to `main` triggers auto-deploy (when GitHub connected).
+
+### Frontend (Vercel)
+
+```bash
+cd dashboard
+npm run build
+vercel deploy --prod
+```
 
 ## Project Metrics
 
 | Metric | Value |
 |--------|-------|
-| Python source files | 97 |
-| Total Python lines | ~70,500 |
-| Database models | 31 |
-| Providers | 3 (Ollama, OpenAI, Anthropic) + extensible |
-| Agents | 14 (Tutor, Quiz, LessonPlanner, Safety, Translator, StudentProgress, ParentSummary, Orchestrator, Diagram, RecoveryAgent, SpacedRepetition, WeakTopicDetection, AdaptiveQuiz, Base) |
-| LangGraph nodes | 5 (orchestrator, retrieve, skip_retrieval, tutor, safety) |
-| API endpoints | 47 |
-| Test files | 20 |
+| Python source files | ~150 |
+| Total Python lines | ~75,000 |
+| Database models | 31+ |
+| LLM Providers | 5 (Ollama, OpenRouter, OpenAI, Anthropic, OpenAI-compatible) |
+| Agents | 15+ (Tutor, Quiz, LessonPlanner, Safety, Translator, StudentProgress, etc.) |
+| LangGraph nodes | 12+ (orchestrator, planner, plan_executor, evidence_graph, sufficient_context, synthesis, retrieve, skip_retrieval, tutor, hallucination, claim_verifier, safety) |
+| API endpoints | 70+ |
+| Test files | 90+ |
 | Dashboard pages | 9 |
 | Textbooks ingested | 4 (Grades 9-12) |
-| Vector store chunks | 1,165 |
+| Vector store backend | pgvector (ChromaDB removed) |
 | Retrieval methods | Hybrid (Dense + BM25 + Cross-encoder reranker) |
+| CI/CD | GitHub Actions (lint + typecheck + tests + security) |
+| Auth | Cookie-based JWT with refresh rotation + Redis JTI |
+| Rate limiting | 6-tier Redis-backed |
+| Circuit breaker | Per-provider (threshold=5, recovery_timeout=30s) |
