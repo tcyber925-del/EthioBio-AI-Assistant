@@ -132,9 +132,9 @@ def test_chat_response_schema_has_xp_fields():
 
 
 def test_graph_chat_response_schema_has_xp_fields():
-    from src.api.graph import GraphChatResponse
+    from src.schemas.chat import TutorResponse
 
-    graph_resp = GraphChatResponse(answer="test", model_used="test", confidence=0.5)
+    graph_resp = TutorResponse(answer="test", language="en", sources=[], model_used="test", confidence=0.5)
     assert hasattr(graph_resp, "xp_awarded")
     assert hasattr(graph_resp, "level_up")
     assert hasattr(graph_resp, "new_level")

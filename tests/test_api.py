@@ -8,6 +8,7 @@ from src.api.auth import get_current_user
 from src.database.models import User, UserRole
 from src.database.session import get_session
 from src.main import app
+from src.redis_client import get_redis
 
 
 @pytest.fixture(autouse=True)
@@ -36,6 +37,13 @@ def override_db():
 
         mock.refresh.side_effect = mock_refresh
         yield mock
+
+    async def mock_get_redis():
+        mock_redis = AsyncMock()
+        mock_redis.get.return_value = None
+        yield mock_redis
+
+    app.dependency_overrides[get_redis] = mock_get_redis
 
     async def mock_get_current_user():
         return User(

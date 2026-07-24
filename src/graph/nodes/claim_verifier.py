@@ -5,14 +5,15 @@ Routes to revise/reject/finalize based on groundedness score.
 """
 
 import json
-import logging
 import re
 from dataclasses import dataclass
+
+import structlog
 
 from src.graph.state import AgentState
 from src.llm.router import ModelRouter
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 VERIFICATION_THRESHOLDS = {
     "minimum_claims": 1,

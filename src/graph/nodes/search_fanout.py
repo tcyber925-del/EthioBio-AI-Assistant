@@ -5,10 +5,10 @@ Uses SearchFanoutAgent for task planning and source routing.
 """
 
 import asyncio
-import logging
 from collections.abc import Callable
 from typing import Optional
 
+import structlog
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,7 +19,7 @@ from src.core.learning_intelligence.recommendation.services.service import (
 from src.graph.state import AgentState
 from src.retrieval.adapter import RetrievalFilter, RetrievalResult, VectorStoreAdapter
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 TOTAL_MAX_RESULTS = 15
 

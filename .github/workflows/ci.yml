@@ -39,8 +39,8 @@ jobs:
       - run: uv pip install --system -r requirements.txt
       - run: uv pip install --system -r requirements-bot.txt
       - run: uv pip install --system coverage pytest-timeout pytest-cov
-      - name: Run tests (unit + integration, exclude slow/flaky)
-        run: pytest tests/ -v --no-header --timeout=120 --cov=src --cov-report=term-missing -m "not slow" --tb=short --ignore=tests/test_agentic_e2e.py -k "not test_public_stats_endpoint and not test_export_quiz_not_found and not test_export_lesson_plan_not_found and not test_graph_chat_response_schema_has_xp_fields and not test_handle_question_calls_run_graph and not test_upload_and_lifecycle"
+      - name: Run tests (unit + integration, exclude slow)
+        run: pytest tests/ -v --no-header --timeout=120 --cov=src --cov-report=term-missing -m "not slow" --tb=short
       - name: Run smoke tests
         run: pytest tests/ -v -m smoke --tb=short
 

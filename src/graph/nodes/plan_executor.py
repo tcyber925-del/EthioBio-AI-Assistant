@@ -6,10 +6,10 @@ per subtask. Manages the loop until all subtasks complete.
 Phase 0: Skeleton — runs subtasks but uses simplified retrieval.
 """
 
-import logging
 from collections.abc import Callable
 from typing import Optional
 
+import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.graph.nodes.query_rewriter import QueryRewriterNode
@@ -18,7 +18,7 @@ from src.graph.state import AgentState
 from src.llm.router import ModelRouter
 from src.retrieval.adapter import VectorStoreAdapter
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class PlanExecutor:

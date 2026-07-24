@@ -7,14 +7,14 @@ with rewritten queries and source-aware query groups.
 PRD-003: Query Rewriter Agent.
 """
 
-import logging
+import structlog
 
 from src.agents.query_rewriter.models import QueryBundle, RewrittenQuery
 from src.agents.query_rewriter.query_rewriter import QueryRewriterAgent
 from src.graph.state import AgentState
 from src.llm.router import ModelRouter
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class QueryRewriterNode:

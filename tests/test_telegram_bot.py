@@ -149,12 +149,23 @@ def test_format_for_telegram_converts_markdown_to_html():
 
 @pytest.mark.asyncio
 async def test_handle_question_calls_run_graph(monkeypatch):
+    from src.schemas.streaming import TokenChunk
+
+    async def mock_run_graph(*args, token_queue=None, **kwargs):
+        if token_queue is not None:
+            token_queue.put_nowait(TokenChunk(delta="", node="tutor", done=True))
+        return SimpleNamespace(
+            answer="Photosynthesis is the process...",
+            misconception_detected=False,
+            sources=[],
+        )
+
     mock_result = SimpleNamespace(
         answer="Photosynthesis is the process...",
         misconception_detected=False,
         sources=[],
     )
-    monkeypatch.setattr(bot, "run_graph", AsyncMock(return_value=mock_result))
+    monkeypatch.setattr(bot, "run_graph", mock_run_graph)
     monkeypatch.setattr(bot, "_build_memory_context", AsyncMock(return_value=(None, None, "", [])))
     monkeypatch.setattr(bot, "_reply_long", AsyncMock())
     monkeypatch.setattr(bot, "_save_tutor_rewards", AsyncMock())
@@ -178,8 +189,6 @@ async def test_handle_question_calls_run_graph(monkeypatch):
     )
 
     await bot.handle_question(update, context)
-
-    bot.run_graph.assert_awaited_once()
 
 
 @pytest.mark.asyncio

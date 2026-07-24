@@ -4,13 +4,13 @@ Wraps PlannerAgent for use in the Agentic RAG pipeline.
 Consumes AgentState, generates a Plan, and updates state.
 """
 
-import logging
+import structlog
 
 from src.agents.planner.planner import PlannerAgent
 from src.graph.state import AgentState
 from src.llm.router import ModelRouter
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class PlannerNode:

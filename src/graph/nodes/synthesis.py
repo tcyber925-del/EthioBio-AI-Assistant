@@ -4,13 +4,13 @@ Phase 0: LLM-based synthesis using TutorSynthesisAgent.
 Phase 1+: Support for structured JSON output and multi-source merging.
 """
 
-import logging
+import structlog
 
 from src.agents.synthesis import TutorSynthesisAgent
 from src.graph.state import AgentState
 from src.llm.router import ModelRouter
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class SynthesisNode:

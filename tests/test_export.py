@@ -1,8 +1,10 @@
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from src.database.session import get_session
 from src.export.docx_exporter import export_lesson_plan_to_docx, export_quiz_to_docx
 from src.export.pdf_exporter import export_lesson_plan_to_pdf, export_quiz_to_pdf
 from src.main import app
@@ -127,6 +129,23 @@ class TestPdfExporter:
         assert isinstance(result, bytes)
         assert len(result) > 0
         assert result.startswith(b"%PDF")
+
+
+@pytest.fixture(autouse=True)
+def override_db():
+    async def mock_get_session():
+        mock = AsyncMock()
+        mock.get.return_value = None
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_result.scalar.return_value = None
+        mock_result.scalars.return_value.all.return_value = []
+        mock.execute.return_value = mock_result
+        yield mock
+
+    app.dependency_overrides[get_session] = mock_get_session
+    yield
+    app.dependency_overrides.pop(get_session, None)
 
 
 @pytest.mark.asyncio
