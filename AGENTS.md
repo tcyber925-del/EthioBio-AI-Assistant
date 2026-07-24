@@ -85,6 +85,9 @@ Read the relevant file before working in that area:
 7. **Rate limiting disabled in tests** — conftest sets `rate_limit_enabled=False` via Settings override.
 8. **Chat/lesson-plan 500 without LLM** — these require running Ollama; marked `@pytest.mark.slow` and excluded from CI.
 9. **Redis lazy connection** — `redis_client.py` creates connection on first use; tests use `rate_limit_enabled=False` so Redis is optional.
+10. **Graph nodes use structlog, not stdlib logging** — switching `import logging` to `import structlog` in graph node files fixed 7 previously-failing agentic e2e tests.
+11. **Depends captures function objects at import time** — `patch.object` on a function used with `Depends()` is a no-op; use `app.dependency_overrides` instead.
+12. **Telegram mock must signal `TokenChunk(done=True)`** — test mocks for `run_graph` must put `TokenChunk(delta="", node="tutor", done=True)` into `token_queue` to break the `_stream_and_edit` loop.
 
 ## Maintenance
 
