@@ -26,7 +26,6 @@ markers = [
 [tool.coverage.run]
 source = ["src"]
 omit = ["src/agents/*", "src/ingestion/*", "src/notifications/templates/*"]
-concurrency = ["asyncio"]
 
 [tool.coverage.report]
 exclude_lines = [
