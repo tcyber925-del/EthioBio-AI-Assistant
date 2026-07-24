@@ -1,8 +1,20 @@
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from src.evaluation.benchmark.runner import BenchmarkRunner
+from tests.conftest import db_session as _db_session
+
+db = _db_session
+
+
+@pytest.fixture(autouse=True)
+def _patch_embedder_and_vector_store(tmp_path):
+    with (
+        patch("src.rag.embedder.Embedder.embed_text", new=AsyncMock(return_value=[0.1] * 384)),
+        patch("src.core.memory.vector_store.settings.vector_store_path", str(tmp_path)),
+    ):
+        yield
 
 
 @pytest.fixture

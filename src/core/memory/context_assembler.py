@@ -37,12 +37,14 @@ class ContextAssembler:
         socratic_part = self._format_socratic(socratic_state)
         mastery_part = await self._format_mastery(user_id, topic, db)
         misconceptions_part = await self._format_misconceptions(user_id, topic, db)
+        facts_part = await self._format_semantic_facts(user_id, topic, db)
         summaries_part = await self._format_summaries(user_id, topic)
         cross_session_part = await self._format_cross_session(user_id, topic, db)
 
         for label, part in [
             ("Current Session", session_part),
             ("Socratic State", socratic_part),
+            ("Student Preferences", facts_part),
             ("Topic Mastery", mastery_part),
             ("Active Misconceptions", misconceptions_part),
             ("Previous Sessions", cross_session_part),
@@ -95,6 +97,37 @@ class ContextAssembler:
             f"- Understanding: {state.get('student_understanding', '')}\n"
             f"- Gaps: {', '.join(str(g) for g in state.get('conceptual_gaps', [])[:3])}"
         )
+
+    async def _format_semantic_facts(
+        self,
+        user_id,
+        topic: str | None,
+        db: AsyncSession,
+    ) -> str:
+        try:
+            from src.database.models import SemanticFact
+
+            query = (
+                select(SemanticFact)
+                .where(SemanticFact.user_id == user_id)
+                .where(SemanticFact.is_active)
+            )
+            if topic:
+                query = query.where(SemanticFact.category == topic)
+            query = query.order_by(SemanticFact.updated_at.desc()).limit(5)
+
+            result = await db.execute(query)
+            facts = result.scalars().all()
+            if not facts:
+                return ""
+
+            lines = []
+            for f in facts:
+                lines.append(f"- {f.fact_key}: {f.fact_value} (confidence: {f.confidence:.2f})")
+            return "\n".join(lines)
+        except Exception as e:
+            logger.warning("semantic_facts_format_error", error=str(e))
+            return ""
 
     async def _format_mastery(self, user_id, topic: str | None, db: AsyncSession) -> str:
         try:
