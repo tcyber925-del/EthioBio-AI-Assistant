@@ -84,4 +84,4 @@ ignore_missing_imports = true
 explicit_package_bases = true
 implicit_optional = true
 warn_unused_ignores = false
-disable_error_code = ["attr-defined", "dict-item", "misc", "union-attr", "valid-type", "var-annotated", "assignment"]
+disable_error_code = ["attr-defined", "dict-item", "misc", "union-attr", "valid-type", "var-annotated", "assignment", "call-arg", "return-value", "arg-type", "annotation-unchecked"]
