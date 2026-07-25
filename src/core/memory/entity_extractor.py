@@ -38,8 +38,9 @@ class EntityExtractor:
                 self._nlp = spacy.load("en_core_web_sm")
             except OSError:
                 import subprocess
+                import sys
                 subprocess.run(
-                    ["python", "-m", "spacy", "download", "en_core_web_sm"],
+                    [sys.executable, "-m", "spacy", "download", "en_core_web_sm"],
                     capture_output=True,
                 )
                 self._nlp = spacy.load("en_core_web_sm")
@@ -103,7 +104,10 @@ class EntityExtractor:
                 if existing:
                     existing.mention_count += 1
                     existing.last_mentioned_at = now
-                    if session_id and (existing.sessions_seen is None or session_id not in existing.sessions_seen):
+                    if session_id and (
+                        existing.sessions_seen is None
+                        or session_id not in existing.sessions_seen
+                    ):
                         if existing.sessions_seen is None:
                             existing.sessions_seen = []
                         existing.sessions_seen.append(session_id)
@@ -142,7 +146,13 @@ class EntityExtractor:
         try:
             result = await llm.route(
                 messages=[
-                    {"role": "system", "content": "You extract educational entities from tutoring conversations. Output JSON only."},
+                    {
+                        "role": "system",
+                        "content": (
+                            "You extract educational entities from tutoring conversations. "
+                            "Output JSON only."
+                        ),
+                    },
                     {"role": "user", "content": prompt},
                 ],
                 request_type="entity_extraction",

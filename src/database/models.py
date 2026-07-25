@@ -752,7 +752,9 @@ class MemoryEducationalSummary(Base):
     next_learning_goal: Mapped[str] = mapped_column(Text, nullable=True)
     tutoring_quality_notes: Mapped[str] = mapped_column(Text, nullable=True)
     embedding_id: Mapped[str] = mapped_column(String(100), nullable=True)
-    search_vector: Mapped[TSVECTOR] = mapped_column(TSVECTOR().with_variant(Text(), "sqlite"), deferred=True, nullable=True)
+    search_vector: Mapped[TSVECTOR] = mapped_column(
+        TSVECTOR().with_variant(Text(), "sqlite"), deferred=True, nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     user: Mapped["User"] = relationship(backref="memory_educational_summaries")
@@ -808,7 +810,9 @@ class ConversationTurn(Base):
     role: Mapped[str] = mapped_column(String(20))
     content: Mapped[str] = mapped_column(Text)
     topic: Mapped[str] = mapped_column(String(300), nullable=True, index=True)
-    search_vector: Mapped[TSVECTOR] = mapped_column(TSVECTOR().with_variant(Text(), "sqlite"), deferred=True, nullable=True)
+    search_vector: Mapped[TSVECTOR] = mapped_column(
+        TSVECTOR().with_variant(Text(), "sqlite"), deferred=True, nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, index=True
     )
@@ -820,7 +824,9 @@ class MemoryEntity(Base):
     __tablename__ = "memory_entities"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), index=True,
+    )
     entity_text: Mapped[str] = mapped_column(String(300))
     entity_type: Mapped[str] = mapped_column(String(50))
     mention_count: Mapped[int] = mapped_column(Integer, default=1)

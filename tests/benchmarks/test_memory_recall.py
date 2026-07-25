@@ -1,6 +1,7 @@
-import pytest
-from uuid import uuid4
 from datetime import datetime, timedelta, timezone
+from uuid import uuid4
+
+import pytest
 
 pytestmark = pytest.mark.asyncio(loop_scope="module")
 
@@ -37,8 +38,8 @@ async def _seed_misconception_turns(db, session_id):
 
 async def _seed_summary(db, user_id, topic, understanding, confidence,
                          misconceptions=None, goal="", minutes_ago=0):
-    from src.database.models import MemoryEducationalSummary
     from src.core.memory.vector_store import MemoryVectorStore
+    from src.database.models import MemoryEducationalSummary
     from src.rag.embedder import Embedder
     text = (
         f"Topic: {topic} | Understanding: {understanding} | "
@@ -176,7 +177,7 @@ class TestMemoryRecall:
         """Two similar facts: newer one should rank higher."""
         now = datetime.now(timezone.utc)
         from src.database.models import ConversationTurn
-        for i, (content, days_ago) in enumerate([
+        for _i, (content, days_ago) in enumerate([
             ("Student understands basic genetics concepts", 20),
             ("Student has strong grasp of genetics now", 1),
         ]):

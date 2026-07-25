@@ -149,13 +149,15 @@ class RetrievalOrchestrator:
                 ConversationTurn.role,
                 ConversationTurn.created_at,
                 func.ts_rank(
-                ConversationTurn.search_vector,
-                func.plainto_tsquery("english", text(":query")),
-            ).label("rank"),
-        )
-        .where(
-            ConversationTurn.user_id == user_id,
-            ConversationTurn.search_vector.op("@@")(func.plainto_tsquery("english", text(":query"))),
+                    ConversationTurn.search_vector,
+                    func.plainto_tsquery("english", text(":query")),
+                ).label("rank"),
+            )
+            .where(
+                ConversationTurn.user_id == user_id,
+                ConversationTurn.search_vector.op("@")(
+                    func.plainto_tsquery("english", text(":query")),
+                ),
             )
             .order_by(text("rank DESC"))
             .limit(limit)
@@ -192,13 +194,15 @@ class RetrievalOrchestrator:
                 MemoryEducationalSummary.confidence,
                 MemoryEducationalSummary.created_at,
                 func.ts_rank(
-                MemoryEducationalSummary.search_vector,
-                func.plainto_tsquery("english", text(":query")),
-            ).label("rank"),
-        )
-        .where(
-            MemoryEducationalSummary.user_id == user_id,
-            MemoryEducationalSummary.search_vector.op("@@")(func.plainto_tsquery("english", text(":query"))),
+                    MemoryEducationalSummary.search_vector,
+                    func.plainto_tsquery("english", text(":query")),
+                ).label("rank"),
+            )
+            .where(
+                MemoryEducationalSummary.user_id == user_id,
+                MemoryEducationalSummary.search_vector.op("@")(
+                    func.plainto_tsquery("english", text(":query")),
+                ),
             )
             .order_by(text("rank DESC"))
             .limit(limit)
