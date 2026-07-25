@@ -26,7 +26,7 @@ def upgrade() -> None:
             postgresql.TSVECTOR,
             sa.Computed(
                 "to_tsvector('english', coalesce(content, ''))",
-                persisted=False,
+                persisted=True,
             ),
             nullable=True,
         ),
@@ -47,7 +47,7 @@ def upgrade() -> None:
                 "to_tsvector('english', "
                 "coalesce(next_learning_goal, '') || ' ' || coalesce(topic, '')"
                 ")",
-                persisted=False,
+                persisted=True,
             ),
             nullable=True,
         ),
