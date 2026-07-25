@@ -616,13 +616,17 @@ async def get_educational_summaries(
 
 
 @router.post("/search", response_model=MemorySearchResponse)
-async def search_memories(request: MemorySearchRequest):
+async def search_memories(
+    request: MemorySearchRequest,
+    db: AsyncSession = Depends(get_session),
+):
     try:
         results = await retrieval_orchestrator.search(
             query=request.query,
             n_results=request.n_results,
             topic=request.topic,
             user_id=request.user_id,
+            db=db,
         )
         return MemorySearchResponse(
             results=[

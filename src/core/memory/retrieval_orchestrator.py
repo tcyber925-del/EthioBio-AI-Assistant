@@ -266,6 +266,7 @@ class RetrievalOrchestrator:
         self,
         topic: str,
         user_id: str | None = None,
+        db: AsyncSession | None = None,
     ) -> list[MemoryRetrievalResult]:
         return await self.search(
             query=f"learning about {topic}",
@@ -273,4 +274,5 @@ class RetrievalOrchestrator:
             fetch_size=10,
             topic=topic,
             user_id=user_id,
+            db=db,
         )

@@ -38,7 +38,7 @@ class ContextAssembler:
         mastery_part = await self._format_mastery(user_id, topic, db)
         misconceptions_part = await self._format_misconceptions(user_id, topic, db)
         facts_part = await self._format_semantic_facts(user_id, topic, db)
-        summaries_part = await self._format_summaries(user_id, topic)
+        summaries_part = await self._format_summaries(user_id, topic, db)
         cross_session_part = await self._format_cross_session(user_id, topic, db)
 
         for label, part in [
@@ -186,15 +186,18 @@ class ContextAssembler:
             logger.warning("misconceptions_format_error", error=str(e))
             return ""
 
-    async def _format_summaries(self, user_id, topic: str | None) -> str:
+    async def _format_summaries(self, user_id, topic: str | None, db: AsyncSession) -> str:
         try:
             if topic:
-                results = await self.retrieval.search_by_topic(topic, user_id=str(user_id))
+                results = await self.retrieval.search_by_topic(
+                    topic, user_id=str(user_id), db=db,
+                )
             else:
                 results = await self.retrieval.search(
                     "educational history",
                     n_results=3,
                     user_id=str(user_id),
+                    db=db,
                 )
             if not results:
                 return ""
