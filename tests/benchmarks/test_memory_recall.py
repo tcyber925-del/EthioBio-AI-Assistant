@@ -139,6 +139,38 @@ class TestMemoryRecall:
         assert "mitosis" in context_mitosis.lower()
         assert "genetics is the study" not in context_mitosis
 
+    async def test_entity_extractor_ner(self):
+        """EntityExtractor must detect biology terms and difficulty markers."""
+        from src.core.memory.entity_extractor import EntityExtractor
+        extractor = EntityExtractor()
+        entities = extractor._extract_entities_from_text(
+            "Student struggles with Punnett squares and mitosis phases"
+        )
+        texts = {e["text"] for e in entities}
+        types = {e["type"] for e in entities}
+        assert "punnett" in texts, f"Expected 'punnett' in entities: {entities}"
+        assert "mitosis" in texts, f"Expected 'mitosis' in entities: {entities}"
+        assert "difficulty" in types, f"Expected 'difficulty' type in entities: {entities}"
+
+    async def test_entity_match_boost(self, db):
+        """Entity match score must be > 0 when query mentions known entity."""
+        from src.database.models import MemoryEntity
+        db.add(MemoryEntity(
+            id=uuid4(), user_id=TEST_USER_ID,
+            entity_text="punnett", entity_type="concept",
+        ))
+        await db.commit()
+
+        from src.core.memory.retrieval_orchestrator import RetrievalOrchestrator
+        orch = RetrievalOrchestrator()
+        score = await orch._entity_match_score(
+            "struggles with Punnett squares",
+            str(TEST_USER_ID), db,
+        )
+        assert score > 0, (
+            f"Expected entity match score > 0, got {score}"
+        )
+
     @pytest.mark.skip(reason="Requires PostgreSQL tsvector — see Task 3+")
     async def test_recency_ranking(self, db):
         """Two similar facts: newer one should rank higher."""
