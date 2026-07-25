@@ -1,14 +1,18 @@
 from datetime import datetime, timezone
 
 import structlog
+from sqlalchemy import func, select, text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.memory.vector_store import MemoryVectorStore
+from src.database.models import ConversationTurn, MemoryEducationalSummary
 from src.rag.embedder import Embedder
 
 logger = structlog.get_logger()
 
 MEMORY_TOKEN_BUDGET = 1500  # max tokens for memory context
 RANK_SIMILARITY_WEIGHT = 0.3
+RRF_K = 60
 RANK_RECENCY_WEIGHT = 0.4
 RANK_CONFIDENCE_WEIGHT = 0.3
 RECENCY_HALF_LIFE_DAYS = 14  # recency score halves after this many days
@@ -87,6 +91,92 @@ class RetrievalOrchestrator:
         )
         return truncated
 
+    async def _bm25_search(
+        self,
+        query: str,
+        user_id: str,
+        db: AsyncSession,
+        limit: int = 10,
+    ) -> list[dict]:
+        if db.bind.dialect.name != "postgresql":
+            return []
+        stmt = (
+            select(
+                ConversationTurn.id,
+                ConversationTurn.content,
+                ConversationTurn.topic,
+                ConversationTurn.role,
+                ConversationTurn.created_at,
+                func.ts_rank(
+                ConversationTurn.search_vector,
+                func.plainto_tsquery("english", text(":query")),
+            ).label("rank"),
+        )
+        .where(
+            ConversationTurn.user_id == user_id,
+            ConversationTurn.search_vector.op("@@")(func.plainto_tsquery("english", text(":query"))),
+            )
+            .order_by(text("rank DESC"))
+            .limit(limit)
+        )
+        result = await db.execute(stmt, {"query": query})
+        rows = result.all()
+        return [
+            {
+                "id": str(r.id),
+                "content": r.content,
+                "topic": r.topic or "",
+                "role": r.role,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+                "rank": float(r.rank),
+            }
+            for r in rows
+        ]
+
+    async def _bm25_search_summaries(
+        self,
+        query: str,
+        user_id: str,
+        db: AsyncSession,
+        limit: int = 10,
+    ) -> list[dict]:
+        if db.bind.dialect.name != "postgresql":
+            return []
+        stmt = (
+            select(
+                MemoryEducationalSummary.id,
+                MemoryEducationalSummary.next_learning_goal,
+                MemoryEducationalSummary.topic,
+                MemoryEducationalSummary.understanding_level,
+                MemoryEducationalSummary.confidence,
+                MemoryEducationalSummary.created_at,
+                func.ts_rank(
+                MemoryEducationalSummary.search_vector,
+                func.plainto_tsquery("english", text(":query")),
+            ).label("rank"),
+        )
+        .where(
+            MemoryEducationalSummary.user_id == user_id,
+            MemoryEducationalSummary.search_vector.op("@@")(func.plainto_tsquery("english", text(":query"))),
+            )
+            .order_by(text("rank DESC"))
+            .limit(limit)
+        )
+        result = await db.execute(stmt, {"query": query})
+        rows = result.all()
+        return [
+            {
+                "id": str(r.id),
+                "content": r.next_learning_goal or f"Summary for {r.topic}",
+                "topic": r.topic or "",
+                "understanding_level": r.understanding_level,
+                "confidence": float(r.confidence),
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+                "rank": float(r.rank),
+            }
+            for r in rows
+        ]
+
     async def search(
         self,
         query: str,
@@ -94,6 +184,7 @@ class RetrievalOrchestrator:
         fetch_size: int = 20,
         topic: str | None = None,
         user_id: str | None = None,
+        db: AsyncSession | None = None,
     ) -> list[MemoryRetrievalResult]:
         query_embedding = await self.embedder.embed_text(query)
 
@@ -104,9 +195,8 @@ class RetrievalOrchestrator:
         if topic:
             filters["topic"] = topic
         if filters:
-            where = {
-                "$and": [{"user_id": v} if k == "user_id" else {k: v} for k, v in filters.items()]
-            }
+            items = [{k: v} for k, v in filters.items()]
+            where = items[0] if len(items) == 1 else {"$and": items}
 
         raw = await self.vector_store.search(
             query_embedding=query_embedding,
@@ -114,15 +204,14 @@ class RetrievalOrchestrator:
             where=where,
         )
 
-        scored: list[MemoryRetrievalResult] = []
+        vector_results: list[MemoryRetrievalResult] = []
         for item in raw:
             similarity = item.get("score", 0.0)
             meta = item.get("metadata", {})
             confidence = float(meta.get("confidence", 0.0))
             recency = self._recency_score(meta.get("created_at"))
             combined = self._combine_scores(similarity, recency, confidence)
-
-            scored.append(
+            vector_results.append(
                 MemoryRetrievalResult(
                     memory_id=item.get("id", ""),
                     content=item.get("content", ""),
@@ -131,6 +220,43 @@ class RetrievalOrchestrator:
                     similarity=similarity,
                 )
             )
+
+        scored: list[MemoryRetrievalResult] = []
+        seen_ids: set[str] = set()
+
+        vector_sorted = sorted(vector_results, key=lambda x: x.similarity, reverse=True)
+        for rank, result in enumerate(vector_sorted):
+            rrf_score = 1.0 / (RRF_K + rank)
+            result.score = rrf_score
+            scored.append(result)
+            seen_ids.add(result.memory_id)
+
+        if db and user_id:
+            bm25_turns = await self._bm25_search(query, user_id, db, limit=fetch_size)
+            bm25_summaries = await self._bm25_search_summaries(query, user_id, db, limit=fetch_size)
+
+            bm25_all = bm25_turns + bm25_summaries
+            bm25_sorted = sorted(bm25_all, key=lambda x: x["rank"], reverse=True)
+
+            for bm25_rank, entry in enumerate(bm25_sorted):
+                mid = entry["id"]
+                if mid in seen_ids:
+                    for existing in scored:
+                        if existing.memory_id == mid:
+                            existing.score += 1.0 / (RRF_K + bm25_rank)
+                    continue
+                seen_ids.add(mid)
+                recency = self._recency_score(entry.get("created_at"))
+                confidence = float(entry.get("confidence", 0.0))
+                rrf = 1.0 / (RRF_K + len(scored))
+                result = MemoryRetrievalResult(
+                    memory_id=mid,
+                    content=entry.get("content", ""),
+                    metadata=entry,
+                    score=rrf,
+                    similarity=0.0,
+                )
+                scored.append(result)
 
         scored.sort(key=lambda x: x.score, reverse=True)
         truncated = self._truncate_to_budget(scored)

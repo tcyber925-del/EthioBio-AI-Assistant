@@ -16,7 +16,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import Uuid
 
@@ -751,6 +751,7 @@ class MemoryEducationalSummary(Base):
     next_learning_goal: Mapped[str] = mapped_column(Text, nullable=True)
     tutoring_quality_notes: Mapped[str] = mapped_column(Text, nullable=True)
     embedding_id: Mapped[str] = mapped_column(String(100), nullable=True)
+    search_vector: Mapped[TSVECTOR] = mapped_column(TSVECTOR().with_variant(Text(), "sqlite"), deferred=True, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     user: Mapped["User"] = relationship(backref="memory_educational_summaries")
@@ -806,6 +807,7 @@ class ConversationTurn(Base):
     role: Mapped[str] = mapped_column(String(20))
     content: Mapped[str] = mapped_column(Text)
     topic: Mapped[str] = mapped_column(String(300), nullable=True, index=True)
+    search_vector: Mapped[TSVECTOR] = mapped_column(TSVECTOR().with_variant(Text(), "sqlite"), deferred=True, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, index=True
     )
