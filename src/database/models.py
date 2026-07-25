@@ -11,12 +11,13 @@ from sqlalchemy import (
     Enum,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import TSVECTOR, UUID
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import Uuid
 
@@ -813,6 +814,28 @@ class ConversationTurn(Base):
     )
 
     user: Mapped["User"] = relationship(backref="conversation_turns")
+
+
+class MemoryEntity(Base):
+    __tablename__ = "memory_entities"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), index=True)
+    entity_text: Mapped[str] = mapped_column(String(300))
+    entity_type: Mapped[str] = mapped_column(String(50))
+    mention_count: Mapped[int] = mapped_column(Integer, default=1)
+    first_mentioned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_mentioned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    sessions_seen: Mapped[list] = mapped_column(ARRAY(UUID(as_uuid=True)), nullable=True)
+    extra_data: Mapped[dict] = mapped_column(JSONB().with_variant(JSON(), "sqlite"), default=dict)
+
+    user: Mapped["User"] = relationship(backref="memory_entities")
+
+    __table_args__ = (
+        Index("idx_memory_entities_user_text", "user_id", "entity_text"),
+        Index("idx_memory_entities_type", "entity_type"),
+        Index("idx_memory_entities_user_type", "user_id", "entity_type"),
+    )
 
 
 class NotificationPreference(Base):

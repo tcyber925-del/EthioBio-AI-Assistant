@@ -3,7 +3,7 @@ name = "ethiobio-ai-assistant"
 version = "1.1.0"
 description = "AI-powered biology learning assistant for Ethiopian middle and high school education"
 requires-python = ">=3.12"
-dependencies = ["httpx", "structlog>=24.4.0"]
+dependencies = ["httpx", "structlog>=24.4.0", "spacy>=3.7.0"]
 
 [project.optional-dependencies]
 dev = ["ruff", "pytest>=8", "pytest-asyncio", "mypy", "pytest-timeout"]
