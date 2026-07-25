@@ -5,7 +5,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.memory.vector_store import MemoryVectorStore
-from src.database.models import ConversationTurn, MemoryEducationalSummary
+from src.database.models import ConversationTurn, MemoryEducationalSummary, MemoryEntity
 from src.rag.embedder import Embedder
 
 logger = structlog.get_logger()
@@ -66,6 +66,46 @@ class RetrievalOrchestrator:
             + RANK_RECENCY_WEIGHT * recency
             + RANK_CONFIDENCE_WEIGHT * confidence
         )
+
+    async def _entity_match_score(
+        self,
+        query: str,
+        user_id: str,
+        db: AsyncSession,
+    ) -> float:
+        try:
+            from src.core.memory.entity_extractor import EntityExtractor
+
+            extractor = EntityExtractor()
+            query_entities = extractor._extract_entities_from_text(query)
+            if not query_entities:
+                logger.debug("entity_match_no_query_entities", query=query)
+                return 0.0
+
+            entity_texts = list({e["text"] for e in query_entities})
+            uid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+            count = 0
+            for ent_text in entity_texts:
+                result = await db.execute(
+                    select(MemoryEntity).where(
+                        MemoryEntity.user_id == uid,
+                        MemoryEntity.entity_text == ent_text,
+                    )
+                )
+                if result.scalar_one_or_none():
+                    count += 1
+
+            score = min(1.0, count / 3.0)
+            logger.debug(
+                "entity_match_score",
+                query_entities=entity_texts,
+                matches=count,
+                score=score,
+            )
+            return score
+        except Exception:
+            logger.warning("entity_match_score_error", exc_info=True)
+            return 0.0
 
     def _truncate_to_budget(
         self,
@@ -257,6 +297,14 @@ class RetrievalOrchestrator:
                     similarity=0.0,
                 )
                 scored.append(result)
+
+        entity_boost = 0.0
+        if db and user_id:
+            entity_boost = await self._entity_match_score(query, user_id, db)
+
+        if entity_boost > 0:
+            for result in scored:
+                result.score += entity_boost
 
         scored.sort(key=lambda x: x.score, reverse=True)
         truncated = self._truncate_to_budget(scored)
