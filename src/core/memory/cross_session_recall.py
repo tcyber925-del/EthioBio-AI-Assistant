@@ -57,6 +57,24 @@ class CrossSessionRecall:
             except Exception:
                 pass
 
+        # Entity extraction hook — best-effort per turn
+        try:
+            from src.core.memory.entity_extractor import EntityExtractor
+
+            extractor = EntityExtractor()
+            for turn in turns:
+                content = turn.get("content", "")
+                if content:
+                    await extractor.extract_from_turn(
+                        turn_text=content,
+                        user_id=user_id,
+                        session_id=session_id,
+                        db=db,
+                    )
+            await db.flush()
+        except Exception:
+            logger.warning("entity_extract_record_turns_error", exc_info=True)
+
     async def recall_by_topic(
         self,
         user_id,

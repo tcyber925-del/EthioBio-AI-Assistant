@@ -151,6 +151,22 @@ class Summarizer:
             session.summary = summary_text
             await db.flush()
 
+            # Entity extraction hook — best-effort LLM consolidation
+            try:
+                from src.core.memory.entity_extractor import EntityExtractor
+
+                extractor = EntityExtractor()
+                conv_text = conversation_context or chr(10).join(context_parts)
+                await extractor.extract_from_session(
+                    user_id=session.user_id,
+                    topic=topic,
+                    conversation_text=conv_text,
+                    db=db,
+                )
+                await db.flush()
+            except Exception:
+                logger.warning("entity_extract_summarize_error", exc_info=True)
+
             logger.info(
                 "session_summarized",
                 session_id=str(session.session_id),
