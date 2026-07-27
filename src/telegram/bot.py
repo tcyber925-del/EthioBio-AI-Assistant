@@ -574,7 +574,7 @@ async def reveal_command(update: Update, context):
             memory_user_id, memory_session_id, memory_context, conversation_messages = (
                 await _build_memory_context(
                     telegram_id,
-                    context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
+                    None,
                     _mem_db,
                 )
                 if telegram_id
@@ -689,7 +689,7 @@ async def hint_command(update: Update, context):
             memory_user_id, memory_session_id, memory_context, conversation_messages = (
                 await _build_memory_context(
                     telegram_id,
-                    context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
+                    None,
                     _mem_db,
                 )
                 if telegram_id
@@ -767,8 +767,7 @@ async def ask_command(update: Update, context):
                 memory_user_id, memory_session_id, memory_context, conversation_messages = (
                     await _build_memory_context(
                         telegram_id,
-                        context.user_data.get("tutor_grade")
-                        or context.user_data.get("grade_level"),
+                        None,
                         _mem_db,
                     )
                     if telegram_id
@@ -1074,7 +1073,7 @@ async def handle_question(update: Update, context):
                     conversation_messages,
                 ) = await _build_memory_context(
                     telegram_id,
-                    context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
+                    None,
                     _mem_db,
                 )
 
@@ -2356,7 +2355,7 @@ async def handle_hint(update: Update, context):
             memory_user_id, memory_session_id, memory_context, conversation_messages = (
                 await _build_memory_context(
                     telegram_id,
-                    context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
+                    None,
                     _mem_db,
                 )
                 if telegram_id
@@ -2442,7 +2441,7 @@ async def handle_reveal_answer(update: Update, context):
             memory_user_id, memory_session_id, memory_context, conversation_messages = (
                 await _build_memory_context(
                     telegram_id,
-                    context.user_data.get("tutor_grade") or context.user_data.get("grade_level"),
+                    None,
                     _mem_db,
                 )
                 if telegram_id

@@ -1090,3 +1090,239 @@ class TestEnrichment:
         stored = json.loads(updated.metadata["enrichment"])
         assert stored["ko_id"] == ko.id
         assert stored["enrichment_version"] == "1"
+
+
+@pytest.fixture
+async def workspace_app_and_client():
+    engine = create_async_engine("sqlite+aiosqlite://", echo=False)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    from fastapi import FastAPI
+
+    import src.api.knowledge as knowledge_module
+    import src.api.workspace as workspace_module
+
+    test_service = WorkspaceService(factory)
+    test_registry = KnowledgeRegistry(factory)
+    test_storage = LocalFileStorage(Path(mkdtemp()))
+
+    knowledge_module._registry = None
+
+    app = FastAPI()
+    app.include_router(workspace_module.router)
+    app.include_router(knowledge_module.router)
+
+    with (
+        patch.object(workspace_module, "service", test_service),
+        patch.object(knowledge_module, "_get_registry", return_value=test_registry),
+        patch.object(knowledge_module, "_get_producer", return_value=None),
+        patch.object(knowledge_module, "_run_pipeline_inline"),
+    ):
+        yield app, factory, test_service, test_storage
+
+    await engine.dispose()
+
+
+class TestWorkspaceAPI:
+    async def test_create_workspace_via_api(self, workspace_app_and_client):
+        app, factory, svc, _ = workspace_app_and_client
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.post(
+                "/api/v1/workspaces/",
+                json={
+                    "name": "End-to-End WS",
+                    "description": "Created via API",
+                    "owner_id": "00000000-0000-0000-0000-000000000001",
+                },
+            )
+            assert resp.status_code == 201
+            data = resp.json()
+            assert data["name"] == "End-to-End WS"
+            assert data["description"] == "Created via API"
+            assert "id" in data
+            assert data["created_by"] == "00000000-0000-0000-0000-000000000001"
+
+    async def test_get_workspace_via_api(self, workspace_app_and_client):
+        app, factory, svc, _ = workspace_app_and_client
+        ws = await svc.create(
+            NewWorkspace(name="Get Test"), created_by="00000000-0000-0000-0000-000000000001"
+        )
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get(f"/api/v1/workspaces/{ws.id}")
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["name"] == "Get Test"
+            assert data["id"] == ws.id
+
+    async def test_get_nonexistent_workspace_via_api(self, workspace_app_and_client):
+        app, factory, svc, _ = workspace_app_and_client
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get("/api/v1/workspaces/00000000-0000-0000-0000-000000009999")
+            assert resp.status_code == 404
+
+    async def test_list_workspaces_for_user_via_api(self, workspace_app_and_client):
+        app, factory, svc, _ = workspace_app_and_client
+        uid = "00000000-0000-0000-0000-000000000001"
+        await svc.create(NewWorkspace(name="WS A"), created_by=uid)
+        await svc.create(NewWorkspace(name="WS B"), created_by=uid)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get("/api/v1/workspaces/", params={"user_id": uid})
+            assert resp.status_code == 200
+            data = resp.json()
+            assert len(data) == 2
+            names = [w["name"] for w in data]
+            assert "WS A" in names
+            assert "WS B" in names
+
+    async def test_update_workspace_via_api(self, workspace_app_and_client):
+        app, factory, svc, _ = workspace_app_and_client
+        ws = await svc.create(
+            NewWorkspace(name="Before"), created_by="00000000-0000-0000-0000-000000000001"
+        )
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.patch(
+                f"/api/v1/workspaces/{ws.id}",
+                params={"name": "After", "description": "Updated description"},
+            )
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["name"] == "After"
+            assert data["description"] == "Updated description"
+
+    async def test_delete_workspace_via_api(self, workspace_app_and_client):
+        app, factory, svc, _ = workspace_app_and_client
+        ws = await svc.create(
+            NewWorkspace(name="To Delete"), created_by="00000000-0000-0000-0000-000000000001"
+        )
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            del_resp = await client.delete(f"/api/v1/workspaces/{ws.id}")
+            assert del_resp.status_code == 204
+
+            get_resp = await client.get(f"/api/v1/workspaces/{ws.id}")
+            assert get_resp.status_code == 404
+
+    async def test_add_list_remove_members_via_api(self, workspace_app_and_client):
+        app, factory, svc, _ = workspace_app_and_client
+        owner = "00000000-0000-0000-0000-000000000001"
+        member = "00000000-0000-0000-0000-000000000002"
+        ws = await svc.create(NewWorkspace(name="Members"), created_by=owner)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            add_resp = await client.post(
+                f"/api/v1/workspaces/{ws.id}/members/{member}",
+                params={"role": "member"},
+            )
+            assert add_resp.status_code == 201
+            add_data = add_resp.json()
+            assert add_data["user_id"] == member
+            assert add_data["role"] == "member"
+
+            list_resp = await client.get(f"/api/v1/workspaces/{ws.id}/members")
+            assert list_resp.status_code == 200
+            members = list_resp.json()
+            assert len(members) == 2
+            assert any(m["user_id"] == member for m in members)
+
+            remove_resp = await client.delete(f"/api/v1/workspaces/{ws.id}/members/{member}")
+            assert remove_resp.status_code == 204
+
+            list_resp2 = await client.get(f"/api/v1/workspaces/{ws.id}/members")
+            assert len(list_resp2.json()) == 1
+
+    async def test_update_member_role_via_api(self, workspace_app_and_client):
+        app, factory, svc, _ = workspace_app_and_client
+        owner = "00000000-0000-0000-0000-000000000001"
+        ws = await svc.create(NewWorkspace(name="Role Update"), created_by=owner)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.patch(
+                f"/api/v1/workspaces/{ws.id}/members/{owner}/role",
+                params={"role": "admin"},
+            )
+            assert resp.status_code == 204
+
+    async def test_remove_nonexistent_member_via_api(self, workspace_app_and_client):
+        app, factory, svc, _ = workspace_app_and_client
+        ws = await svc.create(
+            NewWorkspace(name="No Member"), created_by="00000000-0000-0000-0000-000000000001"
+        )
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.delete(
+                f"/api/v1/workspaces/{ws.id}/members/00000000-0000-0000-0000-000000009999"
+            )
+            assert resp.status_code == 404
+
+    async def test_update_nonexistent_role_via_api(self, workspace_app_and_client):
+        app, factory, svc, _ = workspace_app_and_client
+        ws = await svc.create(
+            NewWorkspace(name="Role Fail"), created_by="00000000-0000-0000-0000-000000000001"
+        )
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.patch(
+                f"/api/v1/workspaces/{ws.id}/members/00000000-0000-0000-0000-000000009999/role",
+                params={"role": "admin"},
+            )
+            assert resp.status_code == 404
+
+    async def test_invalid_uuid_returns_400(self, workspace_app_and_client):
+        app, factory, svc, _ = workspace_app_and_client
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            get_resp = await client.get("/api/v1/workspaces/not-a-uuid")
+            assert get_resp.status_code == 400
+
+            delete_resp = await client.delete("/api/v1/workspaces/not-a-uuid")
+            assert delete_resp.status_code == 400
+
+            update_resp = await client.patch(
+                "/api/v1/workspaces/not-a-uuid", params={"name": "nope"}
+            )
+            assert update_resp.status_code == 400
+
+            members_resp = await client.get("/api/v1/workspaces/not-a-uuid/members")
+            assert members_resp.status_code == 400
+
+    async def test_list_with_invalid_user_id_returns_400(self, workspace_app_and_client):
+        app, factory, svc, _ = workspace_app_and_client
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get("/api/v1/workspaces/", params={"user_id": "bad-uuid"})
+            assert resp.status_code == 400
+
+    async def test_simple_endpoint(self, workspace_app_and_client):
+        app, factory, svc, _ = workspace_app_and_client
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get("/api/v1/workspaces/simple")
+            assert resp.status_code == 200
+            assert resp.json() == {"msg": "ok"}
+
+    async def test_workspace_with_knowledge_upload_search(
+        self, workspace_app_and_client
+    ):
+        app, factory, svc, _ = workspace_app_and_client
+        owner = "00000000-0000-0000-0000-000000000001"
+        ws = await svc.create(NewWorkspace(name="Doc Workspace"), created_by=owner)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            upload_resp = await client.post(
+                "/api/v1/knowledge/upload",
+                files={"file": ("biology.pdf", b"cell biology content", "application/pdf")},
+                params={"workspace_id": ws.id, "owner_id": owner},
+            )
+            assert upload_resp.status_code == 201
+            ko_id = upload_resp.json()["id"]
+
+            get_resp = await client.get(f"/api/v1/knowledge/{ko_id}")
+            assert get_resp.status_code == 200
+            assert get_resp.json()["workspace_id"] == ws.id

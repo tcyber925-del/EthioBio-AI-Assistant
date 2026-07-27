@@ -1,6 +1,8 @@
 """Tests for the persistent educational memory module."""
 
+import json
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -443,3 +445,59 @@ class TestContextAssembler:
             )
         assert "## Learner Context" in result
         assert "Current Session" in result
+
+
+class TestSummarizer:
+    @pytest.mark.asyncio
+    async def test_summary_embedding_id_links_session(self, monkeypatch):
+        """The summary row must be findable by the session it came from."""
+        from src.core.memory import summarizer as summarizer_mod
+        from src.database.models import MemoryEducationalSummary
+
+        session_id = uuid4()
+        session = SimpleNamespace(
+            session_id=session_id,
+            user_id=uuid4(),
+            active_topic="photosynthesis",
+            tutoring_mode="direct",
+            educational_context=None,
+            unresolved_questions=[],
+            summary=None,
+        )
+        llm = MagicMock()
+        llm.route = AsyncMock(
+            return_value={
+                "content": json.dumps(
+                    {
+                        "understanding_level": "beginner",
+                        "key_misconceptions": ["plants eat sunlight"],
+                        "confidence": 0.9,
+                        "next_learning_goal": "inputs and outputs of photosynthesis",
+                    }
+                )
+            }
+        )
+        embedder = MagicMock()
+        embedder.embed_text = AsyncMock(return_value=[0.1] * 8)
+        monkeypatch.setattr(summarizer_mod, "Embedder", MagicMock(return_value=embedder))
+        fake_extractor = MagicMock()
+        fake_extractor.return_value.extract_from_session = AsyncMock()
+        monkeypatch.setattr(
+            "src.core.memory.entity_extractor.EntityExtractor", fake_extractor
+        )
+
+        summarizer = summarizer_mod.Summarizer(llm_router=llm)
+        monkeypatch.setattr(summarizer, "_get_vector_store", MagicMock(return_value=AsyncMock()))
+
+        db = AsyncMock()
+        added: list = []
+        db.add = MagicMock(side_effect=lambda obj: added.append(obj))
+
+        result = await summarizer.summarize_session(
+            session, conversation_context="Student: do plants eat sunlight?", db=db
+        )
+
+        rows = [o for o in added if isinstance(o, MemoryEducationalSummary)]
+        assert result is not None
+        assert len(rows) == 1
+        assert rows[0].embedding_id == str(session_id)

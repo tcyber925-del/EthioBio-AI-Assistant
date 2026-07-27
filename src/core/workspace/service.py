@@ -5,6 +5,7 @@ from uuid import UUID
 
 import structlog
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.core.workspace.models import NewWorkspace, Workspace, WorkspaceMember, WorkspaceRole
@@ -129,7 +130,14 @@ class WorkspaceService:
                 invited_by=UUID(invited_by) if invited_by else None,
             )
             db.add(row)
-            await db.commit()
+            try:
+                await db.commit()
+            except IntegrityError as e:
+                await db.rollback()
+                msg = str(e.orig).lower()
+                if "foreign key" in msg or "violates foreign key" in msg:
+                    raise ValueError(f"User {user_id} not found") from e
+                raise
             logger.info(
                 "workspace_member_added",
                 workspace_id=workspace_id,
