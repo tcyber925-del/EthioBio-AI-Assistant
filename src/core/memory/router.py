@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.memory.event_logger import EventLogger
+from src.core.memory.event_logger import EventLogger, EventValidationError
 from src.core.memory.retrieval_orchestrator import RetrievalOrchestrator
 from src.core.memory.semantic_manager import SemanticFactManager
 from src.core.memory.session_manager import SessionManager
@@ -327,6 +327,9 @@ async def log_memory_event(
         )
     except HTTPException:
         raise
+    except EventValidationError as e:
+        await db.rollback()
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         await db.rollback()
         logger.error("memory_event_log_error", error=str(e))

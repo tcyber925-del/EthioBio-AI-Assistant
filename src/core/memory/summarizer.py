@@ -144,7 +144,7 @@ class Summarizer:
                 key_misconceptions=misconceptions,
                 confidence=confidence,
                 next_learning_goal=next_goal,
-                embedding_id=str(summary_id),
+                embedding_id=str(session.session_id),
             )
             db.add(db_summary)
 

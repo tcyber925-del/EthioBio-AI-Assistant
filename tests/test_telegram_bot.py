@@ -192,6 +192,47 @@ async def test_handle_question_calls_run_graph(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_handle_question_never_passes_grade_as_memory_topic(monkeypatch):
+    """Grade level must not leak into the memory session topic."""
+    from src.schemas.streaming import TokenChunk
+
+    async def mock_run_graph(*args, token_queue=None, **kwargs):
+        if token_queue is not None:
+            token_queue.put_nowait(TokenChunk(delta="", node="tutor", done=True))
+        return SimpleNamespace(answer="ok", misconception_detected=False, sources=[])
+
+    memory_mock = AsyncMock(return_value=(None, None, "", []))
+    monkeypatch.setattr(bot, "run_graph", mock_run_graph)
+    monkeypatch.setattr(bot, "_build_memory_context", memory_mock)
+    monkeypatch.setattr(bot, "_reply_long", AsyncMock())
+    monkeypatch.setattr(bot, "_save_tutor_rewards", AsyncMock())
+
+    mock_session = AsyncMock()
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=None)
+    mock_factory = MagicMock(return_value=mock_session)
+    monkeypatch.setattr(bot, "async_session_factory", MagicMock(return_value=mock_factory))
+
+    message = SimpleNamespace(reply_text=AsyncMock(), text="What is photosynthesis?")
+    update = SimpleNamespace(message=message, effective_user=SimpleNamespace(id=12345))
+    context = SimpleNamespace(
+        user_data={
+            "grade_level": 10,
+            "language": "en",
+            "socratic_mode": False,
+            "hint_level": 0,
+            "reveal_answer": False,
+        }
+    )
+
+    await bot.handle_question(update, context)
+
+    memory_mock.assert_awaited_once()
+    topic_arg = memory_mock.await_args.args[1]
+    assert topic_arg is None
+
+
+@pytest.mark.asyncio
 async def test_help_command_replies_with_text():
     message = SimpleNamespace(reply_text=AsyncMock())
     update = SimpleNamespace(message=message)

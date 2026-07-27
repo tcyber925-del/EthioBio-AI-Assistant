@@ -27,6 +27,11 @@ def _valid_uuid(value: str) -> bool:
         return False
 
 
+@router.get("/simple")
+async def simple():
+    return {"msg": "ok"}
+
+
 @router.post("/", response_model=Workspace, status_code=201)
 async def create_workspace(body: NewWorkspace):
     ws = await service.create(body, created_by=body.owner_id or "system")
@@ -88,7 +93,13 @@ async def add_member(workspace_id: str, user_id: str, role: WorkspaceRole = Work
         return JSONResponse(content={"detail": "Invalid UUID format"}, status_code=400)
     if not _valid_uuid(user_id):
         return JSONResponse(content={"detail": "Invalid UUID format"}, status_code=400)
-    return await service.add_member(workspace_id, user_id, role=role)
+    try:
+        return await service.add_member(workspace_id, user_id, role=role)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception:
+        logger.exception("add_member_failed")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/{workspace_id}/members/{user_id}", status_code=204)
@@ -113,14 +124,15 @@ async def update_member_role(workspace_id: str, user_id: str, role: WorkspaceRol
         raise HTTPException(status_code=404, detail="Membership not found")
 
 
-@router.get("/simple")
-async def simple():
-    return {"msg": "ok"}
-
-
 @router.post("/seed/{class_group_id}", response_model=Workspace, status_code=201)
 async def seed_from_class_group(class_group_id: str):
     if not _valid_uuid(class_group_id):
         return JSONResponse(content={"detail": "Invalid UUID format"}, status_code=400)
-    ws = await service.seed_from_class_group(class_group_id)
-    return ws
+    try:
+        ws = await service.seed_from_class_group(class_group_id)
+        return ws
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception:
+        logger.exception("seed_from_class_group_failed")
+        raise HTTPException(status_code=500, detail="Internal server error")
