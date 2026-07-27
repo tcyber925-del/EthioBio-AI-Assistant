@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { isAuthenticated, getUserRole, getUserId } from '@/lib/auth'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { DashboardSkeleton } from '@/components/dashboard-v2'
@@ -9,6 +10,7 @@ import { FolderKanban, Plus } from 'lucide-react'
 import { WorkspaceContext, Workspace } from './context'
 
 export default function WorkspaceLayout({ children }: { children: React.ReactNode }) {
+  const t = useTranslations('workspace')
   const router = useRouter()
   const [ready, setReady] = useState(false)
   const [workspaces, setWorkspaces] = useState<Workspace[]>([])
@@ -63,11 +65,11 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
               <FolderKanban className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs text-v2-text-secondary uppercase tracking-wider font-semibold">Active Workspace</p>
+              <p className="text-xs text-v2-text-secondary uppercase tracking-wider font-semibold">{t('active_workspace')}</p>
               {activeWorkspace ? (
                 <p className="text-lg font-bold text-v2-text-primary">{activeWorkspace.name}</p>
               ) : (
-                <p className="text-sm text-v2-text-secondary">No active workspace</p>
+                <p className="text-sm text-v2-text-secondary">{t('no_active_workspace')}</p>
               )}
             </div>
           </div>
@@ -85,13 +87,13 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
                   {w.name}
                 </option>
               ))}
-              {workspaces.length === 0 && <option value="">No workspaces found</option>}
+              {workspaces.length === 0 && <option value="">{t('no_workspaces')}</option>}
             </select>
             <button
               onClick={() => router.push('/classroom')}
               className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-v2-accent text-v2-inverted text-xs font-semibold hover:bg-white transition-colors"
             >
-              <Plus className="w-4 h-4" /> Seed / Create
+              <Plus className="w-4 h-4" /> {t('seed_create')}
             </button>
           </div>
         </div>

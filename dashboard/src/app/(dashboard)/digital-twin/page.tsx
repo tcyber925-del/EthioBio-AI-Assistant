@@ -8,6 +8,7 @@ import {
   TrendingDown, Minus, ChevronDown, ChevronRight,
   FlaskConical, Plus, X,
 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import GamificationProfile from '@/components/gamification/GamificationProfile'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
@@ -90,6 +91,8 @@ function TrendIcon({ trend }: { trend: string }) {
 }
 
 export default function DigitalTwinPage() {
+  const t = useTranslations('twin')
+  const tv = useTranslations('v2.nav')
   const router = useRouter()
   const userId = getUserId()
   const [ready, setReady] = useState(false)
@@ -162,15 +165,15 @@ export default function DigitalTwinPage() {
 
   return (
     <DashboardLayout breadcrumbs={[
-      { label: 'Overview', href: '/v2/overview' },
-      { label: 'Digital Twin' },
+      { label: tv('overview'), href: '/v2/overview' },
+      { label: t('crumb_twin') },
     ]}>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Digital Twin</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t('title')}</h1>
             <p className="text-sm text-foreground-muted mt-1">
-              Your virtual learner model — knowledge, mastery, misconceptions, retention, readiness, and interventions
+              {t('subtitle')}
             </p>
           </div>
           <button
@@ -179,7 +182,7 @@ export default function DigitalTwinPage() {
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover disabled:opacity-50 transition-colors"
           >
             <RefreshCw className={`w-4 h-4 ${rebuilding ? 'animate-spin' : ''}`} />
-            {rebuilding ? 'Rebuilding...' : 'Rebuild'}
+            {rebuilding ? t('rebuilding') : t('rebuild')}
           </button>
         </div>
 
@@ -192,9 +195,9 @@ export default function DigitalTwinPage() {
         ) : !data ? (
           <div className="text-center py-16 bg-card rounded-xl border border-border">
             <Activity className="w-12 h-12 text-border mx-auto mb-3" />
-            <p className="text-foreground-muted font-medium">No digital twin data yet</p>
+            <p className="text-foreground-muted font-medium">{t('empty_title')}</p>
             <p className="text-sm text-foreground-muted/60 mt-1">
-              Complete assessments and activities to build your twin
+              {t('empty_hint')}
             </p>
           </div>
         ) : (
@@ -204,10 +207,10 @@ export default function DigitalTwinPage() {
                 <Shield className="w-6 h-6" />
                 <div>
                   <p className="text-sm font-medium capitalize">
-                    {data.overall_health.replace(/_/g, ' ')}
+                    {t(`health_${data.overall_health}` as 'health_healthy') }
                   </p>
                   <p className="text-xs opacity-70">
-                    Last updated: {data.last_built_at ? new Date(data.last_built_at).toLocaleString() : 'Never'}
+                    {t('last_updated', { date: data.last_built_at ? new Date(data.last_built_at).toLocaleString() : t('never') })}
                   </p>
                 </div>
               </div>
@@ -220,28 +223,28 @@ export default function DigitalTwinPage() {
                   <div key={name} className="bg-card border border-border rounded-xl p-4">
                     <div className="flex items-center gap-2 text-foreground-muted text-xs mb-3">
                       <Icon className="w-4 h-4" />
-                      <span className="font-medium capitalize">{name}</span>
+                      <span className="font-medium capitalize">{t(`dim_${name}` as 'dim_knowledge')}</span>
                     </div>
                     {'score' in summary && summary.score !== undefined ? (
                       <div className="flex items-baseline gap-1">
                         <span className="text-2xl font-bold text-foreground">
                           {Math.round(summary.score * 100)}%
                         </span>
-                        <span className="text-xs text-foreground-muted">score</span>
+                        <span className="text-xs text-foreground-muted">{t('score_label')}</span>
                       </div>
                     ) : null}
                     {'active' in summary ? (
                       <div className="text-sm text-foreground">
-                        <span className="font-medium">{summary.active}</span>
-                        {' '}active{' '}
+                        <span className="font-medium">{t('active_count', { count: summary.active ?? 0 })}</span>
+                        {' '}
                         {summary.resolved !== undefined ? (
                           <span className="text-foreground-muted">
-                            · {summary.resolved} resolved
+                            {t('resolved_count', { count: summary.resolved })}
                           </span>
                         ) : null}
                         {summary.completed !== undefined ? (
                           <span className="text-foreground-muted">
-                            · {summary.completed} completed
+                            {t('completed_count', { count: summary.completed })}
                           </span>
                         ) : null}
                       </div>
@@ -255,7 +258,7 @@ export default function DigitalTwinPage() {
               <div className="bg-card border border-border rounded-xl p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <AlertTriangle className="w-4 h-4 text-red-400" />
-                  <h2 className="text-sm font-semibold text-foreground">Risk Indicators</h2>
+                  <h2 className="text-sm font-semibold text-foreground">{t('risk_title')}</h2>
                 </div>
                 <div className="space-y-2">
                   {data.risk_indicators.map((r, i) => (
@@ -284,7 +287,7 @@ export default function DigitalTwinPage() {
                   <div className="flex items-center gap-2">
                     <TrendingUp className="w-4 h-4 text-foreground-muted" />
                     <h2 className="text-sm font-semibold text-foreground">
-                      Forecast ({forecast.mastery.length} topics · {forecast.generated_at ? new Date(forecast.generated_at).toLocaleDateString() : ''})
+                      {t('forecast_title', { count: forecast.mastery.length, date: forecast.generated_at ? new Date(forecast.generated_at).toLocaleDateString() : '' })}
                     </h2>
                   </div>
                   {forecastOpen ? <ChevronDown className="w-4 h-4 text-foreground-muted" /> : <ChevronRight className="w-4 h-4 text-foreground-muted" />}
@@ -293,7 +296,7 @@ export default function DigitalTwinPage() {
                   <div className="px-4 pb-4 space-y-4">
                     {forecast.mastery.length > 0 && (
                       <div>
-                        <p className="text-xs font-medium text-foreground-muted mb-2 uppercase tracking-wider">Mastery Trend</p>
+                        <p className="text-xs font-medium text-foreground-muted mb-2 uppercase tracking-wider">{t('mastery_trend')}</p>
                         <div className="space-y-1">
                           {forecast.mastery.map((m) => (
                             <div key={m.topic} className="flex items-center gap-3 p-2 rounded-lg bg-background-secondary">
@@ -315,10 +318,10 @@ export default function DigitalTwinPage() {
 
                     {forecast.readiness.overall && (
                       <div>
-                        <p className="text-xs font-medium text-foreground-muted mb-2 uppercase tracking-wider">Readiness</p>
+                        <p className="text-xs font-medium text-foreground-muted mb-2 uppercase tracking-wider">{t('readiness_label')}</p>
                         <div className="flex items-center gap-3 p-3 rounded-lg bg-background-secondary">
                           <Target className="w-4 h-4 text-foreground-muted" />
-                          <span className="text-sm text-foreground">Overall</span>
+                          <span className="text-sm text-foreground">{t('overall_label')}</span>
                           <span className="text-xs text-foreground-muted">
                             {Math.round(forecast.readiness.overall.current * 100)}% → {Math.round(forecast.readiness.overall.projected * 100)}%
                           </span>
@@ -328,7 +331,7 @@ export default function DigitalTwinPage() {
 
                     {forecast.risk.length > 0 && (
                       <div>
-                        <p className="text-xs font-medium text-foreground-muted mb-2 uppercase tracking-wider">Projected Risks</p>
+                        <p className="text-xs font-medium text-foreground-muted mb-2 uppercase tracking-wider">{t('projected_risks')}</p>
                         <div className="space-y-1">
                           {forecast.risk.map((r, i) => (
                             <div key={i} className="flex items-start gap-3 p-2 rounded-lg bg-background-secondary">
@@ -349,7 +352,7 @@ export default function DigitalTwinPage() {
 
                     {forecast.retention.length > 0 && (
                       <div>
-                        <p className="text-xs font-medium text-foreground-muted mb-2 uppercase tracking-wider">Retention</p>
+                        <p className="text-xs font-medium text-foreground-muted mb-2 uppercase tracking-wider">{t('retention_label')}</p>
                         <div className="space-y-1">
                           {forecast.retention.map((r) => (
                             <div key={r.topic} className="flex items-center gap-3 p-2 rounded-lg bg-background-secondary">
@@ -376,13 +379,13 @@ export default function DigitalTwinPage() {
                 >
                   <div className="flex items-center gap-2">
                     <FlaskConical className="w-4 h-4 text-foreground-muted" />
-                    <h2 className="text-sm font-semibold text-foreground">What If? — Simulate Interventions</h2>
+                    <h2 className="text-sm font-semibold text-foreground">{t('sim_title')}</h2>
                   </div>
                   {simOpen ? <ChevronDown className="w-4 h-4 text-foreground-muted" /> : <ChevronRight className="w-4 h-4 text-foreground-muted" />}
                 </button>
                 {simOpen && (
                   <div className="px-4 pb-4 space-y-3">
-                    <p className="text-xs text-foreground-muted">Test how interventions would change projected outcomes</p>
+                    <p className="text-xs text-foreground-muted">{t('sim_hint')}</p>
                     <div className="space-y-2">
                       {simActions.map((a, i) => (
                         <div key={i} className="flex items-center gap-2">
@@ -395,9 +398,9 @@ export default function DigitalTwinPage() {
                             }}
                             className="text-xs bg-background-secondary border border-border rounded px-2 py-1 text-foreground"
                           >
-                            <option value="boost_mastery">Boost Mastery</option>
-                            <option value="add_reviews">Add Reviews</option>
-                            <option value="resolve_misconception">Resolve Misconception</option>
+                            <option value="boost_mastery">{t('sim_boost')}</option>
+                            <option value="add_reviews">{t('sim_add_reviews')}</option>
+                            <option value="resolve_misconception">{t('sim_resolve')}</option>
                           </select>
                           <select
                             value={a.topic}
@@ -441,7 +444,7 @@ export default function DigitalTwinPage() {
                         onClick={() => setSimActions([...simActions, { type: 'boost_mastery', topic: forecast.mastery[0].topic, value: 0.1 }])}
                         className="flex items-center gap-1 text-xs text-foreground-muted hover:text-foreground px-2 py-1 rounded border border-border"
                       >
-                        <Plus className="w-3 h-3" /> Add Action
+                        <Plus className="w-3 h-3" /> {t('add_action')}
                       </button>
                       {simActions.length > 0 && (
                         <button
@@ -450,7 +453,7 @@ export default function DigitalTwinPage() {
                           className="flex items-center gap-1 text-xs px-3 py-1 bg-primary text-white rounded hover:bg-primary-hover disabled:opacity-50"
                         >
                           {simRunning ? <Loader2 className="w-3 h-3 animate-spin" /> : <FlaskConical className="w-3 h-3" />}
-                          Run
+                          {t('run_action')}
                         </button>
                       )}
                       {simResult && (
@@ -458,13 +461,13 @@ export default function DigitalTwinPage() {
                           onClick={() => setSimResult(null)}
                           className="text-xs text-foreground-muted hover:text-foreground px-2 py-1"
                         >
-                          Clear
+                          {t('clear_action')}
                         </button>
                       )}
                     </div>
                     {simResult && simResult.simulated && (
                       <div className="space-y-2 pt-2 border-t border-border">
-                        <p className="text-xs font-medium text-foreground-muted">Baseline vs Simulated</p>
+                        <p className="text-xs font-medium text-foreground-muted">{t('baseline_vs')}</p>
                         {simResult.simulated.mastery.map((sm: any) => {
                           const bm = simResult.baseline.mastery.find((bm: any) => bm.topic === sm.topic)
                           if (!bm) return null
@@ -480,7 +483,7 @@ export default function DigitalTwinPage() {
                         {simResult.simulated.risk.length === 0 && simResult.baseline.risk.length > 0 && (
                           <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10 text-green-400 text-xs">
                             <TrendingUp className="w-3 h-3" />
-                            All projected risks resolved
+                            {t('risks_resolved')}
                           </div>
                         )}
                       </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
@@ -30,6 +31,7 @@ interface Insights {
 }
 
 export default function InterventionAnalyticsPage() {
+  const t = useTranslations('analytics')
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -52,7 +54,7 @@ export default function InterventionAnalyticsPage() {
       setLeaderboard(lead)
       setTrends(trendData)
     } catch (err: any) {
-      setError(err.message || 'Failed to load intervention analytics')
+      setError(err.message || t('error_load'))
     } finally {
       setLoading(false)
     }
@@ -67,14 +69,14 @@ export default function InterventionAnalyticsPage() {
   }, [router])
 
   return (
-    <DashboardLayout breadcrumbs={[{ label: 'Interventions', href: '/intervention-analytics' }, { label: 'Effectiveness Analytics' }]}>
+    <DashboardLayout breadcrumbs={[{ label: t('crumb_interventions'), href: '/intervention-analytics' }, { label: t('crumb_analytics') }]}>
       <div className="flex flex-col gap-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="verge-display text-4xl text-v2-text-primary leading-none">Intervention Effectiveness</h1>
+            <h1 className="verge-display text-4xl text-v2-text-primary leading-none">{t('title')}</h1>
             <p className="text-sm text-v2-text-secondary mt-1">
-              Measure, compare, and optimize Socratic reviews, recovery tasks, and adaptive practice outcomes.
+              {t('subtitle')}
             </p>
           </div>
           <button
@@ -103,21 +105,21 @@ export default function InterventionAnalyticsPage() {
             {/* Stats Overview */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="bg-v2-surface border border-v2-border p-5 rounded-[20px]">
-                <p className="text-xs text-v2-text-secondary uppercase font-semibold">Global Avg Effectiveness</p>
+                <p className="text-xs text-v2-text-secondary uppercase font-semibold">{t('stat_global')}</p>
                 <p className="verge-display text-3xl text-v2-accent mt-1">
                   {insights?.global_average != null ? `${insights.global_average}%` : '—'}
                 </p>
               </div>
               <div className="bg-v2-surface border border-v2-border p-5 rounded-[20px]">
-                <p className="text-xs text-v2-text-secondary uppercase font-semibold">Top Performing Inoculation</p>
+                <p className="text-xs text-v2-text-secondary uppercase font-semibold">{t('stat_top')}</p>
                 <p className="text-base font-bold text-v2-text-primary mt-2.5 truncate">
                   {insights?.top_recommended_type
                     ? insights.top_recommended_type.replace(/_/g, ' ').toUpperCase()
-                    : 'None Logged'}
+                    : t('stat_top_none')}
                 </p>
               </div>
               <div className="bg-v2-surface border border-v2-border p-5 rounded-[20px]">
-                <p className="text-xs text-v2-text-secondary uppercase font-semibold">Recommendation Boost</p>
+                <p className="text-xs text-v2-text-secondary uppercase font-semibold">{t('stat_boost')}</p>
                 <p className="verge-display text-3xl text-v2-text-primary mt-1">
                   {insights?.learned_boost != null ? `+${(insights.learned_boost * 100).toFixed(1)}%` : '0%'}
                 </p>
@@ -129,7 +131,7 @@ export default function InterventionAnalyticsPage() {
               {/* Trends Chart */}
               <div className="lg:col-span-2 bg-v2-surface border border-v2-border rounded-[20px] p-6 flex flex-col gap-4">
                 <h2 className="text-lg font-bold text-v2-text-primary flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-v2-accent" /> Ingestion Trends & Gains
+                  <TrendingUp className="w-5 h-5 text-v2-accent" /> {t('trends_title')}
                 </h2>
                 
                 {trends.length > 0 ? (
@@ -139,12 +141,12 @@ export default function InterventionAnalyticsPage() {
                       <XAxis dataKey="period" tick={{ fill: '#949494', fontSize: 10 }} />
                       <YAxis tick={{ fill: '#949494', fontSize: 10 }} domain={[0, 100]} />
                       <Tooltip contentStyle={{ backgroundColor: '#2d2d2d', borderColor: 'rgba(255,255,255,0.2)' }} />
-                      <Bar dataKey="avg_effectiveness" fill="#3cffd0" name="Avg Effectiveness" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="avg_effectiveness" fill="#3cffd0" name={t('chart_avg')} radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
                   <div className="py-20 text-center text-sm text-v2-text-secondary">
-                    No historical trend data found. Apply and complete interventions to generate logs.
+                    {t('trends_empty')}
                   </div>
                 )}
               </div>
@@ -152,7 +154,7 @@ export default function InterventionAnalyticsPage() {
               {/* Effectiveness by Type */}
               <div className="bg-v2-surface border border-v2-border rounded-[20px] p-6 flex flex-col gap-4">
                 <h2 className="text-lg font-bold text-v2-text-primary flex items-center gap-2">
-                  <Compass className="w-5 h-5 text-v2-accent" /> Strategy Comparison
+                  <Compass className="w-5 h-5 text-v2-accent" /> {t('comparison_title')}
                 </h2>
 
                 {insights?.effectiveness_by_type && Object.keys(insights.effectiveness_by_type).length > 0 ? (
@@ -176,7 +178,7 @@ export default function InterventionAnalyticsPage() {
                   </div>
                 ) : (
                   <div className="py-12 text-center text-xs text-v2-text-secondary">
-                    No comparative strategy logs available.
+                    {t('comparison_empty')}
                   </div>
                 )}
               </div>
@@ -185,7 +187,7 @@ export default function InterventionAnalyticsPage() {
             {/* Leaderboard Table */}
             <div className="bg-v2-surface border border-v2-border rounded-[20px] p-6 flex flex-col gap-4">
               <h2 className="text-lg font-bold text-v2-text-primary flex items-center gap-2 border-b border-v2-border/40 pb-2.5">
-                <Award className="w-5 h-5 text-v2-accent" /> Completed Intervention Leaderboard
+                <Award className="w-5 h-5 text-v2-accent" /> {t('leaderboard_title')}
               </h2>
 
               {leaderboard.length > 0 ? (
@@ -193,10 +195,10 @@ export default function InterventionAnalyticsPage() {
                   <table className="w-full text-left">
                     <thead>
                       <tr className="border-b border-v2-border/30 text-xs text-v2-text-secondary uppercase">
-                        <th className="py-2.5 font-semibold">Type</th>
-                        <th className="py-2.5 font-semibold">Topic</th>
-                        <th className="py-2.5 font-semibold">Date Completed</th>
-                        <th className="py-2.5 font-semibold text-right">Effectiveness Score</th>
+                        <th className="py-2.5 font-semibold">{t('col_type')}</th>
+                        <th className="py-2.5 font-semibold">{t('col_topic')}</th>
+                        <th className="py-2.5 font-semibold">{t('col_date')}</th>
+                        <th className="py-2.5 font-semibold text-right">{t('col_score')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-v2-border/20">
@@ -223,7 +225,7 @@ export default function InterventionAnalyticsPage() {
                 </div>
               ) : (
                 <div className="py-12 text-center text-sm text-v2-text-secondary">
-                  No completed interventions mapped to date.
+                  {t('leaderboard_empty')}
                 </div>
               )}
             </div>

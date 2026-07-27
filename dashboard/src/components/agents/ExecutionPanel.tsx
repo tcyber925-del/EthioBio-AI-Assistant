@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
@@ -22,6 +23,7 @@ interface ExecutionPanelProps {
 }
 
 export default function ExecutionPanel({ agents, onExecute }: ExecutionPanelProps) {
+  const t = useTranslations('agents')
   const [selectedAgent, setSelectedAgent] = useState('')
   const [task, setTask] = useState('')
   const [result, setResult] = useState<ExecutionResult | null>(null)
@@ -51,29 +53,28 @@ export default function ExecutionPanel({ agents, onExecute }: ExecutionPanelProp
 
   return (
     <Card className="mt-6">
-      <h2 className="text-heading text-foreground mb-4">Execute Task</h2>
+      <h2 className="text-heading text-foreground mb-4">{t('execute_title')}</h2>
       <div className="space-y-4">
         <div>
-          <label htmlFor="agent-select" className="block text-small text-foreground-muted mb-1">Agent</label>
-          <label className="block text-small text-foreground-muted mb-1">Agent</label>
+          <label htmlFor="agent-select" className="block text-small text-foreground-muted mb-1">{t('field_agent')}</label>
           <select
             value={selectedAgent}
             onChange={e => setSelectedAgent(e.target.value)}
             className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground text-body focus:outline-none focus:border-primary"
           >
-            <option value="">Select an agent...</option>
+            <option value="">{t('select_agent')}</option>
             {agents.map(a => (
               <option key={a.name} value={a.name}>{a.name}</option>
             ))}
           </select>
         </div>
         <div>
-          <label className="block text-small text-foreground-muted mb-1">Task</label>
+          <label className="block text-small text-foreground-muted mb-1">{t('field_task')}</label>
           <textarea
             value={task}
             onChange={e => setTask(e.target.value)}
             rows={3}
-            placeholder="Describe the task for the agent..."
+            placeholder={t('task_placeholder')}
             className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground text-body focus:outline-none focus:border-primary resize-none"
           />
         </div>
@@ -83,7 +84,7 @@ export default function ExecutionPanel({ agents, onExecute }: ExecutionPanelProp
           loading={loading}
           disabled={!selectedAgent || !task.trim() || loading}
         >
-          {loading ? 'Executing...' : 'Execute'}
+          {loading ? t('executing') : t('execute')}
         </Button>
 
         {error && (
@@ -96,7 +97,7 @@ export default function ExecutionPanel({ agents, onExecute }: ExecutionPanelProp
           <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 space-y-2">
             <div className="flex items-center gap-2 mb-2">
               <Badge variant={result.error ? 'red' : 'green'}>
-                {result.error ? 'Failed' : 'Success'}
+                {result.error ? t('result_failed') : t('result_success')}
               </Badge>
               <span className="text-small text-foreground-muted">
                 {result.duration_ms}ms

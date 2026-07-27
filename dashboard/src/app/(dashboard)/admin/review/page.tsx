@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import ReviewQueue from '@/components/governance/ReviewQueue'
 import Card from '@/components/ui/Card'
@@ -35,6 +36,7 @@ interface ReviewListResponse {
 type FilterTab = 'pending' | 'resolved'
 
 export default function AdminReviewPage() {
+  const t = useTranslations('admin.review')
   const [items, setItems] = useState<ReviewItem[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -52,7 +54,7 @@ export default function AdminReviewPage() {
       setItems(data.traces)
       setTotal(data.total)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load review items')
+      setError(err instanceof Error ? err.message : t('error_load'))
     } finally {
       setLoading(false)
     }
@@ -71,7 +73,7 @@ export default function AdminReviewPage() {
       })
       fetchItems()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to resolve item')
+      setError(err instanceof Error ? err.message : t('error_resolve'))
     }
   }
 
@@ -79,9 +81,9 @@ export default function AdminReviewPage() {
     <div>
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-heading text-foreground">Review Queue</h1>
+          <h1 className="text-heading text-foreground">{t('title')}</h1>
           <p className="text-small text-foreground-muted mt-1">
-            Pipeline responses flagged by the Safety Node for teacher review
+            {t('subtitle')}
           </p>
         </div>
       </div>
@@ -93,14 +95,14 @@ export default function AdminReviewPage() {
             size="sm"
             onClick={() => setFilter('pending')}
           >
-            Pending ({filter === 'pending' ? total : '...'})
+            {t('filter_pending')} ({filter === 'pending' ? total : '...'})
           </Button>
           <Button
             variant={filter === 'resolved' ? 'primary' : 'secondary'}
             size="sm"
             onClick={() => setFilter('resolved')}
           >
-            Resolved
+            {t('filter_resolved')}
           </Button>
         </div>
       </Card>

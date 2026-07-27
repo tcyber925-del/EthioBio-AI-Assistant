@@ -38,22 +38,38 @@ html {
 body {
   background-color: var(--v2-bg, #fafafa);
   color: var(--v2-text-primary, #1a1a2e);
-  font-family: var(--font-inter), system-ui, sans-serif;
+  /* Ethiopic fallbacks: Inter/Spectral have no Amharic glyphs; system-ui on
+     Windows/macOS/Android resolves Ebrima/Kefa/Noto automatically, the named
+     fallbacks cover Linux and older platforms. */
+  font-family: var(--font-inter), system-ui, 'Noto Sans Ethiopic', 'Ebrima', 'Abyssinica SIL', sans-serif;
+}
+
+/* Amharic (Ethiopic script) is taller than Latin — give it extra leading. */
+html[lang='am'] body {
+  line-height: 1.65;
 }
 
 /* --- Typography scale --- */
 .text-display {
-  font-family: Spectral, Georgia, serif;
+  font-family: Spectral, Georgia, 'Noto Sans Ethiopic', 'Ebrima', 'Abyssinica SIL', serif;
   font-size: 2rem;
   line-height: 2.5rem;
   font-weight: 700;
 }
 
 .text-heading {
-  font-family: 'Spectral', Georgia, serif;
+  font-family: 'Spectral', Georgia, 'Noto Sans Ethiopic', 'Ebrima', 'Abyssinica SIL', serif;
   font-size: 1.25rem;
   line-height: 1.75rem;
   font-weight: 700;
+}
+
+html[lang='am'] .text-display {
+  line-height: 2.75rem;
+}
+
+html[lang='am'] .text-heading {
+  line-height: 2rem;
 }
 
 .text-subhead {

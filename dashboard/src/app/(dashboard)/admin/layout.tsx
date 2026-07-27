@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getToken } from '@/lib/auth'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const t = useTranslations('admin.access')
   const [authorized, setAuthorized] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
@@ -24,7 +26,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         if (msg.includes('401') || msg.includes('Session expired')) {
           router.push('/login')
         } else if (msg.includes('403')) {
-          setError('Access denied — admin privileges required')
+          setError(t('denied_reason'))
         } else {
           setError(msg)
         }
@@ -35,10 +37,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
-          <h2 className="text-xl font-bold text-red-400 mb-2">Access Denied</h2>
+          <h2 className="text-xl font-bold text-red-400 mb-2">{t('denied_title')}</h2>
           <p className="text-foreground-muted mb-4">{error}</p>
           <Link href="/" className="text-primary hover:underline text-subhead">
-            Back to Dashboard
+            {t('back_to_dashboard')}
           </Link>
         </div>
       </div>
@@ -48,7 +50,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (authorized === null) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <p className="text-foreground-muted text-body">Verifying access...</p>
+        <p className="text-foreground-muted text-body">{t('verifying')}</p>
       </div>
     )
   }

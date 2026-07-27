@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import Badge from '@/components/ui/Badge'
 import Card from '@/components/ui/Card'
 
@@ -15,10 +16,10 @@ interface AgentCardProps {
   agent: AgentInfo
 }
 
-const statusBadge: Record<string, { variant: 'green' | 'yellow' | 'red'; label: string }> = {
-  idle: { variant: 'green', label: 'Idle' },
-  busy: { variant: 'yellow', label: 'Busy' },
-  error: { variant: 'red', label: 'Error' },
+const statusBadge: Record<string, { variant: 'green' | 'yellow' | 'red'; labelKey: string }> = {
+  idle: { variant: 'green', labelKey: 'card_status_idle' },
+  busy: { variant: 'yellow', labelKey: 'card_status_busy' },
+  error: { variant: 'red', labelKey: 'card_status_error' },
 }
 
 const capabilityColors: Record<string, 'blue' | 'purple' | 'orange' | 'green' | 'red' | 'muted'> = {
@@ -34,7 +35,11 @@ const capabilityColors: Record<string, 'blue' | 'purple' | 'orange' | 'green' | 
 }
 
 export default function AgentCard({ agent }: AgentCardProps) {
+  const t = useTranslations('agents')
   const s = statusBadge[agent.status] || statusBadge.idle
+
+  const capabilityLabel = (cap: string) =>
+    `capability_${cap}` in capabilityColors ? t(`capability_${cap}` as 'capability_tutoring') : cap.replace(/_/g, ' ')
 
   return (
     <Card className="flex flex-col gap-3">
@@ -43,12 +48,12 @@ export default function AgentCard({ agent }: AgentCardProps) {
           <h3 className="text-subhead font-semibold text-foreground">{agent.name}</h3>
           <p className="text-small text-foreground-muted mt-0.5">{agent.description}</p>
         </div>
-        <Badge variant={s.variant}>{s.label}</Badge>
+        <Badge variant={s.variant}>{t(s.labelKey as 'card_status_idle')}</Badge>
       </div>
       <div className="flex flex-wrap gap-1.5">
         {agent.capabilities.map(cap => (
           <Badge key={cap} variant={capabilityColors[cap] || 'muted'}>
-            {cap.replace(/_/g, ' ')}
+            {capabilityLabel(cap)}
           </Badge>
         ))}
       </div>

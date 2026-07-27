@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserId } from '@/lib/auth'
@@ -19,6 +20,7 @@ interface Assignment {
 }
 
 export default function AssignmentsPage() {
+  const t = useTranslations('assignments')
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -39,7 +41,7 @@ export default function AssignmentsPage() {
       const list = await listResponse.json()
       setAssignments(list)
     } catch (err: any) {
-      setError(err.message || 'Failed to load assignments')
+      setError(err.message || t('error_load'))
     } finally {
       setLoading(false)
     }
@@ -56,20 +58,24 @@ export default function AssignmentsPage() {
     }
     return styles[status] || 'bg-v2-bg/40 text-v2-text-secondary'
   }
+  const statusLabel = (status: string) =>
+    ['draft','published','completed','archived','submitted','under_review','reviewed','revision_requested'].includes(status)
+      ? t(`status_${status}` as const)
+      : status
 
   return (
-    <DashboardLayout breadcrumbs={[{ label: 'Assignments', href: '/assignments' }]}>
+    <DashboardLayout breadcrumbs={[{ label: t('crumb'), href: '/assignments' }]}>
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="verge-display text-4xl text-v2-text-primary leading-none">Assignments</h1>
-            <p className="text-sm text-v2-text-secondary mt-1">Create, publish, and review student submissions.</p>
+            <h1 className="verge-display text-4xl text-v2-text-primary leading-none">{t('list_title')}</h1>
+            <p className="text-sm text-v2-text-secondary mt-1">{t('list_subtitle')}</p>
           </div>
           <Link
             href="/assignments/new"
             className="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl bg-v2-accent text-v2-inverted text-sm font-semibold hover:bg-white transition-colors"
           >
-            <Plus className="w-4 h-4" /> New Assignment
+            <Plus className="w-4 h-4" /> {t('new_assignment')}
           </Link>
         </div>
 
@@ -103,7 +109,7 @@ export default function AssignmentsPage() {
                     <div className="flex items-center gap-2">
                       <h3 className="text-base font-bold text-v2-text-primary truncate">{a.title}</h3>
                       <span className={`text-[10px] uppercase px-2 py-0.5 rounded-full font-semibold ${statusBadge(a.status)}`}>
-                        {a.status}
+                        {statusLabel(a.status)}
                       </span>
                     </div>
                     <p className="text-xs text-v2-text-secondary mt-0.5 truncate">
@@ -111,7 +117,7 @@ export default function AssignmentsPage() {
                     </p>
                     {a.due_date && (
                       <p className="text-xs text-v2-text-secondary mt-1 flex items-center gap-1">
-                        <Calendar className="w-3 h-3" /> Due: {new Date(a.due_date).toLocaleDateString()}
+                        <Calendar className="w-3 h-3" /> {t('due_prefix', { date: new Date(a.due_date).toLocaleDateString() })}
                       </p>
                     )}
                   </div>
@@ -123,8 +129,8 @@ export default function AssignmentsPage() {
         ) : (
           <div className="bg-v2-surface border border-v2-border rounded-[20px] py-16 text-center">
             <FileText className="w-12 h-12 text-v2-text-secondary mx-auto mb-3" />
-            <h3 className="text-lg font-bold text-v2-text-primary">No assignments yet</h3>
-            <p className="text-sm text-v2-text-secondary mt-1">Create your first assignment to get started.</p>
+            <h3 className="text-lg font-bold text-v2-text-primary">{t('empty_title')}</h3>
+            <p className="text-sm text-v2-text-secondary mt-1">{t('empty_hint')}</p>
           </div>
         )}
       </div>

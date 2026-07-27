@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { isAuthenticated, getUserRole } from '@/lib/auth'
 import { DashboardLayout, DashboardSkeleton } from '@/components/dashboard-v2'
 import { StudentDashboard, TeacherDashboard, ParentDashboard, SchoolDashboard, AdminDashboard } from '@/components/dashboard-v2/dashboards'
 
 export default function V2OverviewPage() {
+  const t = useTranslations('v2.nav')
   const router = useRouter()
   const [ready, setReady] = useState(false)
   const [role, setRole] = useState<string | null>(null)
@@ -31,7 +33,7 @@ export default function V2OverviewPage() {
   }
 
   return (
-    <DashboardLayout breadcrumbs={[{ label: 'Overview' }]}>
+    <DashboardLayout breadcrumbs={[{ label: t('overview') }]}>
       {renderDashboard()}
     </DashboardLayout>
   )

@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { AlertCircle, CheckCircle } from 'lucide-react'
 
 export default function GradeSubmissionPage() {
+  const t = useTranslations('assignments')
   const { id, submissionId } = useParams<{ id: string; submissionId: string }>()
   const router = useRouter()
   const [submission, setSubmission] = useState<any>(null)
@@ -39,52 +41,52 @@ export default function GradeSubmissionPage() {
       setSuccess(true)
       setTimeout(() => router.push(`/assignments/${id}`), 1500)
     } catch (err: any) {
-      setError(err.message || 'Failed to submit grade')
+      setError(err.message || t('error_submit_grade'))
     } finally { setSubmitting(false) }
   }
 
   return (
     <DashboardLayout breadcrumbs={[
-      { label: 'Assignments', href: '/assignments' },
+      { label: t('crumb'), href: '/assignments' },
       { label: id, href: `/assignments/${id}` },
-      { label: 'Grade' },
+      { label: t('crumb_grade') },
     ]}>
       <div className="flex flex-col gap-6 max-w-2xl mx-auto">
         <div>
-          <h1 className="verge-display text-4xl text-v2-text-primary leading-none">Grade Submission</h1>
-          <p className="text-sm text-v2-text-secondary mt-1">Review and provide feedback on student work.</p>
+          <h1 className="verge-display text-4xl text-v2-text-primary leading-none">{t('grade_title')}</h1>
+          <p className="text-sm text-v2-text-secondary mt-1">{t('grade_subtitle')}</p>
         </div>
 
         {error && <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-error/10 border border-v2-error/30 text-v2-error text-sm"><AlertCircle className="w-5 h-5" />{error}</div>}
-        {success && <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-success/10 border border-v2-success/30 text-v2-success text-sm"><CheckCircle className="w-5 h-5" />Grade saved! Redirecting...</div>}
+        {success && <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-success/10 border border-v2-success/30 text-v2-success text-sm"><CheckCircle className="w-5 h-5" />{t('grade_saved')}</div>}
 
         {submission && (
           <div className="bg-v2-surface border border-v2-border rounded-[20px] p-6 flex flex-col gap-4">
-            <h2 className="text-sm font-bold text-v2-text-primary">Student Submission</h2>
+            <h2 className="text-sm font-bold text-v2-text-primary">{t('student_submission')}</h2>
             {submission.content_text && (
               <div className="bg-v2-bg/40 border border-v2-border/40 rounded-xl p-4 text-sm text-v2-text-primary whitespace-pre-wrap">
                 {submission.content_text}
               </div>
             )}
-            <p className="text-xs text-v2-text-secondary">Attempt #{submission.attempt_number} · Submitted {new Date(submission.submitted_at).toLocaleString()}</p>
+            <p className="text-xs text-v2-text-secondary">{t('attempt_submitted', { n: submission.attempt_number, date: new Date(submission.submitted_at).toLocaleString() })}</p>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="bg-v2-surface border border-v2-border rounded-[20px] p-6 flex flex-col gap-5">
           <div className="flex flex-col gap-2">
-            <label className="text-xs text-v2-text-secondary uppercase font-semibold">Grade (0-100)</label>
+            <label className="text-xs text-v2-text-secondary uppercase font-semibold">{t('field_grade')}</label>
             <input type="number" min={0} max={100} step={0.5} value={grade} onChange={e => setGrade(e.target.value)} required
               className="bg-v2-bg border border-v2-border text-v2-text-primary text-sm rounded-xl px-4 py-3 outline-none focus:border-v2-accent w-32" />
           </div>
           <div className="flex flex-col gap-2">
-            <label className="text-xs text-v2-text-secondary uppercase font-semibold">Feedback</label>
+            <label className="text-xs text-v2-text-secondary uppercase font-semibold">{t('field_feedback')}</label>
             <textarea value={feedback} onChange={e => setFeedback(e.target.value)} rows={4}
-              placeholder="Write feedback for the student..."
+              placeholder={t('feedback_placeholder')}
               className="bg-v2-bg border border-v2-border text-v2-text-primary text-sm rounded-xl px-4 py-3 outline-none focus:border-v2-accent resize-none" />
           </div>
           <button type="submit" disabled={submitting || success}
             className="h-12 rounded-xl bg-v2-accent text-v2-inverted text-sm font-bold hover:bg-white disabled:opacity-50 transition-all">
-            {submitting ? 'Saving...' : 'Submit Grade'}
+            {submitting ? t('saving') : t('submit_grade')}
           </button>
         </form>
       </div>

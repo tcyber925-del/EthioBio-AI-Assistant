@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
@@ -17,15 +18,17 @@ export interface ReflectionInfo {
   timestamp: string | null
 }
 
-function timeAgo(ts: string | null): string {
+type TFn = (key: string, values?: Record<string, string | number>) => string
+
+function timeAgo(ts: string | null, tc: TFn): string {
   if (!ts) return ''
   const diff = Date.now() - new Date(ts).getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
+  if (mins < 1) return tc('just_now')
+  if (mins < 60) return tc('minutes_ago', { m: mins })
   const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  return `${Math.floor(hrs / 24)}d ago`
+  if (hrs < 24) return tc('hours_ago', { h: hrs })
+  return tc('days_ago', { d: Math.floor(hrs / 24) })
 }
 
 const verdictBadge: Record<string, 'green' | 'red' | 'yellow'> = {
@@ -35,6 +38,8 @@ const verdictBadge: Record<string, 'green' | 'red' | 'yellow'> = {
 }
 
 export default function ReflectionTable({ refreshKey }: { refreshKey: number }) {
+  const t = useTranslations('agents')
+  const tc = useTranslations('common')
   const [reflections, setReflections] = useState<ReflectionInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -67,32 +72,32 @@ export default function ReflectionTable({ refreshKey }: { refreshKey: number }) 
   if (loading) return <TableSkeleton rows={5} />
   if (error) return (
     <div className="flex items-center gap-2 text-red-400 text-body">
-      <span>Failed to load reflections</span>
-      <Button variant="ghost" onClick={fetchReflections}>Retry</Button>
+      <span>{t('reflections_error')}</span>
+      <Button variant="ghost" onClick={fetchReflections}>{tc('retry')}</Button>
     </div>
   )
 
   return (
     <Card className="mt-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-heading text-foreground">Recent Executions</h2>
-        <Button variant="ghost" onClick={fetchReflections}>Refresh</Button>
+        <h2 className="text-heading text-foreground">{t('recent_executions')}</h2>
+        <Button variant="ghost" onClick={fetchReflections}>{tc('refresh')}</Button>
       </div>
       {reflections.length === 0 ? (
         <p className="text-body text-foreground-muted text-center py-8">
-          No executions yet. Run a task above to see results here.
+          {t('no_executions')}
         </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-body">
             <thead>
               <tr className="border-b border-border text-small text-foreground-muted">
-                <th className="text-left py-2 pr-4">Agent</th>
-                <th className="text-left py-2 pr-4">Task</th>
-                <th className="text-left py-2 pr-4">Verdict</th>
-                <th className="text-right py-2 pr-4">Confidence</th>
-                <th className="text-right py-2 pr-4">Duration</th>
-                <th className="text-right py-2">Time</th>
+                <th className="text-left py-2 pr-4">{t('col_agent')}</th>
+                <th className="text-left py-2 pr-4">{t('col_task')}</th>
+                <th className="text-left py-2 pr-4">{t('col_verdict')}</th>
+                <th className="text-right py-2 pr-4">{t('col_confidence')}</th>
+                <th className="text-right py-2 pr-4">{t('col_duration')}</th>
+                <th className="text-right py-2">{t('col_time')}</th>
               </tr>
             </thead>
             <tbody>
@@ -103,7 +108,9 @@ export default function ReflectionTable({ refreshKey }: { refreshKey: number }) 
                     {r.task}
                   </td>
                   <td className="py-2 pr-4">
-                    <Badge variant={verdictBadge[r.verdict] || 'yellow'}>{r.verdict}</Badge>
+                    <Badge variant={verdictBadge[r.verdict] || 'yellow'}>
+                      {['success', 'failure', 'partial'].includes(r.verdict) ? t(`verdict_${r.verdict}` as 'verdict_success') : r.verdict}
+                    </Badge>
                   </td>
                   <td className="py-2 pr-4 text-right">
                     <div className="flex items-center justify-end gap-1">
@@ -117,7 +124,7 @@ export default function ReflectionTable({ refreshKey }: { refreshKey: number }) 
                     </div>
                   </td>
                   <td className="py-2 pr-4 text-right text-foreground-muted">{r.duration_ms}ms</td>
-                  <td className="py-2 text-right text-foreground-muted text-small">{timeAgo(r.timestamp)}</td>
+                  <td className="py-2 text-right text-foreground-muted text-small">{timeAgo(r.timestamp, tc)}</td>
                 </tr>
               ))}
             </tbody>

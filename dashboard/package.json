@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "i18n:check": "node scripts/check-i18n.mjs",
+    "i18n:check:strict": "node scripts/check-i18n.mjs --strict"
   },
   "dependencies": {
     "@swc/helpers": "^0.5.23",

@@ -54,7 +54,7 @@ export default function RecoveryProgressCard({
 
       {activePlans > 0 && (
         <p className="text-small text-foreground-muted mb-2">
-          {t(activePlans === 1 ? 'active_plans_count' : 'active_plans_count_plural', { count: activePlans })}
+          {t('active_plans_count', { count: activePlans })}
         </p>
       )}
 
@@ -68,7 +68,7 @@ export default function RecoveryProgressCard({
       <div className="mt-2 flex items-center justify-between text-small text-foreground-muted/60">
         <span>{t('percent_complete', { pct: overallProgressPct })}</span>
         {remaining > 0 && (
-          <span>{t(remaining === 1 ? 'tasks_remaining' : 'tasks_remaining_plural', { count: remaining })}</span>
+          <span>{t('tasks_remaining', { count: remaining })}</span>
         )}
       </div>
     </div>

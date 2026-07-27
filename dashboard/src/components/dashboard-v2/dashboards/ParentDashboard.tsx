@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { AlertTriangle, RefreshCw, ChevronDown } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { HeroSection, InsightCard, MetricStrip, AIInsightPanel, LearningProgress } from '@/components/dashboard-v2'
 
@@ -21,19 +22,24 @@ interface WeeklySummary {
   is_low_performance_warning: boolean
 }
 
-function deriveParentInsights(progress: ChildProgress, summary: WeeklySummary | null): string[] {
+type TFn = (key: string, values?: Record<string, string | number>) => string
+
+function deriveParentInsights(progress: ChildProgress, summary: WeeklySummary | null, t: TFn): string[] {
   const insights: string[] = []
   const topics = Object.entries(progress.mastery_heatmap)
   const weak = topics.filter(([, s]) => s < 50)
   const strong = topics.filter(([, s]) => s >= 80)
-  if (weak.length > 0) insights.push(`${weak.length} area${weak.length > 1 ? 's' : ''} need${weak.length === 1 ? 's' : ''} attention: ${weak.map(([t]) => t).join(', ')}.`)
-  if (strong.length > 0) insights.push(`${strong.length} strength${strong.length > 1 ? 's' : ''}: ${strong.map(([t]) => t).join(', ')}. Keep up the good work!`)
-  if (summary?.is_low_performance_warning) insights.push(`⚠️ Low performance warning for this period. Consider scheduling additional support.`)
-  if (progress.streak >= 3) insights.push(`${progress.streak}-day streak! Consistency is building.`)
+  if (weak.length > 0) insights.push(t('insight_weak', { count: weak.length, topics: weak.map(([tp]) => tp).join(', ') }))
+  if (strong.length > 0) insights.push(t('insight_strong', { count: strong.length, topics: strong.map(([tp]) => tp).join(', ') }))
+  if (summary?.is_low_performance_warning) insights.push(t('insight_warning'))
+  if (progress.streak >= 3) insights.push(t('insight_streak', { days: progress.streak }))
   return insights
 }
 
 export function ParentDashboard() {
+  const t = useTranslations('v2.parent')
+  const ts = useTranslations('v2.student')
+  const tc = useTranslations('common')
   const [children, setChildren] = useState<ChildSummary[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [progress, setProgress] = useState<ChildProgress | null>(null)
@@ -88,7 +94,7 @@ export function ParentDashboard() {
           <AlertTriangle className="w-10 h-10 text-v2-error mx-auto mb-3" />
           <p className="text-sm font-medium text-v2-text-secondary mb-4">{error}</p>
           <button onClick={fetchChildren} className="inline-flex items-center gap-2 px-4 h-9 rounded-xl bg-v2-accent text-v2-inverted text-sm font-medium hover:bg-white transition-colors">
-            <RefreshCw className="w-4 h-4" /> Retry
+            <RefreshCw className="w-4 h-4" /> {tc('retry')}
           </button>
         </div>
       </div>
@@ -100,9 +106,9 @@ export function ParentDashboard() {
   return (
     <>
       <HeroSection
-        title="Your Child's Learning Journey"
-        subtitle={child ? `${child.name} · Grade ${child.grade_level || 'N/A'}` : 'Select a child to view progress'}
-        secondary={child && progress ? `XP: ${progress.total_xp} · Streak: ${progress.streak} days` : undefined}
+        title={t('title')}
+        subtitle={child ? t('subtitle_child', { name: child.name, grade: child.grade_level || 'N/A' }) : t('subtitle_select')}
+        secondary={child && progress ? t('secondary_stats', { xp: progress.total_xp, days: progress.streak }) : undefined}
       />
 
       {children.length > 1 && (
@@ -122,7 +128,7 @@ export function ParentDashboard() {
 
       {children.length === 0 ? (
         <div className="bg-v2-surface rounded-[20px] border border-v2-border p-12 text-center">
-          <p className="text-sm text-v2-text-secondary">No linked children found.</p>
+          <p className="text-sm text-v2-text-secondary">{t('no_children')}</p>
         </div>
       ) : progressLoading ? (
         <div className="flex items-center justify-center h-48">
@@ -132,10 +138,10 @@ export function ParentDashboard() {
         <>
           <div className="mb-6">
             <MetricStrip metrics={[
-              { label: 'Readiness', value: `${progress.overall_readiness.toFixed(0)}%`, accent: true },
-              { label: 'Total XP', value: progress.total_xp.toLocaleString() },
-              { label: 'Streak', value: `${progress.streak} days` },
-              { label: 'Topics', value: Object.keys(progress.mastery_heatmap).length.toString() },
+              { label: ts('metric_readiness'), value: `${progress.overall_readiness.toFixed(0)}%`, accent: true },
+              { label: ts('metric_xp'), value: progress.total_xp.toLocaleString() },
+              { label: ts('metric_streak'), value: ts('streak_days', { count: progress.streak }) },
+              { label: t('metric_topics'), value: Object.keys(progress.mastery_heatmap).length.toString() },
             ]} />
           </div>
 
@@ -143,7 +149,7 @@ export function ParentDashboard() {
             <div className="lg:col-span-2 space-y-6">
               {/* Growth Trend / Topic Mastery */}
               <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6">
-                <h2 className="text-lg font-semibold text-v2-text-primary mb-4">Topic Mastery</h2>
+                <h2 className="text-lg font-semibold text-v2-text-primary mb-4">{ts('topic_mastery')}</h2>
                 <div className="space-y-3">
                   {Object.entries(progress.mastery_heatmap)
                     .sort(([, a], [, b]) => b - a)
@@ -162,13 +168,13 @@ export function ParentDashboard() {
               {/* Recent Quiz Results */}
               {progress.recent_quizzes.length > 0 && (
                 <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6">
-                  <h2 className="text-lg font-semibold text-v2-text-primary mb-4">Recent Quiz Results</h2>
+                  <h2 className="text-lg font-semibold text-v2-text-primary mb-4">{t('recent_quiz_results')}</h2>
                   <div className="space-y-2">
                     {progress.recent_quizzes.slice(0, 10).map((q, i) => (
                       <div key={i} className="flex items-center justify-between py-2 border-b border-v2-border/50 last:border-0">
                         <div>
                           <p className="text-sm text-v2-text-primary">{new Date(q.created_at).toLocaleDateString()}</p>
-                          <p className="text-xs text-v2-text-secondary">{q.score}/{q.total} questions</p>
+                          <p className="text-xs text-v2-text-secondary">{t('questions_label', { score: q.score, total: q.total })}</p>
                         </div>
                         <span className={`text-sm font-mono ${q.total > 0 ? ((q.score / q.total) >= 0.7 ? 'text-v2-success' : (q.score / q.total) >= 0.4 ? 'text-v2-warning' : 'text-v2-error') : 'text-v2-text-secondary'}`}>
                           {q.total > 0 ? ((q.score / q.total) * 100).toFixed(0) : '0'}%
@@ -184,16 +190,16 @@ export function ParentDashboard() {
               {/* Weekly Summary */}
               {summary && (
                 <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6">
-                  <h2 className="text-lg font-semibold text-v2-text-primary mb-2">Weekly Summary</h2>
+                  <h2 className="text-lg font-semibold text-v2-text-primary mb-2">{t('weekly_summary')}</h2>
                   <p className="text-xs text-v2-text-secondary mb-3">{summary.week_start} — {summary.week_end}</p>
                   {summary.is_low_performance_warning && (
-                    <div className="p-3 rounded-xl bg-v2-warning/10 text-v2-warning text-sm font-medium mb-3">⚠️ Low performance</div>
+                    <div className="p-3 rounded-xl bg-v2-warning/10 text-v2-warning text-sm font-medium mb-3">⚠️ {t('low_performance')}</div>
                   )}
                   <p className="text-sm text-v2-text-primary leading-relaxed">{summary.summary_text}</p>
                 </div>
               )}
 
-              <AIInsightPanel insights={deriveParentInsights(progress, summary)} />
+              <AIInsightPanel insights={deriveParentInsights(progress, summary, t)} />
             </div>
           </div>
         </>

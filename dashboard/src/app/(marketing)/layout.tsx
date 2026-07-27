@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { getToken } from '@/lib/auth'
+import LanguageSwitcher from '@/components/LanguageSwitcher'
 
 export default function MarketingLayout({
   children,
@@ -12,25 +12,11 @@ export default function MarketingLayout({
   children: React.ReactNode
 }) {
   const t = useTranslations('landing')
-  const router = useRouter()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [locale, setLocale] = useState('en')
 
   useEffect(() => {
     setIsLoggedIn(!!getToken())
-    
-    // Read locale from cookie
-    const match = document.cookie.match(new RegExp('(^| )NEXT_LOCALE=([^;]*)'))
-    if (match) {
-      setLocale(match[2])
-    }
   }, [])
-
-  const handleLanguageChange = (newLocale: string) => {
-    document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000; SameSite=Lax`
-    setLocale(newLocale)
-    router.refresh()
-  }
 
   return (
     <div className="bg-[#131313] text-white min-h-screen flex flex-col font-sans selection:bg-[#3cffd0] selection:text-black">
@@ -44,28 +30,18 @@ export default function MarketingLayout({
               </span>
             </Link>
             <nav className="hidden md:flex space-x-6">
-              <a href="#features" className="verge-label text-gray-400 hover:text-white transition-colors">Features</a>
-              <a href="#console" className="verge-label text-gray-400 hover:text-white transition-colors">Interactive Demo</a>
-              <a href="#stats" className="verge-label text-gray-400 hover:text-white transition-colors">Numbers</a>
+              <a href="#features" className="verge-label text-gray-400 hover:text-white transition-colors">{t('nav_features')}</a>
+              <a href="#console" className="verge-label text-gray-400 hover:text-white transition-colors">{t('nav_demo')}</a>
+              <a href="#stats" className="verge-label text-gray-400 hover:text-white transition-colors">{t('nav_numbers')}</a>
             </nav>
           </div>
 
           <div className="flex items-center space-x-4">
             {/* Language Switcher */}
-            <div className="flex bg-[#222222] border border-[#333333] p-0.5 rounded-sm">
-              <button 
-                onClick={() => handleLanguageChange('en')}
-                className={`px-2.5 py-1 text-xs font-mono rounded-sm transition-all ${locale === 'en' ? 'bg-[#3cffd0] text-black font-bold' : 'text-gray-400 hover:text-white'}`}
-              >
-                EN
-              </button>
-              <button 
-                onClick={() => handleLanguageChange('am')}
-                className={`px-2.5 py-1 text-xs font-mono rounded-sm transition-all ${locale === 'am' ? 'bg-[#3cffd0] text-black font-bold' : 'text-gray-400 hover:text-white'}`}
-              >
-                አማ
-              </button>
-            </div>
+            <LanguageSwitcher
+              variant="toggle"
+              className="flex bg-[#222222] border border-[#333333] p-0.5 rounded-sm"
+            />
 
             {/* Launch App / Dashboard button */}
             <Link 
@@ -90,19 +66,19 @@ export default function MarketingLayout({
             <div>
               <span className="verge-display text-xl font-bold text-white">EthioBio AI</span>
               <p className="mt-4 text-sm text-gray-500 max-w-xs leading-relaxed">
-                Empowering secondary biology students and teachers across Ethiopia with textbook-grounded AI intelligence.
+                {t('footer_tagline')}
               </p>
             </div>
             <div>
-              <h4 className="verge-label text-sm text-white mb-4">Resources</h4>
+              <h4 className="verge-label text-sm text-white mb-4">{t('footer_resources')}</h4>
               <ul className="space-y-2 text-sm text-gray-400 font-mono">
-                <li><a href="#features" className="hover:text-[#3cffd0]">Core Modules</a></li>
-                <li><a href="#console" className="hover:text-[#3cffd0]">Product Console</a></li>
+                <li><a href="#features" className="hover:text-[#3cffd0]">{t('section_features')}</a></li>
+                <li><a href="#console" className="hover:text-[#3cffd0]">{t('console_title')}</a></li>
                 <li><a href="https://t.me/ethiobio_bot" target="_blank" rel="noopener noreferrer" className="hover:text-[#3cffd0]">Telegram Bot</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="verge-label text-sm text-white mb-4">Portal</h4>
+              <h4 className="verge-label text-sm text-white mb-4">{t('footer_portal')}</h4>
               <ul className="space-y-2 text-sm text-gray-400 font-mono">
                 <li><Link href="/login" className="hover:text-[#3cffd0]">Login / Verify OTP</Link></li>
                 <li><Link href="/v2/overview" className="hover:text-[#3cffd0]">Teacher Workspace</Link></li>

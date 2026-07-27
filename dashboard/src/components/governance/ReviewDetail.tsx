@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import ReviewNotesModal from './ReviewNotesModal'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
@@ -29,6 +30,7 @@ interface ReviewDetailProps {
 }
 
 export default function ReviewDetail({ item, onResolve }: ReviewDetailProps) {
+  const t = useTranslations('governance')
   const [showModal, setShowModal] = useState(false)
 
   const scoreColor = (score: number) => {
@@ -40,18 +42,18 @@ export default function ReviewDetail({ item, onResolve }: ReviewDetailProps) {
   return (
     <div className="border-t border-border px-5 py-4 space-y-4 bg-background-secondary/30">
       <div>
-        <h4 className="text-small font-semibold text-foreground-muted uppercase tracking-wider mb-1">User Message</h4>
+        <h4 className="text-small font-semibold text-foreground-muted uppercase tracking-wider mb-1">{t('user_message')}</h4>
         <p className="text-body text-foreground">{item.user_message}</p>
       </div>
 
       <div>
-        <h4 className="text-small font-semibold text-foreground-muted uppercase tracking-wider mb-1">Response</h4>
-        <p className="text-body text-foreground whitespace-pre-wrap">{item.response ?? '(no response)'}</p>
+        <h4 className="text-small font-semibold text-foreground-muted uppercase tracking-wider mb-1">{t('response')}</h4>
+        <p className="text-body text-foreground whitespace-pre-wrap">{item.response ?? t('no_response')}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <h4 className="text-small font-semibold text-foreground-muted uppercase tracking-wider mb-1">Safety Issues</h4>
+          <h4 className="text-small font-semibold text-foreground-muted uppercase tracking-wider mb-1">{t('safety_issues')}</h4>
           {item.safety_issues.length > 0 ? (
             <div className="flex flex-wrap gap-1">
               {item.safety_issues.map((issue) => (
@@ -59,24 +61,24 @@ export default function ReviewDetail({ item, onResolve }: ReviewDetailProps) {
               ))}
             </div>
           ) : (
-            <p className="text-body text-foreground-muted">None</p>
+            <p className="text-body text-foreground-muted">{t('none')}</p>
           )}
         </div>
         <div>
-          <h4 className="text-small font-semibold text-foreground-muted uppercase tracking-wider mb-1">Safety Action</h4>
+          <h4 className="text-small font-semibold text-foreground-muted uppercase tracking-wider mb-1">{t('safety_action')}</h4>
           <p className="text-body text-foreground">{item.safety_action || 'N/A'}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <h4 className="text-small font-semibold text-foreground-muted uppercase tracking-wider mb-1">Groundedness</h4>
+          <h4 className="text-small font-semibold text-foreground-muted uppercase tracking-wider mb-1">{t('groundedness')}</h4>
           <p className={`text-body font-medium ${scoreColor(item.groundedness_score)}`}>
             {(item.groundedness_score * 100).toFixed(0)}%
           </p>
         </div>
         <div>
-          <h4 className="text-small font-semibold text-foreground-muted uppercase tracking-wider mb-1">Hallucination Rate</h4>
+          <h4 className="text-small font-semibold text-foreground-muted uppercase tracking-wider mb-1">{t('hallucination_rate')}</h4>
           <p className={`text-body font-medium ${scoreColor(1 - item.hallucination_rate)}`}>
             {(item.hallucination_rate * 100).toFixed(0)}%
           </p>
@@ -85,7 +87,7 @@ export default function ReviewDetail({ item, onResolve }: ReviewDetailProps) {
 
       {item.review_notes && (
         <div>
-          <h4 className="text-small font-semibold text-foreground-muted uppercase tracking-wider mb-1">Review Notes</h4>
+          <h4 className="text-small font-semibold text-foreground-muted uppercase tracking-wider mb-1">{t('review_notes')}</h4>
           <p className="text-body text-foreground-muted italic">{item.review_notes}</p>
         </div>
       )}
@@ -93,7 +95,7 @@ export default function ReviewDetail({ item, onResolve }: ReviewDetailProps) {
       {!item.reviewed && (
         <div className="flex justify-end pt-2">
           <Button variant="primary" size="sm" onClick={() => setShowModal(true)}>
-            Resolve
+            {t('resolve')}
           </Button>
         </div>
       )}

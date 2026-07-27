@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useWorkspace } from '../context'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
@@ -26,6 +27,8 @@ interface Collection {
 }
 
 export default function BrowseAssetsPage() {
+  const t = useTranslations('workspace')
+  const tc = useTranslations('common')
   const { activeWorkspace } = useWorkspace()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -55,7 +58,7 @@ export default function BrowseAssetsPage() {
       const collectionList = await collectionResponse.json()
       setCollections(collectionList)
     } catch (err: any) {
-      setError(err.message || 'Failed to load assets and collections')
+      setError(err.message || t('browse_error_load'))
     } finally {
       setLoading(false)
     }
@@ -90,29 +93,29 @@ export default function BrowseAssetsPage() {
       setShowAddCollection(false)
       fetchData()
     } catch (err: any) {
-      alert(err.message || 'Failed to create collection')
+      alert(err.message || t('browse_error_create'))
     } finally {
       setCreatingCollection(false)
     }
   }
 
   const handleDeleteAsset = async (id: string) => {
-    if (!confirm('Are you sure you want to soft delete this knowledge object?')) return
+    if (!confirm(t('browse_confirm_delete_asset'))) return
     try {
       await fetchWithAuth(`/api/v1/knowledge/${id}`, { method: 'DELETE' })
       fetchData()
     } catch (err: any) {
-      alert(err.message || 'Failed to delete asset')
+      alert(err.message || t('browse_error_delete_asset'))
     }
   }
 
   const handleDeleteCollection = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this collection?')) return
+    if (!confirm(t('browse_confirm_delete_collection'))) return
     try {
       await fetchWithAuth(`/api/v1/collections/${id}`, { method: 'DELETE' })
       fetchData()
     } catch (err: any) {
-      alert(err.message || 'Failed to delete collection')
+      alert(err.message || t('browse_error_delete_collection'))
     }
   }
 
@@ -130,21 +133,21 @@ export default function BrowseAssetsPage() {
   })
 
   return (
-    <DashboardLayout breadcrumbs={[{ label: 'Workspace', href: '/workspace' }, { label: 'Browse Assets' }]}>
+    <DashboardLayout breadcrumbs={[{ label: t('crumb_workspace'), href: '/workspace' }, { label: t('crumb_browse') }]}>
       <div className="flex flex-col gap-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="verge-display text-4xl text-v2-text-primary leading-none">Browse Curriculum Assets</h1>
+            <h1 className="verge-display text-4xl text-v2-text-primary leading-none">{t('browse_title')}</h1>
             <p className="text-sm text-v2-text-secondary mt-1">
-              Explore your document collections, download materials, and manage lifecycle versions.
+              {t('browse_subtitle')}
             </p>
           </div>
           <button
             onClick={() => setShowAddCollection(true)}
             className="inline-flex items-center justify-center gap-1.5 px-4 h-10 rounded-xl bg-v2-accent text-v2-inverted text-sm font-semibold hover:bg-white transition-colors self-start sm:self-auto"
           >
-            <Plus className="w-4 h-4" /> Create Collection
+            <Plus className="w-4 h-4" /> {t('create_collection')}
           </button>
         </div>
 
@@ -163,7 +166,7 @@ export default function BrowseAssetsPage() {
           {/* Sidebar Collections Selector */}
           <div className="lg:col-span-1 flex flex-col gap-4">
             <div className="bg-v2-surface border border-v2-border rounded-[20px] p-5 flex flex-col gap-3">
-              <h3 className="text-xs text-v2-text-secondary uppercase tracking-wider font-semibold">Collections</h3>
+              <h3 className="text-xs text-v2-text-secondary uppercase tracking-wider font-semibold">{t('collections')}</h3>
               <div className="flex flex-col gap-1">
                 <button
                   onClick={() => setSelectedCollection(null)}
@@ -172,7 +175,7 @@ export default function BrowseAssetsPage() {
                   }`}
                 >
                   <span className="flex items-center gap-2">
-                    <FolderOpen className="w-4 h-4" /> All Assets
+                    <FolderOpen className="w-4 h-4" /> {t('all_assets')}
                   </span>
                   <span className="text-xs">{assets.length}</span>
                 </button>
@@ -207,7 +210,7 @@ export default function BrowseAssetsPage() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search assets by title..."
+                placeholder={t('browse_search_placeholder')}
                 className="bg-v2-bg border border-v2-border text-v2-text-primary text-sm rounded-xl px-4 py-2.5 flex-1 outline-none focus:border-v2-accent"
               />
             </div>
@@ -223,10 +226,10 @@ export default function BrowseAssetsPage() {
                   <table className="w-full text-left">
                     <thead>
                       <tr className="border-b border-v2-border/30 text-xs text-v2-text-secondary uppercase">
-                        <th className="py-3 font-semibold">Title</th>
-                        <th className="py-3 font-semibold">State</th>
-                        <th className="py-3 font-semibold">Uploaded</th>
-                        <th className="py-3 font-semibold text-right">Actions</th>
+                        <th className="py-3 font-semibold">{t('col_title')}</th>
+                        <th className="py-3 font-semibold">{t('col_state')}</th>
+                        <th className="py-3 font-semibold">{t('col_uploaded')}</th>
+                        <th className="py-3 font-semibold text-right">{tc('actions')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-v2-border/20">
@@ -255,14 +258,14 @@ export default function BrowseAssetsPage() {
                             <div className="flex items-center justify-end gap-2">
                               <button
                                 onClick={() => handleDownload(ko.id)}
-                                title="Download File"
+                                title={t('download_title')}
                                 className="p-1.5 rounded-lg border border-v2-border hover:border-v2-accent text-v2-text-secondary hover:text-v2-accent transition-colors"
                               >
                                 <Download className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => handleDeleteAsset(ko.id)}
-                                title="Delete Asset"
+                                title={t('delete_asset_title')}
                                 className="p-1.5 rounded-lg border border-v2-border hover:border-v2-error text-v2-text-secondary hover:text-v2-error transition-colors"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -277,9 +280,9 @@ export default function BrowseAssetsPage() {
               ) : (
                 <div className="py-20 text-center">
                   <FolderOpen className="w-12 h-12 text-v2-text-secondary mx-auto mb-3" />
-                  <p className="text-sm font-semibold text-v2-text-primary">No assets match your filters</p>
+                  <p className="text-sm font-semibold text-v2-text-primary">{t('browse_empty_title')}</p>
                   <p className="text-xs text-v2-text-secondary mt-1">
-                    Try refining your search query or upload new curriculum assets.
+                    {t('browse_empty_hint')}
                   </p>
                 </div>
               )}
@@ -293,29 +296,29 @@ export default function BrowseAssetsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-v2-surface border border-v2-border rounded-[20px] w-full max-w-md p-6 flex flex-col gap-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-v2-border/40 pb-2">
-              <h3 className="text-lg font-bold text-v2-text-primary">Create New Collection</h3>
+              <h3 className="text-lg font-bold text-v2-text-primary">{t('modal_create_title')}</h3>
               <button onClick={() => setShowAddCollection(false)} className="p-1 text-v2-text-secondary hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleCreateCollection} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-v2-text-secondary uppercase font-semibold">Collection Name</label>
+                <label className="text-xs text-v2-text-secondary uppercase font-semibold">{t('field_collection_name')}</label>
                 <input
                   type="text"
                   required
                   value={newColName}
                   onChange={(e) => setNewColName(e.target.value)}
-                  placeholder="e.g. Unit 3 Resources"
+                  placeholder={t('collection_name_placeholder')}
                   className="bg-v2-bg border border-v2-border text-v2-text-primary text-sm rounded-xl px-3 py-2 outline-none focus:border-v2-accent"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-v2-text-secondary uppercase font-semibold">Description</label>
+                <label className="text-xs text-v2-text-secondary uppercase font-semibold">{t('field_description')}</label>
                 <textarea
                   value={newColDesc}
                   onChange={(e) => setNewColDesc(e.target.value)}
-                  placeholder="Summarize what files are grouped here..."
+                  placeholder={t('collection_desc_placeholder')}
                   rows={3}
                   className="bg-v2-bg border border-v2-border text-v2-text-primary text-sm rounded-xl px-3 py-2 outline-none focus:border-v2-accent resize-none"
                 />
@@ -325,7 +328,7 @@ export default function BrowseAssetsPage() {
                 disabled={creatingCollection}
                 className="h-10 rounded-xl bg-v2-accent text-v2-inverted text-sm font-bold hover:bg-white disabled:opacity-50 transition-colors flex items-center justify-center"
               >
-                {creatingCollection ? 'Creating...' : 'Create Collection'}
+                {creatingCollection ? t('creating') : t('create_collection')}
               </button>
             </form>
           </div>
