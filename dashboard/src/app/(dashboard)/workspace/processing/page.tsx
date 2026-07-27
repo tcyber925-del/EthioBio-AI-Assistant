@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useWorkspace } from '../context'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
@@ -20,6 +21,7 @@ interface KnowledgeObject {
 }
 
 export default function ProcessingQueuePage() {
+  const t = useTranslations('workspace')
   const { activeWorkspace } = useWorkspace()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -33,7 +35,7 @@ export default function ProcessingQueuePage() {
       setAssets(list)
       setError(null)
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch processing queue')
+      setError(err.message || t('processing_error'))
     } finally {
       setLoading(false)
     }
@@ -65,23 +67,23 @@ export default function ProcessingQueuePage() {
   const getProgressDetails = (state: string, enrichment: string) => {
     const s = state.toLowerCase()
     const e = enrichment.toLowerCase()
-    if (s === 'failed') return { percent: 100, color: 'bg-v2-error', text: 'Failed', status: 'error' }
-    if (s === 'uploaded') return { percent: 20, color: 'bg-v2-warning', text: 'Uploaded / Queueing', status: 'pending' }
-    if (s === 'processing') return { percent: 50, color: 'bg-v2-warning', text: 'Processing (Parsing & Vectoring)', status: 'pending' }
-    if (s === 'published' && e === 'pending') return { percent: 80, color: 'bg-v2-accent', text: 'Published, Pending AI Enrichment', status: 'pending' }
-    if (s === 'published' || s === 'active') return { percent: 100, color: 'bg-v2-success', text: 'Active & Enriched', status: 'success' }
-    return { percent: 0, color: 'bg-v2-text-secondary', text: 'Unknown', status: 'unknown' }
+    if (s === 'failed') return { percent: 100, color: 'bg-v2-error', text: t('state_failed'), status: 'error' }
+    if (s === 'uploaded') return { percent: 20, color: 'bg-v2-warning', text: t('state_uploaded'), status: 'pending' }
+    if (s === 'processing') return { percent: 50, color: 'bg-v2-warning', text: t('state_processing'), status: 'pending' }
+    if (s === 'published' && e === 'pending') return { percent: 80, color: 'bg-v2-accent', text: t('state_pending_enrichment'), status: 'pending' }
+    if (s === 'published' || s === 'active') return { percent: 100, color: 'bg-v2-success', text: t('state_active'), status: 'success' }
+    return { percent: 0, color: 'bg-v2-text-secondary', text: t('state_unknown'), status: 'unknown' }
   }
 
   return (
-    <DashboardLayout breadcrumbs={[{ label: 'Workspace', href: '/workspace' }, { label: 'Processing Queue' }]}>
+    <DashboardLayout breadcrumbs={[{ label: t('crumb_workspace'), href: '/workspace' }, { label: t('crumb_processing') }]}>
       <div className="flex flex-col gap-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="verge-display text-4xl text-v2-text-primary leading-none">Ingestion Queue</h1>
+            <h1 className="verge-display text-4xl text-v2-text-primary leading-none">{t('processing_title')}</h1>
             <p className="text-sm text-v2-text-secondary mt-1">
-              Watch structural parsing, vector embedding indexing, and educational enrichment updates.
+              {t('processing_subtitle')}
             </p>
           </div>
           <button
@@ -124,12 +126,12 @@ export default function ProcessingQueuePage() {
                       </span>
                     </div>
                     <p className="text-xs text-v2-text-secondary mt-1">
-                      ID: {ko.id} · Type: {ko.content_type.split('/')[1] || ko.content_type} · Added: {new Date(ko.created_at).toLocaleString()}
+                      {t('details_line', { id: ko.id, type: ko.content_type.split('/')[1] || ko.content_type, date: new Date(ko.created_at).toLocaleString() })}
                     </p>
 
                     {ko.metadata.error && (
                       <p className="text-xs text-v2-error mt-2 bg-v2-error/10 p-2.5 rounded-xl border border-v2-error/20">
-                        Error: {ko.metadata.error}
+                        {t('error_prefix', { message: ko.metadata.error })}
                       </p>
                     )}
                   </div>
@@ -156,9 +158,9 @@ export default function ProcessingQueuePage() {
         ) : (
           <div className="bg-v2-surface border border-v2-border rounded-[20px] py-16 text-center">
             <Activity className="w-12 h-12 text-v2-text-secondary mx-auto mb-3" />
-            <h3 className="text-lg font-bold text-v2-text-primary">Queue is empty</h3>
+            <h3 className="text-lg font-bold text-v2-text-primary">{t('processing_empty_title')}</h3>
             <p className="text-sm text-v2-text-secondary mt-1 max-w-sm mx-auto">
-              No files are currently being processed. Head over to the Ingest page to upload reference documents.
+              {t('processing_empty_hint')}
             </p>
           </div>
         )}

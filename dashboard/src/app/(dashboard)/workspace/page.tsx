@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { useWorkspace } from './context'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
@@ -24,6 +25,7 @@ interface Collection {
 }
 
 export default function WorkspaceDashboard() {
+  const t = useTranslations('workspace')
   const router = useRouter()
   const { activeWorkspace } = useWorkspace()
   const [loading, setLoading] = useState(false)
@@ -43,7 +45,7 @@ export default function WorkspaceDashboard() {
       setAssets(assetList)
       setCollections(collectionList)
     } catch (err: any) {
-      setError(err.message || 'Failed to load workspace details')
+      setError(err.message || t('error_load'))
     } finally {
       setLoading(false)
     }
@@ -64,13 +66,13 @@ export default function WorkspaceDashboard() {
   const publishedAssets = assets.filter(a => ['published', 'active'].includes(a.lifecycle_state.toLowerCase())).length
 
   return (
-    <DashboardLayout breadcrumbs={[{ label: 'Workspace', href: '/workspace' }, { label: 'Dashboard' }]}>
+    <DashboardLayout breadcrumbs={[{ label: t('crumb_workspace'), href: '/workspace' }, { label: t('crumb_dashboard') }]}>
       <div className="flex flex-col gap-6">
         {/* Title / Description */}
         <div>
-          <h1 className="verge-display text-4xl text-v2-text-primary leading-none">Workspace Dashboard</h1>
+          <h1 className="verge-display text-4xl text-v2-text-primary leading-none">{t('dashboard_title')}</h1>
           <p className="text-sm text-v2-text-secondary mt-1">
-            Manage files, custom curriculum documents, collections, and search indexes in this workspace.
+            {t('dashboard_subtitle')}
           </p>
         </div>
 
@@ -88,21 +90,21 @@ export default function WorkspaceDashboard() {
         {/* Stats Strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-v2-surface border border-v2-border p-5 rounded-[20px]">
-            <p className="text-xs text-v2-text-secondary uppercase font-semibold">Total Assets</p>
+            <p className="text-xs text-v2-text-secondary uppercase font-semibold">{t('stat_total')}</p>
             <p className="verge-display text-3xl text-v2-accent mt-1">{totalAssets}</p>
           </div>
           <div className="bg-v2-surface border border-v2-border p-5 rounded-[20px]">
-            <p className="text-xs text-v2-text-secondary uppercase font-semibold">Active & Published</p>
+            <p className="text-xs text-v2-text-secondary uppercase font-semibold">{t('stat_published')}</p>
             <p className="verge-display text-3xl text-v2-text-primary mt-1">{publishedAssets}</p>
           </div>
           <div className="bg-v2-surface border border-v2-border p-5 rounded-[20px]">
-            <p className="text-xs text-v2-text-secondary uppercase font-semibold">Processing</p>
+            <p className="text-xs text-v2-text-secondary uppercase font-semibold">{t('stat_processing')}</p>
             <p className={`verge-display text-3xl mt-1 ${processingAssets > 0 ? 'text-v2-warning animate-pulse' : 'text-v2-text-secondary'}`}>
               {processingAssets}
             </p>
           </div>
           <div className="bg-v2-surface border border-v2-border p-5 rounded-[20px]">
-            <p className="text-xs text-v2-text-secondary uppercase font-semibold">Collections</p>
+            <p className="text-xs text-v2-text-secondary uppercase font-semibold">{t('stat_collections')}</p>
             <p className="verge-display text-3xl text-v2-text-primary mt-1">{collections.length}</p>
           </div>
         </div>
@@ -116,9 +118,9 @@ export default function WorkspaceDashboard() {
             <div className="p-3 w-fit rounded-xl bg-v2-accent-muted text-v2-accent group-hover:bg-v2-accent group-hover:text-v2-bg transition-colors">
               <Upload className="w-5 h-5" />
             </div>
-            <h3 className="text-lg font-bold text-v2-text-primary mt-2">Upload Files</h3>
+            <h3 className="text-lg font-bold text-v2-text-primary mt-2">{t('card_upload_title')}</h3>
             <p className="text-xs text-v2-text-secondary">
-              Ingest new textbooks, quizzes, lesson plans or school schedules into this workspace&rsquo;s knowledge pool.
+              {t('card_upload_desc')}
             </p>
           </Link>
 
@@ -129,9 +131,9 @@ export default function WorkspaceDashboard() {
             <div className="p-3 w-fit rounded-xl bg-v2-accent-muted text-v2-accent group-hover:bg-v2-accent group-hover:text-v2-bg transition-colors">
               <BookOpen className="w-5 h-5" />
             </div>
-            <h3 className="text-lg font-bold text-v2-text-primary mt-2">Browse Assets</h3>
+            <h3 className="text-lg font-bold text-v2-text-primary mt-2">{t('card_browse_title')}</h3>
             <p className="text-xs text-v2-text-secondary">
-              Explore structural chapters, chunks, collection categories, and version histories of your workspace.
+              {t('card_browse_desc')}
             </p>
           </Link>
 
@@ -142,9 +144,9 @@ export default function WorkspaceDashboard() {
             <div className="p-3 w-fit rounded-xl bg-v2-accent-muted text-v2-accent group-hover:bg-v2-accent group-hover:text-v2-bg transition-colors">
               <Search className="w-5 h-5" />
             </div>
-            <h3 className="text-lg font-bold text-v2-text-primary mt-2">Search Gateway</h3>
+            <h3 className="text-lg font-bold text-v2-text-primary mt-2">{t('card_search_title')}</h3>
             <p className="text-xs text-v2-text-secondary">
-              Perform deep semantic queries scoped to this workspace and review dynamic footnote citations.
+              {t('card_search_desc')}
             </p>
           </Link>
 
@@ -155,9 +157,9 @@ export default function WorkspaceDashboard() {
             <div className="p-3 w-fit rounded-xl bg-v2-accent-muted text-v2-accent group-hover:bg-v2-accent group-hover:text-v2-bg transition-colors">
               <Activity className="w-5 h-5" />
             </div>
-            <h3 className="text-lg font-bold text-v2-text-primary mt-2">Processing Queue</h3>
+            <h3 className="text-lg font-bold text-v2-text-primary mt-2">{t('card_processing_title')}</h3>
             <p className="text-xs text-v2-text-secondary">
-              Track active ingestion states (Parsing, Embedding, Indexing, and async educational Enrichment).
+              {t('card_processing_desc')}
             </p>
           </Link>
         </div>
@@ -167,9 +169,9 @@ export default function WorkspaceDashboard() {
           {/* Recent Files Table */}
           <div className="lg:col-span-2 bg-v2-surface border border-v2-border rounded-[20px] p-6 flex flex-col gap-4">
             <div className="flex items-center justify-between border-b border-v2-border/40 pb-3">
-              <h2 className="text-lg font-bold text-v2-text-primary">Recent Workspace Assets</h2>
+              <h2 className="text-lg font-bold text-v2-text-primary">{t('recent_assets')}</h2>
               <Link href="/workspace/browse" className="text-xs text-v2-accent font-semibold hover:underline">
-                View all
+                {t('view_all')}
               </Link>
             </div>
 
@@ -182,9 +184,9 @@ export default function WorkspaceDashboard() {
                 <table className="w-full text-left">
                   <thead>
                     <tr className="border-b border-v2-border/30 text-xs text-v2-text-secondary uppercase">
-                      <th className="py-2.5 font-semibold">Title</th>
-                      <th className="py-2.5 font-semibold">State</th>
-                      <th className="py-2.5 font-semibold">Uploaded</th>
+                      <th className="py-2.5 font-semibold">{t('col_title')}</th>
+                      <th className="py-2.5 font-semibold">{t('col_state')}</th>
+                      <th className="py-2.5 font-semibold">{t('col_uploaded')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-v2-border/20">
@@ -215,7 +217,7 @@ export default function WorkspaceDashboard() {
               </div>
             ) : (
               <div className="py-12 text-center text-sm text-v2-text-secondary">
-                No files uploaded to this workspace yet.
+                {t('no_assets')}
               </div>
             )}
           </div>
@@ -223,7 +225,7 @@ export default function WorkspaceDashboard() {
           {/* Collections Panel */}
           <div className="bg-v2-surface border border-v2-border rounded-[20px] p-6 flex flex-col gap-4">
             <div className="flex items-center justify-between border-b border-v2-border/40 pb-3">
-              <h2 className="text-lg font-bold text-v2-text-primary">Collections</h2>
+              <h2 className="text-lg font-bold text-v2-text-primary">{t('collections')}</h2>
             </div>
 
             {loading ? (
@@ -239,14 +241,14 @@ export default function WorkspaceDashboard() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-v2-text-primary truncate">{c.name}</p>
-                      <p className="text-xs text-v2-text-secondary truncate">{c.description || 'No description'}</p>
+                      <p className="text-xs text-v2-text-secondary truncate">{c.description || t('no_description')}</p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="py-12 text-center text-sm text-v2-text-secondary">
-                No collections created yet.
+                {t('no_collections')}
               </div>
             )}
           </div>

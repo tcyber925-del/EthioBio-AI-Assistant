@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { BookOpen, AlertTriangle, RefreshCw, Lock, Star, TrendingUp, Target } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserId } from '@/lib/auth'
 import { HeroSection, InsightCard, MetricStrip, ActivityTimeline, AIInsightPanel, LearningProgress } from '@/components/dashboard-v2'
@@ -21,32 +22,34 @@ interface StudentData {
   recent_activity: Array<{ type: string; description: string; created_at: string | null }>
 }
 
-function deriveInsights(data: StudentData): string[] {
+type TFn = (key: string, values?: Record<string, string | number>) => string
+
+function deriveInsights(data: StudentData, t: TFn): string[] {
   const insights: string[] = []
   if (data.weak_topics.length > 0) {
     const w = data.weak_topics[0]
-    insights.push(`Focus on **${w.topic}** — your performance is at ${w.average_score.toFixed(0)}%. Regular review will strengthen this area.`)
+    insights.push(t('insight_focus', { topic: w.topic, score: w.average_score.toFixed(0) }))
   }
   if (data.due_reviews.length > 0) {
-    insights.push(`You have **${data.due_reviews.length} review${data.due_reviews.length > 1 ? 's' : ''}** due. Spaced repetition keeps knowledge fresh.`)
+    insights.push(t('insight_reviews_due', { count: data.due_reviews.length }))
   }
   if (data.gamification.longest_streak > 0 && data.gamification.current_streak < data.gamification.longest_streak) {
-    insights.push(`Your best streak is **${data.gamification.longest_streak} days**. Can you beat it? Consistency is key to mastery.`)
+    insights.push(t('insight_best_streak', { days: data.gamification.longest_streak }))
   }
   if (data.gamification.current_streak >= 3) {
-    insights.push(`**${data.gamification.current_streak}-day streak!** You are building strong learning habits. Keep it going.`)
+    insights.push(t('insight_streak', { days: data.gamification.current_streak }))
   }
   return insights
 }
 
-function buildMilestones(data: StudentData) {
+function buildMilestones(data: StudentData, t: TFn) {
   const m = [
-    { label: 'Complete first review', completed: data.gamification.total_xp > 0 },
-    { label: '3-day streak', completed: data.gamification.current_streak >= 3 },
-    { label: 'Level 5', completed: data.gamification.level >= 5 },
+    { label: t('milestone_first_review'), completed: data.gamification.total_xp > 0 },
+    { label: t('milestone_streak3'), completed: data.gamification.current_streak >= 3 },
+    { label: t('milestone_level5'), completed: data.gamification.level >= 5 },
   ]
   if (data.weak_topics.length > 0) {
-    m.push({ label: `Strengthen ${data.weak_topics[0].topic}`, completed: false })
+    m.push({ label: t('milestone_strengthen', { topic: data.weak_topics[0].topic }), completed: false })
   }
   return m
 }
@@ -56,6 +59,8 @@ function userName(data: StudentData): string {
 }
 
 export function StudentDashboard() {
+  const t = useTranslations('v2.student')
+  const tc = useTranslations('common')
   const [data, setData] = useState<StudentData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -80,7 +85,7 @@ export function StudentDashboard() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="w-8 h-8 rounded-full border-2 border-v2-accent border-t-transparent animate-spin mx-auto" />
-          <p className="mt-3 text-sm text-v2-text-secondary">Loading your dashboard...</p>
+          <p className="mt-3 text-sm text-v2-text-secondary">{t('loading')}</p>
         </div>
       </div>
     )
@@ -91,10 +96,10 @@ export function StudentDashboard() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center max-w-sm">
           <AlertTriangle className="w-10 h-10 text-v2-error mx-auto mb-3" />
-          <p className="text-sm font-medium text-v2-error">Something went wrong</p>
+          <p className="text-sm font-medium text-v2-error">{tc('error')}</p>
           <p className="text-xs text-v2-text-secondary mt-1 mb-4">{error}</p>
           <button onClick={retry} className="inline-flex items-center gap-2 px-4 h-9 rounded-xl bg-v2-accent text-v2-inverted text-sm font-medium hover:bg-white transition-colors">
-            <RefreshCw className="w-4 h-4" /> Retry
+            <RefreshCw className="w-4 h-4" /> {tc('retry')}
           </button>
         </div>
       </div>
@@ -107,23 +112,23 @@ export function StudentDashboard() {
   const { gamification, readiness, weak_topics, recent_activity } = data
   const sortedTopics = Object.entries(readiness.topic_readiness).sort(([, a], [, b]) => b - a)
   const continueTopic = weak_topics[0]
-  const insights = deriveInsights(data)
-  const milestones = buildMilestones(data)
+  const insights = deriveInsights(data, t)
+  const milestones = buildMilestones(data, t)
 
   return (
     <>
       <HeroSection
-        title={`Welcome back, ${userName(data)}`}
+        title={t('welcome_back', { name: userName(data) })}
         subtitle={continueTopic
-          ? `Focus on ${continueTopic.topic} — your lowest score is ${continueTopic.average_score.toFixed(0)}%`
-          : `You're at ${readiness.overall_readiness.toFixed(0)}% overall readiness`
+          ? t('hero_subtitle_focus', { topic: continueTopic.topic, score: continueTopic.average_score.toFixed(0) })
+          : t('hero_subtitle_readiness', { pct: readiness.overall_readiness.toFixed(0) })
         }
-        action={continueTopic ? { label: 'Review ' + continueTopic.topic, href: '/v2/lessons' } : undefined}
+        action={continueTopic ? { label: t('action_review', { topic: continueTopic.topic }), href: '/v2/lessons' } : undefined}
         secondary={readiness.overall_readiness >= 80
-          ? <span><Star className="inline h-4 w-4 mr-1.5 text-v2-accent" />Strong readiness</span>
+          ? <span><Star className="inline h-4 w-4 mr-1.5 text-v2-accent" />{t('badge_strong')}</span>
           : readiness.overall_readiness >= 50
-          ? <span><TrendingUp className="inline h-4 w-4 mr-1.5 text-v2-accent" />Steady progress</span>
-          : <span><Target className="inline h-4 w-4 mr-1.5 text-v2-accent" />Focused improvement needed</span>}
+          ? <span><TrendingUp className="inline h-4 w-4 mr-1.5 text-v2-accent" />{t('badge_steady')}</span>
+          : <span><Target className="inline h-4 w-4 mr-1.5 text-v2-accent" />{t('badge_focused')}</span>}
       />
 
       {continueTopic && (
@@ -135,12 +140,12 @@ export function StudentDashboard() {
                   <BookOpen className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-v2-text-secondary uppercase tracking-wider">Continue Learning</p>
+                  <p className="text-xs font-medium text-v2-text-secondary uppercase tracking-wider">{t('continue_learning')}</p>
                   <h3 className="mt-1 text-xl font-semibold text-v2-text-primary">{continueTopic.topic}</h3>
                   <p className="mt-1 text-sm text-v2-text-secondary">
                     {continueTopic.misconceptions.length > 0
-                      ? `Address ${continueTopic.misconceptions[0]}`
-                      : `Review — ${continueTopic.average_score.toFixed(0)}% mastery`
+                      ? t('address_misconception', { misconception: continueTopic.misconceptions[0] })
+                      : t('review_mastery', { pct: continueTopic.average_score.toFixed(0) })
                     }
                   </p>
                   <div className="mt-3 h-1.5 w-48 bg-v2-border rounded-full overflow-hidden">
@@ -156,20 +161,20 @@ export function StudentDashboard() {
 
       <div className="mb-6">
         <MetricStrip metrics={[
-          { label: 'Readiness', value: `${readiness.overall_readiness.toFixed(0)}%`, accent: true },
-          { label: 'XP Total', value: gamification.total_xp.toLocaleString() },
-          { label: 'Streak', value: `${gamification.current_streak} days` },
-          { label: 'Level', value: gamification.level.toString() },
+          { label: t('metric_readiness'), value: `${readiness.overall_readiness.toFixed(0)}%`, accent: true },
+          { label: t('metric_xp'), value: gamification.total_xp.toLocaleString() },
+          { label: t('metric_streak'), value: t('streak_days', { count: gamification.current_streak }) },
+          { label: t('metric_level'), value: gamification.level.toString() },
         ]} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div className="lg:col-span-2 space-y-6">
-          <LearningProgress title="Weekly Progress" percent={readiness.overall_readiness} milestones={milestones} />
+          <LearningProgress title={t('weekly_progress')} percent={readiness.overall_readiness} milestones={milestones} />
 
           {sortedTopics.length > 0 && (
             <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6">
-              <h2 className="text-lg font-semibold text-v2-text-primary mb-4">Topic Mastery</h2>
+              <h2 className="text-lg font-semibold text-v2-text-primary mb-4">{t('topic_mastery')}</h2>
               <div className="space-y-3">
                 {sortedTopics.map(([topic, score]) => (
                   <div key={topic} className="flex items-center gap-3">
@@ -186,7 +191,7 @@ export function StudentDashboard() {
 
           {weak_topics.length > 0 && (
             <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6">
-              <h2 className="text-lg font-semibold text-v2-text-primary mb-4">Areas to Improve ({weak_topics.length})</h2>
+              <h2 className="text-lg font-semibold text-v2-text-primary mb-4">{t('areas_to_improve', { count: weak_topics.length })}</h2>
               <div className="space-y-2">
                 {weak_topics.slice(0, 5).map(wt => (
                   <div key={wt.topic} className="p-3 rounded-xl bg-v2-bg">
@@ -195,8 +200,8 @@ export function StudentDashboard() {
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${wt.severity === 'critical' ? 'bg-v2-error/10 text-v2-error' : wt.severity === 'moderate' ? 'bg-v2-warning/10 text-v2-warning' : 'bg-v2-accent-muted text-v2-accent'}`}>{wt.severity}</span>
                     </div>
                     <div className="flex items-center gap-3 text-xs text-v2-text-secondary">
-                      <span>Score: {wt.average_score.toFixed(0)}%</span>
-                      <span>Attempts: {wt.attempt_count}</span>
+                      <span>{t('score_label', { pct: wt.average_score.toFixed(0) })}</span>
+                      <span>{t('attempts_label', { count: wt.attempt_count })}</span>
                     </div>
                     {wt.misconceptions.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1.5">
@@ -223,7 +228,7 @@ export function StudentDashboard() {
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 rounded-lg bg-v2-accent-muted text-v2-accent"><BookOpen className="w-5 h-5" /></div>
               <div>
-                <p className="text-xs text-v2-text-secondary">Achievements</p>
+                <p className="text-xs text-v2-text-secondary">{t('achievements')}</p>
                 <p className="text-xl font-bold text-v2-text-primary">
                   {gamification.achievements.filter(a => a.unlocked_at).length}
                   <span className="text-sm font-normal text-v2-text-secondary">/{gamification.achievements.length}</span>

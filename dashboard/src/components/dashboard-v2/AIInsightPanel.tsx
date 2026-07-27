@@ -2,12 +2,14 @@
 
 import { motion } from 'framer-motion'
 import { Lightbulb, ArrowRight } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 interface AIInsightPanelProps {
   insights: string[]
 }
 
 export function AIInsightPanel({ insights }: AIInsightPanelProps) {
+  const t = useTranslations('v2.insights')
   if (insights.length === 0) return null
 
   return (
@@ -22,8 +24,8 @@ export function AIInsightPanel({ insights }: AIInsightPanelProps) {
           <Lightbulb className="h-5 w-5" />
         </div>
         <div>
-          <p className="verge-label text-v2-accent">AI Panel</p>
-          <h2 className="text-xl font-black leading-none text-v2-text-primary">Insights</h2>
+          <p className="verge-label text-v2-accent">{t('panel_label')}</p>
+          <h2 className="text-xl font-black leading-none text-v2-text-primary">{t('title')}</h2>
         </div>
       </div>
       <div className="space-y-3">

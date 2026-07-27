@@ -69,3 +69,14 @@ v2 admin dashboard at `src/components/dashboard-v2/dashboards/AdminDashboard.tsx
 
 **V2OverviewPage**:
 Role dispatcher at `/v2/overview/page.tsx`. Checks `getUserRole()` and renders the matching dashboard: Student, Teacher, Parent, School, or Admin.
+
+## i18n
+
+next-intl 4, locales `en` + `am`, catalogs in `messages/{en,am}.json` (full parity, CI-enforced).
+
+- **Single middleware**: `src/middleware.ts` (auth) only. Never add a root `middleware.ts` — Next.js silently registers just one, and the root one won (breaks auth) or loses (breaks i18n) depending on version.
+- **Locale resolution**: `i18n.ts` reads the `NEXT_LOCALE` cookie, validates against `LOCALES`, deep-merges the active locale **over English** (`src/lib/i18n-merge.ts`) so untranslated keys render English, never raw dotted keys. Root layout consumes it via `getLocale()`/`getMessages()`; do not hand-load message JSON elsewhere. Isomorphic constants (`LOCALES`, `LOCALE_COOKIE`, `isLocale`) live in `src/lib/i18n-config.ts` — import those from client code, never the server-only `i18n.ts`.
+- **Language switching**: always via `src/components/LanguageSwitcher.tsx` (`variant="select" | "toggle"`) backed by `src/hooks/useLocaleSwitcher.ts` — one cookie write + backend preference sync + `router.refresh()`. Do not hand-roll cookie writes.
+- **Guardrail**: `npm run i18n:check` (CI: `dashboard-i18n` job, **strict**) fails on duplicate JSON keys, code-referenced keys missing from `en.json`, non-en keys unknown to `en.json`, **and any en→am parity gap**. New EN keys must ship with their AM translation in the same PR.
+- **Adding UI text**: add keys to both catalogs, use `useTranslations('namespace')` + `t('key')`; never concatenate message fragments or select plural twin-keys in code — use ICU (`{count, plural, one {...} other {...}}`); never bake colons into labels. All app pages are translated: DashboardV2 core (`v2.*`), workspace (`workspace.*`), assignments (`assignments.*`), assessment-studio (`studio.*`), knowledge-graph (`graph.*`), digital-twin (`twin.*`), intervention-analytics (`analytics.*`), admin pages (`admin.*`). Still English-only: shared components `components/{agents,governance,misconceptions}` (AgentCard, ExecutionPanel, ReflectionTable, ReviewQueue, ReviewDetail, MisconceptionPanel), API-driven content (quiz/lesson text, topics, AI summaries), and e2e-only strings. Also open: pass locale to backend APIs for Amharic LLM content; native-speaker review of `messages/am.json`.
+- **Amharic rendering**: body/display/heading font stacks include Ethiopic fallbacks (`Noto Sans Ethiopic`, `Ebrima`, `Abyssinica SIL`); `html[lang='am']` gets increased line-height.

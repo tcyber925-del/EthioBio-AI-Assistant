@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { useWorkspace } from '../../context'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
@@ -36,6 +37,8 @@ interface KnowledgeDetail {
 }
 
 export default function KnowledgeDetailPage() {
+  const t = useTranslations('workspace')
+  const tc = useTranslations('common')
   const params = useParams()
   const router = useRouter()
   const id = params.id as string
@@ -82,7 +85,7 @@ export default function KnowledgeDetailPage() {
       setDetail(ko)
       setEnrichment(enc)
     } catch (err: any) {
-      setError(err.message || 'Failed to load knowledge object')
+      setError(err.message || t('detail_error_load'))
     } finally {
       setLoading(false)
     }
@@ -99,7 +102,7 @@ export default function KnowledgeDetailPage() {
       setContent(contentData.content || '')
       setShowContent(true)
     } catch {
-      setContent('Failed to load content.')
+      setContent(t('content_error'))
     } finally {
       setLoadingContent(false)
     }
@@ -121,7 +124,7 @@ export default function KnowledgeDetailPage() {
 
   if (loading) {
     return (
-      <DashboardLayout breadcrumbs={[{ label: 'Workspace', href: '/workspace' }, { label: 'Browse', href: '/workspace/browse' }, { label: 'Loading...' }]}>
+      <DashboardLayout breadcrumbs={[{ label: t('crumb_workspace'), href: '/workspace' }, { label: t('crumb_browse'), href: '/workspace/browse' }, { label: tc('loading') }]}>
         <div className="py-20 flex justify-center">
           <div className="w-8 h-8 rounded-full border-2 border-v2-accent border-t-transparent animate-spin" />
         </div>
@@ -131,10 +134,10 @@ export default function KnowledgeDetailPage() {
 
   if (error || !detail) {
     return (
-      <DashboardLayout breadcrumbs={[{ label: 'Workspace', href: '/workspace' }, { label: 'Browse', href: '/workspace/browse' }, { label: 'Error' }]}>
+      <DashboardLayout breadcrumbs={[{ label: t('crumb_workspace'), href: '/workspace' }, { label: t('crumb_browse'), href: '/workspace/browse' }, { label: t('crumb_error') }]}>
         <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-error/10 border border-v2-error/30 text-v2-error text-sm">
           <AlertCircle className="w-5 h-5 shrink-0" />
-          <div className="flex-1">{error || 'Knowledge object not found'}</div>
+          <div className="flex-1">{error || t('detail_not_found')}</div>
           <button onClick={fetchDetail} className="p-1 hover:bg-v2-error/15 rounded-lg">
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -145,8 +148,8 @@ export default function KnowledgeDetailPage() {
 
   return (
     <DashboardLayout breadcrumbs={[
-      { label: 'Workspace', href: '/workspace' },
-      { label: 'Browse', href: '/workspace/browse' },
+      { label: t('crumb_workspace'), href: '/workspace' },
+      { label: t('crumb_browse'), href: '/workspace/browse' },
       { label: detail.title },
     ]}>
       <div className="flex flex-col gap-6 max-w-4xl">
@@ -173,7 +176,7 @@ export default function KnowledgeDetailPage() {
           <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
             <button
               onClick={toggleBookmark}
-              title={bookmarked ? 'Remove bookmark' : 'Bookmark'}
+              title={bookmarked ? t('bookmark_remove') : t('bookmark_add')}
               className={`p-2.5 rounded-xl border transition-colors ${
                 bookmarked
                   ? 'border-v2-warning/30 text-v2-warning bg-v2-warning/10'
@@ -186,7 +189,7 @@ export default function KnowledgeDetailPage() {
               onClick={handleDownload}
               className="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl bg-v2-accent text-v2-inverted text-sm font-semibold hover:bg-white transition-colors"
             >
-              <Download className="w-4 h-4" /> Download
+              <Download className="w-4 h-4" /> {t('download_action')}
             </button>
           </div>
         </div>
@@ -198,11 +201,11 @@ export default function KnowledgeDetailPage() {
             {enrichment?.excerpt && (
               <div className="bg-v2-surface border border-v2-border rounded-[20px] p-6">
                 <h2 className="text-xs text-v2-text-secondary uppercase tracking-wider font-semibold flex items-center gap-1.5 mb-3">
-                  <ScrollText className="w-3.5 h-3.5" /> Excerpt
+                  <ScrollText className="w-3.5 h-3.5" /> {t('excerpt')}
                 </h2>
                 <p className="text-sm text-v2-text-primary leading-relaxed">{enrichment.excerpt}</p>
                 {enrichment.excerpt_source && (
-                  <p className="text-xs text-v2-text-secondary mt-2">Source: {enrichment.excerpt_source.replace('_', ' ')}</p>
+                  <p className="text-xs text-v2-text-secondary mt-2">{t('excerpt_source', { source: enrichment.excerpt_source.replace('_', ' ') })}</p>
                 )}
               </div>
             )}
@@ -211,7 +214,7 @@ export default function KnowledgeDetailPage() {
             {enrichment?.key_terms && enrichment.key_terms.length > 0 && (
               <div className="bg-v2-surface border border-v2-border rounded-[20px] p-6">
                 <h2 className="text-xs text-v2-text-secondary uppercase tracking-wider font-semibold flex items-center gap-1.5 mb-3">
-                  <Lightbulb className="w-3.5 h-3.5" /> Key Terms
+                  <Lightbulb className="w-3.5 h-3.5" /> {t('key_terms')}
                 </h2>
                 <div className="flex flex-wrap gap-2">
                   {enrichment.key_terms.map(term => (
@@ -227,8 +230,8 @@ export default function KnowledgeDetailPage() {
             {!enrichment?.enriched && (
               <div className="bg-v2-surface border border-v2-border rounded-[20px] p-6 text-center">
                 <Sparkles className="w-8 h-8 text-v2-text-secondary mx-auto mb-2" />
-                <p className="text-sm font-semibold text-v2-text-primary">Not yet enriched</p>
-                <p className="text-xs text-v2-text-secondary mt-1">AI enrichment is pending for this asset.</p>
+                <p className="text-sm font-semibold text-v2-text-primary">{t('not_enriched_title')}</p>
+                <p className="text-xs text-v2-text-secondary mt-1">{t('not_enriched_hint')}</p>
               </div>
             )}
 
@@ -239,7 +242,7 @@ export default function KnowledgeDetailPage() {
                 className="w-full flex items-center justify-between p-5 text-left hover:bg-v2-bg/30 transition-colors"
               >
                 <h2 className="text-xs text-v2-text-secondary uppercase tracking-wider font-semibold flex items-center gap-1.5">
-                  <ScrollText className="w-3.5 h-3.5" /> Full Content
+                  <ScrollText className="w-3.5 h-3.5" /> {t('full_content')}
                 </h2>
                 <ChevronDown className={`w-4 h-4 text-v2-text-secondary transition-transform duration-200 ${showContent ? 'rotate-180' : ''}`} />
               </button>
@@ -247,14 +250,14 @@ export default function KnowledgeDetailPage() {
                 <div className="px-5 pb-5">
                   {loadingContent ? (
                     <div className="flex items-center justify-center gap-2 py-8 text-sm text-v2-text-secondary">
-                      <Loader className="w-4 h-4 animate-spin" /> Loading content...
+                      <Loader className="w-4 h-4 animate-spin" /> {t('loading_content')}
                     </div>
                   ) : content ? (
                     <div className="max-h-[500px] overflow-y-auto bg-v2-bg border border-v2-border rounded-xl p-4">
                       <pre className="text-sm text-v2-text-primary leading-relaxed whitespace-pre-wrap font-sans">{content}</pre>
                     </div>
                   ) : (
-                    <p className="text-sm text-v2-text-secondary text-center py-4">No content available.</p>
+                    <p className="text-sm text-v2-text-secondary text-center py-4">{t('no_content')}</p>
                   )}
                 </div>
               )}
@@ -264,12 +267,12 @@ export default function KnowledgeDetailPage() {
           {/* Sidebar — Metadata */}
           <div className="flex flex-col gap-4">
             <div className="bg-v2-surface border border-v2-border rounded-[20px] p-5 flex flex-col gap-4">
-              <h3 className="text-xs text-v2-text-secondary uppercase tracking-wider font-semibold">Details</h3>
+              <h3 className="text-xs text-v2-text-secondary uppercase tracking-wider font-semibold">{t('details')}</h3>
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-v2-text-secondary flex items-center gap-1.5">
-                    <Activity className="w-3.5 h-3.5" /> State
+                    <Activity className="w-3.5 h-3.5" /> {t('label_state')}
                   </span>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                     ['published', 'active'].includes(detail.lifecycle_state)
@@ -282,14 +285,14 @@ export default function KnowledgeDetailPage() {
 
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-v2-text-secondary flex items-center gap-1.5">
-                    <Hash className="w-3.5 h-3.5" /> Version
+                    <Hash className="w-3.5 h-3.5" /> {t('label_version')}
                   </span>
                   <span className="text-sm font-mono text-v2-text-primary">v{detail.version}</span>
                 </div>
 
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-v2-text-secondary flex items-center gap-1.5">
-                    <Tag className="w-3.5 h-3.5" /> Enrichment
+                    <Tag className="w-3.5 h-3.5" /> {t('label_enrichment')}
                   </span>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                     detail.enrichment_status === 'complete' ? 'bg-v2-success/10 text-v2-success' :
@@ -303,7 +306,7 @@ export default function KnowledgeDetailPage() {
                 {enrichment?.content_class && (
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-v2-text-secondary flex items-center gap-1.5">
-                      {contentClassIcon(enrichment.content_class)} Class
+                      {contentClassIcon(enrichment.content_class)} {t('label_class')}
                     </span>
                     <span className="text-xs font-medium text-v2-text-primary capitalize">{enrichment.content_class.replace('_', ' ')}</span>
                   </div>
@@ -312,7 +315,7 @@ export default function KnowledgeDetailPage() {
                 {enrichment?.word_count !== undefined && (
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-v2-text-secondary flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5" /> Words
+                      <FileText className="w-3.5 h-3.5" /> {t('label_words')}
                     </span>
                     <span className="text-sm font-mono text-v2-text-primary">{enrichment.word_count.toLocaleString()}</span>
                   </div>
@@ -321,7 +324,7 @@ export default function KnowledgeDetailPage() {
                 {enrichment?.chunk_count !== undefined && (
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-v2-text-secondary flex items-center gap-1.5">
-                      <ListTree className="w-3.5 h-3.5" /> Chunks
+                      <ListTree className="w-3.5 h-3.5" /> {t('label_chunks')}
                     </span>
                     <span className="text-sm font-mono text-v2-text-primary">{enrichment.chunk_count}</span>
                   </div>
@@ -330,7 +333,7 @@ export default function KnowledgeDetailPage() {
                 {detail.metadata?.chunk_count != null ? (
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-v2-text-secondary flex items-center gap-1.5">
-                      <ListTree className="w-3.5 h-3.5" /> Indexed Chunks
+                      <ListTree className="w-3.5 h-3.5" /> {t('label_indexed_chunks')}
                     </span>
                     <span className="text-sm font-mono text-v2-text-primary">{String(detail.metadata.chunk_count)}</span>
                   </div>
@@ -340,7 +343,7 @@ export default function KnowledgeDetailPage() {
 
             {/* ID */}
             <div className="bg-v2-surface border border-v2-border rounded-[20px] p-5">
-              <h3 className="text-xs text-v2-text-secondary uppercase tracking-wider font-semibold mb-2">Object ID</h3>
+              <h3 className="text-xs text-v2-text-secondary uppercase tracking-wider font-semibold mb-2">{t('object_id')}</h3>
               <p className="text-xs font-mono text-v2-text-secondary break-all">{detail.id}</p>
             </div>
           </div>

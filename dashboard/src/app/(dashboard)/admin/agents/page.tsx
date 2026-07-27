@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import PageHeader from '@/components/ui/PageHeader'
 import { CardSkeleton } from '@/components/Skeleton'
@@ -13,6 +14,8 @@ import ReflectionTable from '@/components/agents/ReflectionTable'
 export const dynamic = 'force-dynamic'
 
 export default function AdminAgentsPage() {
+  const t = useTranslations('admin.agents')
+  const tc = useTranslations('common')
   const [agents, setAgents] = useState<AgentInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -53,7 +56,7 @@ export default function AdminAgentsPage() {
           className="flex items-center gap-2 text-primary hover:underline text-subhead"
         >
           <RefreshCw className="w-4 h-4" />
-          Retry
+          {tc('retry')}
         </button>
       </div>
     )
@@ -63,8 +66,8 @@ export default function AdminAgentsPage() {
     <div>
       <PageHeader
         icon={<Cpu className="w-6 h-6" />}
-        title="Agent Orchestrator"
-        description="Registered agents, task execution, and execution history"
+        title={t('title')}
+        description={t('description')}
       />
 
       {loading ? (
@@ -75,7 +78,7 @@ export default function AdminAgentsPage() {
         <div className="flex flex-col items-center justify-center py-16 gap-3 mt-6">
           <Cpu className="w-10 h-10 text-foreground-muted" />
           <p className="text-body text-foreground-muted">
-            No agents registered. Check that the orchestrator is running.
+            {t('empty')}
           </p>
         </div>
       ) : (

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserId } from '@/lib/auth'
@@ -10,6 +11,7 @@ import { ArrowRight, AlertCircle, CheckCircle, X } from 'lucide-react'
 const ASSIGNMENT_TYPES = ['homework', 'quiz', 'project', 'lab', 'essay', 'worksheet', 'presentation']
 
 export default function NewAssignmentPage() {
+  const t = useTranslations('assignments')
   const router = useRouter()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -31,7 +33,7 @@ export default function NewAssignmentPage() {
       const userId = getUserId()
       const wsResponse = await fetchWithAuth(`/api/v1/workspaces?user_id=${userId}`)
       const workspaces = await wsResponse.json()
-      if (workspaces.length === 0) throw new Error('No workspace found')
+      if (workspaces.length === 0) throw new Error(t('error_no_workspace'))
 
       await fetchWithAuth(`/api/v1/assignments?teacher_id=${userId}`, {
         method: 'POST',
@@ -50,18 +52,18 @@ export default function NewAssignmentPage() {
       setSuccess(true)
       setTimeout(() => router.push('/assignments'), 1500)
     } catch (err: any) {
-      setError(err.message || 'Failed to create assignment')
+      setError(err.message || t('error_create'))
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <DashboardLayout breadcrumbs={[{ label: 'Assignments', href: '/assignments' }, { label: 'New' }]}>
+    <DashboardLayout breadcrumbs={[{ label: t('crumb'), href: '/assignments' }, { label: t('crumb_new') }]}>
       <div className="flex flex-col gap-6 max-w-2xl mx-auto">
         <div>
-          <h1 className="verge-display text-4xl text-v2-text-primary leading-none">Create Assignment</h1>
-          <p className="text-sm text-v2-text-secondary mt-1">Set up a new assignment for your class.</p>
+          <h1 className="verge-display text-4xl text-v2-text-primary leading-none">{t('create_title')}</h1>
+          <p className="text-sm text-v2-text-secondary mt-1">{t('create_subtitle')}</p>
         </div>
 
         {error && (
@@ -71,40 +73,40 @@ export default function NewAssignmentPage() {
         )}
         {success && (
           <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-success/10 border border-v2-success/30 text-v2-success text-sm">
-            <CheckCircle className="w-5 h-5 shrink-0" /> Assignment created! Redirecting...
+            <CheckCircle className="w-5 h-5 shrink-0" /> {t('created_success')}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div className="bg-v2-surface border border-v2-border rounded-[20px] p-6 flex flex-col gap-5">
             <div className="flex flex-col gap-2">
-              <label className="text-xs text-v2-text-secondary uppercase font-semibold">Title *</label>
-              <input type="text" value={title} onChange={e => setTitle(e.target.value)} required placeholder="e.g. Cell Division Homework"
+              <label className="text-xs text-v2-text-secondary uppercase font-semibold">{t('field_title')}</label>
+              <input type="text" value={title} onChange={e => setTitle(e.target.value)} required placeholder={t('title_placeholder')}
                 className="bg-v2-bg border border-v2-border text-v2-text-primary text-sm rounded-xl px-4 py-3 outline-none focus:border-v2-accent" />
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="text-xs text-v2-text-secondary uppercase font-semibold">Description</label>
-              <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Brief overview..."
+              <label className="text-xs text-v2-text-secondary uppercase font-semibold">{t('field_description')}</label>
+              <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder={t('desc_placeholder')}
                 className="bg-v2-bg border border-v2-border text-v2-text-primary text-sm rounded-xl px-4 py-3 outline-none focus:border-v2-accent resize-none" />
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="text-xs text-v2-text-secondary uppercase font-semibold">Instructions</label>
-              <textarea value={instructions} onChange={e => setInstructions(e.target.value)} rows={4} placeholder="Detailed instructions for students..."
+              <label className="text-xs text-v2-text-secondary uppercase font-semibold">{t('field_instructions')}</label>
+              <textarea value={instructions} onChange={e => setInstructions(e.target.value)} rows={4} placeholder={t('instructions_placeholder')}
                 className="bg-v2-bg border border-v2-border text-v2-text-primary text-sm rounded-xl px-4 py-3 outline-none focus:border-v2-accent resize-none" />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-2">
-                <label className="text-xs text-v2-text-secondary uppercase font-semibold">Type</label>
+                <label className="text-xs text-v2-text-secondary uppercase font-semibold">{t('field_type')}</label>
                 <select value={assignmentType} onChange={e => setAssignmentType(e.target.value)}
                   className="bg-v2-bg border border-v2-border text-v2-text-primary text-sm rounded-xl px-4 py-3 outline-none focus:border-v2-accent">
-                  {ASSIGNMENT_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+                  {ASSIGNMENT_TYPES.map(at => <option key={at} value={at}>{t(`type_${at}` as const)}</option>)}
                 </select>
               </div>
               <div className="flex flex-col gap-2">
-                <label className="text-xs text-v2-text-secondary uppercase font-semibold">Due Date</label>
+                <label className="text-xs text-v2-text-secondary uppercase font-semibold">{t('field_due_date')}</label>
                 <input type="datetime-local" value={dueDate} onChange={e => setDueDate(e.target.value)}
                   className="bg-v2-bg border border-v2-border text-v2-text-primary text-sm rounded-xl px-4 py-3 outline-none focus:border-v2-accent" />
               </div>
@@ -112,7 +114,7 @@ export default function NewAssignmentPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-2">
-                <label className="text-xs text-v2-text-secondary uppercase font-semibold">Max Attempts</label>
+                <label className="text-xs text-v2-text-secondary uppercase font-semibold">{t('field_max_attempts')}</label>
                 <input type="number" min={1} max={10} value={maxAttempts} onChange={e => setMaxAttempts(parseInt(e.target.value) || 1)}
                   className="bg-v2-bg border border-v2-border text-v2-text-primary text-sm rounded-xl px-4 py-3 outline-none focus:border-v2-accent" />
               </div>
@@ -120,7 +122,7 @@ export default function NewAssignmentPage() {
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input type="checkbox" checked={allowLate} onChange={e => setAllowLate(e.target.checked)}
                     className="w-4 h-4 rounded border-v2-border text-v2-accent focus:ring-v2-accent" />
-                  <span className="text-sm text-v2-text-primary font-medium">Allow late submissions</span>
+                  <span className="text-sm text-v2-text-primary font-medium">{t('allow_late')}</span>
                 </label>
               </div>
             </div>
@@ -128,7 +130,7 @@ export default function NewAssignmentPage() {
 
           <button type="submit" disabled={submitting || success || !title.trim()}
             className="w-full h-12 rounded-xl bg-v2-accent text-v2-inverted text-sm font-bold hover:bg-white transition-all flex items-center justify-center gap-2 disabled:opacity-50">
-            {submitting ? 'Creating...' : <>Create Assignment <ArrowRight className="w-4 h-4" /></>}
+            {submitting ? t('creating') : <>{t('create_submit')} <ArrowRight className="w-4 h-4" /></>}
           </button>
         </form>
       </div>

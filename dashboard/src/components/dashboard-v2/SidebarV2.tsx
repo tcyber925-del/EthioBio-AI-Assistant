@@ -26,18 +26,18 @@ import {
   Upload,
 } from 'lucide-react'
 import { DnaIcon } from './BioIcon'
-import { useLocale } from 'next-intl'
+import LanguageSwitcher from '@/components/LanguageSwitcher'
+import { useTranslations } from 'next-intl'
 import { clearToken, getUserRole, isAuthenticated } from '@/lib/auth'
-import { setCookie } from '@/lib/cookies'
 
 interface NavSection {
-  section: string | null
+  sectionKey: string | null
   items: NavItem[]
 }
 
 interface NavItem {
-  label: string
-  subtitle?: string
+  labelKey: string
+  subtitleKey?: string
   href: string
   icon: React.ElementType
   roles: string[]
@@ -45,73 +45,74 @@ interface NavItem {
 
 const NAV_STRUCTURE: NavSection[] = [
   {
-    section: null,
+    sectionKey: null,
     items: [
-      { label: 'Overview', href: '/v2/overview', icon: LayoutDashboard, roles: ['admin', 'teacher', 'student', 'parent', 'school'] },
+      { labelKey: 'overview', href: '/v2/overview', icon: LayoutDashboard, roles: ['admin', 'teacher', 'student', 'parent', 'school'] },
     ],
   },
   {
-    section: 'Main',
+    sectionKey: 'section_main',
     items: [
-      { label: 'Dashboard', href: '/dashboard', icon: Home, roles: ['admin'] },
-      { label: 'Student Dashboard', href: '/student', icon: Home, roles: ['student'] },
-      { label: 'Parent', href: '/parent', icon: User, roles: ['parent', 'admin'] },
+      { labelKey: 'dashboard', href: '/dashboard', icon: Home, roles: ['admin'] },
+      { labelKey: 'student_dashboard', href: '/student', icon: Home, roles: ['student'] },
+      { labelKey: 'parent', href: '/parent', icon: User, roles: ['parent', 'admin'] },
     ],
   },
   {
-    section: 'Learning',
+    sectionKey: 'section_learning',
     items: [
-      { label: 'Single Lesson', subtitle: 'Quick plan by grade & topic', href: '/lessons', icon: FileText, roles: ['admin', 'teacher'] },
-      { label: 'Unit Plan', subtitle: 'Multi-day comprehensive plan', href: '/unit-plans', icon: BookOpen, roles: ['admin', 'teacher'] },
-      { label: 'Assessment Studio', href: '/assessment-studio', icon: ClipboardCheck, roles: ['admin', 'teacher'] },
-      { label: 'Knowledge Graph', href: '/knowledge-graph', icon: GitFork, roles: ['admin', 'teacher'] },
-      { label: 'Quizzes', href: '/quizzes', icon: ClipboardCheck, roles: ['admin', 'teacher'] },
-      { label: 'Ask Q&A', href: '/ask', icon: MessageSquare, roles: ['admin', 'teacher', 'student', 'parent'] },
+      { labelKey: 'single_lesson', subtitleKey: 'single_lesson_sub', href: '/lessons', icon: FileText, roles: ['admin', 'teacher'] },
+      { labelKey: 'unit_plan', subtitleKey: 'unit_plan_sub', href: '/unit-plans', icon: BookOpen, roles: ['admin', 'teacher'] },
+      { labelKey: 'assessment_studio', href: '/assessment-studio', icon: ClipboardCheck, roles: ['admin', 'teacher'] },
+      { labelKey: 'knowledge_graph', href: '/knowledge-graph', icon: GitFork, roles: ['admin', 'teacher'] },
+      { labelKey: 'quizzes', href: '/quizzes', icon: ClipboardCheck, roles: ['admin', 'teacher'] },
+      { labelKey: 'ask', href: '/ask', icon: MessageSquare, roles: ['admin', 'teacher', 'student', 'parent'] },
     ],
   },
   {
-    section: 'Management',
+    sectionKey: 'section_management',
     items: [
-      { label: 'Classroom', href: '/classroom', icon: School, roles: ['admin', 'teacher', 'student'] },
-      { label: 'Students', href: '/students', icon: Users, roles: ['admin', 'teacher'] },
-      { label: 'School', href: '/school', icon: Shield, roles: ['admin'] },
-      { label: 'Recovery', href: '/recovery', icon: Activity, roles: ['admin', 'teacher'] },
-      { label: 'Interventions', href: '/intervention-analytics', icon: BarChart3, roles: ['admin', 'teacher'] },
+      { labelKey: 'classroom', href: '/classroom', icon: School, roles: ['admin', 'teacher', 'student'] },
+      { labelKey: 'students', href: '/students', icon: Users, roles: ['admin', 'teacher'] },
+      { labelKey: 'school', href: '/school', icon: Shield, roles: ['admin'] },
+      { labelKey: 'recovery', href: '/recovery', icon: Activity, roles: ['admin', 'teacher'] },
+      { labelKey: 'interventions', href: '/intervention-analytics', icon: BarChart3, roles: ['admin', 'teacher'] },
     ],
   },
   {
-    section: 'Workspace',
+    sectionKey: 'section_workspace',
     items: [
-      { label: 'Dashboard', href: '/workspace', icon: LayoutDashboard, roles: ['admin', 'teacher'] },
-      { label: 'Browse', href: '/workspace/browse', icon: BookOpen, roles: ['admin', 'teacher'] },
-      { label: 'Upload', href: '/workspace/upload', icon: Upload, roles: ['admin', 'teacher'] },
-      { label: 'Search', href: '/workspace/search', icon: Search, roles: ['admin', 'teacher'] },
-      { label: 'Processing', href: '/workspace/processing', icon: Activity, roles: ['admin', 'teacher'] },
+      { labelKey: 'dashboard', href: '/workspace', icon: LayoutDashboard, roles: ['admin', 'teacher'] },
+      { labelKey: 'workspace_browse', href: '/workspace/browse', icon: BookOpen, roles: ['admin', 'teacher'] },
+      { labelKey: 'workspace_upload', href: '/workspace/upload', icon: Upload, roles: ['admin', 'teacher'] },
+      { labelKey: 'workspace_search', href: '/workspace/search', icon: Search, roles: ['admin', 'teacher'] },
+      { labelKey: 'workspace_processing', href: '/workspace/processing', icon: Activity, roles: ['admin', 'teacher'] },
     ],
   },
   {
-    section: 'System',
+    sectionKey: 'section_system',
     items: [
-      { label: 'Monitoring', href: '/monitoring', icon: BarChart3, roles: ['admin'] },
-      { label: 'Diagrams', href: '/diagrams', icon: BarChart3, roles: ['admin', 'teacher', 'student', 'parent'] },
+      { labelKey: 'monitoring', href: '/monitoring', icon: BarChart3, roles: ['admin'] },
+      { labelKey: 'diagrams', href: '/diagrams', icon: BarChart3, roles: ['admin', 'teacher', 'student', 'parent'] },
     ],
   },
   {
-    section: 'Admin',
+    sectionKey: 'section_admin',
     items: [
-      { label: 'Admin Dashboard', href: '/admin', icon: Shield, roles: ['admin'] },
-      { label: 'Review Queue', href: '/admin/review', icon: ClipboardCheck, roles: ['admin'] },
-      { label: 'Content Review', href: '/admin/content', icon: FileText, roles: ['admin'] },
-      { label: 'Schools', href: '/admin/schools', icon: School, roles: ['admin'] },
-      { label: 'Users', href: '/admin/users', icon: Users, roles: ['admin'] },
-      { label: 'Agents', href: '/admin/agents', icon: Cpu, roles: ['admin'] },
-      { label: 'Monitoring', href: '/admin/monitoring', icon: BarChart3, roles: ['admin'] },
+      { labelKey: 'admin_dashboard', href: '/admin', icon: Shield, roles: ['admin'] },
+      { labelKey: 'review_queue', href: '/admin/review', icon: ClipboardCheck, roles: ['admin'] },
+      { labelKey: 'content_review', href: '/admin/content', icon: FileText, roles: ['admin'] },
+      { labelKey: 'schools', href: '/admin/schools', icon: School, roles: ['admin'] },
+      { labelKey: 'users', href: '/admin/users', icon: Users, roles: ['admin'] },
+      { labelKey: 'agents', href: '/admin/agents', icon: Cpu, roles: ['admin'] },
+      { labelKey: 'monitoring', href: '/admin/monitoring', icon: BarChart3, roles: ['admin'] },
     ],
   },
 ]
 
 export function SidebarV2() {
-  const locale = useLocale()
+  const t = useTranslations('v2.nav')
+  const ts = useTranslations('v2.sidebar')
   const pathname = usePathname()
   const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
@@ -157,12 +158,6 @@ export function SidebarV2() {
     router.push('/login')
   }
 
-  const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newLocale = e.target.value
-    setCookie('NEXT_LOCALE', newLocale, 365)
-    router.refresh()
-  }
-
   if (!authenticated) return null
 
   const filteredNav = NAV_STRUCTURE.map(section => ({
@@ -172,7 +167,7 @@ export function SidebarV2() {
 
   const searchResults = searchQuery
     ? filteredNav.flatMap(s => s.items).filter(i =>
-        i.label.toLowerCase().includes(searchQuery.toLowerCase())
+        t(i.labelKey).toLowerCase().includes(searchQuery.toLowerCase())
       )
     : []
 
@@ -205,7 +200,7 @@ export function SidebarV2() {
                 className="min-w-0 overflow-hidden"
               >
                 <p className="verge-display truncate text-[32px] leading-none text-v2-text-primary">EthioBio</p>
-                <p className="verge-label mt-1 text-v2-accent">AI Assistant</p>
+                <p className="verge-label mt-1 text-v2-accent">{ts('brand_sub')}</p>
               </motion.div>
             ) : (
               <motion.div
@@ -223,7 +218,7 @@ export function SidebarV2() {
 
         <button
           onClick={() => setSearchOpen(true)}
-          aria-label="Open page search"
+          aria-label={ts('open_search_aria')}
           className="relative mx-3 mt-4 flex h-10 items-center gap-3 rounded-[20px] border border-v2-border bg-v2-surface px-3 text-sm text-v2-text-secondary transition-colors duration-150 hover:border-v2-accent hover:text-v2-text-primary focus-visible:verge-focus"
         >
           <Search className="h-4 w-4 shrink-0" />
@@ -236,7 +231,7 @@ export function SidebarV2() {
                 exit={{ opacity: 0 }}
                 className="flex flex-1 items-center justify-between gap-3 text-left"
               >
-                <span className="verge-label">Search</span>
+                <span className="verge-label">{ts('search')}</span>
                 <span className="font-mono text-[10px] text-v2-text-secondary/70">CMD K</span>
               </motion.span>
             )}
@@ -247,7 +242,7 @@ export function SidebarV2() {
           {filteredNav.map((section, i) => (
             <div key={i}>
               <AnimatePresence mode="wait">
-                {!collapsed && section.section && (
+                {!collapsed && section.sectionKey && (
                   <motion.p
                     key={`label-${i}`}
                     initial={{ opacity: 0 }}
@@ -255,7 +250,7 @@ export function SidebarV2() {
                     exit={{ opacity: 0 }}
                     className="verge-label px-3 pb-2 text-v2-text-secondary"
                   >
-                    {section.section}
+                    {t(section.sectionKey)}
                   </motion.p>
                 )}
               </AnimatePresence>
@@ -272,7 +267,7 @@ export function SidebarV2() {
                           ? 'border-v2-accent bg-v2-accent text-v2-inverted'
                           : 'border-v2-border bg-v2-bg text-v2-text-secondary hover:border-v2-accent hover:text-v2-link-hover'
                       }`}
-                      title={collapsed ? item.label : undefined}
+                      title={collapsed ? t(item.labelKey) : undefined}
                     >
                       <Icon className="h-5 w-5 shrink-0" />
                       <AnimatePresence mode="wait">
@@ -284,9 +279,9 @@ export function SidebarV2() {
                             exit={{ opacity: 0 }}
                             className="min-w-0"
                           >
-                            <span className="verge-label truncate block">{item.label}</span>
-                            {item.subtitle && (
-                              <span className="text-[10px] text-v2-text-secondary/60 truncate block leading-tight">{item.subtitle}</span>
+                            <span className="verge-label truncate block">{t(item.labelKey)}</span>
+                            {item.subtitleKey && (
+                              <span className="text-[10px] text-v2-text-secondary/60 truncate block leading-tight">{t(item.subtitleKey)}</span>
                             )}
                           </motion.div>
                         )}
@@ -305,24 +300,24 @@ export function SidebarV2() {
             <Globe className="h-4 w-4 shrink-0" />
             <AnimatePresence mode="wait">
               {!collapsed && (
-                <motion.select
+                <motion.div
                   key="lang-select"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  value={locale}
-                  onChange={handleLanguageChange}
-                  className="w-full cursor-pointer bg-transparent text-sm text-v2-text-primary outline-none"
+                  className="w-full"
                 >
-                  <option value="en">English</option>
-                  <option value="am">አማርኛ</option>
-                </motion.select>
+                  <LanguageSwitcher
+                    variant="select"
+                    className="w-full cursor-pointer bg-transparent text-sm text-v2-text-primary outline-none"
+                  />
+                </motion.div>
               )}
             </AnimatePresence>
           </div>
           <button
             onClick={handleLogout}
-            aria-label="Sign out"
+            aria-label={ts('sign_out')}
             className="flex w-full items-center gap-3 rounded-[20px] border border-transparent px-3 py-2 text-sm text-v2-text-secondary transition-colors duration-150 hover:border-v2-error hover:text-v2-error focus-visible:verge-focus"
           >
             <LogOut className="h-4 w-4 shrink-0" />
@@ -335,7 +330,7 @@ export function SidebarV2() {
                   exit={{ opacity: 0 }}
                   className="verge-label"
                 >
-                  Sign out
+                  {ts('sign_out')}
                 </motion.span>
               )}
             </AnimatePresence>
@@ -345,7 +340,7 @@ export function SidebarV2() {
         <button
           onClick={() => setCollapsed(prev => !prev)}
           className="absolute -right-3 top-24 flex h-6 w-6 items-center justify-center rounded-full border border-v2-border bg-v2-bg text-v2-text-secondary transition-colors duration-150 hover:border-v2-accent hover:text-v2-accent focus-visible:verge-focus"
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={collapsed ? ts('expand_aria') : ts('collapse_aria')}
         >
           <ChevronLeft
             className={`h-3.5 w-3.5 transition-transform duration-200 ${
@@ -363,7 +358,7 @@ export function SidebarV2() {
             exit={{ opacity: 0 }}
             role="dialog"
             aria-modal="true"
-            aria-label="Search pages"
+            aria-label={ts('search_pages_aria')}
             className="fixed inset-0 z-50 bg-black/60"
             onClick={() => { setSearchOpen(false); setSearchQuery('') }}
           >
@@ -382,8 +377,8 @@ export function SidebarV2() {
                     autoFocus
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
-                    placeholder="Search pages..."
-                    aria-label="Search pages"
+                    placeholder={ts('search_placeholder')}
+            aria-label={ts('search_pages_aria')}
                     className="flex-1 bg-transparent text-sm text-v2-text-primary outline-none placeholder:text-v2-text-secondary/70"
                   />
                   <kbd className="rounded border border-v2-border px-1.5 py-0.5 font-mono text-[10px] text-v2-text-secondary">
@@ -402,7 +397,7 @@ export function SidebarV2() {
                           className="flex h-10 items-center gap-3 rounded-[20px] border border-transparent px-3 text-sm text-v2-text-secondary transition-colors duration-150 hover:border-v2-accent hover:text-v2-link-hover focus-visible:verge-focus"
                         >
                           <Icon className="h-4 w-4 shrink-0" />
-                          <span className="verge-label">{item.label}</span>
+                          <span className="verge-label">{t(item.labelKey)}</span>
                         </Link>
                       )
                     })}
@@ -410,7 +405,7 @@ export function SidebarV2() {
                 )}
                 {searchQuery && searchResults.length === 0 && (
                   <div className="p-8 text-center text-sm text-v2-text-secondary">
-                    No results found for &quot;{searchQuery}&quot;
+                    {ts('no_results', { query: searchQuery })}
                   </div>
                 )}
               </div>

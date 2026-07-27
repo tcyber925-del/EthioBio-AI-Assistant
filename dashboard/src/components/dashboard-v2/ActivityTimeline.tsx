@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { Zap, FileCheck, MessageSquare, Medal, AlertTriangle } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 interface ActivityItem {
   type: string
@@ -22,34 +23,38 @@ const TIMELINE_ICONS: Record<string, { icon: React.ElementType; accent: string; 
 
 const DEFAULT_ICON = { icon: AlertTriangle, accent: 'text-v2-text-secondary', tile: 'border-v2-border bg-v2-surface' }
 
-const TYPE_LABELS: Record<string, string> = {
-  xp: 'XP Earned',
-  quiz: 'Quiz Completed',
-  tutor: 'Tutoring Session',
-  achievement: 'Achievement Unlocked',
+const TYPE_LABEL_KEYS: Record<string, string> = {
+  xp: 'type_xp',
+  quiz: 'type_quiz',
+  tutor: 'type_tutor',
+  achievement: 'type_achievement',
 }
 
-function formatTime(ts: string | null): string {
+type TFn = (key: string, values?: Record<string, string | number>) => string
+
+function formatTime(ts: string | null, tc: TFn): string {
   if (!ts) return ''
   const diff = Date.now() - new Date(ts).getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'Just now'
-  if (mins < 60) return `${mins}m ago`
+  if (mins < 1) return tc('just_now')
+  if (mins < 60) return tc('minutes_ago', { m: mins })
   const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h ago`
+  if (hours < 24) return tc('hours_ago', { h: hours })
   const days = Math.floor(hours / 24)
-  if (days < 7) return `${days}d ago`
+  if (days < 7) return tc('days_ago', { d: days })
   return new Date(ts).toLocaleDateString()
 }
 
 export function ActivityTimeline({ items }: ActivityTimelineProps) {
+  const t = useTranslations('v2.activity')
+  const tc = useTranslations('common')
   if (items.length === 0) return null
 
   return (
     <section>
       <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 className="text-2xl font-black leading-none text-v2-text-primary">Recent Activity</h2>
-        <span className="verge-label text-v2-accent">StoryStream</span>
+        <h2 className="text-2xl font-black leading-none text-v2-text-primary">{t('title')}</h2>
+        <span className="verge-label text-v2-accent">{t('storystream')}</span>
       </div>
       <div className="relative pl-12">
         <div className="absolute left-[25px] top-1 bottom-1 w-px bg-v2-purple-rule" />
@@ -68,7 +73,7 @@ export function ActivityTimeline({ items }: ActivityTimelineProps) {
               >
                 <div className="absolute -left-12 top-5 flex w-10 justify-end pr-2">
                   <span className="verge-label whitespace-nowrap text-[10px] text-v2-text-secondary">
-                    {formatTime(item.created_at)}
+                    {formatTime(item.created_at, tc)}
                   </span>
                 </div>
                 <div className={`rounded-[20px] border p-4 transition-colors duration-150 hover:text-v2-link-hover ${cfg.tile}`}>
@@ -77,7 +82,7 @@ export function ActivityTimeline({ items }: ActivityTimelineProps) {
                       <Icon className="h-4 w-4" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className={`verge-label mb-1 ${isAccentTile ? 'text-v2-inverted/70' : 'text-v2-text-secondary'}`}>{TYPE_LABELS[item.type] || item.type}</p>
+                      <p className={`verge-label mb-1 ${isAccentTile ? 'text-v2-inverted/70' : 'text-v2-text-secondary'}`}>{TYPE_LABEL_KEYS[item.type] ? t(TYPE_LABEL_KEYS[item.type]) : item.type}</p>
                       <p className={`text-sm leading-relaxed ${isAccentTile ? 'text-v2-inverted' : 'text-v2-text-primary'}`}>{item.description}</p>
                     </div>
                   </div>

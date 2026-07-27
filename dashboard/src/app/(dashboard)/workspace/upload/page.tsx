@@ -2,12 +2,14 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { useWorkspace } from '../context'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { getUserId, getToken } from '@/lib/auth'
 import { Upload, AlertCircle, FileText, CheckCircle, ArrowRight, Loader } from 'lucide-react'
 
 export default function UploadPage() {
+  const t = useTranslations('workspace')
   const router = useRouter()
   const { activeWorkspace } = useWorkspace()
   const [file, setFile] = useState<File | null>(null)
@@ -90,20 +92,20 @@ export default function UploadPage() {
         router.push('/workspace/processing')
       }, 1500)
     } catch (err: any) {
-      setError(err.message || 'File upload failed')
+      setError(err.message || t('upload_error'))
     } finally {
       setUploading(false)
     }
   }
 
   return (
-    <DashboardLayout breadcrumbs={[{ label: 'Workspace', href: '/workspace' }, { label: 'Upload' }]}>
+    <DashboardLayout breadcrumbs={[{ label: t('crumb_workspace'), href: '/workspace' }, { label: t('crumb_upload') }]}>
       <div className="flex flex-col gap-6 max-w-2xl mx-auto">
         {/* Header */}
         <div>
-          <h1 className="verge-display text-4xl text-v2-text-primary leading-none">Upload Assets</h1>
+          <h1 className="verge-display text-4xl text-v2-text-primary leading-none">{t('upload_title')}</h1>
           <p className="text-sm text-v2-text-secondary mt-1">
-            Ingest educational PDFs, textbooks, reference files, or markdown sheets into the knowledge gateway.
+            {t('upload_subtitle')}
           </p>
         </div>
 
@@ -118,7 +120,7 @@ export default function UploadPage() {
         {success && (
           <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-success/10 border border-v2-success/30 text-v2-success text-sm">
             <CheckCircle className="w-5 h-5 shrink-0" />
-            <div className="flex-1">File uploaded successfully! Redirecting to processing queue...</div>
+            <div className="flex-1">{t('upload_success')}</div>
           </div>
         )}
 
@@ -148,14 +150,14 @@ export default function UploadPage() {
               <div className="text-center min-w-0 px-4">
                 <p className="text-sm font-semibold text-v2-text-primary truncate">{file.name}</p>
                 <p className="text-xs text-v2-text-secondary mt-1">
-                  {(file.size / 1024 / 1024).toFixed(2)} MB · Click or drag to replace
+                  {t('file_selected_hint', { size: (file.size / 1024 / 1024).toFixed(2) })}
                 </p>
               </div>
             ) : (
               <div className="text-center">
-                <p className="text-sm font-semibold text-v2-text-primary">Click to upload or drag & drop</p>
+                <p className="text-sm font-semibold text-v2-text-primary">{t('dropzone_title')}</p>
                 <p className="text-xs text-v2-text-secondary mt-1">
-                  Supports PDF, TXT, or MD (max 50MB)
+                  {t('dropzone_hint')}
                 </p>
               </div>
             )}
@@ -163,12 +165,12 @@ export default function UploadPage() {
 
           {/* Title Input */}
           <div className="flex flex-col gap-2">
-            <label className="text-xs text-v2-text-secondary uppercase tracking-wider font-semibold">Asset Title</label>
+            <label className="text-xs text-v2-text-secondary uppercase tracking-wider font-semibold">{t('field_asset_title')}</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Grade 10 Cell Division Chapter"
+              placeholder={t('asset_title_placeholder')}
               required
               disabled={uploading || success || !file}
               className="bg-v2-surface border border-v2-border text-v2-text-primary text-sm rounded-xl px-4 py-3 outline-none focus:border-v2-accent disabled:opacity-50"
@@ -183,11 +185,11 @@ export default function UploadPage() {
           >
             {uploading ? (
               <>
-                <Loader className="w-5 h-5 animate-spin" /> Ingesting Asset...
+                <Loader className="w-5 h-5 animate-spin" /> {t('ingesting')}
               </>
             ) : (
               <>
-                Submit for Ingestion <ArrowRight className="w-4 h-4" />
+                {t('submit_ingestion')} <ArrowRight className="w-4 h-4" />
               </>
             )}
           </button>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { AlertTriangle, CheckCircle, Clock } from 'lucide-react'
 import ReviewDetail from './ReviewDetail'
 import Badge from '@/components/ui/Badge'
@@ -30,17 +31,18 @@ interface ReviewQueueProps {
 }
 
 export default function ReviewQueue({ items, onResolve, loading }: ReviewQueueProps) {
+  const t = useTranslations('governance')
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   if (loading) {
-    return <div className="text-foreground-muted text-body">Loading review queue...</div>
+    return <div className="text-foreground-muted text-body">{t('loading')}</div>
   }
 
   if (items.length === 0) {
     return (
       <div className="text-center py-12 text-foreground-muted">
         <CheckCircle className="mx-auto h-12 w-12 mb-3 text-foreground-muted/40" />
-        <p className="text-body text-foreground-muted">No items pending review</p>
+        <p className="text-body text-foreground-muted">{t('empty')}</p>
       </div>
     )
   }
@@ -64,7 +66,7 @@ export default function ReviewQueue({ items, onResolve, loading }: ReviewQueuePr
                   {item.user_message}
                 </p>
                 <p className="text-small text-foreground-muted">
-                  {item.intent} &middot; Grade {item.grade_level ?? 'N/A'}
+                  {item.intent} &middot; {t('grade_label', { grade: item.grade_level ?? 'N/A' })}
                 </p>
               </div>
             </div>
@@ -74,11 +76,11 @@ export default function ReviewQueue({ items, onResolve, loading }: ReviewQueuePr
               ))}
               {item.reviewed ? (
                 <span className="text-small text-green-400 flex items-center gap-1">
-                  <CheckCircle className="h-3 w-3" /> Reviewed
+                  <CheckCircle className="h-3 w-3" /> {t('reviewed')}
                 </span>
               ) : (
                 <span className="text-small text-yellow-400 flex items-center gap-1">
-                  <Clock className="h-3 w-3" /> Pending
+                  <Clock className="h-3 w-3" /> {t('pending')}
                 </span>
               )}
             </div>

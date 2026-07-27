@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
@@ -29,6 +30,7 @@ interface Question {
 }
 
 export default function AssessmentStudioPage() {
+  const t = useTranslations('studio')
   const router = useRouter()
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
   const [loadingList, setLoadingList] = useState(true)
@@ -107,26 +109,26 @@ export default function AssessmentStudioPage() {
         const taskResponse = await fetchWithAuth(`/quiz/generate/status/${task_id}`)
         task = await taskResponse.json()
         if (task.status === 'completed') break
-        if (task.status === 'failed') throw new Error(task.error || 'Generation failed')
+        if (task.status === 'failed') throw new Error(task.error || t('error_failed'))
       }
-      if (!task || task.status !== 'completed') throw new Error('Generation timed out')
-      setSuccessMsg(`Successfully generated new ${assessmentType} assessment!`)
+      if (!task || task.status !== 'completed') throw new Error(t('error_timeout'))
+      setSuccessMsg(t('success_generated', { type: assessmentType }))
       fetchQuizzes()
     } catch (err: any) {
-      setError(err.message || 'Failed to generate assessment')
+      setError(err.message || t('error_generate'))
     } finally {
       setGenerating(false)
     }
   }
 
   return (
-    <DashboardLayout breadcrumbs={[{ label: 'Assessment Studio', href: '/assessment-studio' }, { label: 'Builder' }]}>
+    <DashboardLayout breadcrumbs={[{ label: t('crumb_studio'), href: '/assessment-studio' }, { label: t('crumb_builder') }]}>
       <div className="flex flex-col gap-6">
         {/* Header */}
         <div>
-          <h1 className="verge-display text-4xl text-v2-text-primary leading-none">Assessment Studio</h1>
+          <h1 className="verge-display text-4xl text-v2-text-primary leading-none">{t('title')}</h1>
           <p className="text-sm text-v2-text-secondary mt-1">
-            Construct high-fidelity quizzes, diagnostic items, and adaptive biology assessments.
+            {t('subtitle')}
           </p>
         </div>
 
@@ -149,50 +151,50 @@ export default function AssessmentStudioPage() {
           {/* Builder Form */}
           <div className="lg:col-span-2 flex flex-col gap-5 bg-v2-surface border border-v2-border p-6 rounded-[20px]">
             <h2 className="text-lg font-bold text-v2-text-primary flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-v2-accent" /> Assessment Builder
+              <Sparkles className="w-5 h-5 text-v2-accent" /> {t('builder_title')}
             </h2>
 
             <form onSubmit={handleGenerate} className="flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-4">
                 {/* Grade */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs text-v2-text-secondary uppercase font-semibold">Grade Level</label>
+                  <label className="text-xs text-v2-text-secondary uppercase font-semibold">{t('field_grade')}</label>
                   <select
                     value={grade}
                     onChange={e => setGrade(Number(e.target.value))}
                     className="bg-v2-bg border border-v2-border text-v2-text-primary text-sm rounded-xl px-3 py-2 outline-none focus:border-v2-accent"
                   >
                     {[7, 8, 9, 10, 11, 12].map(g => (
-                      <option key={g} value={g} className="bg-v2-surface">Grade {g}</option>
+                      <option key={g} value={g} className="bg-v2-surface">{t('grade_option', { g })}</option>
                     ))}
                   </select>
                 </div>
 
                 {/* Assessment Type */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs text-v2-text-secondary uppercase font-semibold">Diagnostic Type</label>
+                  <label className="text-xs text-v2-text-secondary uppercase font-semibold">{t('field_diagnostic')}</label>
                   <select
                     value={assessmentType}
                     onChange={e => setAssessmentType(e.target.value)}
                     className="bg-v2-bg border border-v2-border text-v2-text-primary text-sm rounded-xl px-3 py-2 outline-none focus:border-v2-accent"
                   >
-                    <option value="mastery" className="bg-v2-surface">Mastery Quiz</option>
-                    <option value="diagnostic" className="bg-v2-surface">Diagnostic Assessment</option>
-                    <option value="readiness" className="bg-v2-surface">Exam Readiness</option>
-                    <option value="misconception" className="bg-v2-surface">Misconception Probe</option>
-                    <option value="intervention" className="bg-v2-surface">Intervention Validation</option>
+                    <option value="mastery" className="bg-v2-surface">{t('type_mastery')}</option>
+                    <option value="diagnostic" className="bg-v2-surface">{t('type_diagnostic')}</option>
+                    <option value="readiness" className="bg-v2-surface">{t('type_readiness')}</option>
+                    <option value="misconception" className="bg-v2-surface">{t('type_misconception')}</option>
+                    <option value="intervention" className="bg-v2-surface">{t('type_intervention')}</option>
                   </select>
                 </div>
               </div>
 
               {/* Topic */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-v2-text-secondary uppercase font-semibold">Biology Topic</label>
+                <label className="text-xs text-v2-text-secondary uppercase font-semibold">{t('field_topic')}</label>
                 <input
                   type="text"
                   value={topic}
                   onChange={e => setTopic(e.target.value)}
-                  placeholder="e.g. Aerobic Respiration, Mitosis vs Meiosis, Protein Synthesis"
+                  placeholder={t('topic_placeholder')}
                   required
                   disabled={generating}
                   className="bg-v2-bg border border-v2-border text-v2-text-primary text-sm rounded-xl px-3.5 py-2.5 outline-none focus:border-v2-accent"
@@ -202,7 +204,7 @@ export default function AssessmentStudioPage() {
               <div className="grid grid-cols-2 gap-4">
                 {/* Count */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs text-v2-text-secondary uppercase font-semibold">Question Count ({count})</label>
+                  <label className="text-xs text-v2-text-secondary uppercase font-semibold">{t('field_count', { count })}</label>
                   <input
                     type="range"
                     min={3}
@@ -224,32 +226,32 @@ export default function AssessmentStudioPage() {
                     className="accent-v2-accent w-4 h-4 rounded"
                   />
                   <label htmlFor="adaptive" className="text-xs text-v2-text-secondary uppercase font-semibold cursor-pointer">
-                    Adapt to Student Profile
+                    {t('adaptive_label')}
                   </label>
                 </div>
               </div>
 
               {/* Question Formats */}
               <div className="flex flex-col gap-2">
-                <label className="text-xs text-v2-text-secondary uppercase font-semibold">Question Types</label>
+                <label className="text-xs text-v2-text-secondary uppercase font-semibold">{t('field_types')}</label>
                 <div className="flex gap-3 flex-wrap">
                   {[
-                    { id: 'multiple_choice', label: 'Multiple Choice' },
-                    { id: 'true_false', label: 'True / False' },
-                    { id: 'short_answer', label: 'Short Answer' },
-                    { id: 'diagram_label', label: 'Diagram Labeling' },
-                  ].map(t => (
+                    { id: 'multiple_choice', labelKey: 'qtype_multiple_choice' },
+                    { id: 'true_false', labelKey: 'qtype_true_false' },
+                    { id: 'short_answer', labelKey: 'qtype_short_answer' },
+                    { id: 'diagram_label', labelKey: 'qtype_diagram_label' },
+                  ].map(qt => (
                     <button
-                      key={t.id}
+                      key={qt.id}
                       type="button"
-                      onClick={() => handleTypeToggle(t.id)}
+                      onClick={() => handleTypeToggle(qt.id)}
                       className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
-                        selectedTypes.includes(t.id)
+                        selectedTypes.includes(qt.id)
                           ? 'bg-v2-accent-muted text-v2-accent border-v2-accent/40'
                           : 'bg-v2-bg text-v2-text-secondary border-v2-border hover:border-v2-accent/30'
                       }`}
                     >
-                      {t.label}
+                      {t(qt.labelKey as 'qtype_multiple_choice')}
                     </button>
                   ))}
                 </div>
@@ -257,7 +259,7 @@ export default function AssessmentStudioPage() {
 
               {/* Model selection */}
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-v2-text-secondary uppercase font-semibold">LLM Generator Model</label>
+                <label className="text-xs text-v2-text-secondary uppercase font-semibold">{t('field_model')}</label>
                 <ModelSelector value={selectedModel} onChange={setSelectedModel} />
               </div>
 
@@ -269,11 +271,11 @@ export default function AssessmentStudioPage() {
               >
                 {generating ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" /> Generating Assessment...
+                    <Loader2 className="w-5 h-5 animate-spin" /> {t('generating')}
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4" /> Create Assessment
+                    <Sparkles className="w-4 h-4" /> {t('create_submit')}
                   </>
                 )}
               </button>
@@ -283,7 +285,7 @@ export default function AssessmentStudioPage() {
           {/* Assessment Library */}
           <div className="flex flex-col gap-4 bg-v2-surface border border-v2-border p-6 rounded-[20px] h-fit">
             <h2 className="text-lg font-bold text-v2-text-primary flex items-center gap-2">
-              <Layers className="w-5 h-5 text-v2-accent" /> Generated Library
+              <Layers className="w-5 h-5 text-v2-accent" /> {t('library_title')}
             </h2>
 
             {loadingList ? (
@@ -297,7 +299,7 @@ export default function AssessmentStudioPage() {
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-v2-text-primary truncate">{q.title}</p>
                       <p className="text-xs text-v2-text-secondary mt-0.5">
-                        Grade {q.grade_level} · {q.question_count} items
+                        {t('library_meta', { grade: q.grade_level, count: q.question_count })}
                       </p>
                     </div>
                     <Link
@@ -311,7 +313,7 @@ export default function AssessmentStudioPage() {
               </div>
             ) : (
               <p className="text-xs text-v2-text-secondary text-center py-8">
-                No published assessments in this library.
+                {t('library_empty')}
               </p>
             )}
           </div>
@@ -321,16 +323,16 @@ export default function AssessmentStudioPage() {
         {previewQuestions && (
           <div className="bg-v2-surface border border-v2-border rounded-[20px] p-6 flex flex-col gap-4">
             <h2 className="text-lg font-bold text-v2-text-primary flex items-center gap-2 border-b border-v2-border/40 pb-2.5">
-              <Award className="w-5 h-5 text-v2-accent" /> Assessment Preview & Key
+              <Award className="w-5 h-5 text-v2-accent" /> {t('preview_title')}
             </h2>
 
             <div className="flex flex-col gap-4">
               {previewQuestions.map((q, idx) => (
                 <div key={idx} className="bg-v2-bg/30 border border-v2-border/30 rounded-xl p-5 flex flex-col gap-3">
                   <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
-                    <span className="font-semibold text-v2-accent uppercase">Item #{idx + 1} ({q.question_type})</span>
+                    <span className="font-semibold text-v2-accent uppercase">{t('item_label', { n: idx + 1, type: q.question_type })}</span>
                     <span className="text-v2-text-secondary px-2 py-0.5 rounded-full border border-v2-border">
-                      Difficulty: {q.difficulty}
+                      {t('difficulty_label', { level: q.difficulty })}
                     </span>
                   </div>
                   
@@ -349,11 +351,11 @@ export default function AssessmentStudioPage() {
                   )}
 
                   <div className="mt-2 bg-v2-accent-muted p-3.5 rounded-xl border border-v2-accent/20 flex flex-col gap-1.5">
-                    <p className="text-xs text-v2-accent font-bold">CORRECT ANSWER</p>
+                    <p className="text-xs text-v2-accent font-bold">{t('correct_answer')}</p>
                     <p className="text-sm text-v2-text-primary font-medium">{q.correct_answer}</p>
                     {q.explanation && (
                       <>
-                        <p className="text-xs text-v2-accent font-bold mt-1.5">EXPLANATION</p>
+                        <p className="text-xs text-v2-accent font-bold mt-1.5">{t('explanation')}</p>
                         <p className="text-xs text-v2-text-secondary leading-relaxed">{q.explanation}</p>
                       </>
                     )}

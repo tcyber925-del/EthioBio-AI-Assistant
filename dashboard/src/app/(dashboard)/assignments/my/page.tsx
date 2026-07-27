@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserId } from '@/lib/auth'
@@ -15,6 +16,7 @@ interface Assignment {
 }
 
 export default function MyAssignmentsPage() {
+  const t = useTranslations('assignments')
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -28,7 +30,7 @@ export default function MyAssignmentsPage() {
       const list = await response.json()
       setAssignments(list)
     } catch (err: any) {
-      setError(err.message || 'Failed to load assignments')
+      setError(err.message || t('error_load'))
     } finally { setLoading(false) }
   }, [])
 
@@ -37,11 +39,11 @@ export default function MyAssignmentsPage() {
   const isLate = (due: string | null) => due && new Date(due) < new Date()
 
   return (
-    <DashboardLayout breadcrumbs={[{ label: 'My Assignments', href: '/assignments/my' }]}>
+    <DashboardLayout breadcrumbs={[{ label: t('crumb_my'), href: '/assignments/my' }]}>
       <div className="flex flex-col gap-6">
         <div>
-          <h1 className="verge-display text-4xl text-v2-text-primary leading-none">My Assignments</h1>
-          <p className="text-sm text-v2-text-secondary mt-1">View and submit your pending assignments.</p>
+          <h1 className="verge-display text-4xl text-v2-text-primary leading-none">{t('my_title')}</h1>
+          <p className="text-sm text-v2-text-secondary mt-1">{t('my_subtitle')}</p>
         </div>
 
         {error && (
@@ -67,12 +69,12 @@ export default function MyAssignmentsPage() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <h3 className="text-base font-bold text-v2-text-primary truncate">{a.title}</h3>
-                        {late && <span className="text-[10px] uppercase px-2 py-0.5 rounded-full font-semibold bg-v2-error/10 text-v2-error">Late</span>}
+                        {late && <span className="text-[10px] uppercase px-2 py-0.5 rounded-full font-semibold bg-v2-error/10 text-v2-error">{t('late_badge')}</span>}
                       </div>
                       <p className="text-xs text-v2-text-secondary mt-0.5 truncate">{a.description || a.assignment_type}</p>
                       <div className="flex items-center gap-3 mt-1 text-xs text-v2-text-secondary">
                         {a.due_date && (
-                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Due: {new Date(a.due_date).toLocaleDateString()}</span>
+                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{t('due_prefix', { date: new Date(a.due_date).toLocaleDateString() })}</span>
                         )}
                       </div>
                     </div>
@@ -85,8 +87,8 @@ export default function MyAssignmentsPage() {
         ) : (
           <div className="bg-v2-surface border border-v2-border rounded-[20px] py-16 text-center">
             <CheckCircle2 className="w-12 h-12 text-v2-success mx-auto mb-3" />
-            <h3 className="text-lg font-bold text-v2-text-primary">All caught up!</h3>
-            <p className="text-sm text-v2-text-secondary mt-1">No pending assignments right now.</p>
+            <h3 className="text-lg font-bold text-v2-text-primary">{t('caught_up_title')}</h3>
+            <p className="text-sm text-v2-text-secondary mt-1">{t('caught_up_hint')}</p>
           </div>
         )}
       </div>

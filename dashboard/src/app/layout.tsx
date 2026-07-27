@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
-import { cookies } from 'next/headers';
+import { getLocale, getMessages } from 'next-intl/server';
 import './globals.css';
 
 export const dynamic = 'force-dynamic';
@@ -15,9 +15,8 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const cookieStore = await cookies();
-  const locale = cookieStore.get('NEXT_LOCALE')?.value ?? 'en';
-  const messages = (await import(`../../messages/${locale}.json`)).default;
+  const locale = await getLocale();
+  const messages = await getMessages();
 
   return (
     <html lang={locale}>

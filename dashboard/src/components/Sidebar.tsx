@@ -3,9 +3,9 @@
 import { Activity, BarChart3, BookOpen, ClipboardCheck, FileText, GraduationCap, Home, LayoutDashboard, LogOut, MessageSquare, School, Search, Shield, Upload, User, Users, Globe } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useTranslations, useLocale } from 'next-intl'
-import { clearToken, getUserRole, getUserId, isAuthenticated } from '@/lib/auth'
-import { setCookie } from '@/lib/cookies'
+import { useTranslations } from 'next-intl'
+import { clearToken, getUserRole, isAuthenticated } from '@/lib/auth'
+import LanguageSwitcher from '@/components/LanguageSwitcher'
 
 function CellAnimation() {
   return (
@@ -19,12 +19,10 @@ function CellAnimation() {
 
 export default function Sidebar() {
   const t = useTranslations('sidebar')
-  const locale = useLocale()
   const pathname = usePathname()
   const router = useRouter()
   const authenticated = isAuthenticated()
   const role = getUserRole()
-  const userId = getUserId()
 
   const allLinks = [
     { href: '/', icon: Home, roles: ['admin'] },
@@ -83,15 +81,6 @@ export default function Sidebar() {
     router.push('/login')
   }
 
-  const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newLocale = e.target.value
-    setCookie('NEXT_LOCALE', newLocale, 365)
-    if (userId) {
-      fetch(`/api/users/${userId}/language?language=${newLocale}`, { method: 'PATCH' }).catch(() => {})
-    }
-    router.refresh()
-  }
-
   if (!authenticated) return null
 
   const isV2Route = pathname.startsWith('/v2/') || pathname === '/v2'
@@ -133,14 +122,10 @@ export default function Sidebar() {
       <div className="p-3 border-t border-border space-y-1">
         <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-small text-foreground-muted">
           <Globe className="w-5 h-5 shrink-0" />
-          <select
-            value={locale}
-            onChange={handleLanguageChange}
+          <LanguageSwitcher
+            variant="select"
             className="bg-transparent text-foreground text-small outline-none cursor-pointer w-full"
-          >
-            <option value="en">{t('english')}</option>
-            <option value="am">{t('amharic')}</option>
-          </select>
+          />
         </div>
         <button
           onClick={handleLogout}

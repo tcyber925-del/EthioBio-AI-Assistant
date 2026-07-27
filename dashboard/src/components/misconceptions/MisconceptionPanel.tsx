@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { AlertTriangle, Check, RefreshCw, Flame, CheckCircle } from 'lucide-react'
 
@@ -32,6 +33,7 @@ interface MisconceptionProfile {
 }
 
 export function MisconceptionPanel({ userId }: { userId: string }) {
+  const t = useTranslations('misconceptions')
   const [profile, setProfile] = useState<MisconceptionProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -46,7 +48,7 @@ export function MisconceptionPanel({ userId }: { userId: string }) {
       const data = await response.json()
       setProfile(data)
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch misconception profile')
+      setError(err.message || t('error_fetch'))
     } finally {
       setLoading(false)
     }
@@ -64,7 +66,7 @@ export function MisconceptionPanel({ userId }: { userId: string }) {
       })
       await fetchProfile()
     } catch (err: any) {
-      setError(err.message || 'Failed to resolve misconception')
+      setError(err.message || t('error_resolve'))
     } finally {
       setResolvingId(null)
     }
@@ -78,7 +80,7 @@ export function MisconceptionPanel({ userId }: { userId: string }) {
       })
       await fetchProfile()
     } catch (err: any) {
-      setError(err.message || 'Failed to resolve topic misconceptions')
+      setError(err.message || t('error_resolve_topic'))
     } finally {
       setResolvingTopic(null)
     }
@@ -108,9 +110,9 @@ export function MisconceptionPanel({ userId }: { userId: string }) {
     return (
       <div className="flex flex-col items-center justify-center py-12 border border-dashed border-v2-border rounded-[20px] bg-v2-surface/20 text-center p-6">
         <CheckCircle className="w-10 h-10 text-v2-success mb-2" />
-        <h3 className="text-base font-bold text-v2-text-primary">No misconceptions detected</h3>
+        <h3 className="text-base font-bold text-v2-text-primary">{t('empty_title')}</h3>
         <p className="text-xs text-v2-text-secondary mt-1 max-w-xs">
-          The student has demonstrated clear understanding across all assessed biology topics so far.
+          {t('empty_hint')}
         </p>
       </div>
     )
@@ -121,19 +123,19 @@ export function MisconceptionPanel({ userId }: { userId: string }) {
       {/* Metrics Strips */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-v2-surface border border-v2-border p-4 rounded-[20px]">
-          <p className="text-xs text-v2-text-secondary uppercase tracking-wider font-semibold">Total Patterns</p>
+          <p className="text-xs text-v2-text-secondary uppercase tracking-wider font-semibold">{t('stat_total')}</p>
           <p className="verge-display text-2xl text-v2-text-primary mt-1">{profile.total_patterns}</p>
         </div>
         <div className="bg-v2-surface border border-v2-border p-4 rounded-[20px]">
-          <p className="text-xs text-v2-text-secondary uppercase tracking-wider font-semibold">Active Unresolved</p>
+          <p className="text-xs text-v2-text-secondary uppercase tracking-wider font-semibold">{t('stat_unresolved')}</p>
           <p className={`verge-display text-2xl mt-1 ${profile.unresolved_count > 0 ? 'text-v2-error' : 'text-v2-success'}`}>
             {profile.unresolved_count}
           </p>
         </div>
         <div className="bg-v2-surface border border-v2-border p-4 rounded-[20px]">
-          <p className="text-xs text-v2-text-secondary uppercase tracking-wider font-semibold">Trend</p>
+          <p className="text-xs text-v2-text-secondary uppercase tracking-wider font-semibold">{t('stat_trend')}</p>
           <p className="text-sm font-bold text-v2-accent mt-2 flex items-center gap-1">
-            <Flame className="w-4 h-4 shrink-0" /> {profile.improvement_trend || 'Neutral'}
+            <Flame className="w-4 h-4 shrink-0" /> {profile.improvement_trend || t('trend_neutral')}
           </p>
         </div>
       </div>
@@ -141,7 +143,7 @@ export function MisconceptionPanel({ userId }: { userId: string }) {
       {/* Main breakdown by topic */}
       <div className="flex flex-col gap-5">
         <h3 className="text-xs text-v2-text-secondary uppercase tracking-wider font-semibold border-b border-v2-border/30 pb-2">
-          Breakdown by Topic
+          {t('breakdown_title')}
         </h3>
 
         {profile.by_topic.map((summary) => (
@@ -150,7 +152,7 @@ export function MisconceptionPanel({ userId }: { userId: string }) {
             <div className="flex items-center justify-between border-b border-v2-border/20 pb-2.5">
               <div>
                 <h4 className="text-base font-bold text-v2-text-primary">{summary.topic}</h4>
-                <p className="text-xs text-v2-text-secondary mt-0.5">{summary.count} active patterns</p>
+                <p className="text-xs text-v2-text-secondary mt-0.5">{t('active_patterns', { count: summary.count })}</p>
               </div>
               {summary.patterns.some(p => !p.resolved) && (
                 <button
@@ -163,7 +165,7 @@ export function MisconceptionPanel({ userId }: { userId: string }) {
                   ) : (
                     <Check className="w-3.5 h-3.5" />
                   )}
-                  Resolve Topic
+                  {t('resolve_topic')}
                 </button>
               )}
             </div>
@@ -175,7 +177,7 @@ export function MisconceptionPanel({ userId }: { userId: string }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-bold text-v2-text-primary">
-                        {p.pattern_type || 'Concept Gap'}
+                        {p.pattern_type || t('concept_gap')}
                       </span>
                       <span className={`text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full ${
                         p.severity === 'critical' ? 'bg-v2-error/10 text-v2-error border border-v2-error/20' :
@@ -185,7 +187,7 @@ export function MisconceptionPanel({ userId }: { userId: string }) {
                         {p.severity}
                       </span>
                       <span className="text-[10px] text-v2-text-secondary">
-                        Logged {p.frequency}x
+                        {t('logged_count', { count: p.frequency })}
                       </span>
                     </div>
 
@@ -195,7 +197,7 @@ export function MisconceptionPanel({ userId }: { userId: string }) {
 
                     {p.common_wrong_answer && (
                       <p className="text-xs text-v2-text-secondary mt-2 bg-v2-surface p-2.5 rounded-lg border border-v2-border/40">
-                        <strong className="text-v2-text-primary">Wrong Answer:</strong> &ldquo;{p.common_wrong_answer}&rdquo;
+                        <strong className="text-v2-text-primary">{t('wrong_answer')}</strong> &ldquo;{p.common_wrong_answer}&rdquo;
                       </p>
                     )}
                   </div>
@@ -203,7 +205,7 @@ export function MisconceptionPanel({ userId }: { userId: string }) {
                   <div className="shrink-0 flex items-center justify-end">
                     {p.resolved ? (
                       <span className="text-xs text-v2-success font-semibold flex items-center gap-1 bg-v2-success/10 px-2.5 py-1 rounded-xl">
-                        <Check className="w-3.5 h-3.5" /> Resolved
+                        <Check className="w-3.5 h-3.5" /> {t('resolved')}
                       </span>
                     ) : (
                       <button
@@ -216,7 +218,7 @@ export function MisconceptionPanel({ userId }: { userId: string }) {
                         ) : (
                           <Check className="w-3.5 h-3.5" />
                         )}
-                        Resolve
+                        {t('resolve')}
                       </button>
                     )}
                   </div>
