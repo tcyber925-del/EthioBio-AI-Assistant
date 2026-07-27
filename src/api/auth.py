@@ -6,6 +6,7 @@ import bcrypt
 import httpx
 import structlog
 from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi.responses import JSONResponse
 from jose import ExpiredSignatureError, JWTError, jwt
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import func, select
@@ -172,7 +173,7 @@ async def register(body: RegisterRequest, session: AsyncSession = Depends(get_se
     )
     await redis_conn.sadd(f"refresh_tokens:{str(user.id)}", refresh_jti)
 
-    response = Response(status_code=201)
+    response = JSONResponse(status_code=201, content={"access_token": access_token, "token_type": "bearer"})
     _set_auth_cookies(response, access_token, refresh_token)
     return response
 
@@ -197,7 +198,7 @@ async def login(body: LoginRequest, session: AsyncSession = Depends(get_session)
     )
     await redis_conn.sadd(f"refresh_tokens:{str(user.id)}", refresh_jti)
 
-    response = Response(status_code=200)
+    response = JSONResponse(status_code=200, content={"access_token": access_token, "token_type": "bearer"})
     _set_auth_cookies(response, access_token, refresh_token)
     return response
 
@@ -365,7 +366,7 @@ async def verify_otp(body: OtpVerifyRequest, session: AsyncSession = Depends(get
     )
     await redis_conn.sadd(f"refresh_tokens:{str(user.id)}", refresh_jti)
 
-    response = Response(status_code=200)
+    response = JSONResponse(status_code=200, content={"access_token": access_token, "token_type": "bearer"})
     _set_auth_cookies(response, access_token, refresh_token)
     return response
 
