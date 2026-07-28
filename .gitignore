@@ -73,3 +73,5 @@ scripts/scripts/
 .opencode/goals/state.json
 .opencode/goals/state.json.ledger.jsonl
 .vercel
+.vercelignore
+.coverage
