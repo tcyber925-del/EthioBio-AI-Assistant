@@ -127,7 +127,8 @@
     "section_review_actions": "Review Topics",
     "section_quiz_opportunities": "Quiz Opportunities",
     "section_tutor_actions": "Tutor Sessions",
-    "xp": "XP"
+    "xp": "XP",
+    "play_audio": "Play audio"
   },
   "admin": {
     "dashboard": {
@@ -407,7 +408,32 @@
     "approve": "Approve",
     "reject": "Reject",
     "published": "Published",
-    "explanation": "Explanation"
+    "explanation": "Explanation",
+    "previous": "Previous",
+    "next": "Next",
+    "submit": "Submit",
+    "submitting": "Submitting...",
+    "result_title": "Quiz Complete!",
+    "correct": "correct",
+    "your_answer": "Your answer",
+    "correct_answer": "Correct answer",
+    "continue_learning": "Continue Learning",
+    "retry_weak_topics": "Review Weak Topics",
+    "question": "Question",
+    "answer_placeholder": "Type your answer...",
+    "grade_label": "Grade",
+    "take_title": "Take a Quiz",
+    "take_subtitle": "Generate or choose a quiz to test your knowledge",
+    "generate_take_quiz": "Generate a Quiz",
+    "generate_take_placeholder": "What topic? (e.g., 'Cell division', 'Photosynthesis')",
+    "published_quizzes": "Published Quizzes",
+    "view_history": "View History",
+    "history_title": "Quiz History",
+    "history_subtitle": "Review your past quiz attempts",
+    "no_attempts": "No quiz attempts yet",
+    "take_first_quiz": "Take your first quiz",
+    "take_another": "Take Another Quiz",
+    "back_to_history": "Back to History"
   },
   "unit_plans": {
     "title": "Unit Plans",
@@ -521,7 +547,13 @@
     "success": "Success",
     "time": "Time",
     "online": "Online",
-    "offline": "Offline"
+    "offline": "Offline",
+    "voice_metrics": "Voice Metrics",
+    "voice_recordings": "Total Recordings",
+    "voice_by_language": "By Language",
+    "voice_by_direction": "By Direction",
+    "voice_by_modality": "By Modality",
+    "voice_providers": "Voice Providers"
   },
   "diagrams": {
     "title": "Biology Diagrams",
@@ -569,7 +601,13 @@
     "yesterday": "Yesterday",
     "this_week": "This Week",
     "retry": "Retry",
-    "server_error_hint": "The backend may be starting up. Please wait a moment and retry."
+    "server_error_hint": "The backend may be starting up. Please wait a moment and retry.",
+    "voice_button": "Voice input",
+    "voice_recording": "Recording... tap again to stop",
+    "voice_processing": "Processing audio...",
+    "voice_error": "Voice input failed. Please try again or type.",
+    "listen": "Listen",
+    "take_quiz": "Take Quiz"
   },
   "recovery": {
     "title": "Recovery Dashboard",
@@ -817,7 +855,9 @@
       "milestone_first_review": "Complete first review",
       "milestone_streak3": "3-day streak",
       "milestone_level5": "Level 5",
-      "milestone_strengthen": "Strengthen {topic}"
+      "milestone_strengthen": "Strengthen {topic}",
+      "recent_quizzes": "Recent Quiz Attempts",
+      "view_all": "View all"
     },
     "teacher": {
       "title": "Teaching Command Center",

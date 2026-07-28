@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 from src.api.auth import get_current_user
 from src.database.models import (
     AgentTrace,
+    AudioRecording,
     LessonPlan,
     ModelRoutingLog,
     ParentChild,
@@ -22,6 +23,7 @@ from src.database.models import (
     UserRole,
 )
 from src.database.session import get_session
+from src.voice.providers import speech_registry
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -166,6 +168,56 @@ async def get_monitoring(
         }
     except Exception as e:
         logger.error("monitoring_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/voice-metrics")
+async def get_voice_metrics(
+    session: AsyncSession = Depends(get_session),
+    _: User = Depends(require_admin),
+):
+    try:
+        total_recordings = await session.scalar(
+            select(func.count(AudioRecording.id))
+        )
+        by_language = (
+            await session.execute(
+                select(AudioRecording.language, func.count(AudioRecording.id))
+                .group_by(AudioRecording.language)
+            )
+        ).all()
+        by_direction = (
+            await session.execute(
+                select(AudioRecording.direction, func.count(AudioRecording.id))
+                .group_by(AudioRecording.direction)
+            )
+        ).all()
+        by_modality = (
+            await session.execute(
+                select(AudioRecording.modality, func.count(AudioRecording.id))
+                .group_by(AudioRecording.modality)
+            )
+        ).all()
+
+        return {
+            "total_recordings": total_recordings or 0,
+            "by_language": {row[0]: row[1] for row in by_language},
+            "by_direction": {row[0]: row[1] for row in by_direction},
+            "by_modality": {row[0]: row[1] for row in by_modality},
+        }
+    except Exception as e:
+        logger.error("voice_metrics_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/voice-providers")
+async def get_voice_providers(
+    _: User = Depends(require_admin),
+):
+    try:
+        return speech_registry.get_provider_status()
+    except Exception as e:
+        logger.error("voice_providers_error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -16,6 +16,13 @@ interface MonitoringData {
   fallback_rate: number; fallbacks: number
 }
 
+interface VoiceMetrics {
+  total_recordings: number
+  by_language: Record<string, number>
+  by_direction: Record<string, number>
+  by_modality: Record<string, number>
+}
+
 export default function MonitoringPage() {
   const router = useRouter()
   const tm = useTranslations('monitoring')
@@ -26,21 +33,27 @@ export default function MonitoringPage() {
   const [error, setError] = useState<string | null>(null)
   const [providers, setProviders] = useState<any[]>([])
   const [activeModel, setActiveModel] = useState('')
+  const [voiceMetrics, setVoiceMetrics] = useState<VoiceMetrics | null>(null)
+  const [voiceProviders, setVoiceProviders] = useState<any>(null)
 
   const fetchData = async () => {
     setLoading(true)
     setError(null)
     try {
-      const [mon, dash, prov, active] = await Promise.all([
+      const [mon, dash, prov, active, voice, vp] = await Promise.all([
         fetchWithAuth('/api/admin/monitoring').then(r => r.json()),
         fetchWithAuth('/api/admin/dashboard').then(r => r.json()),
         fetchWithAuth('/models/providers').then(r => r.json()),
         fetchWithAuth('/models/active').then(r => r.json()),
+        fetchWithAuth('/api/admin/voice-metrics').then(r => r.json()),
+        fetchWithAuth('/api/admin/voice-providers').then(r => r.json()).catch(() => null),
       ])
       setData(mon)
       setLogs(dash.recent_logs || [])
       setProviders(prov)
       setActiveModel(active.model)
+      setVoiceMetrics(voice)
+      setVoiceProviders(vp)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -102,6 +115,54 @@ export default function MonitoringPage() {
           {tm('active_model')} <span className="font-mono text-foreground">{activeModel}</span>
         </div>
       </div>
+
+      {voiceProviders && (
+        <div className="bg-card rounded-xl border border-border p-5 mb-6">
+          <h2 className="text-lg font-semibold text-foreground mb-4">{tm('voice_providers')}</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-sm font-medium text-foreground-muted mb-3">STT ({voiceProviders.stt_fallback_chain?.join(' → ')})</h3>
+              <div className="space-y-2">
+                {voiceProviders.stt?.map((p: any) => (
+                  <div key={p.name} className={`p-3 rounded-lg border ${p.configured ? (p.breaker?.is_available ? 'border-green-500/30 bg-green-500/5' : 'border-red-500/30 bg-red-500/5') : 'border-yellow-500/30 bg-yellow-500/5'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-sm">{p.name}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs ${p.breaker?.is_available ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                        {p.breaker?.state || (p.configured ? 'configured' : 'missing key')}
+                      </span>
+                    </div>
+                    {p.breaker && (
+                      <p className="text-xs text-foreground-muted mt-1">
+                        failures: {p.breaker.failure_count}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-foreground-muted mb-3">TTS ({voiceProviders.tts_fallback_chain?.join(' → ')})</h3>
+              <div className="space-y-2">
+                {voiceProviders.tts?.map((p: any) => (
+                  <div key={p.name} className={`p-3 rounded-lg border ${p.configured ? (p.breaker?.is_available ? 'border-green-500/30 bg-green-500/5' : 'border-red-500/30 bg-red-500/5') : 'border-yellow-500/30 bg-yellow-500/5'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-sm">{p.name}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs ${p.breaker?.is_available ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                        {p.breaker?.state || (p.configured ? 'configured' : 'missing key')}
+                      </span>
+                    </div>
+                    {p.breaker && (
+                      <p className="text-xs text-foreground-muted mt-1">
+                        failures: {p.breaker.failure_count}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
         <div className="bg-card rounded-xl border border-border p-5">
@@ -195,6 +256,66 @@ export default function MonitoringPage() {
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <div className="bg-card rounded-xl border border-border mt-6">
+        <div className="px-5 py-4 border-b border-border">
+          <h2 className="text-lg font-semibold text-foreground">{tm('voice_metrics')}</h2>
+        </div>
+        <div className="p-5">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-5">
+            <div className="p-4 rounded-lg border border-border">
+              <p className="text-sm text-foreground-muted">{tm('voice_recordings')}</p>
+              <p className="text-2xl font-bold text-foreground">{voiceMetrics?.total_recordings ?? 0}</p>
+            </div>
+          </div>
+          {voiceMetrics && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div>
+                <h3 className="text-sm font-medium text-foreground-muted mb-2">{tm('voice_by_language')}</h3>
+                <div className="space-y-1">
+                  {Object.entries(voiceMetrics.by_language).map(([lang, count]) => (
+                    <div key={lang} className="flex items-center justify-between p-2 rounded hover:bg-background-secondary">
+                      <span className="text-sm text-foreground">{lang.toUpperCase()}</span>
+                      <span className="text-sm font-semibold text-foreground">{count}</span>
+                    </div>
+                  ))}
+                  {Object.keys(voiceMetrics.by_language).length === 0 && (
+                    <p className="text-sm text-foreground-muted">{tc('no_data_yet')}</p>
+                  )}
+                </div>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-foreground-muted mb-2">{tm('voice_by_direction')}</h3>
+                <div className="space-y-1">
+                  {Object.entries(voiceMetrics.by_direction).map(([dir, count]) => (
+                    <div key={dir} className="flex items-center justify-between p-2 rounded hover:bg-background-secondary">
+                      <span className="text-sm capitalize text-foreground">{dir}</span>
+                      <span className="text-sm font-semibold text-foreground">{count}</span>
+                    </div>
+                  ))}
+                  {Object.keys(voiceMetrics.by_direction).length === 0 && (
+                    <p className="text-sm text-foreground-muted">{tc('no_data_yet')}</p>
+                  )}
+                </div>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-foreground-muted mb-2">{tm('voice_by_modality')}</h3>
+                <div className="space-y-1">
+                  {Object.entries(voiceMetrics.by_modality).map(([mod, count]) => (
+                    <div key={mod} className="flex items-center justify-between p-2 rounded hover:bg-background-secondary">
+                      <span className="text-sm capitalize text-foreground">{mod}</span>
+                      <span className="text-sm font-semibold text-foreground">{count}</span>
+                    </div>
+                  ))}
+                  {Object.keys(voiceMetrics.by_modality).length === 0 && (
+                    <p className="text-sm text-foreground-muted">{tc('no_data_yet')}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

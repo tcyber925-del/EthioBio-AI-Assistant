@@ -1,0 +1,6 @@
+data/
+output/
+_private/
+node_modules/
+.git/
+*.md

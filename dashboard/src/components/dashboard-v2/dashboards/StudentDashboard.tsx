@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { BookOpen, AlertTriangle, RefreshCw, Lock, Star, TrendingUp, Target } from 'lucide-react'
+import Link from 'next/link'
+import { BookOpen, AlertTriangle, RefreshCw, Lock, Star, TrendingUp, Target, ClipboardCheck, ChevronRight } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserId } from '@/lib/auth'
@@ -52,6 +53,52 @@ function buildMilestones(data: StudentData, t: TFn) {
     m.push({ label: t('milestone_strengthen', { topic: data.weak_topics[0].topic }), completed: false })
   }
   return m
+}
+
+interface RecentAttempt {
+  id: string; title: string; score: number; total: number; correct: number; completed_at: string
+}
+
+function RecentQuizAttempts({ t }: { t: TFn }) {
+  const [attempts, setAttempts] = useState<RecentAttempt[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchWithAuth('/api/quiz/attempts?limit=5')
+      .then(r => r.json())
+      .then(d => setAttempts(d.items || []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading || attempts.length === 0) return null
+
+  return (
+    <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-v2-text-primary">{t('recent_quizzes')}</h2>
+        <Link href="/quiz/history" className="text-xs text-v2-accent hover:underline flex items-center gap-1">
+          {t('view_all')} <ChevronRight className="w-3 h-3" />
+        </Link>
+      </div>
+      <div className="space-y-2">
+        {attempts.map(a => (
+          <Link key={a.id} href={`/quiz/history/${a.id}`} className="flex items-center gap-3 p-3 rounded-xl bg-v2-bg hover:bg-v2-bg/80 transition-colors">
+            <div className={`p-2 rounded-lg ${a.score >= 80 ? 'bg-green-500/10 text-green-400' : a.score >= 50 ? 'bg-yellow-500/10 text-yellow-400' : 'bg-red-500/10 text-red-400'}`}>
+              <ClipboardCheck className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-v2-text-primary truncate">{a.title}</p>
+              <p className="text-xs text-v2-text-secondary">{a.correct}/{a.total} correct</p>
+            </div>
+            <span className={`text-sm font-bold ${a.score >= 80 ? 'text-green-400' : a.score >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
+              {Math.round(a.score)}%
+            </span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 function userName(data: StudentData): string {
@@ -188,6 +235,8 @@ export function StudentDashboard() {
               </div>
             </div>
           )}
+
+          <RecentQuizAttempts t={t} />
 
           {weak_topics.length > 0 && (
             <div className="bg-v2-surface rounded-[20px] border border-v2-border p-6">

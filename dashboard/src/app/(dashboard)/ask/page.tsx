@@ -3,13 +3,15 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Send, MessageSquare, AlertTriangle, BookOpen, Loader2, RefreshCw } from 'lucide-react'
+import Link from 'next/link'
+import { Send, MessageSquare, AlertTriangle, BookOpen, Loader2, RefreshCw, ClipboardCheck } from 'lucide-react'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import ModelSelector from '@/components/ModelSelector'
 import { DashboardLayout } from '@/components/dashboard-v2/DashboardLayout'
 import { ConversationSidebar } from '@/components/ConversationSidebar'
 import { useConversationHistory } from '@/hooks/useConversationHistory'
-import { streamFetch } from '@/lib/fetch'
+import { TTSPlayButton } from '@/components/TTSPlayButton'
+import { VoiceRecorderButton } from '@/components/VoiceRecorderButton'
 import { getUserId, isAuthenticated } from '@/lib/auth'
 
 const isServerError = (msg: string) =>
@@ -102,6 +104,14 @@ export default function AskPage() {
     setSources([])
   }
 
+  const handleVoiceTranscript = (text: string) => {
+    setQuestion(text)
+    setTimeout(() => {
+      const btn = document.querySelector<HTMLButtonElement>('[data-ask-button]')
+      btn?.click()
+    }, 300)
+  }
+
   const chatArea = (
     <div className="lg:col-span-2 space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -134,11 +144,25 @@ export default function AskPage() {
               {ta('chat_mode')}
             </button>
           </div>
+          <Link
+            href="/quiz/take"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium border border-v2-border rounded-lg text-v2-text-muted hover:text-v2-text-primary hover:border-v2-accent/50 transition-colors"
+          >
+            <ClipboardCheck className="w-3.5 h-3.5" />
+            {ta('take_quiz')}
+          </Link>
         </div>
       </div>
 
       <div className="rounded-[20px] border border-v2-border bg-v2-bg p-4">
         <div className="flex gap-3">
+          <VoiceRecorderButton
+            onTranscript={handleVoiceTranscript}
+            onError={setError}
+            disabled={loading}
+            gradeLevel={grade}
+            language="am"
+          />
           <input
             type="text"
             value={question}
@@ -148,6 +172,7 @@ export default function AskPage() {
             className="flex-1 px-4 py-3 border border-v2-border rounded-lg text-sm bg-v2-surface text-v2-text-primary placeholder:text-v2-text-muted/50 focus:outline-none focus:ring-1 focus:ring-v2-accent"
           />
           <button
+            data-ask-button
             onClick={askQuestion}
             disabled={loading || !question.trim()}
             className="px-6 py-3 bg-v2-accent text-v2-inverted rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-opacity"
@@ -203,6 +228,12 @@ export default function AskPage() {
             <div className="flex items-center gap-2 mt-4 text-xs text-v2-text-muted">
               <Loader2 className="w-3 h-3 animate-spin" />
               <span>{statusText || ta('calling_model', { model: selectedModel || 'model' })}</span>
+            </div>
+          )}
+          {!loading && (
+            <div className="mt-4 pt-3 border-t border-v2-border flex items-center gap-2">
+              <TTSPlayButton text={answer} language="am" />
+              <span className="text-xs text-v2-text-muted">{ta('listen')}</span>
             </div>
           )}
           {!loading && sources.length > 0 && (

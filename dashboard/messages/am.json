@@ -127,7 +127,8 @@
     "section_review_actions": "የመከለሻ ርዕሶች",
     "section_quiz_opportunities": "የፈተና እድሎች",
     "section_tutor_actions": "የአስተማሪ ክፍለ ጊዜዎች",
-    "xp": "XP"
+    "xp": "XP",
+    "play_audio": "ድምጽ አጫውት"
   },
   "admin": {
     "dashboard": {
@@ -407,7 +408,32 @@
     "reject": "ውድቅ አድርግ",
     "subtitle": "የተፈጠሩ ፈተናዎችን ይገምግሙ እና ያስተዳድሩ",
     "true_false": "እውነት/ሐሰት",
-    "type": "ዓይነት"
+    "type": "ዓይነት",
+    "previous": "ቀዳሚ",
+    "next": "ቀጣይ",
+    "submit": "አስገባ",
+    "submitting": "በማስገባት ላይ...",
+    "result_title": "ፈተናው ተጠናቋል!",
+    "correct": "ትክክል",
+    "your_answer": "የእርስዎ መልስ",
+    "correct_answer": "ትክክለኛ መልስ",
+    "continue_learning": "መማር ይቀጥሉ",
+    "retry_weak_topics": "ደካማ ርዕሶችን ይገምግሙ",
+    "question": "ጥያቄ",
+    "answer_placeholder": "መልስዎን ይተይቡ...",
+    "grade_label": "ክፍል",
+    "take_title": "ፈተና ይውሰዱ",
+    "take_subtitle": "እውቀትዎን ለመፈተሽ ፈተና ይፍጠሩ ወይም ይምረጡ",
+    "generate_take_quiz": "ፈተና ፍጠር",
+    "generate_take_placeholder": "ርዕሱ ምንድነው? (ለምሳሌ፡ 'የሕዋስ መከፋፈል', 'የዲ ኤን ኤ መዋቅር')",
+    "published_quizzes": "የታተሙ ፈተናዎች",
+    "view_history": "ታሪክ ይመልከቱ",
+    "history_title": "የፈተና ታሪክ",
+    "history_subtitle": "ያለፉትን የፈተና ሙከራዎችዎን ይገምግሙ",
+    "no_attempts": "ገና ምንም የፈተና ሙከራ የለም",
+    "take_first_quiz": "የመጀመሪያ ፈተናዎን ይውሰዱ",
+    "take_another": "ሌላ ፈተና ውሰድ",
+    "back_to_history": "ወደ ታሪክ ተመለስ"
   },
   "unit_plans": {
     "classroom_context": "ክፍል (አማራጭ)",
@@ -521,7 +547,13 @@
     "time": "ሰዓት",
     "success": "ስኬት",
     "online": "መስመር ላይ",
-    "offline": "መስመር ውጪ"
+    "offline": "መስመር ውጪ",
+    "voice_metrics": "የድምጽ መለኪያዎች",
+    "voice_recordings": "ጠቅላላ ቅጂዎች",
+    "voice_by_language": "በቋንቋ",
+    "voice_by_direction": "በአቅጣጫ",
+    "voice_by_modality": "በሁነታ",
+    "voice_providers": "የድምጽ አገልግሎት ሰጪዎች"
   },
   "diagrams": {
     "title": "የባዮሎጂ ሥዕላዊ መግለጫዎች",
@@ -569,7 +601,13 @@
     "yesterday": "ትናንት",
     "this_week": "በዚህ ሳምንት",
     "retry": "ደግሞ ሞክር",
-    "server_error_hint": "የኋላ መጨረሻው እየተነሳ ሊሆን ይችላል። እባክዎ ትንሽ ይጠብቁ እና እንደገና ይሞክሩ።"
+    "server_error_hint": "የኋላ መጨረሻው እየተነሳ ሊሆን ይችላል። እባክዎ ትንሽ ይጠብቁ እና እንደገና ይሞክሩ።",
+    "voice_button": "የድምጽ ግቤት",
+    "voice_recording": "በመቅዳት ላይ... ለማቆም እንደገና ይንኩ",
+    "voice_processing": "ድምጽ በማስኬድ ላይ...",
+    "voice_error": "የድምጽ ግቤት አልተሳካም። እባክዎ እንደገና ይሞክሩ ወይም ይተይቡ።",
+    "listen": "አዳምጥ",
+    "take_quiz": "ፈተና ውሰድ"
   },
   "recovery": {
     "due_reviews": "ግምገማ የሚያስፈልጋቸው",
@@ -817,7 +855,9 @@
       "milestone_first_review": "የመጀመሪያ ግምገማ ያጠናቅቁ",
       "milestone_streak3": "የ3 ቀን ተከታታይ",
       "milestone_level5": "ደረጃ 5",
-      "milestone_strengthen": "{topic} አጠናክር"
+      "milestone_strengthen": "{topic} አጠናክር",
+      "recent_quizzes": "የቅርብ ጊዜ ፈተናዎች",
+      "view_all": "ሁሉንም ይመልከቱ"
     },
     "teacher": {
       "title": "የትምህርት መቆጣጠሪያ ማዕከል",

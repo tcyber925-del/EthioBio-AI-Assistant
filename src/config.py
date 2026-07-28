@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     collection_name: str = "ethiobio_curriculum"
     store_backend: str = "pgvector"  # always pgvector
 
+    groq_api_key: str = ""
+    azure_speech_key: str = ""
+    azure_speech_region: str = ""
     whisper_model: str = "base"
 
     dashboard_url: str = "http://localhost:3000"
@@ -100,6 +103,10 @@ class Settings(BaseSettings):
     eval_sampling_rate: float = 0.15
     eval_judge_model: str = "gpt-4o-mini"
     eval_drift_threshold: float = 0.10
+
+    telegram_voice_max_size: int = 20_971_520  # 20 MB (Telegram voice file limit)
+    audio_storage_path: str = "./data/audio_recordings"
+    audio_retention_days: int = 90
 
     model_config = {
         "env_file": ".env",

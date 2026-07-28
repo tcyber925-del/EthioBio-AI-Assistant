@@ -1,6 +1,7 @@
 import enum
 import uuid
 from datetime import datetime, timezone
+from typing import Optional
 
 from sqlalchemy import (
     ARRAY,
@@ -818,6 +819,32 @@ class ConversationTurn(Base):
     )
 
     user: Mapped["User"] = relationship(backref="conversation_turns")
+
+
+class AudioRecording(Base):
+    __tablename__ = "audio_recordings"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True,
+    )
+    session_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("memory_sessions.session_id"), nullable=True,
+    )
+    storage_path: Mapped[str] = mapped_column(String(500))
+    transcript: Mapped[str] = mapped_column(Text, default="")
+    duration_seconds: Mapped[float] = mapped_column(Float, default=0.0)
+    mime_type: Mapped[str] = mapped_column(String(50), default="audio/ogg")
+    file_size_bytes: Mapped[int] = mapped_column(Integer, default=0)
+    language: Mapped[str] = mapped_column(String(10), default="am")
+    direction: Mapped[str] = mapped_column(String(10), default="user")  # "user" | "assistant"
+    modality: Mapped[str] = mapped_column(String(20), default="voice")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, index=True,
+    )
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    user: Mapped["User"] = relationship(backref="audio_recordings")
 
 
 class MemoryEntity(Base):

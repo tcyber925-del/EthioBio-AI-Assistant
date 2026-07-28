@@ -20,6 +20,7 @@ from src.agents.lesson_planner import LessonPlannerAgent
 from src.agents.quiz import QuizAgent
 from src.api.gamification import award_xp, check_achievements, update_streak
 from src.config import settings
+from src.core.conversation.service import ConversationService as _ConversationService
 from src.core.learning_intelligence.tutor.tutor_context_adapter import TutorContextAdapter
 from src.core.memory.context_assembler import ContextAssembler
 from src.core.memory.cross_session_recall import CrossSessionRecall
@@ -40,6 +41,7 @@ from src.database.session import async_session_factory
 from src.graph.orchestrator import run_graph
 from src.llm.router import ModelRouter
 from src.redis_client import get_redis
+from src.schemas.conversation import ConversationRequest
 from src.schemas.streaming import TokenChunk
 from src.telegram.formatter import format_for_telegram, sanitize_for_telegram, strip_markdown
 from src.telegram.i18n import t
@@ -51,18 +53,19 @@ from src.telegram.keyboards import (
     language_keyboard,
     lesson_features_keyboard,
     main_menu_keyboard,
-    model_providers_keyboard,
-    provider_models_keyboard,
     quiz_next_keyboard,
     quiz_result_keyboard,
     quiz_type_keyboard,
     teacher_tools_keyboard,
     tf_keyboard,
 )
+from src.telegram.quiz_voice import handle_quiz_voice_answer
+from src.telegram.voice_handler import handle_voice_message
 from src.utils.svg_render import render_svg_to_png
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 
 logger = structlog.get_logger()
+conversation_service = _ConversationService()
 
 
 def _api_client(**kwargs):
@@ -763,79 +766,58 @@ async def ask_command(update: Update, context):
         await update.message.reply_text(t("common.thinking", _lang(context)))
         try:
             telegram_id = update.effective_user.id if update.effective_user else None
-            async with async_session_factory()() as _mem_db:
-                memory_user_id, memory_session_id, memory_context, conversation_messages = (
-                    await _build_memory_context(
-                        telegram_id,
-                        context.user_data.get("tutor_grade")
-                        or context.user_data.get("grade_level"),
-                        _mem_db,
+            user_id = ""
+            if telegram_id:
+                async with async_session_factory()() as _lookup_db:
+                    result = await _lookup_db.execute(
+                        select(User).where(User.telegram_id == telegram_id)
                     )
-                    if telegram_id
-                    else (None, None, "", [])
-                )
+                    user = result.scalar_one_or_none()
+                    if user:
+                        user_id = str(user.id)
 
-                socratic = context.user_data.get("socratic_mode", False)
-                learner_profile_block = (
-                    await _build_learner_profile(memory_user_id, _mem_db) if memory_user_id else ""
-                )
-                result = await run_graph(
-                    user_message=question,
-                    user_id=memory_user_id,
-                    grade_level=context.user_data.get("grade_level"),
-                    language=context.user_data.get("language", "en"),
-                    socratic_mode=socratic,
-                    memory_context=memory_context,
-                    learner_profile_block=learner_profile_block,
-                    messages=conversation_messages,
-                    db_session_factory=async_session_factory,
-                )
-                response = result.answer
+            conv_request = ConversationRequest(
+                user_id=user_id,
+                conversation_id="",
+                session_id="",
+                transcript=question,
+                language=context.user_data.get("language", "en"),
+                modality="text",
+                metadata={
+                    "topic": context.user_data.get("tutor_grade")
+                    or context.user_data.get("grade_level"),
+                    "grade_level": context.user_data.get("grade_level"),
+                    "socratic_mode": context.user_data.get("socratic_mode", False),
+                    "hint_level": 0,
+                    "reveal_answer": False,
+                },
+            )
 
-                if memory_user_id and memory_session_id:
-                    try:
-                        mem_session = (
-                            await _mem_db.execute(
-                                select(MemorySession).where(
-                                    MemorySession.session_id == memory_session_id
-                                )
-                            )
-                        ).scalar_one_or_none()
-                        if mem_session:
-                            conversation_messages.append({"role": "user", "content": question})
-                            conversation_messages.append(
-                                {"role": "assistant", "content": result.answer}
-                            )
-                            SessionManager().set_messages(mem_session, conversation_messages[-20:])
-                            await CrossSessionRecall().record_turns(
-                                user_id=memory_user_id,
-                                session_id=mem_session.session_id,
-                                turns=conversation_messages[-2:],
-                                topic=mem_session.active_topic,
-                                db=_mem_db,
-                            )
-                            await _mem_db.commit()
-                    except Exception as e:
-                        logger.warning("memory_turns_save_error", error=str(e))
+            async with async_session_factory()() as _mem_db:
+                conv_response = await conversation_service.process(conv_request, _mem_db)
 
-            if result.misconception_detected:
+            response = conv_response.answer
+            meta = conv_response.metadata or {}
+
+            if meta.get("misconception_detected"):
                 response += t("tutor.misconception", _lang(context))
-            if result.sources:
+            if conv_response.sources:
                 response += t(
-                    "tutor.sources", _lang(context), sources=", ".join(result.sources[:3])
+                    "tutor.sources", _lang(context), sources=", ".join(conv_response.sources[:3])
                 )
             if telegram_id:
                 await _save_tutor_rewards(telegram_id, context)
-                xp_awarded = context.user_data.get("last_xp_awarded", 0)
-                level_up = context.user_data.get("last_level_up", False)
+                xp_awarded = meta.get("xp_awarded", 0)
+                level_up = meta.get("level_up", False)
                 if xp_awarded:
                     response += t("gamification.xp_earned", _lang(context), xp=xp_awarded)
                 if level_up:
-                    new_level = context.user_data.get("last_new_level", 1)
+                    new_level = meta.get("new_level", 1)
                     response += t("gamification.level_up", _lang(context), level=new_level)
                 notifications = context.user_data.pop("last_notifications", None)
                 if notifications:
                     response += "\n\n" + "\n".join(notifications)
+            socratic = context.user_data.get("socratic_mode", False)
             reply_markup = (
                 hint_keyboard(0, False, language=_lang(context))
                 if socratic
@@ -3387,6 +3369,7 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("assignments", assignments_command))
     app.add_handler(CommandHandler("submit", submit_command))
     app.add_handler(MessageHandler(filters.Document.ALL, handle_document_upload))
+    app.add_handler(MessageHandler(filters.VOICE, handle_voice_message))
 
     link_handler = ConversationHandler(
         entry_points=[CommandHandler("link", link_command)],
@@ -3446,6 +3429,7 @@ def build_app() -> Application:
                 CallbackQueryHandler(handle_quiz_end, pattern="^quiz_end$"),
                 CallbackQueryHandler(handle_quiz_retry, pattern="^quiz_retry$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_quiz_short_answer),
+                MessageHandler(filters.VOICE, handle_quiz_voice_answer),
                 CallbackQueryHandler(end_conversation, pattern="^menu$"),
             ],
         },

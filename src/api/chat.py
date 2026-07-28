@@ -1,46 +1,34 @@
-import asyncio
-from collections.abc import AsyncGenerator
-from typing import Optional, Union
-from uuid import UUID
+import json
+from typing import AsyncGenerator, Optional, Union
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import Response, StreamingResponse
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.auth import get_current_user
-from src.api.gamification import XP_SOURCES, award_xp, check_achievements, update_streak
-from src.core.learning_intelligence.tutor.tutor_context_adapter import TutorContextAdapter
-from src.core.memory.context_assembler import ContextAssembler
-from src.core.memory.cross_session_recall import CrossSessionRecall
-from src.core.memory.event_logger import EventLogger
-from src.core.memory.session_manager import SessionManager
-from src.core.memory.socratic_manager import SocraticManager
+from src.core.conversation.service import ConversationService
 from src.database.models import User
-from src.database.session import async_session_factory, get_session
-from src.graph.orchestrator import run_graph
+from src.database.session import get_session
 from src.guardrails.input.conversation_context import ConversationTracker
 from src.guardrails.input.prompt_injection import PromptInjectionDetector
 from src.guardrails.input.sanitizer import InputSanitizer
-from src.guardrails.output import OutputGuardrailRunner
 from src.schemas.chat import TutorRequest, TutorResponse
-from src.schemas.common import LanguageEnum
-from src.schemas.streaming import TokenChunk
+from src.schemas.conversation import ConversationRequest
+from src.voice.audio import validate_audio_size
+from src.voice.gateways import WebVoiceAdapter
+from src.voice.providers import speech_registry as _speech_registry
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
-session_manager = SessionManager()
-socratic_manager = SocraticManager()
-context_assembler = ContextAssembler()
-event_logger = EventLogger()
-context_adapter = TutorContextAdapter()
-
 input_sanitizer = InputSanitizer()
 prompt_injection_detector = PromptInjectionDetector()
 conversation_tracker = ConversationTracker()
-output_guardrails = OutputGuardrailRunner()
+
+conversation_service = ConversationService()
+_web_adapter = WebVoiceAdapter()
 
 
 @router.post("")
@@ -52,19 +40,137 @@ async def chat_tutor(
     return await handle_chat_request(request, session, current_user)
 
 
+@router.post("/voice")
+async def chat_voice(
+    audio: UploadFile = File(...),
+    grade_level: Optional[int] = Form(None),
+    topic: Optional[str] = Form(None),
+    language: str = Form("am"),
+    model: Optional[str] = Form(None),
+    stream: bool = Form(False),
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    audio_bytes = await audio.read()
+    err = validate_audio_size(audio_bytes)
+    if err:
+        raise HTTPException(status_code=400, detail=err)
+
+    result = await _speech_registry.transcribe(audio_bytes, language=language)
+    transcript = result.text
+
+    if not transcript or not transcript.strip():
+        raise HTTPException(status_code=400, detail="Speech recognition returned empty transcript")
+
+    conv_request = ConversationRequest(
+        user_id=str(current_user.id),
+        conversation_id="",
+        session_id="",
+        transcript=transcript,
+        language=language,
+        modality="voice",
+        metadata={
+            "topic": topic or "",
+            "grade_level": grade_level or "",
+            "model": model or "",
+        },
+    )
+
+    if stream:
+        return StreamingResponse(
+            _voice_stream(conv_request, transcript, session),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    conv_response = await conversation_service.process(conv_request, session)
+    return {
+        "transcript": transcript,
+        "answer": conv_response.answer,
+        "model_used": conv_response.model_used,
+        "confidence": conv_response.confidence,
+        "sources": conv_response.sources,
+        "session_id": conv_response.session_id,
+        "language": conv_response.language,
+    }
+
+
+async def _voice_stream(
+    conv_request: ConversationRequest,
+    transcript: str,
+    session: AsyncSession,
+) -> AsyncGenerator[str, None]:
+    meta_event = {
+        "delta": "",
+        "node": "stt",
+        "done": False,
+        "error": None,
+        "status": False,
+        "metadata": {"transcript": transcript},
+    }
+    yield f"data: {json.dumps(meta_event)}\n\n"
+
+    async for line in conversation_service.process_stream(conv_request, session):
+        yield line
+
+
 async def handle_chat_request(
     request: TutorRequest,
     session: AsyncSession,
     current_user: Optional[User] = None,
 ) -> Union[TutorResponse, StreamingResponse]:
+    uid = request.user_id or (current_user.id if current_user else None)
+    user_id = str(uid) if uid else ""
+
+    sanitized = _validate_input(request, user_id)
+    if sanitized is None:
+        raise HTTPException(status_code=400, detail="Message is empty after sanitization")
+
+    request.question = sanitized
+    conv_request = _web_adapter.build_request(request)
+
     if request.stream:
-        return await _handle_chat_stream(request, session, current_user)
-    return await _handle_chat_blocking(request, session, current_user)
+        return StreamingResponse(
+            conversation_service.process_stream(conv_request, session),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    conv_response = await conversation_service.process(conv_request, session)
+    return _web_adapter.extract_response(conv_response)
 
 
-# ---------------------------------------------------------------------------
-# Shared helpers
-# ---------------------------------------------------------------------------
+class TTSRequest(BaseModel):
+    text: str
+    language: str = "am"
+
+
+@router.post("/tts")
+async def chat_tts(
+    request: TTSRequest,
+    current_user: User = Depends(get_current_user),
+):
+    if not request.text.strip():
+        raise HTTPException(status_code=400, detail="Text is empty")
+
+    result = await _speech_registry.synthesize(request.text, language=request.language)
+    return Response(
+        content=result.audio_bytes,
+        media_type=f"audio/{result.format}",
+        headers={
+            "Content-Disposition": "inline",
+            "Cache-Control": "public, max-age=3600",
+        },
+    )
+
 
 def _validate_input(request: TutorRequest, user_id: Optional[str]) -> Optional[str]:
     sanitized = input_sanitizer.sanitize(request.question)
@@ -89,473 +195,3 @@ def _validate_input(request: TutorRequest, user_id: Optional[str]) -> Optional[s
         raise HTTPException(status_code=403, detail="Message blocked by content safety filter")
 
     return sanitized
-
-
-async def _resolve_language(
-    request: TutorRequest,
-    user_id: Optional[str],
-    session: AsyncSession,
-) -> LanguageEnum:
-    effective_language = request.language
-    if user_id and effective_language == LanguageEnum.EN:
-        result = await session.execute(
-            select(User.language_preference).where(User.id == user_id)
-        )
-        db_lang = result.scalar_one_or_none()
-        if db_lang and db_lang != "en":
-            effective_language = LanguageEnum(db_lang)
-    return effective_language
-
-
-async def _build_context(
-    request: TutorRequest,
-    user_id: Optional[str],
-    effective_language: LanguageEnum,
-    session: AsyncSession,
-):
-    mem_session = None
-    socratic_state_rec = None
-    conversation_messages: list[dict] = []
-    uid = UUID(user_id) if user_id else None
-    if uid:
-        mem_session = await session_manager.get_or_create_active_session(
-            uid,
-            topic=request.topic,
-            db=session,
-        )
-        if mem_session:
-            conversation_messages = session_manager.get_messages(mem_session)
-
-        if request.socratic_mode and request.topic and mem_session:
-            socratic_state_rec = await socratic_manager.get_state(
-                uid,
-                request.topic,
-                session,
-            )
-
-    memory_context = ""
-    if uid and mem_session:
-        memory_context = await context_assembler.assemble(
-            user_id=user_id,
-            topic=request.topic,
-            db=session,
-            session_state={
-                "active_topic": mem_session.active_topic,
-                "tutoring_mode": mem_session.tutoring_mode,
-                "educational_context": mem_session.educational_context,
-                "unresolved_questions": mem_session.unresolved_questions,
-            }
-            if mem_session
-            else None,
-            socratic_state={
-                "socratic_stage": socratic_state_rec.socratic_stage,
-                "current_focus": socratic_state_rec.current_focus,
-                "student_understanding": socratic_state_rec.student_understanding,
-                "conceptual_gaps": socratic_state_rec.conceptual_gaps,
-            }
-            if socratic_state_rec
-            else None,
-        )
-
-    learner_profile_block = ""
-    if uid:
-        try:
-            package = await context_adapter.build(
-                session,
-                uid,
-                current_topic=request.topic,
-            )
-            learner_profile_block = package.formatted_block
-        except Exception:
-            logger.warning("tutor_context_build_failed", user_id=str(user_id))
-
-    return (
-        mem_session,
-        socratic_state_rec,
-        conversation_messages,
-        memory_context,
-        learner_profile_block,
-    )
-
-
-# ---------------------------------------------------------------------------
-# Streaming path
-# ---------------------------------------------------------------------------
-
-async def _handle_chat_stream(
-    request: TutorRequest,
-    session: AsyncSession,
-    current_user: Optional[User] = None,
-) -> StreamingResponse:
-    uid = request.user_id or (current_user.id if current_user else None)
-    user_id = str(uid) if uid else None
-
-    sanitized = _validate_input(request, user_id)
-    if sanitized is None:
-        raise HTTPException(status_code=400, detail="Message is empty after sanitization")
-
-    effective_language = await _resolve_language(request, user_id, session)
-    ctx = await _build_context(request, user_id, effective_language, session)
-    mem_session = ctx[0]
-    socratic_state_rec = ctx[1]
-    conversation_messages = ctx[2]
-    memory_context = ctx[3]
-    learner_profile_block = ctx[4]
-
-    queue: asyncio.Queue[TokenChunk | None] = asyncio.Queue()
-
-    # Push immediate status so the user sees something right away
-    queue.put_nowait(
-        TokenChunk(delta="Analyzing your question...", node="orchestrator", status=True)
-    )
-
-    graph_task = asyncio.create_task(
-        run_graph(
-            user_message=sanitized,
-            user_id=user_id,
-            grade_level=request.grade_level,
-            topic=request.topic,
-            language=effective_language,
-            preferred_model=request.model,
-            socratic_mode=request.socratic_mode,
-            hint_level=request.hint_level,
-            reveal_answer=request.reveal_answer,
-            session_id=str(mem_session.session_id) if mem_session else None,
-            memory_context=memory_context,
-            learner_profile_block=learner_profile_block,
-            socratic_stage=socratic_state_rec.socratic_stage if socratic_state_rec else "",
-            socratic_focus=socratic_state_rec.current_focus if socratic_state_rec else "",
-            socratic_understanding=(
-                socratic_state_rec.student_understanding if socratic_state_rec else ""
-            ),
-            socratic_next_question=socratic_state_rec.next_question if socratic_state_rec else "",
-            messages=conversation_messages,
-            db_session_factory=async_session_factory,
-            token_queue=queue,
-        )
-    )
-
-    return StreamingResponse(
-        _stream_events(
-            queue,
-            graph_task,
-            _request=request,
-            _session=session,
-            _user_id=user_id,
-            _mem_session=mem_session,
-            _conversation_messages=conversation_messages,
-            _socratic_state_rec=socratic_state_rec,
-        ),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
-    )
-
-
-async def _stream_events(
-    queue: asyncio.Queue[TokenChunk | None],
-    graph_task: asyncio.Task,
-    _request: Optional[TutorRequest] = None,
-    _session: Optional[AsyncSession] = None,
-    _user_id: Optional[str] = None,
-    _mem_session=None,
-    _conversation_messages: Optional[list] = None,
-    _socratic_state_rec=None,
-) -> AsyncGenerator[str, None]:
-    try:
-        while True:
-            chunk = await queue.get()
-            if chunk is None:
-                break
-            if chunk.error:
-                yield f"data: {chunk.model_dump_json()}\n\n"
-                break
-            if chunk.done:
-                # Queue done — graph finished streaming tokens.
-                # Don't yield yet; we'll yield our own done:true
-                # after persisting history, so the sidebar fetch sees it.
-                break
-            yield f"data: {chunk.model_dump_json()}\n\n"
-
-        # Await graph task — it may still be running safety/post-processing
-        try:
-            result = await graph_task
-        except Exception as exc:
-            yield f"data: {TokenChunk(delta='', done=True, error=str(exc)).model_dump_json()}\n\n"
-            return
-
-        # Persist conversation history BEFORE sending done so sidebar refresh sees it
-        if _session and _user_id and _mem_session and _request:
-            await _persist_chat_history(
-                request=_request,
-                session=_session,
-                user_id=_user_id,
-                mem_session=_mem_session,
-                conversation_messages=_conversation_messages or [],
-                result=result,
-                socratic_state_rec=_socratic_state_rec,
-            )
-
-        yield f"data: {TokenChunk(
-            delta='',
-            done=True,
-            metadata={
-                'model_used': result.model_used,
-                'confidence': result.confidence,
-                'sources': result.sources,
-                'xp_awarded': getattr(result, 'xp_awarded', 0),
-                'level_up': getattr(result, 'level_up', False),
-                'status': result.status,
-            },
-        ).model_dump_json()}\n\n"
-    except Exception as e:
-        yield f"data: {TokenChunk(delta='', done=True, error=str(e)).model_dump_json()}\n\n"
-
-
-async def _persist_chat_history(
-    request: TutorRequest,
-    session: AsyncSession,
-    user_id: str,
-    mem_session,
-    conversation_messages: list,
-    result,
-    socratic_state_rec=None,
-) -> None:
-    try:
-        uid = UUID(user_id) if user_id else None
-        if request.socratic_mode and request.topic and uid:
-            await socratic_manager.update_state(
-                user_id=uid,
-                topic=request.topic,
-                db=session,
-                updates={
-                    "socratic_stage": result.socratic_stage,
-                    "current_focus": result.socratic_focus,
-                    "student_understanding": result.socratic_understanding,
-                    "next_question": result.socratic_next_question,
-                },
-            )
-
-        conversation_messages.append({"role": "user", "content": request.question})
-        if result.answer:
-            conversation_messages.append({"role": "assistant", "content": result.answer})
-        session_manager.set_messages(mem_session, conversation_messages[-20:])
-
-        await session.flush()
-        mem_session.unresolved_questions = [
-            getattr(result, attr, "")
-            for attr in ("guiding_question",)
-            if getattr(result, "guiding_question", "")
-        ]
-        await session_manager.heartbeat(mem_session.session_id, session)
-
-        if uid:
-            await event_logger.log(
-                uid,
-                "tutor_interaction",
-                topic=request.topic,
-                db=session,
-            )
-
-        await update_streak(user_id, session)
-        xp_amount = XP_SOURCES.get("tutor_interaction", 5)
-        gam, _, _ = await award_xp(
-            user_id,
-            "tutor_interaction",
-            xp_amount,
-            {"question_topic": request.topic or ""},
-            session,
-        )
-        await check_achievements(user_id, gam, session)
-
-        await session.commit()
-
-        # Best-effort: record conversation turns. The FK to memory_sessions
-        # may fail in some deployment environments; the sidebar now reads
-        # from MemorySession.educational_context.messages as a fallback.
-        try:
-            turn_factory = async_session_factory()
-            async with turn_factory() as turn_session:
-                await CrossSessionRecall().record_turns(
-                    user_id=user_id,
-                    session_id=mem_session.session_id,
-                    turns=conversation_messages[-2:],
-                    topic=request.topic,
-                    db=turn_session,
-                )
-                await turn_session.commit()
-        except Exception as turn_e:
-            logger.warning("record_turns_async_error", error=str(turn_e))
-    except Exception as e:
-        logger.error("stream_chat_history_save_failed", error=str(e))
-        await session.rollback()
-
-
-# ---------------------------------------------------------------------------
-# Blocking (non-streaming) path — original behavior
-# ---------------------------------------------------------------------------
-
-async def _handle_chat_blocking(
-    request: TutorRequest,
-    session: AsyncSession,
-    current_user: Optional[User] = None,
-) -> TutorResponse:
-    uid = request.user_id or (current_user.id if current_user else None)
-    user_id = str(uid) if uid else None
-
-    sanitized = _validate_input(request, user_id)
-    if sanitized is None:
-        raise HTTPException(status_code=400, detail="Message is empty after sanitization")
-
-    effective_language = await _resolve_language(request, user_id, session)
-    ctx = await _build_context(request, user_id, effective_language, session)
-    mem_session = ctx[0]
-    socratic_state_rec = ctx[1]
-    conversation_messages = ctx[2]
-    memory_context = ctx[3]
-    learner_profile_block = ctx[4]
-
-    try:
-        result = await run_graph(
-            user_message=sanitized,
-            user_id=user_id,
-            grade_level=request.grade_level,
-            topic=request.topic,
-            language=effective_language,
-            preferred_model=request.model,
-            socratic_mode=request.socratic_mode,
-            hint_level=request.hint_level,
-            reveal_answer=request.reveal_answer,
-            session_id=str(mem_session.session_id) if mem_session else None,
-            memory_context=memory_context,
-            learner_profile_block=learner_profile_block,
-            socratic_stage=socratic_state_rec.socratic_stage if socratic_state_rec else "",
-            socratic_focus=socratic_state_rec.current_focus if socratic_state_rec else "",
-            socratic_understanding=(
-                socratic_state_rec.student_understanding if socratic_state_rec else ""
-            ),
-            socratic_next_question=socratic_state_rec.next_question if socratic_state_rec else "",
-            messages=conversation_messages,
-            db_session_factory=async_session_factory,
-        )
-
-        output_check = output_guardrails.check(result.answer or "", topic=request.topic)
-        answer_text = output_check.redacted_text or result.answer or ""
-        if output_check.blocked:
-            logger.warning("output_guardrail_triggered", reasons=output_check.reasons)
-            raise HTTPException(status_code=422, detail="Response blocked by output safety filter")
-
-        uid = UUID(user_id) if user_id else None
-        if request.socratic_mode and request.topic and uid:
-            await socratic_manager.update_state(
-                user_id=uid,
-                topic=request.topic,
-                db=session,
-                updates={
-                    "socratic_stage": result.socratic_stage,
-                    "current_focus": result.socratic_focus,
-                    "student_understanding": result.socratic_understanding,
-                    "next_question": result.socratic_next_question,
-                },
-            )
-
-        if mem_session:
-            conversation_messages.append({"role": "user", "content": request.question})
-            if answer_text:
-                conversation_messages.append({"role": "assistant", "content": answer_text})
-            session_manager.set_messages(mem_session, conversation_messages[-20:])
-            await CrossSessionRecall().record_turns(
-                user_id=user_id,
-                session_id=mem_session.session_id,
-                turns=conversation_messages[-2:],
-                topic=request.topic,
-                db=session,
-            )
-
-            mem_session.unresolved_questions = [
-                getattr(result, attr, "")
-                for attr in ("guiding_question",)
-                if getattr(result, "guiding_question", "")
-            ]
-            await session_manager.heartbeat(mem_session.session_id, session)
-
-        if uid:
-            await event_logger.log(
-                uid,
-                "tutor_interaction",
-                topic=request.topic,
-                db=session,
-            )
-
-        diagram_data: dict = {}
-        if request.generate_diagram and request.topic and request.grade_level:
-            try:
-                from src.agents.diagram_tutor_integration import (
-                    generate_tutor_diagram,
-                )
-
-                diagram_data = await generate_tutor_diagram(
-                    question=request.question,
-                    topic=request.topic,
-                    grade_level=request.grade_level,
-                    db_session=session,
-                )
-            except Exception:
-                logger.warning("tutor_diagram_generate_failed")
-
-        xp_awarded = 0
-        level_up = False
-        new_level = 0
-        if user_id:
-            await update_streak(user_id, session)
-            xp_amount = XP_SOURCES.get("tutor_interaction", 5)
-            gam, _, level_up = await award_xp(
-                user_id,
-                "tutor_interaction",
-                xp_amount,
-                {"question_topic": request.topic or ""},
-                session,
-            )
-            xp_awarded = xp_amount
-            new_level = gam.level if level_up else 0
-            await check_achievements(user_id, gam, session)
-
-        await session.commit()
-
-        return TutorResponse(
-            answer=answer_text,
-            language=effective_language.value
-            if hasattr(effective_language, "value")
-            else str(effective_language),
-            sources=result.sources,
-            model_used=result.model_used,
-            confidence=result.confidence,
-            status=result.status,
-            requires_teacher_review=result.requires_teacher_review,
-            session_id=result.session_id or "",
-            socratic_mode=result.socratic_mode,
-            socratic_stage=result.socratic_stage,
-            socratic_focus=result.socratic_focus,
-            socratic_understanding=result.socratic_understanding,
-            socratic_next_question=result.socratic_next_question,
-            hint_level=result.hint_level,
-            reveal_answer=result.reveal_answer,
-            misconception_detected=result.misconception_detected,
-            misconception_correction=result.misconception_correction,
-            xp_awarded=xp_awarded,
-            level_up=level_up,
-            new_level=new_level,
-            diagram_svg=diagram_data.get("diagram_svg", ""),
-            diagram_labels=diagram_data.get("labels", []),
-            diagram_title=diagram_data.get("title", ""),
-            diagram_textbook_ref=diagram_data.get("textbook_ref", ""),
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        await session.rollback()
-        logger.error("chat_error", error=str(e))
-        raise HTTPException(status_code=500, detail=str(e))
