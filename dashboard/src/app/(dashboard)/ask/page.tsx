@@ -13,6 +13,7 @@ import { useConversationHistory } from '@/hooks/useConversationHistory'
 import { TTSPlayButton } from '@/components/TTSPlayButton'
 import { VoiceRecorderButton } from '@/components/VoiceRecorderButton'
 import { getUserId, isAuthenticated } from '@/lib/auth'
+import { streamFetch } from '@/lib/fetch'
 
 const isServerError = (msg: string) =>
   msg.includes('502') || msg.includes('504') || msg.includes('Application failed to respond')
