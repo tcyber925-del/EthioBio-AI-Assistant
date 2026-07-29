@@ -9,39 +9,58 @@ type VoiceState = 'idle' | 'recording' | 'processing'
 
 interface VoiceRecorderButtonProps {
   onTranscript: (text: string) => void
+  onPartialTranscript?: (text: string) => void
   onError?: (error: string) => void
   disabled?: boolean
   gradeLevel?: number
   topic?: string
   language?: string
+  streaming?: boolean
 }
 
 export function VoiceRecorderButton({
   onTranscript,
+  onPartialTranscript,
   onError,
   disabled,
   gradeLevel,
   topic,
   language = 'am',
+  streaming,
 }: VoiceRecorderButtonProps) {
   const ta = useTranslations('ask')
   const [state, setState] = useState<VoiceState>('idle')
   const mediaRecorder = useRef<MediaRecorder | null>(null)
   const chunks = useRef<Blob[]>([])
+  const streamSessionId = useRef<string>('')
+  const inflightChunks = useRef(0)
 
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       chunks.current = []
+      streamSessionId.current = crypto.randomUUID()
+      inflightChunks.current = 0
       const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' })
       mediaRecorder.current = recorder
 
       recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunks.current.push(e.data)
+        if (e.data.size > 0) {
+          if (streaming) {
+            sendChunk(e.data, false)
+          } else {
+            chunks.current.push(e.data)
+          }
+        }
       }
 
       recorder.onstop = async () => {
         stream.getTracks().forEach(t => t.stop())
+        if (streaming) {
+          await sendChunk(new Blob(chunks.current), true)
+          chunks.current = []
+          return
+        }
         if (chunks.current.length === 0) {
           setState('idle')
           return
@@ -57,7 +76,11 @@ export function VoiceRecorderButton({
         onError?.(ta('voice_error'))
       }
 
-      recorder.start()
+      if (streaming) {
+        recorder.start(500)
+      } else {
+        recorder.start()
+      }
       setState('recording')
     } catch {
       setState('idle')
@@ -68,6 +91,49 @@ export function VoiceRecorderButton({
   const stopRecording = () => {
     if (mediaRecorder.current && mediaRecorder.current.state === 'recording') {
       mediaRecorder.current.stop()
+    }
+  }
+
+  const sendChunk = async (blob: Blob, isFinal: boolean) => {
+    inflightChunks.current += 1
+    const token = getToken()
+    const userId = getUserId()
+    const formData = new FormData()
+    formData.append('audio', blob, 'voice.webm')
+    formData.append('stream_session_id', streamSessionId.current)
+    formData.append('language', language)
+    formData.append('final', String(isFinal))
+    if (topic) formData.append('topic', topic)
+    if (gradeLevel) formData.append('grade_level', String(gradeLevel))
+    if (userId) formData.append('user_id', userId)
+
+    try {
+      const res = await fetch('/chat/voice/chunk', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      })
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        if (!isFinal) throw new Error(text || `HTTP ${res.status}`)
+        return
+      }
+
+      const data = await res.json()
+      if (data.partial_transcript) {
+        onPartialTranscript?.(data.partial_transcript)
+      }
+      if (data.final_transcript) {
+        onTranscript(data.final_transcript)
+      }
+    } catch (err) {
+      if (isFinal) {
+        onError?.(err instanceof Error ? err.message : ta('voice_error'))
+      }
+    } finally {
+      inflightChunks.current -= 1
+      setState('idle')
     }
   }
 

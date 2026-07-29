@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 from typing import AsyncGenerator, Optional, Union
 
 import structlog
@@ -19,6 +20,7 @@ from src.schemas.conversation import ConversationRequest
 from src.voice.audio import guess_mime_from_bytes, validate_audio_size
 from src.voice.gateways import WebVoiceAdapter
 from src.voice.providers import speech_registry as _speech_registry
+from src.voice.streaming import AudioChunk, VoiceStreamManager
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -29,6 +31,7 @@ conversation_tracker = ConversationTracker()
 
 conversation_service = ConversationService()
 _web_adapter = WebVoiceAdapter()
+_stream_manager = VoiceStreamManager()
 
 
 @router.post("")
@@ -98,6 +101,62 @@ async def chat_voice(
         "session_id": conv_response.session_id,
         "language": conv_response.language,
     }
+
+
+@router.post("/voice/chunk")
+async def chat_voice_chunk(
+    audio: UploadFile = File(...),
+    stream_session_id: str = Form(...),
+    language: str = Form("am"),
+    final: bool = Form(False),
+    grade_level: Optional[int] = Form(None),
+    topic: Optional[str] = Form(None),
+    current_user: User = Depends(get_current_user),
+):
+    audio_bytes = await audio.read()
+    if len(audio_bytes) == 0:
+        raise HTTPException(status_code=400, detail="Empty audio chunk")
+
+    stream_session = _stream_manager.get_or_create(stream_session_id, language=language)
+    mime_type = audio.content_type or guess_mime_from_bytes(audio_bytes) or "audio/webm"
+
+    stream_session.buffer.append(
+        AudioChunk(
+            data=audio_bytes,
+            sequence=stream_session.chunk_count,
+            mime_type=mime_type,
+            is_final=final,
+        )
+    )
+    stream_session.chunk_count += 1
+    stream_session.chunks_since_transcribe += 1
+    stream_session.last_activity = datetime.now(timezone.utc)
+
+    result: dict = {}
+
+    transcribe = final or stream_session.chunks_since_transcribe >= 2
+    if transcribe:
+        assembled = stream_session.buffer.assemble()
+        if assembled:
+            try:
+                tr = await _speech_registry.transcribe(
+                    assembled, language=language, mime_type=mime_type
+                )
+                text = tr.text.strip()
+                if text and text != stream_session.last_partial:
+                    if final:
+                        result["final_transcript"] = text
+                    else:
+                        result["partial_transcript"] = text
+                        stream_session.last_partial = text
+            except Exception as e:
+                logger.warning("stream_transcribe_failed", error=str(e))
+        stream_session.chunks_since_transcribe = 0
+
+    if final:
+        _stream_manager.remove(stream_session_id)
+
+    return result
 
 
 async def _voice_stream(

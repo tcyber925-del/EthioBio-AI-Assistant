@@ -30,6 +30,7 @@ export default function AskPage() {
   }, [router])
 
   const [question, setQuestion] = useState('')
+  const [partialTranscript, setPartialTranscript] = useState('')
   const [answer, setAnswer] = useState<string | null>(null)
   const [selectedModel, setSelectedModel] = useState('')
   const [confidence, setConfidence] = useState(0)
@@ -107,6 +108,7 @@ export default function AskPage() {
 
   const handleVoiceTranscript = (text: string) => {
     setQuestion(text)
+    setPartialTranscript('')
     setTimeout(() => {
       const btn = document.querySelector<HTMLButtonElement>('[data-ask-button]')
       btn?.click()
@@ -159,10 +161,12 @@ export default function AskPage() {
         <div className="flex gap-3">
           <VoiceRecorderButton
             onTranscript={handleVoiceTranscript}
+            onPartialTranscript={setPartialTranscript}
             onError={setError}
             disabled={loading}
             gradeLevel={grade}
             language="am"
+            streaming
           />
           <input
             type="text"
@@ -181,6 +185,12 @@ export default function AskPage() {
             {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> {ta('thinking')}...</> : <><Send className="w-4 h-4" /> {ta('ask_button')}</>}
           </button>
         </div>
+        {partialTranscript && (
+          <div className="mt-2 flex items-center gap-2 text-xs text-v2-accent animate-pulse px-1">
+            <span className="w-1.5 h-1.5 bg-v2-accent rounded-full" />
+            {partialTranscript}
+          </div>
+        )}
       </div>
 
       {error && (
