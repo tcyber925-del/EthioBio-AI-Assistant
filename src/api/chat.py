@@ -134,23 +134,26 @@ async def chat_voice_chunk(
 
     result: dict = {}
 
-    transcribe = final or stream_session.chunks_since_transcribe >= 2
+    transcribe = final or stream_session.chunks_since_transcribe >= 3
     if transcribe:
-        assembled = stream_session.buffer.assemble()
-        if assembled:
-            try:
-                tr = await _speech_registry.transcribe(
-                    assembled, language=language, mime_type=mime_type
-                )
-                text = tr.text.strip()
-                if text and text != stream_session.last_partial:
-                    if final:
-                        result["final_transcript"] = text
-                    else:
-                        result["partial_transcript"] = text
-                        stream_session.last_partial = text
-            except Exception as e:
-                logger.warning("stream_transcribe_failed", error=str(e))
+        try:
+            if final:
+                audio_data = stream_session.buffer.assemble()
+            else:
+                audio_data = audio_bytes
+
+            tr = await _speech_registry.transcribe(
+                audio_data, language=language, mime_type=mime_type
+            )
+            text = tr.text.strip() if tr.text else ""
+            if text:
+                if final:
+                    result["final_transcript"] = text
+                elif text != stream_session.last_partial:
+                    result["partial_transcript"] = text
+                    stream_session.last_partial = text
+        except Exception as e:
+            logger.warning("stream_transcribe_failed", error=str(e))
         stream_session.chunks_since_transcribe = 0
 
     if final:

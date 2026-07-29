@@ -30,7 +30,7 @@ export default function AskPage() {
   }, [router])
 
   const [question, setQuestion] = useState('')
-  const [partialTranscript, setPartialTranscript] = useState('')
+  const [isListening, setIsListening] = useState(false)
   const [answer, setAnswer] = useState<string | null>(null)
   const [selectedModel, setSelectedModel] = useState('')
   const [confidence, setConfidence] = useState(0)
@@ -38,6 +38,8 @@ export default function AskPage() {
   const [loading, setLoading] = useState(false)
   const [statusText, setStatusText] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const voiceTriggeredRef = useRef(false)
+  const lastAnswerRef = useRef('')
   const [grade, setGrade] = useState(12)
   const [mode, setMode] = useState<'graph' | 'chat'>('graph')
   const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null)
@@ -76,6 +78,7 @@ export default function AskPage() {
       onToken: (token) => {
         if (gotMetadata) return
         accumulated += token
+        lastAnswerRef.current = accumulated
         setAnswer(accumulated)
       },
       onMetadata: (meta) => {
@@ -92,6 +95,10 @@ export default function AskPage() {
         setStatusText(null)
         setLoading(false)
         setActiveHistoryId(null)
+        if (voiceTriggeredRef.current && lastAnswerRef.current) {
+          voiceTriggeredRef.current = false
+          playTTS(lastAnswerRef.current)
+        }
         fetchHistory()
       },
     })
@@ -108,11 +115,39 @@ export default function AskPage() {
 
   const handleVoiceTranscript = (text: string) => {
     setQuestion(text)
-    setPartialTranscript('')
+    setIsListening(false)
+    voiceTriggeredRef.current = true
     setTimeout(() => {
       const btn = document.querySelector<HTMLButtonElement>('[data-ask-button]')
       btn?.click()
     }, 300)
+  }
+
+  const handlePartialTranscript = (text: string) => {
+    setQuestion(text)
+    setIsListening(true)
+  }
+
+  const playTTS = async (text: string) => {
+    try {
+      const token = getToken()
+      const res = await fetch('/chat/tts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ text, language: 'am' }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const audio = new Audio(url)
+      audio.onended = () => URL.revokeObjectURL(url)
+      await audio.play()
+    } catch {
+      // silent fail — user can still tap the TTS button
+    }
   }
 
   const chatArea = (
@@ -161,7 +196,7 @@ export default function AskPage() {
         <div className="flex gap-3">
           <VoiceRecorderButton
             onTranscript={handleVoiceTranscript}
-            onPartialTranscript={setPartialTranscript}
+            onPartialTranscript={handlePartialTranscript}
             onError={setError}
             disabled={loading}
             gradeLevel={grade}
@@ -171,10 +206,12 @@ export default function AskPage() {
           <input
             type="text"
             value={question}
-            onChange={e => setQuestion(e.target.value)}
+            onChange={e => { setQuestion(e.target.value); setIsListening(false) }}
             onKeyDown={e => e.key === 'Enter' && askQuestion()}
-            placeholder={ta('example_placeholder')}
-            className="flex-1 px-4 py-3 border border-v2-border rounded-lg text-sm bg-v2-surface text-v2-text-primary placeholder:text-v2-text-muted/50 focus:outline-none focus:ring-1 focus:ring-v2-accent"
+            placeholder={isListening ? ta('listening') : ta('example_placeholder')}
+            className={`flex-1 px-4 py-3 border rounded-lg text-sm bg-v2-surface text-v2-text-primary focus:outline-none focus:ring-1 focus:ring-v2-accent ${
+              isListening ? 'border-v2-accent border-dashed' : 'border-v2-border'
+            }`}
           />
           <button
             data-ask-button
@@ -185,12 +222,6 @@ export default function AskPage() {
             {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> {ta('thinking')}...</> : <><Send className="w-4 h-4" /> {ta('ask_button')}</>}
           </button>
         </div>
-        {partialTranscript && (
-          <div className="mt-2 flex items-center gap-2 text-xs text-v2-accent animate-pulse px-1">
-            <span className="w-1.5 h-1.5 bg-v2-accent rounded-full" />
-            {partialTranscript}
-          </div>
-        )}
       </div>
 
       {error && (

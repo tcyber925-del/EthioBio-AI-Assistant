@@ -606,6 +606,7 @@
     "voice_recording": "Recording... tap again to stop",
     "voice_processing": "Processing audio...",
     "voice_error": "Voice input failed. Please try again or type.",
+    "listening": "Listening... speak now",
     "listen": "Listen",
     "take_quiz": "Take Quiz"
   },
