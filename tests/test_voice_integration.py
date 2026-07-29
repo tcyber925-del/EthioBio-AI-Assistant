@@ -5,11 +5,10 @@ Requires:  GROQ_API_KEY env var for Groq tests (edge-tts needs none)
 Skipped in CI: pytest -k "not slow"
 """
 
-import os
-
 import pytest
 import pytest_asyncio
 
+from src.config import settings
 from src.voice.providers import EdgeTTSProvider, GroqSTTProvider, speech_registry
 from src.voice.streaming import AudioChunk, VoiceStreamManager
 
@@ -17,7 +16,7 @@ pytestmark = pytest.mark.slow
 
 
 def _groq_available() -> bool:
-    return bool(os.environ.get("GROQ_API_KEY"))
+    return bool(settings.groq_api_key)
 
 
 # ── Fixtures ────────────────────────────────────────────────────────────
