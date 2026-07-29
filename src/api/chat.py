@@ -16,7 +16,7 @@ from src.guardrails.input.prompt_injection import PromptInjectionDetector
 from src.guardrails.input.sanitizer import InputSanitizer
 from src.schemas.chat import TutorRequest, TutorResponse
 from src.schemas.conversation import ConversationRequest
-from src.voice.audio import validate_audio_size
+from src.voice.audio import guess_mime_from_bytes, validate_audio_size
 from src.voice.gateways import WebVoiceAdapter
 from src.voice.providers import speech_registry as _speech_registry
 
@@ -56,7 +56,8 @@ async def chat_voice(
     if err:
         raise HTTPException(status_code=400, detail=err)
 
-    result = await _speech_registry.transcribe(audio_bytes, language=language)
+    mime_type = audio.content_type or guess_mime_from_bytes(audio_bytes) or "audio/webm"
+    result = await _speech_registry.transcribe(audio_bytes, language=language, mime_type=mime_type)
     transcript = result.text
 
     if not transcript or not transcript.strip():

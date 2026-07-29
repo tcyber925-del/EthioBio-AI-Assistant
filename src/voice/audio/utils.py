@@ -31,6 +31,7 @@ EXT_TO_MIME: dict[str, str] = {v: k for k, v in MIME_TO_EXT.items()}
 OGG_HEADER = b"OggS"
 RIFF_HEADER = b"RIFF"
 FLAC_HEADER = b"fLaC"
+EBML_HEADER = b"\x1A\x45\xDF\xA3"
 
 
 def guess_mime_from_bytes(data: bytes) -> Optional[str]:
@@ -48,6 +49,8 @@ def guess_mime_from_bytes(data: bytes) -> Optional[str]:
         return "audio/m4a"
     if data[:4] == b"\x00\x00\x00\x18" and data[8:12] == b"wide":
         return "audio/amr"
+    if data[:4] == EBML_HEADER:
+        return "audio/webm"
     return None
 
 

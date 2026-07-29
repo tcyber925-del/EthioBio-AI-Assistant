@@ -71,6 +71,7 @@ class SpeechProviderRegistry:
         self,
         audio: bytes,
         language: Optional[str] = None,
+        mime_type: str = "audio/webm",
         preferred_provider: Optional[str] = None,
     ) -> TranscriptResult:
         ordered = self._stt_fallback_chain.copy()
@@ -92,7 +93,9 @@ class SpeechProviderRegistry:
                 continue
             try:
                 with STTTimer(name):
-                    result = await provider.transcribe(audio, language=language)
+                    result = await provider.transcribe(
+                        audio, language=language, mime_type=mime_type
+                    )
                 breaker.record_success()
                 record_stt_request(name, language or "unknown", "ok")
                 return result
