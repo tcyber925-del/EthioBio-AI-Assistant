@@ -22,6 +22,7 @@ const nextConfig = {
       { source: '/lesson-plan', destination: `${api}/lesson-plan` },
       { source: '/lesson-plan/:path*', destination: `${api}/lesson-plan/:path*` },
       { source: '/chat', destination: `${api}/chat` },
+      { source: '/chat/:path*', destination: `${api}/chat/:path*` },
       { source: '/graph/:path*', destination: `${api}/graph/:path*` },
       { source: '/progress/:path*', destination: `${api}/progress/:path*` },
       { source: '/diagram', destination: `${api}/diagram` },
