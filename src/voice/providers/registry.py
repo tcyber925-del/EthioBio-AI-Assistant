@@ -15,6 +15,7 @@ from src.observability.voice_metrics import (
 from .azure import AzureSTTProvider
 from .base import SpeechProvider
 from .edge_tts import EdgeTTSProvider
+from .gemini import GeminiTTSProvider
 from .groq import GroqSTTProvider
 from .types import SpeechProviderInfo, SynthesisResult, TranscriptResult
 
@@ -45,9 +46,13 @@ class SpeechProviderRegistry:
             azure = AzureSTTProvider()
             self._stt_providers["azure"] = azure
             self._stt_fallback_chain.insert(0, "azure")
+        if settings.gemini_api_key:
+            self._tts_providers["gemini-tts"] = GeminiTTSProvider()
+            self._tts_fallback_chain = ["gemini-tts", "edge-tts"]
         tts = EdgeTTSProvider()
         self._tts_providers["edge-tts"] = tts
-        self._tts_fallback_chain = ["edge-tts"]
+        if not self._tts_fallback_chain:
+            self._tts_fallback_chain = ["edge-tts"]
         if settings.azure_speech_key and settings.azure_speech_region:
             self._tts_providers["azure"] = AzureSTTProvider()
             self._tts_fallback_chain.insert(0, "azure")

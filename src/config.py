@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     collection_name: str = "ethiobio_curriculum"
     store_backend: str = "pgvector"  # always pgvector
 
+    gemini_api_key: str = ""
     groq_api_key: str = ""
     azure_speech_key: str = ""
     azure_speech_region: str = ""

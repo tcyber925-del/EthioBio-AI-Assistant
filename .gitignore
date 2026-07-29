@@ -75,3 +75,7 @@ scripts/scripts/
 .vercel
 .vercelignore
 .coverage
+
+# Planning artifacts (not tracked — prevents accidental add)
+01-Planning/Architectures/
+01-Planning/Research/
