@@ -109,7 +109,7 @@ jobs:
           failure-threshold: error
       - uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: dashboard/Dockerfile.dashboard
+          dockerfile: Dockerfile.dashboard
           failure-threshold: error
 
   deploy:
