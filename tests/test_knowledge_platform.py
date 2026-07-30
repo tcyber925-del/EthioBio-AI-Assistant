@@ -413,6 +413,7 @@ async def test_app_and_client():
 
     with (
         patch.object(knowledge_module, "_get_registry", return_value=test_registry),
+        patch.object(knowledge_module, "_get_storage", return_value=test_storage),
         patch.object(knowledge_module, "_get_producer", return_value=None),
         patch.object(knowledge_module, "_run_pipeline_inline"),
     ):
