@@ -102,12 +102,15 @@ jobs:
       - uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: Dockerfile
+          failure-threshold: error
       - uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: Dockerfile.bot
+          failure-threshold: error
       - uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: dashboard/Dockerfile.dashboard
+          failure-threshold: error
 
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'

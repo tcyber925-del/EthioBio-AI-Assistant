@@ -101,7 +101,8 @@ class GeminiTTSProvider(SpeechProvider):
             ),
         )
 
-        part = response.candidates[0].content.parts[0].inline_data
+        candidates = response.candidates
+        part = candidates[0].content.parts[0].inline_data  # type: ignore[index]
         audio_bytes, fmt = _wrap_audio(part.data, part.mime_type)
         return SynthesisResult(
             audio_bytes=audio_bytes,

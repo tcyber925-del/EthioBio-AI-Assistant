@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from telegram.ext import ContextTypes
 
@@ -20,7 +20,7 @@ class TelegramTextAdapter(BaseVoiceAdapter[str, str]):
 
     def __init__(self, context: ContextTypes.DEFAULT_TYPE):
         self._context = context
-        self._ud = context.user_data
+        self._ud = cast(dict[str, Any], context.user_data or {})
 
     def build_request(self, question: str) -> ConversationRequest:
         metadata = self._build_metadata()
