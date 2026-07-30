@@ -125,27 +125,8 @@ jobs:
         run: railway up --service ethiobio-api
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-      - name: Install Vercel CLI
+      - name: Deploy dashboard to Vercel
         working-directory: dashboard
-        run: npm install vercel
-      - name: Pull Vercel env
-        working-directory: dashboard
-        run: npx vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+        run: npx vercel deploy --prod --yes --token=$VERCEL_TOKEN
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      - name: Build (Vercel)
-        working-directory: dashboard
-        run: npx vercel build --prod
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      - name: Deploy to Vercel
-        working-directory: dashboard
-        run: npx vercel deploy --prebuilt --prod --yes --token=$VERCEL_TOKEN
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
