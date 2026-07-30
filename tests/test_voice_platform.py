@@ -1,6 +1,5 @@
-import json
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,7 +14,6 @@ from src.observability.voice_metrics import (
     record_tts_request,
 )
 from src.voice.audio import (
-    AUDIO_FORMATS,
     MIME_TO_EXT,
     estimate_duration,
     format_name,
@@ -110,7 +108,8 @@ class TestValidateAudioSize:
 class TestEstimateDuration:
     def test_ogg_default(self):
         dur = estimate_duration(b"\x00" * 32000, "audio/ogg")
-        assert isinstance(dur, float) and dur > 0
+        assert isinstance(dur, float)
+        assert dur > 0
 
     def test_mp3_kbps(self):
         dur = estimate_duration(b"\x00" * 16000, "audio/mpeg")

@@ -160,11 +160,6 @@ async def test_handle_question_calls_run_graph(monkeypatch):
             sources=[],
         )
 
-    mock_result = SimpleNamespace(
-        answer="Photosynthesis is the process...",
-        misconception_detected=False,
-        sources=[],
-    )
     monkeypatch.setattr(bot, "run_graph", mock_run_graph)
     monkeypatch.setattr(bot, "_build_memory_context", AsyncMock(return_value=(None, None, "", [])))
     monkeypatch.setattr(bot, "_reply_long", AsyncMock())

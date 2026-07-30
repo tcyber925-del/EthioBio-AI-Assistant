@@ -53,6 +53,8 @@ from src.telegram.keyboards import (
     language_keyboard,
     lesson_features_keyboard,
     main_menu_keyboard,
+    model_providers_keyboard,
+    provider_models_keyboard,
     quiz_next_keyboard,
     quiz_result_keyboard,
     quiz_type_keyboard,
