@@ -3,7 +3,6 @@ from uuid import uuid4
 
 import pytest
 
-pytestmark = pytest.mark.asyncio(loop_scope="module")
 
 TEST_USER_ID = uuid4()
 
