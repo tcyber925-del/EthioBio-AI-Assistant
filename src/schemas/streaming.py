@@ -9,6 +9,7 @@ class TokenChunk:
     error: str | None = None
     status: bool = False
     metadata: dict | None = None
+    audio_b64: str | None = None
 
     def model_dump_json(self) -> str:
         import json
@@ -21,4 +22,6 @@ class TokenChunk:
         }
         if self.metadata is not None:
             d["metadata"] = self.metadata
+        if self.audio_b64 is not None:
+            d["audio_b64"] = self.audio_b64
         return json.dumps(d)

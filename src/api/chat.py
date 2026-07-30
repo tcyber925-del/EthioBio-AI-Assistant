@@ -162,6 +162,53 @@ async def chat_voice_chunk(
     return result
 
 
+@router.post("/voice/turn")
+async def chat_voice_turn(
+    audio: UploadFile = File(...),
+    grade_level: Optional[int] = Form(None),
+    topic: Optional[str] = Form(None),
+    language: str = Form("am"),
+    model: Optional[str] = Form(None),
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    audio_bytes = await audio.read()
+    err = validate_audio_size(audio_bytes)
+    if err:
+        raise HTTPException(status_code=400, detail=err)
+
+    mime_type = audio.content_type or guess_mime_from_bytes(audio_bytes) or "audio/webm"
+    result = await _speech_registry.transcribe(audio_bytes, language=language, mime_type=mime_type)
+    transcript = result.text
+
+    if not transcript or not transcript.strip():
+        raise HTTPException(status_code=400, detail="Speech recognition returned empty transcript")
+
+    conv_request = ConversationRequest(
+        user_id=str(current_user.id),
+        conversation_id="",
+        session_id="",
+        transcript=transcript,
+        language=language,
+        modality="voice",
+        metadata={
+            "topic": topic or "",
+            "grade_level": grade_level or "",
+            "model": model or "",
+        },
+    )
+
+    return StreamingResponse(
+        _voice_turn_stream(conv_request, transcript, session),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 async def _voice_stream(
     conv_request: ConversationRequest,
     transcript: str,
@@ -178,6 +225,24 @@ async def _voice_stream(
     yield f"data: {json.dumps(meta_event)}\n\n"
 
     async for line in conversation_service.process_stream(conv_request, session):
+        yield line
+
+
+async def _voice_turn_stream(
+    conv_request: ConversationRequest,
+    transcript: str,
+    session: AsyncSession,
+) -> AsyncGenerator[str, None]:
+    meta_event = {
+        "delta": "",
+        "node": "stt",
+        "done": False,
+        "error": None,
+        "status": False,
+        "metadata": {"transcript": transcript},
+    }
+    yield f"data: {json.dumps(meta_event)}\n\n"
+    async for line in conversation_service.voice_turn_stream(conv_request, session):
         yield line
 
 

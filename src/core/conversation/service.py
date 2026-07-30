@@ -1,4 +1,5 @@
 import asyncio
+import base64
 from collections.abc import AsyncGenerator
 from typing import Optional
 from uuid import UUID
@@ -25,6 +26,7 @@ from src.guardrails.output import OutputGuardrailRunner
 from src.schemas.common import LanguageEnum
 from src.schemas.conversation import ConversationRequest, ConversationResponse
 from src.schemas.streaming import TokenChunk
+from src.voice.providers import speech_registry as _speech_registry
 
 logger = structlog.get_logger()
 
@@ -251,6 +253,132 @@ class ConversationService:
                 user_id=request.user_id,
                 transcript=request.transcript,
                 answer=result.answer,
+                topic=topic,
+                socratic_mode=socratic_mode,
+                session=session,
+                mem_session=mem_session,
+                socratic_state_rec=socratic_state_rec,
+                conversation_messages=conversation_messages,
+                result=result,
+            )
+
+            final_meta = {
+                "model_used": result.model_used,
+                "confidence": result.confidence,
+                "sources": result.sources,
+                **gamification,
+                "status": result.status,
+            }
+            chunk = TokenChunk(delta="", done=True, metadata=final_meta)
+            yield f"data: {chunk.model_dump_json()}\n\n"
+        except Exception as e:
+            chunk = TokenChunk(delta="", done=True, error=str(e))
+            yield f"data: {chunk.model_dump_json()}\n\n"
+
+    async def voice_turn_stream(
+        self,
+        request: ConversationRequest,
+        session: AsyncSession,
+    ) -> AsyncGenerator[str, None]:
+        """SSE stream: STT metadata → tutor text tokens → TTS audio chunks → final metadata."""
+        metadata = request.metadata or {}
+        topic = metadata.get("topic")
+        grade_level = metadata.get("grade_level")
+        model = metadata.get("model")
+        socratic_mode = metadata.get("socratic_mode", False)
+        hint_level = metadata.get("hint_level", 0)
+        reveal_answer = metadata.get("reveal_answer", False)
+
+        effective_language = await self._resolve_language(
+            request.language, request.user_id, session
+        )
+        ctx = await self._build_context(
+            user_id=request.user_id,
+            topic=topic,
+            socratic_mode=socratic_mode,
+            session=session,
+        )
+        mem_session = ctx["mem_session"]
+        socratic_state_rec = ctx["socratic_state_rec"]
+        conversation_messages = ctx["conversation_messages"]
+        memory_context = ctx["memory_context"]
+        learner_profile_block = ctx["learner_profile_block"]
+
+        queue: asyncio.Queue[TokenChunk | None] = asyncio.Queue()
+        queue.put_nowait(
+            TokenChunk(delta="Analyzing your question...", node="orchestrator", status=True)
+        )
+
+        graph_task = asyncio.create_task(
+            run_graph(
+                user_message=request.transcript,
+                user_id=request.user_id,
+                grade_level=grade_level,
+                topic=topic,
+                language=effective_language,
+                preferred_model=model,
+                socratic_mode=socratic_mode,
+                hint_level=hint_level,
+                reveal_answer=reveal_answer,
+                session_id=str(mem_session.session_id) if mem_session else None,
+                memory_context=memory_context,
+                learner_profile_block=learner_profile_block,
+                socratic_stage=socratic_state_rec.socratic_stage if socratic_state_rec else "",
+                socratic_focus=socratic_state_rec.current_focus if socratic_state_rec else "",
+                socratic_understanding=(
+                    socratic_state_rec.student_understanding if socratic_state_rec else ""
+                ),
+                socratic_next_question=(
+                    socratic_state_rec.next_question if socratic_state_rec else ""
+                ),
+                messages=conversation_messages,
+                db_session_factory=async_session_factory,
+                token_queue=queue,
+            )
+        )
+
+        text_buffer: list[str] = []
+
+        try:
+            while True:
+                chunk = await queue.get()
+                if chunk is None:
+                    break
+                if chunk.error:
+                    yield f"data: {chunk.model_dump_json()}\n\n"
+                    return
+                if chunk.done:
+                    break
+                if chunk.delta and not chunk.status:
+                    text_buffer.append(chunk.delta)
+                yield f"data: {chunk.model_dump_json()}\n\n"
+
+            try:
+                result = await graph_task
+            except Exception as exc:
+                chunk = TokenChunk(delta="", done=True, error=str(exc))
+                yield f"data: {chunk.model_dump_json()}\n\n"
+                return
+
+            answer_text = "".join(text_buffer).strip()
+
+            try:
+                tts_result = await _speech_registry.synthesize(
+                    answer_text, language=request.language
+                )
+                audio = tts_result.audio_bytes
+                chunk_size = 15 * 1024
+                for i in range(0, len(audio), chunk_size):
+                    b64 = base64.b64encode(audio[i : i + chunk_size]).decode()
+                    chunk = TokenChunk(delta="", node="tutor", done=True, audio_b64=b64)
+                    yield f"data: {chunk.model_dump_json()}\n\n"
+            except Exception as tts_e:
+                logger.warning("voice_turn_tts_failed", error=str(tts_e))
+
+            gamification = await self._persist_history(
+                user_id=request.user_id,
+                transcript=request.transcript,
+                answer=answer_text,
                 topic=topic,
                 socratic_mode=socratic_mode,
                 session=session,
