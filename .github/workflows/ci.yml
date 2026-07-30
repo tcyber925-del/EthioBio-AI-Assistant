@@ -6,6 +6,9 @@ on:
   push:
     branches: [main]
 
+# Railway step uses continue-on-error because railway up exits 1
+# when it can't stream build logs, even if the deploy succeeds.
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
