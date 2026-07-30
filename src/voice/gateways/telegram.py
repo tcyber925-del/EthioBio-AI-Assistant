@@ -20,7 +20,7 @@ class TelegramTextAdapter(BaseVoiceAdapter[str, str]):
 
     def __init__(self, context: ContextTypes.DEFAULT_TYPE):
         self._context = context
-        self._ud = cast(dict[str, Any], context.user_data or {})
+        self._ud: dict[str, Any] = cast(dict[str, Any], context.user_data or {})
 
     def build_request(self, question: str) -> ConversationRequest:
         metadata = self._build_metadata()
@@ -57,7 +57,7 @@ class TelegramVoiceAdapter(BaseVoiceAdapter[tuple[bytes, str], str]):
 
     def __init__(self, context: ContextTypes.DEFAULT_TYPE, language: str):
         self._context = context
-        self._ud = context.user_data
+        self._ud: dict[str, Any] = cast(dict[str, Any], context.user_data or {})
         self._language = language
 
     def build_request(self, gateway_input: tuple[bytes, str]) -> ConversationRequest:
