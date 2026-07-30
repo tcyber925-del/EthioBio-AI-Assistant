@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
-import { Send, MessageSquare, AlertTriangle, BookOpen, Loader2, RefreshCw, ClipboardCheck } from 'lucide-react'
+import { Send, MessageSquare, AlertTriangle, BookOpen, Loader2, RefreshCw, ClipboardCheck, Mic, Square, Volume2 } from 'lucide-react'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import ModelSelector from '@/components/ModelSelector'
 import { DashboardLayout } from '@/components/dashboard-v2/DashboardLayout'
@@ -12,8 +12,12 @@ import { ConversationSidebar } from '@/components/ConversationSidebar'
 import { useConversationHistory } from '@/hooks/useConversationHistory'
 import { TTSPlayButton } from '@/components/TTSPlayButton'
 import { VoiceRecorderButton } from '@/components/VoiceRecorderButton'
-import { getUserId, isAuthenticated } from '@/lib/auth'
+import { AudioPlayer, type AudioPlayerHandle } from '@/components/AudioPlayer'
+import { WaveAnimation } from '@/components/WaveAnimation'
+import { getToken, getUserId, isAuthenticated } from '@/lib/auth'
 import { streamFetch } from '@/lib/fetch'
+import { useVoiceTurn } from '@/hooks/useVoiceTurn'
+import { isVoiceTurnEnabled } from '@/lib/voice-turn'
 
 const isServerError = (msg: string) =>
   msg.includes('502') || msg.includes('504') || msg.includes('Application failed to respond')
@@ -43,6 +47,27 @@ export default function AskPage() {
   const [grade, setGrade] = useState(12)
   const [mode, setMode] = useState<'graph' | 'chat'>('graph')
   const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null)
+  const [voiceTurnEnabled, setVoiceTurnEnabled] = useState(false)
+  const [turnAnswer, setTurnAnswer] = useState<string | null>(null)
+
+  const turn = useVoiceTurn({
+    gradeLevel: grade,
+    language: 'am',
+    selectedModel,
+    onTranscript: (text) => {
+      setQuestion(text)
+    },
+    onToken: (token) => {
+      setTurnAnswer((prev) => (prev ?? '') + token)
+    },
+    onError: (err) => {
+      setError(err)
+    },
+  })
+
+  useEffect(() => {
+    isVoiceTurnEnabled().then(setVoiceTurnEnabled)
+  }, [])
 
   const {
     dateGroups,
@@ -193,30 +218,88 @@ export default function AskPage() {
       </div>
 
       <div className="rounded-[20px] border border-v2-border bg-v2-bg p-4">
+        <AudioPlayer
+          ref={turn.audioPlayerRef as React.Ref<AudioPlayerHandle>}
+          onStateChange={(state) => {
+            if (state === 'idle' && turn.state === 'speaking') {
+              turn.reset()
+            }
+          }}
+          onError={(err) => setError(err)}
+        />
         <div className="flex gap-3">
-          <VoiceRecorderButton
-            onTranscript={handleVoiceTranscript}
-            onPartialTranscript={handlePartialTranscript}
-            onError={setError}
-            disabled={loading}
-            gradeLevel={grade}
-            language="am"
-            streaming
-          />
-          <input
-            type="text"
-            value={question}
-            onChange={e => { setQuestion(e.target.value); setIsListening(false) }}
-            onKeyDown={e => e.key === 'Enter' && askQuestion()}
-            placeholder={isListening ? ta('listening') : ta('example_placeholder')}
-            className={`flex-1 px-4 py-3 border rounded-lg text-sm bg-v2-surface text-v2-text-primary focus:outline-none focus:ring-1 focus:ring-v2-accent ${
-              isListening ? 'border-v2-accent border-dashed' : 'border-v2-border'
-            }`}
-          />
+          {voiceTurnEnabled ? (
+            <button
+              onClick={() => {
+                if (turn.state === 'idle' || turn.state === 'error') {
+                  setTurnAnswer(null)
+                  setError(null)
+                  turn.startRecording()
+                } else if (turn.state === 'recording') {
+                  turn.stopRecording()
+                } else if (turn.state === 'speaking') {
+                  turn.stopPlayback()
+                }
+              }}
+              disabled={turn.state === 'processing'}
+              className={`w-10 h-10 shrink-0 flex items-center justify-center rounded-lg text-sm font-medium transition-all ${
+                turn.state === 'recording'
+                  ? 'bg-red-500 text-white animate-pulse'
+                  : turn.state === 'speaking'
+                    ? 'bg-green-500 text-white'
+                    : turn.state === 'processing'
+                      ? 'bg-v2-accent/10 text-v2-text-muted'
+                      : turn.state === 'error'
+                        ? 'bg-red-500/10 text-red-500'
+                        : 'bg-v2-accent/10 text-v2-accent hover:bg-v2-accent/20'
+              }`}
+            >
+              {turn.state === 'recording' ? (
+                <Square className="w-4 h-4" />
+              ) : turn.state === 'speaking' ? (
+                <Volume2 className="w-4 h-4" />
+              ) : turn.state === 'processing' ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Mic className="w-4 h-4" />
+              )}
+            </button>
+          ) : (
+            <VoiceRecorderButton
+              onTranscript={handleVoiceTranscript}
+              onPartialTranscript={handlePartialTranscript}
+              onError={setError}
+              disabled={loading}
+              gradeLevel={grade}
+              language="am"
+              streaming
+            />
+          )}
+          <div className="relative flex-1">
+            {(turn.state === 'recording' || turn.state === 'speaking') && (
+              <div className="absolute inset-0 z-10 pointer-events-none">
+                <WaveAnimation
+                  audioLevel={turn.audioLevel}
+                  source={turn.state === 'speaking' ? 'speaker' : 'mic'}
+                  className="w-full h-full"
+                />
+              </div>
+            )}
+            <input
+              type="text"
+              value={question}
+              onChange={e => { setQuestion(e.target.value); setIsListening(false) }}
+              onKeyDown={e => e.key === 'Enter' && askQuestion()}
+              placeholder={isListening || turn.state === 'recording' ? ta('listening') : ta('example_placeholder')}
+              className={`flex-1 w-full px-4 py-3 border rounded-lg text-sm bg-v2-surface text-v2-text-primary focus:outline-none focus:ring-1 focus:ring-v2-accent ${
+                isListening || turn.state === 'recording' ? 'border-v2-accent border-dashed' : 'border-v2-border'
+              } ${turn.state === 'speaking' ? 'border-green-500/50' : ''}`}
+            />
+          </div>
           <button
             data-ask-button
             onClick={askQuestion}
-            disabled={loading || !question.trim()}
+            disabled={loading || !question.trim() || turn.state !== 'idle'}
             className="px-6 py-3 bg-v2-accent text-v2-inverted rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-opacity"
           >
             {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> {ta('thinking')}...</> : <><Send className="w-4 h-4" /> {ta('ask_button')}</>}
@@ -254,9 +337,18 @@ export default function AskPage() {
         </div>
       )}
 
-      {answer && (
+      {turn.state === 'processing' && !turnAnswer && (
+        <div className="rounded-[20px] border border-v2-border bg-v2-bg p-8 text-center">
+          <div className="flex items-center justify-center gap-3">
+            <Loader2 className="w-5 h-5 animate-spin text-v2-accent" />
+            <p className="text-sm text-v2-text-muted">{ta('thinking')}</p>
+          </div>
+        </div>
+      )}
+
+      {(answer || turnAnswer) && (
         <div className="rounded-[20px] border border-v2-border bg-v2-bg p-6">
-          {!loading && (
+          {!loading && !turnAnswer && (
             <div className="flex items-center gap-2 text-xs text-v2-text-muted mb-4 pb-3 border-b border-v2-border">
               <MessageSquare className="w-4 h-4" />
               <span className="font-mono">{selectedModel}</span>
@@ -265,20 +357,26 @@ export default function AskPage() {
               </span>
             </div>
           )}
-          <MarkdownRenderer content={answer} />
+          <MarkdownRenderer content={turnAnswer || answer || ''} />
           {loading && (
             <div className="flex items-center gap-2 mt-4 text-xs text-v2-text-muted">
               <Loader2 className="w-3 h-3 animate-spin" />
               <span>{statusText || ta('calling_model', { model: selectedModel || 'model' })}</span>
             </div>
           )}
-          {!loading && (
+          {turn.state === 'processing' && (
+            <div className="flex items-center gap-2 mt-4 text-xs text-v2-text-muted">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span>{ta('thinking')}</span>
+            </div>
+          )}
+          {!loading && !turnAnswer && (
             <div className="mt-4 pt-3 border-t border-v2-border flex items-center gap-2">
-              <TTSPlayButton text={answer} language="am" />
+              <TTSPlayButton text={answer!} language="am" />
               <span className="text-xs text-v2-text-muted">{ta('listen')}</span>
             </div>
           )}
-          {!loading && sources.length > 0 && (
+          {!loading && !turnAnswer && sources.length > 0 && (
             <div className="mt-4 pt-3 border-t border-v2-border">
               <p className="text-xs text-v2-text-muted font-medium mb-2">{ta('sources')}</p>
               <div className="flex flex-wrap gap-2">
@@ -293,7 +391,7 @@ export default function AskPage() {
         </div>
       )}
 
-      {!answer && !loading && !error && (
+      {!answer && !turnAnswer && !loading && !error && turn.state === 'idle' && (
         <div className="text-center py-16">
           <MessageSquare className="w-12 h-12 text-v2-text-muted/20 mx-auto mb-3" />
           <p className="text-v2-text-muted font-medium">{ta('no_questions')}</p>

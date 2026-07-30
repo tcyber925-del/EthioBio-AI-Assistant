@@ -30,11 +30,13 @@ export interface StreamChunk {
   error: string | null
   status: boolean
   metadata?: Record<string, unknown>
+  audio_b64?: string
 }
 
 export type StreamCallbacks = {
   onStatus?: (status: string) => void
   onToken?: (token: string) => void
+  onAudio?: (base64: string) => void
   onMetadata?: (metadata: Record<string, unknown>) => void
   onError?: (error: string) => void
   onDone?: () => void
@@ -92,6 +94,10 @@ export async function streamFetch(
         if (chunk.error) {
           callbacks.onError?.(chunk.error)
           return
+        }
+        if (chunk.audio_b64) {
+          callbacks.onAudio?.(chunk.audio_b64)
+          continue
         }
         if (chunk.status) {
           callbacks.onStatus?.(chunk.delta)

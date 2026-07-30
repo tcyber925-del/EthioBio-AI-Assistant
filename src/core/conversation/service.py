@@ -370,7 +370,7 @@ class ConversationService:
                 chunk_size = 15 * 1024
                 for i in range(0, len(audio), chunk_size):
                     b64 = base64.b64encode(audio[i : i + chunk_size]).decode()
-                    chunk = TokenChunk(delta="", node="tutor", done=True, audio_b64=b64)
+                    chunk = TokenChunk(delta="", node="audio", audio_b64=b64)
                     yield f"data: {chunk.model_dump_json()}\n\n"
             except Exception as tts_e:
                 logger.warning("voice_turn_tts_failed", error=str(tts_e))

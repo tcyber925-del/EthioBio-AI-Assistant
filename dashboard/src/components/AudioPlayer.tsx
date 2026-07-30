@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useCallback, useEffect } from 'react'
+import { useRef, useCallback, useEffect, forwardRef, useImperativeHandle } from 'react'
 
 export interface AudioPlayerHandle {
   enqueueChunk: (base64Mp3: string) => void
@@ -15,7 +15,8 @@ interface AudioPlayerProps {
 
 const MIME_TYPE = 'audio/mpeg'
 
-export function AudioPlayer({ onStateChange, onError }: AudioPlayerProps) {
+export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(
+  function AudioPlayer({ onStateChange, onError }, ref) {
   const mediaSourceRef = useRef<MediaSource | null>(null)
   const sourceBufferRef = useRef<SourceBuffer | null>(null)
   const queueRef = useRef<Uint8Array[]>([])
@@ -181,7 +182,8 @@ export function AudioPlayer({ onStateChange, onError }: AudioPlayerProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  return null
-}
+  useImperativeHandle(ref, () => ({ enqueueChunk, endStream, stop }), [enqueueChunk, endStream, stop])
 
-export { AudioPlayer as AudioPlayerComponent }
+  return null
+  },
+)
