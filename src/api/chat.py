@@ -173,7 +173,7 @@ async def chat_voice_turn(
     audio: UploadFile = File(...),
     grade_level: Optional[int] = Form(None),
     topic: Optional[str] = Form(None),
-    language: str = Form("am"),
+    language: Optional[str] = Form(None),
     model: Optional[str] = Form(None),
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
@@ -192,12 +192,13 @@ async def chat_voice_turn(
     if not transcript or not transcript.strip():
         raise HTTPException(status_code=400, detail="Speech recognition returned empty transcript")
 
+    effective_language = language or result.language or "en"
     conv_request = ConversationRequest(
         user_id=str(current_user.id),
         conversation_id="",
         session_id="",
         transcript=transcript,
-        language=language,
+        language=effective_language,
         modality="voice",
         metadata={
             "topic": topic or "",
@@ -209,7 +210,8 @@ async def chat_voice_turn(
     logger.info(
         "voice_turn_telemetry",
         user_id=str(current_user.id),
-        language=language,
+        language=effective_language,
+        stt_detected_language=result.language,
         transcript_length=len(transcript),
         topic=topic,
         grade_level=grade_level,

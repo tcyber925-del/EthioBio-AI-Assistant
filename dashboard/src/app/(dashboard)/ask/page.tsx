@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { Send, MessageSquare, AlertTriangle, BookOpen, Loader2, RefreshCw, ClipboardCheck, Mic, Square, Volume2 } from 'lucide-react'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
@@ -28,6 +28,7 @@ export default function AskPage() {
   const router = useRouter()
   const ta = useTranslations('ask')
   const tc = useTranslations('common')
+  const locale = useLocale()
 
   useEffect(() => {
     if (!isAuthenticated()) { router.push('/login'); return }
@@ -52,7 +53,7 @@ export default function AskPage() {
 
   const turn = useVoiceTurn({
     gradeLevel: grade,
-    language: 'am',
+    language: locale,
     selectedModel,
     onTranscript: (text) => {
       setQuestion(text)
