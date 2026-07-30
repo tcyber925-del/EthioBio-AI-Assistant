@@ -414,8 +414,11 @@ async def test_app_and_client():
     with (
         patch.object(knowledge_module, "_get_registry", return_value=test_registry),
         patch.object(knowledge_module, "_get_producer", return_value=None),
+        patch.object(knowledge_module, "_run_pipeline_inline"),
     ):
-        app.dependency_overrides.clear()
+        app.dependency_overrides[knowledge_module._get_registry] = lambda: test_registry
+        app.dependency_overrides[knowledge_module._get_storage] = lambda: test_storage
+        app.dependency_overrides[knowledge_module._get_producer] = lambda: None
         yield app, factory, test_storage
 
     await engine.dispose()
