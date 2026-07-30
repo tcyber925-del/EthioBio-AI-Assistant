@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.auth import get_current_user
+from src.config import settings
 from src.core.conversation.service import ConversationService
 from src.database.models import User
 from src.database.session import get_session
@@ -162,6 +163,11 @@ async def chat_voice_chunk(
     return result
 
 
+@router.get("/voice/turn")
+async def chat_voice_turn_status():
+    return {"enabled": settings.voice_turn_enabled}
+
+
 @router.post("/voice/turn")
 async def chat_voice_turn(
     audio: UploadFile = File(...),
@@ -172,6 +178,8 @@ async def chat_voice_turn(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
+    if not settings.voice_turn_enabled:
+        raise HTTPException(status_code=404, detail="Voice turn endpoint is disabled")
     audio_bytes = await audio.read()
     err = validate_audio_size(audio_bytes)
     if err:
@@ -196,6 +204,15 @@ async def chat_voice_turn(
             "grade_level": grade_level or "",
             "model": model or "",
         },
+    )
+
+    logger.info(
+        "voice_turn_telemetry",
+        user_id=str(current_user.id),
+        language=language,
+        transcript_length=len(transcript),
+        topic=topic,
+        grade_level=grade_level,
     )
 
     return StreamingResponse(

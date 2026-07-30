@@ -109,6 +109,8 @@ class Settings(BaseSettings):
     audio_storage_path: str = "./data/audio_recordings"
     audio_retention_days: int = 90
 
+    voice_turn_enabled: bool = False  # Feature flag: single-tap voice conversation (Phase 2)
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
