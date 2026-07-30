@@ -111,7 +111,7 @@ Accepted — result of a grilling session on 2026-07-10 that revised the origina
 
 10. **Monitoring = Sentry Free only.** Drop Jaeger / Prometheus / Grafana sidecars (Railway Free can't host them). SDK + Sentry DSN env var. OTel SDKs stay in code but emit to Sentry via the Sentry OTel bridge (or no-op until needed).
 
-11. **CI/CD = GitHub Actions lint + typecheck + smoke test on PR.** Railway auto-deploys from `main` via its GitHub integration. `railway up` only as a manual fallback.
+11. **CI/CD = GitHub Actions full pipeline.** On PR: lint, typecheck, test, security scan, i18n check, dashboard build, Dockerfile lint (hadolint). On push to `main`: deploy API to Railway + dashboard to Vercel via CI (not GitHub auto-deploy). Railway/Vercel GitHub integrations disabled — CI is the sole deployer.
 
 12. **Rollback = Railway redeploy previous deployment.** One click. No auto-rollback on health-check failure (out of scope for Free tier).
 
@@ -255,10 +255,10 @@ Cross-reference between the original 18-phase plan and the actual codebase state
 | 10 Security            | Partial       | Existing `add_rate_limit_middleware` + `src/api/auth.py` need hardened secrets + headers         |
 | 11 Observability       | Partial       | `/health`, `/health/modules`, `/metrics` exist. Need `/readiness` + `/liveness` distinction      |
 | 12 Monitoring          | **Revised**   | Sentry Free replaces Jaeger/Prometheus/Grafana stack (can't host sidecars on Free tier)          |
-| 13 CI/CD               | TODO          | GitHub Actions file to create; Railway GitHub integration to enable                              |
-| 14 Vercel deploy       | TODO          | `vercel.json` to create; dashboard preview deploy to test                                        |
+| 13 CI/CD               | **Done**      | GitHub Actions: PR = lint+test+security+hadolint. Push main = deploy to Railway+Vercel. Need RAILWAY_TOKEN + VERCEL_TOKEN secrets. |
+| 14 Vercel deploy       | **Done**      | `vercel.json` exists; deployed via CI on push to main                                              |
 | 15 Custom domains      | **Deferred**  | Use platform subdomains for now                                                                  |
-| 16 Deploy automation   | Partial       | Railway GitHub integration handles this once enabled; needs PR gate in Actions                    |
+| 16 Deploy automation   | **Done**      | CI deploys on push to main. Disable Railway/Vercel GitHub auto-deploy — CI is sole deployer.       |
 | 17 Rollback strategy   | **Done**      | Railway built-in redeploy previous deployment                                                     |
 | 18 Production checklist| TODO          | To be run manually before declaring "prod"                                                       |
 
