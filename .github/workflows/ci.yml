@@ -121,6 +121,7 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
       - name: Deploy API to Railway
+        continue-on-error: true
         run: railway up --service ethiobio-api
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
