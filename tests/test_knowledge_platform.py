@@ -411,15 +411,18 @@ async def test_app_and_client():
     app = FastAPI()
     app.include_router(knowledge_module.router)
 
+    _orig_get_registry = knowledge_module._get_registry
+    _orig_get_storage = knowledge_module._get_storage
+    _orig_get_producer = knowledge_module._get_producer
+    app.dependency_overrides[_orig_get_registry] = lambda: test_registry
+    app.dependency_overrides[_orig_get_storage] = lambda: test_storage
+    app.dependency_overrides[_orig_get_producer] = lambda: None
     with (
         patch.object(knowledge_module, "_get_registry", return_value=test_registry),
         patch.object(knowledge_module, "_get_storage", return_value=test_storage),
         patch.object(knowledge_module, "_get_producer", return_value=None),
         patch.object(knowledge_module, "_run_pipeline_inline"),
     ):
-        app.dependency_overrides[knowledge_module._get_registry] = lambda: test_registry
-        app.dependency_overrides[knowledge_module._get_storage] = lambda: test_storage
-        app.dependency_overrides[knowledge_module._get_producer] = lambda: None
         yield app, factory, test_storage
 
     await engine.dispose()
