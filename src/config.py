@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     vector_store_path: str = "./data/vectors_new"
     collection_name: str = "ethiobio_curriculum"
     store_backend: str = "pgvector"  # always pgvector
+    enable_reranker: bool = True  # cross-encoder reranker; disable on memory-limited hosts
 
     gemini_api_key: str = ""
     groq_api_key: str = ""

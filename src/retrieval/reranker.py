@@ -6,6 +6,8 @@ with much higher accuracy than bi-encoder embeddings alone.
 
 import structlog
 
+from src.config import settings
+
 logger = structlog.get_logger()
 
 DEFAULT_RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
@@ -15,6 +17,9 @@ _cross_encoder_model = None
 
 def _get_or_create_cross_encoder(model_name: str = DEFAULT_RERANKER_MODEL):
     global _cross_encoder_model
+    if not settings.enable_reranker:
+        logger.info("reranker_disabled_by_config")
+        return None
     if _cross_encoder_model is None:
         try:
             from sentence_transformers import CrossEncoder

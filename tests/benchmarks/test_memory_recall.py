@@ -3,7 +3,6 @@ from uuid import uuid4
 
 import pytest
 
-
 TEST_USER_ID = uuid4()
 
 
