@@ -11,7 +11,13 @@ N_RESULTS = 8
 # Front-matter offset: PDF page number - textbook page number per grade
 # Each textbook PDF has N front-matter pages (cover, copyright, TOC) before
 # the printed textbook page 1 begins. Subtract this offset when displaying.
-PAGE_OFFSET = {9: 7, 10: 6, 11: 10, 12: 5}
+#
+# NOTE: Grade 10 is intentionally absent. It was re-ingested (d8feb30) from a
+# clean-text PDF and now stores PRINTED page numbers extracted from page
+# footers by scripts/ingest_curriculum.py:_extract_page_number(). Applying an
+# offset here would double-correct citations by ~6 pages. Grades 9/11/12 still
+# store raw 1-indexed PDF page numbers and keep their offsets until re-ingested.
+PAGE_OFFSET = {9: 7, 11: 10, 12: 5}
 
 
 def _correct_page(page_number: int, grade_level: int) -> int:
