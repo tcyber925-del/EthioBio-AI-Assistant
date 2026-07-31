@@ -88,6 +88,7 @@ Read the relevant file before working in that area:
 10. **Graph nodes use structlog, not stdlib logging** — switching `import logging` to `import structlog` in graph node files fixed 7 previously-failing agentic e2e tests.
 11. **Depends captures function objects at import time** — `patch.object` on a function used with `Depends()` is a no-op; use `app.dependency_overrides` instead.
 12. **Telegram mock must signal `TokenChunk(done=True)`** — test mocks for `run_graph` must put `TokenChunk(delta="", node="tutor", done=True)` into `token_queue` to break the `_stream_and_edit` loop.
+13. **Never default STT language to `"am"`** — force Amharic even for English speakers. Default to `None`/`""` (auto-detect), then `result.language or "en"`. Whisper reports full names (`"english"`, `"amharic"`); use `normalize_language_code()` (`src/voice/providers/types.py`) before comparing to `LanguageEnum`. <!-- retire_when: observable -->
 
 ## Maintenance
 

@@ -60,32 +60,6 @@ class RetrievalFilter:
         return {"$and": filters}
 
 
-def _build_bm25_lazy(adapter: "VectorStoreAdapter") -> None:
-    """Build BM25 index synchronously using VectorStoreAdapter."""
-    try:
-        import asyncio
-
-        loop = asyncio.get_event_loop()
-        if adapter.vector_store._use_pgvector:
-            pg = adapter.vector_store._get_pg()
-            all_docs = loop.run_until_complete(pg.get_all())
-        else:
-            collection = adapter.vector_store._get_collection()
-            if collection is None:
-                return
-            all_docs = collection.get(include=["documents", "metadatas"])
-        if all_docs["documents"]:
-            adapter.bm25_index.clear()
-            adapter.bm25_index.build(
-                documents=all_docs["documents"],
-                ids=all_docs["ids"],
-                metadatas=all_docs["metadatas"],
-            )
-            logger.info("bm25_index_built_lazy", count=len(all_docs["documents"]))
-    except Exception:
-        logger.exception("bm25_lazy_build_failed")
-
-
 class VectorStoreAdapter:
     def __init__(
         self,
@@ -154,7 +128,7 @@ class VectorStoreAdapter:
         fetch_k = max(n_results * 2, 10)
 
         dense_results = await self._dense_search_raw(query, fetch_k, filter_obj)
-        bm25_results = self._bm25_search_raw(query, fetch_k, grade_level, source_type)
+        bm25_results = await self._bm25_search_raw(query, fetch_k, grade_level, source_type)
 
         merged = self._merge_results(dense_results, bm25_results)
 
@@ -230,7 +204,7 @@ class VectorStoreAdapter:
             )
         return retrieved
 
-    def _bm25_search_raw(
+    async def _bm25_search_raw(
         self,
         query: str,
         n_results: int,
@@ -240,7 +214,7 @@ class VectorStoreAdapter:
         """BM25 search returning raw dicts for merging."""
         if not self.bm25_index.exists():
             try:
-                _build_bm25_lazy(self)
+                await self.build_bm25_index()
             except Exception:
                 logger.exception("bm25_lazy_build_failed")
             if not self.bm25_index.exists():

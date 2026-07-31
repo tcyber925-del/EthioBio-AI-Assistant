@@ -392,6 +392,7 @@ class ConversationService:
                 "model_used": result.model_used,
                 "confidence": result.confidence,
                 "sources": result.sources,
+                "session_id": result.session_id,
                 **gamification,
                 "status": result.status,
             }

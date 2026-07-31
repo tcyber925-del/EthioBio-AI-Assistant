@@ -49,6 +49,7 @@ async def handle_quiz_voice_answer(update: Update, context: ContextTypes.DEFAULT
         audio_bytes = await _download_voice(message)
         language = await _resolve_language(user.id, context)
         transcript = await _registry.transcribe(audio_bytes, language=language)
+        effective_language = language or transcript.language or "en"
     except Exception as e:
         logger.error("quiz_voice_stt_failed", error=str(e))
         await processing.edit_text("Sorry, could not process your voice.")
@@ -60,7 +61,7 @@ async def handle_quiz_voice_answer(update: Update, context: ContextTypes.DEFAULT
             transcript=transcript.text,
             session=db,
             user_id=str(user.id),
-            language=language,
+            language=effective_language,
             mime_type="audio/ogg",
             direction="user",
             modality="quiz_answer",
@@ -92,7 +93,7 @@ async def _resolve_language(telegram_id: int, context) -> str:
     if user and user.language:
         lang = user.language
         return "" if lang == "both" else lang
-    return "am"
+    return ""
 
 
 async def _process_short_answer(

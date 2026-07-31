@@ -6,7 +6,7 @@ import structlog
 from src.config import settings
 
 from .base import SpeechProvider
-from .types import SpeechProviderInfo, TranscriptResult
+from .types import SpeechProviderInfo, TranscriptResult, normalize_language_code
 
 logger = structlog.get_logger(__name__)
 
@@ -52,7 +52,9 @@ class GroqSTTProvider(SpeechProvider):
             raise RuntimeError(f"Groq STT failed: {response.status_code} {response.text}")
 
         result = response.json()
-        detected_language = result.get("language", language or "am")
+        detected_language = (
+            normalize_language_code(result.get("language") or language or "am") or "am"
+        )
         return TranscriptResult(
             text=result["text"],
             language=detected_language,
