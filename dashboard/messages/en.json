@@ -608,7 +608,8 @@
     "voice_error": "Voice input failed. Please try again or type.",
     "listening": "Listening... speak now",
     "listen": "Listen",
-    "take_quiz": "Take Quiz"
+    "take_quiz": "Take Quiz",
+    "new_chat": "New Chat"
   },
   "recovery": {
     "title": "Recovery Dashboard",

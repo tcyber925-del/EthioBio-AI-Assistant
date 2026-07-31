@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { Clock, Loader2, MessageSquare, Search, RefreshCw, AlertCircle } from 'lucide-react'
+import { Loader2, MessageSquare, Plus, Search, RefreshCw, AlertCircle } from 'lucide-react'
 import type { DateGroup, QAPair } from '@/hooks/useConversationHistory'
 
 interface ConversationSidebarProps {
@@ -12,6 +12,7 @@ interface ConversationSidebarProps {
   activeId: string | null
   onSelect: (pair: QAPair) => void
   onRefresh: () => void
+  onNewChat: () => void
 }
 
 export function ConversationSidebar({
@@ -21,6 +22,7 @@ export function ConversationSidebar({
   activeId,
   onSelect,
   onRefresh,
+  onNewChat,
 }: ConversationSidebarProps) {
   const ta = useTranslations('ask')
   const [query, setQuery] = useState('')
@@ -35,15 +37,25 @@ export function ConversationSidebar({
   return (
     <aside className="lg:col-span-1">
       <div className="rounded-[20px] border border-v2-border bg-v2-bg p-4 h-full flex flex-col">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 gap-2">
           <h3 className="verge-label text-v2-text-secondary">{ta('recent_questions')}</h3>
-          <button
-            onClick={onRefresh}
-            disabled={loading}
-            className="text-v2-text-muted hover:text-v2-text-secondary transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={onNewChat}
+              disabled={loading}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-v2-accent text-v2-inverted rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              {ta('new_chat')}
+            </button>
+            <button
+              onClick={onRefresh}
+              disabled={loading}
+              className="text-v2-text-muted hover:text-v2-text-secondary transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
         </div>
 
         <div className="relative mb-3">

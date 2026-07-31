@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
-import { Send, MessageSquare, AlertTriangle, BookOpen, Loader2, RefreshCw, ClipboardCheck, Mic, Square, Volume2 } from 'lucide-react'
+import { Send, MessageSquare, AlertTriangle, BookOpen, Loader2, RefreshCw, ClipboardCheck, Mic, Square, Volume2, Plus } from 'lucide-react'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import ModelSelector from '@/components/ModelSelector'
 import { DashboardLayout } from '@/components/dashboard-v2/DashboardLayout'
@@ -50,6 +50,7 @@ export default function AskPage() {
   const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null)
   const [voiceTurnEnabled, setVoiceTurnEnabled] = useState(false)
   const [turnAnswer, setTurnAnswer] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const turn = useVoiceTurn({
     gradeLevel: grade,
@@ -139,6 +140,19 @@ export default function AskPage() {
     setSources([])
   }
 
+  const handleNewChat = () => {
+    setQuestion('')
+    setAnswer(null)
+    setTurnAnswer(null)
+    setSources([])
+    setConfidence(0)
+    setError(null)
+    setStatusText(null)
+    setActiveHistoryId(null)
+    turn.reset()
+    inputRef.current?.focus()
+  }
+
   const handleVoiceTranscript = (text: string) => {
     setQuestion(text)
     setIsListening(false)
@@ -215,6 +229,13 @@ export default function AskPage() {
             <ClipboardCheck className="w-3.5 h-3.5" />
             {ta('take_quiz')}
           </Link>
+          <button
+            onClick={handleNewChat}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-v2-accent text-v2-inverted rounded-lg hover:opacity-90 transition-opacity"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            {ta('new_chat')}
+          </button>
         </div>
       </div>
 
@@ -287,6 +308,7 @@ export default function AskPage() {
               </div>
             )}
             <input
+              ref={inputRef}
               type="text"
               value={question}
               onChange={e => { setQuestion(e.target.value); setIsListening(false) }}
@@ -413,6 +435,7 @@ export default function AskPage() {
           activeId={activeHistoryId}
           onSelect={handleHistorySelect}
           onRefresh={fetchHistory}
+          onNewChat={handleNewChat}
         />
       </div>
     </DashboardLayout>
