@@ -46,6 +46,7 @@ async def handle_voice_message(update: Update, context: ContextTypes.DEFAULT_TYP
         audio_bytes = await _download_voice(message)
 
         language = await _resolve_language(user.id, context)
+        db_user = await _resolve_db_user(user.id)
 
         transcript = await _registry.transcribe(audio_bytes, language=language)
         effective_language = language or transcript.language or "en"
@@ -55,7 +56,7 @@ async def handle_voice_message(update: Update, context: ContextTypes.DEFAULT_TYP
                 audio_bytes=audio_bytes,
                 transcript=transcript.text,
                 session=db,
-                user_id=str(user.id),
+                user_id=str(db_user.id) if db_user else None,
                 language=effective_language,
                 mime_type="audio/ogg",
                 direction="user",
@@ -160,13 +161,18 @@ async def _download_voice(message) -> bytes:
     return bytes(raw)
 
 
+async def _resolve_db_user(telegram_id: int):
+    """Resolve the linked dashboard account (users.id UUID) for a Telegram user."""
+    async with async_session_factory()() as db:
+        result = await db.execute(select(User).where(User.telegram_id == telegram_id))
+        return result.scalar_one_or_none()
+
+
 async def _resolve_language(telegram_id: int, context) -> str:
     session_lang = context.user_data.get("language")
     if session_lang:
         return "" if session_lang == "both" else session_lang
-    async with async_session_factory()() as db:
-        result = await db.execute(select(User).where(User.telegram_id == telegram_id))
-        user = result.scalar_one_or_none()
+    user = await _resolve_db_user(telegram_id)
     if user and user.language:
         lang = user.language
         return "" if lang == "both" else lang

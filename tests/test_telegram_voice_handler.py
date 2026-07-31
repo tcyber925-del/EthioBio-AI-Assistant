@@ -1,10 +1,12 @@
 import base64
 import json
+import uuid
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from src.core.audio_storage.service import AudioStorageService
 from src.telegram import quiz_voice, voice_handler
 from src.voice.providers.types import normalize_language_code
 
@@ -69,7 +71,7 @@ class TestResolveLanguage:
         mock_session.__aexit__ = AsyncMock(return_value=None)
         mock_factory = MagicMock(return_value=mock_session)
         monkeypatch.setattr(
-            quiz_voice, "async_session_factory", MagicMock(return_value=mock_factory)
+            voice_handler, "async_session_factory", MagicMock(return_value=mock_factory)
         )
         mock_exec = MagicMock()
         mock_exec.scalar_one_or_none.return_value = None
@@ -133,6 +135,7 @@ class TestHandleVoiceMessage:
         transcript = SimpleNamespace(text="What is DNA?", language="en")
         monkeypatch.setattr(voice_handler, "_download_voice", AsyncMock(return_value=b"audio"))
         monkeypatch.setattr(voice_handler, "_resolve_language", AsyncMock(return_value=""))
+        monkeypatch.setattr(voice_handler, "_resolve_db_user", AsyncMock(return_value=None))
         monkeypatch.setattr(
             voice_handler._registry, "transcribe", AsyncMock(return_value=transcript)
         )
@@ -180,6 +183,7 @@ class TestHandleVoiceMessage:
         transcript = SimpleNamespace(text="ሰላም", language="am")
         monkeypatch.setattr(voice_handler, "_download_voice", AsyncMock(return_value=b"audio"))
         monkeypatch.setattr(voice_handler, "_resolve_language", AsyncMock(return_value=""))
+        monkeypatch.setattr(voice_handler, "_resolve_db_user", AsyncMock(return_value=None))
         monkeypatch.setattr(
             voice_handler._registry, "transcribe", AsyncMock(return_value=transcript)
         )
@@ -241,3 +245,155 @@ class TestHandleVoiceMessage:
 
         processing.edit_text.assert_awaited_once()
         assert "couldn't process" in processing.edit_text.await_args.args[0]
+
+    @pytest.mark.asyncio
+    async def test_anonymous_user_save_uses_none_user_id(self, monkeypatch, tmp_path):
+        """Regression: telegram numeric id crashed uuid.UUID() in AudioStorageService.save."""
+        real_storage = AudioStorageService(base_path=str(tmp_path))
+        monkeypatch.setattr(voice_handler, "_audio_storage", real_storage)
+        monkeypatch.setattr(voice_handler, "_download_voice", AsyncMock(return_value=b"audio"))
+        monkeypatch.setattr(voice_handler, "_resolve_language", AsyncMock(return_value=""))
+        monkeypatch.setattr(voice_handler, "_resolve_db_user", AsyncMock(return_value=None))
+        monkeypatch.setattr(
+            voice_handler._registry,
+            "transcribe",
+            AsyncMock(return_value=SimpleNamespace(text="What is DNA?", language="en")),
+        )
+
+        async def fake_stream(conv_request, db):
+            yield f"data: {json.dumps({'delta': '', 'done': True, 'error': None, 'status': False, 'metadata': {'session_id': 's1'}})}\n\n"
+
+        monkeypatch.setattr(voice_handler._conversation_service, "voice_turn_stream", fake_stream)
+        monkeypatch.setattr(voice_handler, "_reply_text", AsyncMock())
+        monkeypatch.setattr(voice_handler, "_reply_audio", AsyncMock())
+
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=None)
+        mock_session.add = MagicMock()
+        mock_factory = MagicMock(return_value=mock_session)
+        monkeypatch.setattr(
+            voice_handler, "async_session_factory", MagicMock(return_value=mock_factory)
+        )
+
+        processing = SimpleNamespace(edit_text=AsyncMock())
+        message = SimpleNamespace(
+            voice=SimpleNamespace(),
+            reply_text=AsyncMock(return_value=processing),
+            reply_voice=AsyncMock(),
+        )
+        update = SimpleNamespace(
+            effective_message=message, effective_user=SimpleNamespace(id=12345)
+        )
+        context = SimpleNamespace(user_data={})
+
+        await voice_handler.handle_voice_message(update, context)
+
+        processing.edit_text.assert_not_awaited()
+        assert not (tmp_path / "12345").exists()
+        assert (tmp_path / "anonymous").exists()
+
+    @pytest.mark.asyncio
+    async def test_linked_user_save_uses_account_uuid(self, monkeypatch, tmp_path):
+        real_storage = AudioStorageService(base_path=str(tmp_path))
+        monkeypatch.setattr(voice_handler, "_audio_storage", real_storage)
+        monkeypatch.setattr(voice_handler, "_download_voice", AsyncMock(return_value=b"audio"))
+        monkeypatch.setattr(voice_handler, "_resolve_language", AsyncMock(return_value="en"))
+        monkeypatch.setattr(
+            voice_handler._registry,
+            "transcribe",
+            AsyncMock(return_value=SimpleNamespace(text="What is DNA?", language="en")),
+        )
+
+        async def fake_stream(conv_request, db):
+            yield f"data: {json.dumps({'delta': '', 'done': True, 'error': None, 'status': False, 'metadata': {'session_id': 's1'}})}\n\n"
+
+        monkeypatch.setattr(voice_handler._conversation_service, "voice_turn_stream", fake_stream)
+        monkeypatch.setattr(voice_handler, "_reply_text", AsyncMock())
+        monkeypatch.setattr(voice_handler, "_reply_audio", AsyncMock())
+
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=None)
+        mock_session.add = MagicMock()
+        mock_factory = MagicMock(return_value=mock_session)
+        monkeypatch.setattr(
+            voice_handler, "async_session_factory", MagicMock(return_value=mock_factory)
+        )
+
+        linked = SimpleNamespace(id=uuid.uuid4())
+        monkeypatch.setattr(voice_handler, "_resolve_db_user", AsyncMock(return_value=linked))
+
+        processing = SimpleNamespace(edit_text=AsyncMock())
+        message = SimpleNamespace(
+            voice=SimpleNamespace(),
+            reply_text=AsyncMock(return_value=processing),
+            reply_voice=AsyncMock(),
+        )
+        update = SimpleNamespace(
+            effective_message=message, effective_user=SimpleNamespace(id=12345)
+        )
+        context = SimpleNamespace(user_data={})
+
+        await voice_handler.handle_voice_message(update, context)
+
+        processing.edit_text.assert_not_awaited()
+        user_dir = tmp_path / str(linked.id)
+        assert user_dir.exists()
+        assert any(user_dir.iterdir())
+
+
+class TestQuizVoice:
+    @pytest.mark.asyncio
+    async def test_quiz_answer_save_uses_valid_uuid_or_none(self, monkeypatch, tmp_path):
+        real_storage = AudioStorageService(base_path=str(tmp_path))
+        monkeypatch.setattr(quiz_voice, "_audio_storage", real_storage)
+        monkeypatch.setattr(quiz_voice, "_download_voice", AsyncMock(return_value=b"audio"))
+        monkeypatch.setattr(quiz_voice, "_resolve_language", AsyncMock(return_value=""))
+        monkeypatch.setattr(quiz_voice, "_resolve_db_user", AsyncMock(return_value=None))
+        monkeypatch.setattr(
+            quiz_voice._registry,
+            "transcribe",
+            AsyncMock(return_value=SimpleNamespace(text="mitochondria", language="en")),
+        )
+        monkeypatch.setattr(
+            quiz_voice, "_process_short_answer", AsyncMock(return_value=quiz_voice.QUIZ_ANSWERING)
+        )
+
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=None)
+        mock_session.add = MagicMock()
+        mock_factory = MagicMock(return_value=mock_session)
+        monkeypatch.setattr(
+            quiz_voice, "async_session_factory", MagicMock(return_value=mock_factory)
+        )
+
+        processing = SimpleNamespace(edit_text=AsyncMock())
+        message = SimpleNamespace(
+            voice=SimpleNamespace(),
+            reply_text=AsyncMock(return_value=processing),
+        )
+        update = SimpleNamespace(
+            effective_message=message, effective_user=SimpleNamespace(id=98765)
+        )
+        context = SimpleNamespace(
+            user_data={
+                "quiz_session": {
+                    "questions": [
+                        {"question_type": "short_answer", "correct_answer": "mitochondria"}
+                    ],
+                    "current": 0,
+                    "answers": [],
+                    "correct": 0,
+                },
+                "language": "en",
+            }
+        )
+
+        result = await quiz_voice.handle_quiz_voice_answer(update, context)
+
+        assert result == quiz_voice.QUIZ_ANSWERING
+        processing.edit_text.assert_not_awaited()
+        assert not (tmp_path / "98765").exists()
+        assert (tmp_path / "anonymous").exists()

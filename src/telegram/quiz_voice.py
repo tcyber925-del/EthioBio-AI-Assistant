@@ -1,10 +1,8 @@
 import structlog
-from sqlalchemy import select
 from telegram.ext import ContextTypes, ConversationHandler
 
 from src.config import settings
 from src.core.audio_storage import AudioStorageService
-from src.database.models import User
 from src.database.session import async_session_factory
 from src.telegram.i18n import t
 from src.telegram.keyboards import (
@@ -12,6 +10,7 @@ from src.telegram.keyboards import (
     quiz_next_keyboard,
     quiz_result_keyboard,
 )
+from src.telegram.voice_handler import _resolve_db_user
 from src.voice.providers import SpeechProviderRegistry
 from telegram import Update
 
@@ -48,6 +47,7 @@ async def handle_quiz_voice_answer(update: Update, context: ContextTypes.DEFAULT
     try:
         audio_bytes = await _download_voice(message)
         language = await _resolve_language(user.id, context)
+        db_user = await _resolve_db_user(user.id)
         transcript = await _registry.transcribe(audio_bytes, language=language)
         effective_language = language or transcript.language or "en"
     except Exception as e:
@@ -60,7 +60,7 @@ async def handle_quiz_voice_answer(update: Update, context: ContextTypes.DEFAULT
             audio_bytes=audio_bytes,
             transcript=transcript.text,
             session=db,
-            user_id=str(user.id),
+            user_id=str(db_user.id) if db_user else None,
             language=effective_language,
             mime_type="audio/ogg",
             direction="user",
@@ -87,9 +87,7 @@ async def _resolve_language(telegram_id: int, context) -> str:
     session_lang = context.user_data.get("language")
     if session_lang:
         return "" if session_lang == "both" else session_lang
-    async with async_session_factory()() as db:
-        result = await db.execute(select(User).where(User.telegram_id == telegram_id))
-        user = result.scalar_one_or_none()
+    user = await _resolve_db_user(telegram_id)
     if user and user.language:
         lang = user.language
         return "" if lang == "both" else lang
@@ -97,7 +95,12 @@ async def _resolve_language(telegram_id: int, context) -> str:
 
 
 async def _process_short_answer(
-    message, processing, context, q: dict, session: dict, user_answer: str,
+    message,
+    processing,
+    context,
+    q: dict,
+    session: dict,
+    user_answer: str,
 ) -> int:
     correct_answer = q.get("correct_answer", "").strip()
     is_correct = user_answer.lower() == correct_answer.lower()
