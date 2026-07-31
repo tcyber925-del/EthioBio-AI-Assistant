@@ -173,8 +173,8 @@ async def _resolve_language(telegram_id: int, context) -> str:
     if session_lang:
         return "" if session_lang == "both" else session_lang
     user = await _resolve_db_user(telegram_id)
-    if user and user.language:
-        lang = user.language
+    if user and user.language_preference:
+        lang = user.language_preference
         return "" if lang == "both" else lang
     return ""
 

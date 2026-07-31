@@ -60,6 +60,39 @@ class TestResolveLanguage:
         assert await voice_handler._resolve_language(12345, context) == "am"
 
     @pytest.mark.asyncio
+    async def test_voice_handler_uses_db_language_preference(self, monkeypatch):
+        """Regression: User model has language_preference, not language."""
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=None)
+        mock_factory = MagicMock(return_value=mock_session)
+        monkeypatch.setattr(
+            voice_handler, "async_session_factory", MagicMock(return_value=mock_factory)
+        )
+        mock_exec = MagicMock()
+        mock_exec.scalar_one_or_none.return_value = SimpleNamespace(language_preference="am")
+        mock_session.execute = AsyncMock(return_value=mock_exec)
+
+        context = SimpleNamespace(user_data={})
+        assert await voice_handler._resolve_language(12345, context) == "am"
+
+    @pytest.mark.asyncio
+    async def test_voice_handler_db_both_means_auto_detect(self, monkeypatch):
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=None)
+        mock_factory = MagicMock(return_value=mock_session)
+        monkeypatch.setattr(
+            voice_handler, "async_session_factory", MagicMock(return_value=mock_factory)
+        )
+        mock_exec = MagicMock()
+        mock_exec.scalar_one_or_none.return_value = SimpleNamespace(language_preference="both")
+        mock_session.execute = AsyncMock(return_value=mock_exec)
+
+        context = SimpleNamespace(user_data={})
+        assert await voice_handler._resolve_language(12345, context) == ""
+
+    @pytest.mark.asyncio
     async def test_voice_handler_both_means_auto_detect(self):
         context = SimpleNamespace(user_data={"language": "both"})
         assert await voice_handler._resolve_language(12345, context) == ""
@@ -79,6 +112,22 @@ class TestResolveLanguage:
 
         context = SimpleNamespace(user_data={})
         assert await quiz_voice._resolve_language(12345, context) == ""
+
+    @pytest.mark.asyncio
+    async def test_quiz_voice_uses_db_language_preference(self, monkeypatch):
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=None)
+        mock_factory = MagicMock(return_value=mock_session)
+        monkeypatch.setattr(
+            voice_handler, "async_session_factory", MagicMock(return_value=mock_factory)
+        )
+        mock_exec = MagicMock()
+        mock_exec.scalar_one_or_none.return_value = SimpleNamespace(language_preference="am")
+        mock_session.execute = AsyncMock(return_value=mock_exec)
+
+        context = SimpleNamespace(user_data={})
+        assert await quiz_voice._resolve_language(12345, context) == "am"
 
 
 class TestStreamVoiceTurn:
