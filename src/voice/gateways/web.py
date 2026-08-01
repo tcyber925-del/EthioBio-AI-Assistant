@@ -16,6 +16,7 @@ class WebVoiceAdapter(BaseVoiceAdapter[TutorRequest, TutorResponse]):
     """
 
     def build_request(self, gateway_input: TutorRequest) -> ConversationRequest:
+        user_id = str(gateway_input.user_id) if gateway_input.user_id else ""
         metadata: dict[str, Any] = {
             "topic": gateway_input.topic or "",
             "grade_level": gateway_input.grade_level or "",
@@ -27,9 +28,9 @@ class WebVoiceAdapter(BaseVoiceAdapter[TutorRequest, TutorResponse]):
             "use_rag": gateway_input.use_rag,
         }
         if gateway_input.user_id:
-            metadata["user_id"] = gateway_input.user_id
+            metadata["user_id"] = user_id
         return ConversationRequest(
-            user_id=gateway_input.user_id or "",
+            user_id=user_id,
             conversation_id="",
             session_id=gateway_input.session_id or "",
             transcript=gateway_input.question,

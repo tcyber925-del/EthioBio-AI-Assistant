@@ -438,3 +438,35 @@ class TestVoiceMetrics:
         args = mock_record.call_args[0]
         assert args[1] == "edge-tts"
         assert args[0] > 0
+
+
+class TestWebVoiceAdapterUserId:
+    def test_user_id_normalized_to_string(self):
+        from uuid import UUID
+
+        from src.schemas.chat import TutorRequest
+        from src.voice.gateways.web import WebVoiceAdapter
+
+        uid = UUID("00000000-0000-0000-0000-000000000001")
+        request = TutorRequest(user_id=uid, question="What is a cell?")
+        conv = WebVoiceAdapter().build_request(request)
+        assert conv.user_id == "00000000-0000-0000-0000-000000000001"
+        assert conv.metadata["user_id"] == "00000000-0000-0000-0000-000000000001"
+        assert isinstance(conv.user_id, str)
+
+    def test_user_id_string_passthrough(self):
+        from src.schemas.chat import TutorRequest
+        from src.voice.gateways.web import WebVoiceAdapter
+
+        request = TutorRequest(
+            user_id="00000000-0000-0000-0000-000000000001", question="What is a cell?"
+        )
+        conv = WebVoiceAdapter().build_request(request)
+        assert conv.user_id == "00000000-0000-0000-0000-000000000001"
+
+    def test_user_id_none_becomes_empty(self):
+        from src.schemas.chat import TutorRequest
+        from src.voice.gateways.web import WebVoiceAdapter
+
+        conv = WebVoiceAdapter().build_request(TutorRequest(question="What is a cell?"))
+        assert conv.user_id == ""
