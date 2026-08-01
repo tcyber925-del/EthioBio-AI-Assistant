@@ -122,6 +122,7 @@ class ConversationService:
             if generate_diagram and topic and grade_level:
                 try:
                     from src.agents.diagram_tutor_integration import generate_tutor_diagram
+
                     diagram_data = await generate_tutor_diagram(
                         question=request.transcript,
                         topic=topic,
@@ -274,6 +275,10 @@ class ConversationService:
         except Exception as e:
             chunk = TokenChunk(delta="", done=True, error=str(e))
             yield f"data: {chunk.model_dump_json()}\n\n"
+        finally:
+            if not graph_task.done():
+                graph_task.cancel()
+                await asyncio.gather(graph_task, return_exceptions=True)
 
     async def voice_turn_stream(
         self,
@@ -401,6 +406,10 @@ class ConversationService:
         except Exception as e:
             chunk = TokenChunk(delta="", done=True, error=str(e))
             yield f"data: {chunk.model_dump_json()}\n\n"
+        finally:
+            if not graph_task.done():
+                graph_task.cancel()
+                await asyncio.gather(graph_task, return_exceptions=True)
 
     async def _resolve_language(
         self,

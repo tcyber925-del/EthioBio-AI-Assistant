@@ -140,13 +140,17 @@ async def run_graph(
     )
 
     if token_queue:
-        token_queue.put_nowait(TokenChunk(delta="Setting up the learning engine...", node="orchestrator", status=True))
+        token_queue.put_nowait(
+            TokenChunk(delta="Setting up the learning engine...", node="orchestrator", status=True)
+        )
 
     router = ModelRouter(preferred_model=preferred_model)
     adapter = VectorStoreAdapter()
 
     if token_queue:
-        token_queue.put_nowait(TokenChunk(delta="Searching the curriculum...", node="orchestrator", status=True))
+        token_queue.put_nowait(
+            TokenChunk(delta="Searching the curriculum...", node="orchestrator", status=True)
+        )
 
     # Resolve factory: callers pass src.database.session.async_session_factory
     # (a function returning async_sessionmaker). Call once to get the maker,
@@ -206,6 +210,8 @@ async def run_graph(
         raise
     finally:
         await router.close()
+        if token_queue:
+            token_queue.put_nowait(None)
 
     sources = []
     for chunk in result.get("retrieved_chunks", []):
