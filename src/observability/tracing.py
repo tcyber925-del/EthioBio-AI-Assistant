@@ -3,10 +3,43 @@
 Aligns with gen_ai.* attribute naming from OpenTelemetry GenAI semconv (v1.37+).
 """
 
-from opentelemetry import trace
-from opentelemetry.trace import Span
+from contextlib import contextmanager
 
-tracer = trace.get_tracer_provider().get_tracer(__name__)
+try:
+    from opentelemetry import trace
+    from opentelemetry.trace import Span
+
+    _OTEL_AVAILABLE = True
+except ModuleNotFoundError:  # pragma: no cover - exercised when otel not installed
+    _OTEL_AVAILABLE = False
+    trace = None
+    Span = object
+
+
+class _NullSpan:
+    def set_attribute(self, *args: object, **kwargs: object) -> None:
+        pass
+
+    def __enter__(self) -> "_NullSpan":
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        pass
+
+
+class _NullTracer:
+    @contextmanager
+    def start_as_current_span(self, *args: object, **kwargs: object):
+        yield _NullSpan()
+
+    def start_span(self, *args: object, **kwargs: object) -> _NullSpan:
+        return _NullSpan()
+
+
+if _OTEL_AVAILABLE:
+    tracer = trace.get_tracer_provider().get_tracer(__name__)
+else:
+    tracer = _NullTracer()
 
 # Well-known span attribute names following OTel GenAI semconv
 GEN_AI_OPERATION_NAME = "gen_ai.operation.name"
