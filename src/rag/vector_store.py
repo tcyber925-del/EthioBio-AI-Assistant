@@ -47,5 +47,8 @@ class VectorStore:
     async def delete_collection(self):
         return await self._pgvector.delete_collection()
 
+    async def delete_by_grade(self, grade_level: int) -> int:
+        return await self._pgvector.delete_by_grade(grade_level)
+
     async def count(self) -> int:
         return await self._pgvector.count_async()

@@ -374,15 +374,24 @@ def _extract_heading_info(text: str) -> tuple[str, str]:
     return "", ""
 
 
-def _extract_page_number(page_text: str, pdf_page_num: int, grade: int) -> int:
-    """Extract the printed textbook page number from page footer or estimate from PDF index.
+# Number of front-matter pages (cover, TOC, preface) before content, per grade.
+# Used only as a fallback when no page number can be extracted from the page
+# text itself (printed number in footer/header).
+_FRONT_MATTER_PAGES = {9: 7, 10: 3, 11: 10, 12: 5}
 
-    Tries common Ethiopian textbook footer patterns first;
-    falls back to PDF index - 3 (covers cover/TOC pages before content).
+
+def _extract_page_number(page_text: str, pdf_page_num: int, grade: int) -> int:
+    """Extract the printed textbook page number from the page footer or header.
+
+    Ethiopian textbooks print the page number either in the footer (grades
+    9/10/11) or in the page header (grade 12). Falls back to the PDF index
+    minus the grade's front-matter page count.
     """
     lines = page_text.strip().split('\n')
+    if not lines:
+        return max(1, pdf_page_num - _FRONT_MATTER_PAGES.get(grade, 3))
 
-    # Pattern 1: standalone number in the last few lines — most reliable
+    # Pattern 1: standalone number in the last few lines (footer) — most reliable
     for line in reversed(lines[-3:]):
         line = line.strip()
         if re.match(r'^\d{1,3}$', line):
@@ -402,7 +411,28 @@ def _extract_page_number(page_text: str, pdf_page_num: int, grade: int) -> int:
     if m:
         return int(m.group(1))
 
-    return max(1, pdf_page_num - 3)
+    # Grade 12 prints the page number in the page header (first lines).
+    # Pattern 4: standalone number in the first few lines (header)
+    for line in lines[:3]:
+        line = line.strip()
+        if re.match(r'^\d{1,3}$', line):
+            n = int(line)
+            if 1 <= n <= 600:
+                return n
+
+    header_region = '\n'.join(lines[:3]).strip()
+
+    # Pattern 5: "Grade X Biology N" (number after grade/subject)
+    m = re.search(rf'Grade\s*{grade}\s*Biology[^A-Za-z0-9]*(\d+)', header_region)
+    if m:
+        return int(m.group(1))
+
+    # Pattern 6: "N Grade X Biology" or "N | Grade X Biology" (number before grade/subject)
+    m = re.search(rf'(\d+)\s*[|\u2013\u2014\-]?\s*Grade\s*{grade}\s*Biology', header_region)
+    if m:
+        return int(m.group(1))
+
+    return max(1, pdf_page_num - _FRONT_MATTER_PAGES.get(grade, 3))
 
 
 def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
@@ -761,7 +791,7 @@ async def process_file(
             metadatas=metadatas,
             ids=ids,
         )
-        print(f"    Stored {len(chunks)} chunks in ChromaDB")
+        print(f"    Stored {len(chunks)} chunks in vector store")
         return len(chunks)
     except Exception as e:
         print(f"    Embedding/storage error: {e}")
@@ -810,16 +840,15 @@ async def main():
     if args.clear:
         if args.grade:
             print(f"Clearing vectors for Grade {args.grade} only...")
-            coll = store._get_collection()
-            coll.delete(where={"grade_level": args.grade})
-            print("   Cleared.")
+            deleted = await store.delete_by_grade(args.grade)
+            print(f"   Cleared ({deleted} chunks).")
         else:
             print("Clearing all existing vectors...")
             await store.delete_collection()
             print("   Cleared.")
 
     if args.stats:
-        count = store.count()
+        count = await store.count()
         print("📊 Vector Store Statistics")
         print(f"   Collection: {settings.collection_name}")
         print(f"   Total chunks: {count}")
@@ -879,15 +908,14 @@ async def main():
     print("\nRebuilding BM25 index...")
     from src.retrieval.adapter import VectorStoreAdapter
     adapter = VectorStoreAdapter(vector_store=store)
-    adapter.build_bm25_index()
+    await adapter.build_bm25_index()
     print("   BM25 index rebuilt")
 
-    count = store.count()
+    count = await store.count()
     print("\n✅ Ingestion complete!")
     print(f"   Files processed: {len(files)}")
     print(f"   Total chunks stored: {total_chunks}")
-    print(f"   ChromaDB collection count: {count}")
-    print(f"   Location: {settings.vector_store_path}")
+    print(f"   Vector store count: {count}")
 
 
 if __name__ == "__main__":

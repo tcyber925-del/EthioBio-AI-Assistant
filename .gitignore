@@ -26,6 +26,7 @@ data/vectors/
 data/vectors_new/
 data/chroma/
 data/storage/
+data/bm25_index.pkl
 *.db
 
 # Node

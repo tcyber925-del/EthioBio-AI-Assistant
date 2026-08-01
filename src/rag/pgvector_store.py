@@ -119,6 +119,20 @@ class PGVectorStore:
             await session.commit()
         logger.info("pgvector_collection_cleared")
 
+    async def delete_by_grade(self, grade_level: int) -> int:
+        factory = async_session_factory()
+        async with factory() as session:
+            result = await session.execute(
+                sa_text(
+                    "DELETE FROM knowledge_embeddings "
+                    "WHERE metadata->>'grade_level' = :grade"
+                ),
+                {"grade": str(grade_level)},
+            )
+            await session.commit()
+        logger.info("pgvector_grade_cleared", grade_level=grade_level, deleted=result.rowcount)
+        return result.rowcount
+
     async def count_async(self) -> int:
         factory = async_session_factory()
         async with factory() as session:
