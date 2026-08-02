@@ -20,6 +20,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.sql.schema import FetchedValue
 from sqlalchemy.types import Uuid
 
 from src.database.session import Base
@@ -754,7 +755,10 @@ class MemoryEducationalSummary(Base):
     tutoring_quality_notes: Mapped[str] = mapped_column(Text, nullable=True)
     embedding_id: Mapped[str] = mapped_column(String(100), nullable=True)
     search_vector: Mapped[TSVECTOR] = mapped_column(
-        TSVECTOR().with_variant(Text(), "sqlite"), deferred=True, nullable=True,
+        TSVECTOR().with_variant(Text(), "sqlite"),
+        server_default=FetchedValue(),
+        deferred=True,
+        nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -812,7 +816,10 @@ class ConversationTurn(Base):
     content: Mapped[str] = mapped_column(Text)
     topic: Mapped[str] = mapped_column(String(300), nullable=True, index=True)
     search_vector: Mapped[TSVECTOR] = mapped_column(
-        TSVECTOR().with_variant(Text(), "sqlite"), deferred=True, nullable=True,
+        TSVECTOR().with_variant(Text(), "sqlite"),
+        server_default=FetchedValue(),
+        deferred=True,
+        nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, index=True
@@ -826,10 +833,15 @@ class AudioRecording(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
     user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True,
+        UUID(as_uuid=True),
+        ForeignKey("users.id"),
+        nullable=True,
+        index=True,
     )
     session_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("memory_sessions.session_id"), nullable=True,
+        UUID(as_uuid=True),
+        ForeignKey("memory_sessions.session_id"),
+        nullable=True,
     )
     storage_path: Mapped[str] = mapped_column(String(500))
     transcript: Mapped[str] = mapped_column(Text, default="")
@@ -840,7 +852,9 @@ class AudioRecording(Base):
     direction: Mapped[str] = mapped_column(String(10), default="user")  # "user" | "assistant"
     modality: Mapped[str] = mapped_column(String(20), default="voice")
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utcnow, index=True,
+        DateTime(timezone=True),
+        default=utcnow,
+        index=True,
     )
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -852,7 +866,9 @@ class MemoryEntity(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), index=True,
+        UUID(as_uuid=True),
+        ForeignKey("users.id"),
+        index=True,
     )
     entity_text: Mapped[str] = mapped_column(String(300))
     entity_type: Mapped[str] = mapped_column(String(50))
@@ -1177,9 +1193,7 @@ class Collection(Base):
 class Bookmark(Base):
     __tablename__ = "bookmarks"
 
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, ForeignKey("users.id"), primary_key=True
-    )
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"), primary_key=True)
     ko_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("knowledge_objects.id"), primary_key=True
     )

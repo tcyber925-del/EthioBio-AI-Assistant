@@ -5,7 +5,7 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
-from sqlalchemy import desc, select
+from sqlalchemy import desc, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.auth import get_current_user
@@ -213,7 +213,10 @@ async def get_recent_conversations(
     # Fallback: read from MemorySession educational_context.messages
     ms_query = (
         select(MemorySession)
-        .where(MemorySession.user_id == current_user.id, MemorySession.summary.is_(None))
+        .where(
+            MemorySession.user_id == current_user.id,
+            or_(MemorySession.summary.is_(None), MemorySession.summary == ""),
+        )
         .order_by(desc(MemorySession.last_active_at))
         .limit(limit)
     )
