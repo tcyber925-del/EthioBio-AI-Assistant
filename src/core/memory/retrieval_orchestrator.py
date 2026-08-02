@@ -243,11 +243,15 @@ class RetrievalOrchestrator:
             items = [{k: v} for k, v in filters.items()]
             where = items[0] if len(items) == 1 else {"$and": items}
 
-        raw = await self.vector_store.search(
-            query_embedding=query_embedding,
-            n_results=fetch_size,
-            where=where,
-        )
+        raw: list[dict] = []
+        try:
+            raw = await self.vector_store.search(
+                query_embedding=query_embedding,
+                n_results=fetch_size,
+                where=where,
+            )
+        except Exception as vs_e:
+            logger.warning("vector_search_unavailable", error=str(vs_e))
 
         vector_results: list[MemoryRetrievalResult] = []
         for item in raw:
