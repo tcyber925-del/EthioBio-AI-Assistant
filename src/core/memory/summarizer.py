@@ -122,19 +122,22 @@ class Summarizer:
             embedding = await self.embedder.embed_text(summary_text)
 
             summary_id = uuid.uuid4()
-            vs = self._get_vector_store()
-            await vs.add_memory(
-                embedding=embedding,
-                text=summary_text,
-                metadata={
-                    "user_id": str(session.user_id),
-                    "topic": topic,
-                    "understanding_level": understanding,
-                    "confidence": confidence,
-                    "created_at": datetime.now(timezone.utc).isoformat(),
-                },
-                memory_id=str(summary_id),
-            )
+            try:
+                vs = self._get_vector_store()
+                await vs.add_memory(
+                    embedding=embedding,
+                    text=summary_text,
+                    metadata={
+                        "user_id": str(session.user_id),
+                        "topic": topic,
+                        "understanding_level": understanding,
+                        "confidence": confidence,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                    memory_id=str(summary_id),
+                )
+            except Exception as vs_e:
+                logger.warning("summary_vector_store_unavailable", error=str(vs_e))
 
             db_summary = MemoryEducationalSummary(
                 id=summary_id,
