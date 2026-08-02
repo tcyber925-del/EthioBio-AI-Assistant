@@ -609,7 +609,8 @@
     "listening": "በማዳመጥ ላይ... አሁን ይናገሩ",
     "listen": "አዳምጥ",
     "take_quiz": "ፈተና ውሰድ",
-    "new_chat": "አዲስ ቻት"
+    "new_chat": "አዲስ ቻት",
+    "auth_required": "እባክዎ ለመቀጠል እንደገና ይግቡ"
   },
   "recovery": {
     "due_reviews": "ግምገማ የሚያስፈልጋቸው",

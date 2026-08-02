@@ -47,6 +47,19 @@ export function getUserId(): string | null {
   return _decodedCache?.sub ?? null
 }
 
+export async function initAuth(): Promise<void> {
+  if (_tokenCache || _decodedCache) return
+  if (!isAuthenticated()) return
+  try {
+    const res = await fetch("/auth/me", { credentials: "include" })
+    if (!res.ok) return
+    const me = await res.json()
+    _decodedCache = { sub: me.user_id, role: me.role }
+  } catch {
+    // backend unreachable — leave caches empty
+  }
+}
+
 export function getUserRole(): string {
   if (_decodedCache?.role) return _decodedCache.role
   const match = document.cookie.match(/(?:^|;\s*)user_role=([^;]*)/)

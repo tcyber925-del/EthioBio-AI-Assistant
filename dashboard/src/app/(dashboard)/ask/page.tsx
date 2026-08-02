@@ -14,7 +14,7 @@ import { TTSPlayButton } from '@/components/TTSPlayButton'
 import { VoiceRecorderButton } from '@/components/VoiceRecorderButton'
 import { AudioPlayer, type AudioPlayerHandle } from '@/components/AudioPlayer'
 import { WaveAnimation } from '@/components/WaveAnimation'
-import { getToken, getUserId, isAuthenticated } from '@/lib/auth'
+import { getToken, getUserId, initAuth, isAuthenticated } from '@/lib/auth'
 import { streamFetch } from '@/lib/fetch'
 import { useVoiceTurn } from '@/hooks/useVoiceTurn'
 import { isVoiceTurnEnabled } from '@/lib/voice-turn'
@@ -31,7 +31,14 @@ export default function AskPage() {
   const locale = useLocale()
 
   useEffect(() => {
-    if (!isAuthenticated()) { router.push('/login'); return }
+    let cancelled = false
+    initAuth().then(() => {
+      if (cancelled) return
+      if (!isAuthenticated() || !getUserId()) router.push('/login')
+    })
+    return () => {
+      cancelled = true
+    }
   }, [router])
 
   const [question, setQuestion] = useState('')
@@ -80,6 +87,12 @@ export default function AskPage() {
 
   const askQuestion = async () => {
     if (!question.trim()) return
+    const userId = getUserId()
+    if (!userId) {
+      setError(ta('auth_required'))
+      router.push('/login')
+      return
+    }
     setLoading(true)
     setStatusText('Analyzing your question...')
     setError(null)
@@ -88,7 +101,7 @@ export default function AskPage() {
 
     const endpoint = mode === 'graph' ? '/graph/chat' : '/chat'
     const body = {
-      user_id: getUserId() || '00000000-0000-0000-0000-000000000001',
+      user_id: userId,
       question: question.trim(),
       grade_level: grade,
       model: selectedModel,
@@ -173,6 +186,7 @@ export default function AskPage() {
       const token = getToken()
       const res = await fetch('/chat/tts', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),

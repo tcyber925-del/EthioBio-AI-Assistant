@@ -6,8 +6,14 @@ export async function fetchWithTimeout(url: string, options: RequestInit = {}, t
   const controller = new AbortController()
   const id = setTimeout(() => controller.abort(), timeout)
   try {
+    const token = getToken()
+    const headers: Record<string, string> = {
+      ...((options.headers as Record<string, string>) ?? {}),
+    }
+    delete headers['Authorization']
+    if (token) headers['Authorization'] = `Bearer ${token}`
     const cacheBust = url.includes('?') ? `${url}&_t=${Date.now()}` : `${url}?_t=${Date.now()}`
-    const res = await fetch(cacheBust, { ...options, signal: controller.signal })
+    const res = await fetch(cacheBust, { ...options, headers, credentials: 'include', signal: controller.signal })
     if (!res.ok) {
       const text = await res.text().catch(() => '')
       try {
@@ -55,6 +61,7 @@ export async function streamFetch(
   const res = await fetch(url, {
     method: 'POST',
     headers,
+    credentials: 'include',
     body: JSON.stringify({ ...body, stream: true }),
     signal,
   })

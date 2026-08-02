@@ -609,7 +609,8 @@
     "listening": "Listening... speak now",
     "listen": "Listen",
     "take_quiz": "Take Quiz",
-    "new_chat": "New Chat"
+    "new_chat": "New Chat",
+    "auth_required": "Please sign in again to continue"
   },
   "recovery": {
     "title": "Recovery Dashboard",
