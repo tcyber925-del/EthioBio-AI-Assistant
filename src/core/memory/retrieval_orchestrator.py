@@ -155,7 +155,7 @@ class RetrievalOrchestrator:
             )
             .where(
                 ConversationTurn.user_id == user_id,
-                ConversationTurn.search_vector.op("@")(
+                ConversationTurn.search_vector.op("@@")(
                     func.plainto_tsquery("english", text(":query")),
                 ),
             )
@@ -200,7 +200,7 @@ class RetrievalOrchestrator:
             )
             .where(
                 MemoryEducationalSummary.user_id == user_id,
-                MemoryEducationalSummary.search_vector.op("@")(
+                MemoryEducationalSummary.search_vector.op("@@")(
                     func.plainto_tsquery("english", text(":query")),
                 ),
             )
