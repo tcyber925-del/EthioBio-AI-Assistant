@@ -17,7 +17,12 @@ from .base import SpeechProvider
 from .edge_tts import EdgeTTSProvider
 from .gemini import GeminiTTSProvider
 from .groq import GroqSTTProvider
-from .types import SpeechProviderInfo, SynthesisResult, TranscriptResult
+from .types import (
+    SpeechProviderInfo,
+    SynthesisResult,
+    TranscriptResult,
+    resolve_tts_language,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -117,6 +122,11 @@ class SpeechProviderRegistry:
     ) -> SynthesisResult:
         ordered = self._tts_fallback_chain.copy()
 
+        # Platform supports Amharic and English only. Clamp any input
+        # (None/"both"/unsupported codes) so providers never auto-pick
+        # a language outside those two.
+        tts_language = resolve_tts_language(language, text)
+
         last_error: Optional[Exception] = None
         for name in ordered:
             provider = self._tts_providers.get(name)
@@ -129,7 +139,7 @@ class SpeechProviderRegistry:
                 continue
             try:
                 with TTSTimer(name):
-                    result = await provider.synthesize(text, language=language)
+                    result = await provider.synthesize(text, language=tts_language)
                 breaker.record_success()
                 record_tts_request(name, "ok")
                 return result

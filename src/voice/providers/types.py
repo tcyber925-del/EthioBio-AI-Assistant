@@ -12,6 +12,10 @@ _WHISPER_LANGUAGE_NAMES: dict[str, str] = {
 
 _KNOWN_CODES = frozenset({"en", "am", "both"})
 
+# TTS output is only supported in Amharic and English. Anything else
+# (None, "", "both", unsupported codes) must be clamped before synthesis.
+_DEFAULT_TTS_LANGUAGE = "en"
+
 
 def normalize_language_code(language: Optional[str]) -> Optional[str]:
     """Normalize a provider-reported language to an en/am/both code.
@@ -28,6 +32,37 @@ def normalize_language_code(language: Optional[str]) -> Optional[str]:
     if base in _KNOWN_CODES:
         return base
     return _WHISPER_LANGUAGE_NAMES.get(code)
+
+
+def _contains_ethiopic(text: str) -> bool:
+    """True if text contains Ethiopic (Ge'ez) script characters."""
+    return any(
+        0x1200 <= ord(char) <= 0x137F  # Ethiopic
+        or 0x1380 <= ord(char) <= 0x139F  # Ethiopic Supplement
+        or 0x2D80 <= ord(char) <= 0x2DDF  # Ethiopic Extended
+        or 0xAB00 <= ord(char) <= 0xAB2F  # Ethiopic Extended-A
+        for char in text
+    )
+
+
+def resolve_tts_language(language: Optional[str], text: str = "") -> str:
+    """Clamp any TTS language input to a supported code: "am" or "en".
+
+    TTS providers must never receive None/"both"/unsupported codes —
+    Gemini auto-detects the text language and would speak any language,
+    while edge-tts/Azure silently fall back to English voices.
+
+    Resolution order:
+    1. Explicit am/en (incl. locale tags and Whisper full names) wins.
+    2. "both"/None/""/unsupported → sniff the text's script:
+       any Ethiopic character → "am", otherwise "en".
+    """
+    code = normalize_language_code(language)
+    if code == "am" or code == "en":
+        return code
+    if text and _contains_ethiopic(text):
+        return "am"
+    return _DEFAULT_TTS_LANGUAGE
 
 
 @dataclass(frozen=True)

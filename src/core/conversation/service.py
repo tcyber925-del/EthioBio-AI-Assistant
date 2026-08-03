@@ -369,7 +369,12 @@ class ConversationService:
 
             try:
                 tts_result = await _speech_registry.synthesize(
-                    answer_text, language=request.language
+                    answer_text,
+                    language=(
+                        effective_language.value
+                        if hasattr(effective_language, "value")
+                        else str(effective_language)
+                    ),
                 )
                 audio = tts_result.audio_bytes
                 chunk_size = 15 * 1024

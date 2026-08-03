@@ -89,6 +89,7 @@ Read the relevant file before working in that area:
 11. **Depends captures function objects at import time** — `patch.object` on a function used with `Depends()` is a no-op; use `app.dependency_overrides` instead.
 12. **Telegram mock must signal `TokenChunk(done=True)`** — test mocks for `run_graph` must put `TokenChunk(delta="", node="tutor", done=True)` into `token_queue` to break the `_stream_and_edit` loop.
 13. **Never default STT language to `"am"`** — force Amharic even for English speakers. Default to `None`/`""` (auto-detect), then `result.language or "en"`. Whisper reports full names (`"english"`, `"amharic"`); use `normalize_language_code()` (`src/voice/providers/types.py`) before comparing to `LanguageEnum`. <!-- retire_when: observable -->
+14. **Never pass `None`/`"both"`/arbitrary codes as TTS language** — Gemini auto-detects the text's language and will speak any language; edge-tts/Azure silently fall back to English voices. `SpeechProviderRegistry.synthesize()` clamps every call to `"am"`/`"en"` via `resolve_tts_language()` (`src/voice/providers/types.py`, Ethiopic-script sniff for `both`). Don't call providers directly with a raw language; don't bypass the registry. <!-- retire_when: observable -->
 
 ## Maintenance
 

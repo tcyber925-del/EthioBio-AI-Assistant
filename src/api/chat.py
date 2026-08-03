@@ -17,6 +17,7 @@ from src.guardrails.input.conversation_context import ConversationTracker
 from src.guardrails.input.prompt_injection import PromptInjectionDetector
 from src.guardrails.input.sanitizer import InputSanitizer
 from src.schemas.chat import TutorRequest, TutorResponse
+from src.schemas.common import LanguageEnum
 from src.schemas.conversation import ConversationRequest
 from src.voice.audio import guess_mime_from_bytes, validate_audio_size
 from src.voice.gateways import WebVoiceAdapter
@@ -297,7 +298,7 @@ async def handle_chat_request(
 
 class TTSRequest(BaseModel):
     text: str
-    language: str = "am"
+    language: LanguageEnum = LanguageEnum.AM
 
 
 @router.post("/tts")
@@ -308,7 +309,9 @@ async def chat_tts(
     if not request.text.strip():
         raise HTTPException(status_code=400, detail="Text is empty")
 
-    result = await _speech_registry.synthesize(request.text, language=request.language)
+    result = await _speech_registry.synthesize(
+        request.text, language=request.language.value
+    )
     return Response(
         content=result.audio_bytes,
         media_type=f"audio/{result.format}",
