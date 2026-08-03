@@ -14,7 +14,6 @@ jobs:
       - name: Install tools
         run: |
           pip install b2 -q
-          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
 
       - name: Dump database to B2
         env:
@@ -23,10 +22,18 @@ jobs:
           B2_APP_KEY: ${{ secrets.B2_APP_KEY }}
           B2_BUCKET: ${{ secrets.B2_BUCKET }}
         run: |
+          set -eo pipefail
           b2 authorize-account "$B2_KEY_ID" "$B2_APP_KEY"
           TS=$(date -u +%F)
+          # Server is PostgreSQL 18; apt postgresql-client on ubuntu-latest is 16
+          # and refuses to dump newer servers. Use the matching docker image.
+          dump() {
+            docker run --rm postgres:18-alpine pg_dump "$DATABASE_URL" --clean --if-exists --no-owner
+          }
           echo "Dumping database..."
-          pg_dump "$DATABASE_URL" --clean --if-exists --no-owner | gzip | b2 upload-file "$B2_BUCKET" - "ethiobio_prod_$TS.sql.gz"
+          dump > "/tmp/ethiobio_prod_$TS.sql"
+          gzip -c "/tmp/ethiobio_prod_$TS.sql" | b2 upload-file "$B2_BUCKET" - "ethiobio_prod_$TS.sql.gz"
           echo "Uploading latest alias..."
-          pg_dump "$DATABASE_URL" --clean --if-exists --no-owner | gzip | b2 upload-file "$B2_BUCKET" - ethiobio_prod_latest.sql.gz
+          gzip -c "/tmp/ethiobio_prod_$TS.sql" | b2 upload-file "$B2_BUCKET" - ethiobio_prod_latest.sql.gz
+          rm -f "/tmp/ethiobio_prod_$TS.sql"
           echo "Backup complete: ethiobio_prod_$TS.sql.gz"
