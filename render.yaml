@@ -20,8 +20,8 @@ services:
     runtime: docker
     plan: free
     region: frankfurt
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
+    image:
+      url: ghcr.io/tcyber925-del/ethibio-ai-assistant:latest
     healthCheckPath: /liveness
     envVars:
       - fromGroup: ethiobio-app
