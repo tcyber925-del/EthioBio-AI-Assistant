@@ -28,4 +28,4 @@ RUN echo "BUILD_CACHE_BUST=2026-07-18-2"
 
 EXPOSE 8000
 
-CMD alembic upgrade head && python -m uvicorn src.main:app --host 0.0.0.0 --port ${PORT:-8000}
+CMD ["sh", "/app/scripts/render-entrypoint.sh", "bash", "-c", "alembic upgrade head && python -m uvicorn src.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

@@ -1,0 +1,140 @@
+databases:
+  - name: ethiobio-pg
+    databaseName: ethiobio
+    user: ethiobio
+    plan: free
+    postgresMajorVersion: '18'
+    region: frankfurt
+
+services:
+  - type: keyvalue
+    name: ethiobio-kv
+    plan: free
+    region: frankfurt
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: everywhere
+
+  - type: web
+    name: ethiobio-api
+    runtime: image
+    plan: free
+    region: frankfurt
+    image:
+      url: ghcr.io/tcyber925-del/ethiobio-ai-assistant:latest
+    healthCheckPath: /liveness
+    envVars:
+      - fromGroup: ethiobio-app
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ethiobio-pg
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: ethiobio-kv
+          type: keyvalue
+          property: connectionString
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: INTERNAL_API_KEY
+        sync: false
+      - key: OLLAMA_API_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+
+  - type: cron
+    name: ethiobio-reminders
+    runtime: docker
+    schedule: "0 2 * * *"
+    plan: starter
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: sh /app/scripts/render-entrypoint.sh python -m scripts.send_proactive_reminders
+    envVars:
+      - fromGroup: ethiobio-app
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ethiobio-pg
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: ethiobio-kv
+          type: keyvalue
+          property: connectionString
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: INTERNAL_API_KEY
+        sync: false
+      - key: OLLAMA_API_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+
+  - type: cron
+    name: ethiobio-digests
+    runtime: docker
+    schedule: "30 2 * * *"
+    plan: starter
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: sh /app/scripts/render-entrypoint.sh python -m scripts.send_digests
+    envVars:
+      - fromGroup: ethiobio-app
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ethiobio-pg
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: ethiobio-kv
+          type: keyvalue
+          property: connectionString
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: INTERNAL_API_KEY
+        sync: false
+      - key: OLLAMA_API_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+
+envVarGroups:
+  - name: ethiobio-app
+    envVars:
+      - key: OLLAMA_BASE_URL
+        value: https://ollama.com
+      - key: TELEGRAM_WEBHOOK_URL
+        value: https://ethiobio-api.onrender.com/webhook
+      - key: ENABLE_RERANKER
+        value: "false"
+      - key: STORE_BACKEND
+        value: pgvector
+      - key: COLLECTION_NAME
+        value: ethiobio_curriculum
+      - key: VECTOR_STORE_PATH
+        value: /app/data/vectors_new
+      - key: DASHBOARD_URL
+        value: https://ethio-bio-ai-assistant.vercel.app
+      - key: API_BASE_URL
+        value: https://ethiobio-api.onrender.com
