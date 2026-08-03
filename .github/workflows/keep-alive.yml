@@ -9,4 +9,4 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - run: curl -sSf -o /dev/null "https://ethiobio-api.onrender.com/liveness"
+      - run: curl -sSf --max-time 30 -o /dev/null "https://ethiobio-api.onrender.com/liveness"
