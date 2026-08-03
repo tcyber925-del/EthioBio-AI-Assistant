@@ -3,6 +3,9 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
+concurrency:
+  group: render-image-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -22,3 +25,8 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/${{ github.repository }}:latest,ghcr.io/${{ github.repository }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Trigger Render redeploy
+        if: github.event_name == 'push'
+        run: curl -sSf -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
