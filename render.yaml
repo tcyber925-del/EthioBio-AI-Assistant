@@ -21,7 +21,7 @@ services:
     plan: free
     region: frankfurt
     image:
-      url: ghcr.io/tcyber925-del/ethibio-ai-assistant:latest
+      url: ghcr.io/tcyber925-del/ethiobio-ai-assistant:latest
     healthCheckPath: /liveness
     envVars:
       - fromGroup: ethiobio-app
