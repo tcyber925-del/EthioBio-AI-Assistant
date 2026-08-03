@@ -17,7 +17,7 @@ services:
 
   - type: web
     name: ethiobio-api
-    runtime: docker
+    runtime: image
     plan: free
     region: frankfurt
     image:
