@@ -21,6 +21,7 @@ RUN uv pip install --system -r requirements.txt \
     && rm -rf /root/.cache/uv
 
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
+RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='sentence-transformers/all-MiniLM-L6-v2')"
 
 COPY . .
 RUN find /app -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
