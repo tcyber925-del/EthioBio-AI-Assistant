@@ -28,5 +28,5 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Trigger Render redeploy
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && secrets.RENDER_DEPLOY_HOOK_URL != ''
         run: curl -sSf -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
