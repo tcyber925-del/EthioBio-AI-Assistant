@@ -3,7 +3,7 @@ databases:
     databaseName: ethiobio
     user: ethiobio
     plan: free
-    postgresMajorVersion: '16'
+    postgresMajorVersion: '18'
     region: frankfurt
 
 services:
