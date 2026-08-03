@@ -6,7 +6,7 @@
 
 **Architecture:** Replace Railway's services with a Render workspace containing: one **Web Service** (`ethiobio-api`, Docker runtime, holds the API + Telegram bot in webhook mode) — the largest single change is that the bot stops polling and uses a webhook on the API. **Managed Postgres** (pgvector-compatible) replaces the Railway Postgres; **managed Redis (Key Value)** replaces Railway Redis. The always-on reminder loop and proactive reminders move to **Render cron jobs**. The Vercel dashboard stays put and just gets a new `NEXT_PUBLIC_API_URL`. A small `scripts/render-entrypoint.sh` wrapper rewrites Render's `postgresql://` connection strings into the `postgresql+asyncpg://` form the app requires, so no app code changes are needed for the DB.
 
-**Tech Stack:** Render (Docker web service, managed Postgres, Key Value/Redis, cron jobs), PostgreSQL 16 + pgvector extension, Redis, FastAPI/uvicorn, python-telegram-bot webhook mode, Alembic, GitHub Actions (keep-alive + backups stay), Backblaze B2 (backups).
+**Tech Stack:** Render (Docker web service, managed Postgres, Key Value/Redis, cron jobs), PostgreSQL 18 + pgvector extension (prod runs 18.4 — do NOT downgrade), Redis, FastAPI/uvicorn, python-telegram-bot webhook mode, Alembic, GitHub Actions (keep-alive + backups stay), Backblaze B2 (backups).
 
 **Out of scope:** the Vercel dashboard code (only its env var changes), Ollama hosting (stays as Ollama Cloud/API — Render is not used for LLM inference).
 
@@ -68,7 +68,8 @@ Expected: build succeeds (≈10–20 min first time). If it fails, stop — do n
 - [ ] **Step 3: Verify prerequisites**
     - [ ] Render account + a workspace (https://render.com)
     - [ ] The GitHub repo connected to Render (`Settings → GitHub`) for blueprint deploys
-    - [ ] A restorable Postgres backup: confirm a recent object exists in Backblaze B2 `ethiobio-db-backups` (from prior `backup.yml` runs), **and** that the current Railway `DATABASE_SYNC_URL` is reachable (`psql "$DATABASE_SYNC_URL" -c "SELECT 1"`)
+    - [ ] A restorable Postgres backup: confirm a recent object exists in Backblaze B2 `ethiobio-db-backups` (from prior `backup.yml` runs), **and** that the current Railway `DATABASE_SYNC_URL` is reachable (`psql "$DATABASE_SYNC_URL" -c "SELECT 1"`).
+        - **2026-08-03 incident:** backups were silently empty for 23 days — `backup.yml` installed apt `postgresql-client` (pg_dump 16) which refuses to dump the prod PostgreSQL **18.4** server, and the `pg_dump | gzip | b2 upload` pipe had no `pipefail` so a 20-byte empty gzip was uploaded. Fixed in PR #85 (docker `postgres:18-alpine` + temp file + exit-code gate). A fresh full dump was uploaded to B2 the same day. **Also note:** prod is PG 18.4 — keep `postgresMajorVersion: 18` in the blueprint (never 16).
     - [ ] Access to the Railway Dashboard to read the current env block (you copy values, not live traffic)
 
 - [ ] **Step 4: Capture the current Railway env values to a local mirror file (never commit)**
@@ -110,7 +111,7 @@ databases:
     databaseName: ethiobio
     user: ethiobio
     plan: basic-256mb        # switch to "free" for staging (30-day expiry)
-    postgresMajorVersion: 16
+    postgresMajorVersion: 18   # prod is PG 18.4 — never dump 18→16
 
 redis:
   - name: ethiobio-kv
@@ -371,10 +372,11 @@ Once the web service exists, open Service → Environment and set:
 - [ ] **Step 1: Create a full dump of the Railway database** (production DSN from Railway):
 
 ```bash
-pg_dump "$RAILWAY_PG_URL" --no-owner --no-acls \
+docker run --rm postgres:18-alpine pg_dump "$RAILWAY_PG_URL" --no-owner --no-acls \
   --format=custom -f /tmp/ethiobio_site.dump
 ls -lh /tmp/ethiobio_site.dump   # e.g. 1.4 GB
 ```
+Note: use a pg_dump that **matches the server major (18)** — apt `pg_dump` 16 (and anything <18) refuses to dump PG 18.4. The `postgres:18-alpine` docker image is the safe way (same image the fixed `backup.yml` uses).
 
 - [ ] **Step 2: Restore into the fresh Render DB** (use the Render *internal* connection string — public DSN also works but costs egress):
 
