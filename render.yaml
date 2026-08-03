@@ -54,6 +54,7 @@ services:
     runtime: docker
     schedule: "0 2 * * *"
     plan: starter
+    region: frankfurt
     dockerfilePath: ./Dockerfile
     dockerContext: .
     dockerCommand: sh /app/scripts/render-entrypoint.sh python -m scripts.send_proactive_reminders
@@ -88,6 +89,7 @@ services:
     runtime: docker
     schedule: "30 2 * * *"
     plan: starter
+    region: frankfurt
     dockerfilePath: ./Dockerfile
     dockerContext: .
     dockerCommand: sh /app/scripts/render-entrypoint.sh python -m scripts.send_digests
