@@ -50,6 +50,21 @@ Vercel:
 
 - Go to Vercel Dashboard → Deployments → find the previous working deploy → ⋮ → Promote to Production
 
+## Rollback (Render → Railway)
+
+1. Vercel: set `NEXT_PUBLIC_API_URL` back to https://ethiobio-api-production.up.railway.app and redeploy.
+2. Point the Telegram webhook back at Railway:
+
+   ```bash
+   curl "https://api.telegram.org/bot$TOKEN/setWebhook?url=https://ethiobio-api-production.up.railway.app/webhook&secret_token=$TELEGRAM_WEBHOOK_SECRET"
+   ```
+
+3. Pause the Render web service (Render → service → Pause) — keep the Render DB running
+   so you can diff/recover any writes that landed on Render during the pilot.
+4. If the Render DB received writes you need: pg_dump Render → restore into Railway's DB
+   (see [Database Restore](#database-restore)) → `alembic upgrade head` → redeploy Railway.
+5. Restore the keep-alive URL to the Railway `/health` and re-enable it.
+
 ## Database Restore
 
 ### Prerequisites
