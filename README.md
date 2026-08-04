@@ -57,7 +57,7 @@ src/
 │   ├── ollama_client.py        # Ollama API wrapper (chat, embeddings, health)
 │   └── router.py               # ModelRouter — backward-compat wrapper over ProviderManager
 ├── rag/
-│   ├── embedder.py             # Embedding via Ollama or sentence-transformers (dual backend)
+│   ├── embedder.py             # Embedding via fastembed (ONNX) or Ollama fallback
 │   ├── vector_store.py         # pgvector wrapper (delegating — ChromaDB removed)
 │   ├── pgvector_store.py       # Raw pgvector operations
 │   └── retriever.py            # Curriculum search with grade/topic/unit filters

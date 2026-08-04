@@ -5,45 +5,48 @@
 Before deploying to production:
 
 - [ ] CI passes (ruff lint + mypy typecheck + pytest)
-- [ ] `DATABASE_URL` points to the Railway Postgres (not local)
-- [ ] `REDIS_URL` points to Railway Redis (not local)
+- [ ] `DATABASE_URL` points to the Render Postgres (`ethiobio-pg`)
+- [ ] `REDIS_URL` points to Render Redis (`ethiobio-kv`)
 - [ ] `OLLAMA_API_KEY` is valid and not rate-limited
 - [ ] `SENTRY_DSN` is set and Sentry dashboards show green
 - [ ] `BACKBLAZE_B2_KEY_ID` + `BACKBLAZE_B2_APP_KEY` are set
 - [ ] Telegram bot token is valid — `/start` responds
 - [ ] Vercel dashboard builds without errors
-- [ ] Railway service is **Online** — `railway status`
-- [ ] CORS `ALLOWED_ORIGINS` includes the Vercel domain
+- [ ] Render service is **live** — `render services instances -o json` is non-empty
+- [ ] CORS `DASHBOARD_URL` includes the Vercel domain
 
 ## Deploy
 
-### Backend (Railway)
+### Backend (Render)
 
-Push to `main` triggers auto-deploy. Manual:
+Push to `main` runs `.github/workflows/render-image.yml`: builds the GHCR image
+(`ghcr.io/tcyber925-del/ethiobio-ai-assistant:latest`) and calls the Render deploy hook.
+Manual:
 
 ```bash
-cd /app
-railway up --detach           # deploy from local
-railway redeploy --yes        # redeploy last image
-railway deployment list       # check status
+# Trigger a redeploy of the current image
+curl -sSf -X POST "https://api.render.com/deploy/srv-d9obfaou01pc73akt160?key=1UBHLVgO49I"
+# Check status
+~/.local/bin/render deploys list srv-d9obfaou01pc73akt160
+~/.local/bin/render services instances srv-d9obfaou01pc73akt160
 ```
 
 ### Frontend (Vercel)
 
 ```bash
-cd dashboard
-vercel deploy --prod                   # from linked project
-vercel logs --deploy=<deployment-id>   # check build logs
-vercel env add NEXT_PUBLIC_API_URL     # set Railway URL
+vercel --prod                    # deploy from repo root (project rootDirectory=dashboard)
+vercel env add NEXT_PUBLIC_API_URL   # set https://ethiobio-api.onrender.com
 ```
 
 ## Rollback
 
-### Railway
+### Render (API)
 
 ```bash
-railway deployment list                      # find previous SUCCESS deploy
-railway redeploy --deployment=<deployment-id> # roll back to that deploy
+~/.local/bin/render deploys list srv-d9obfaou01pc73akt160   # find previous SUCCESS deploy
+# The CLI cannot promote an old deploy; instead trigger a redeploy of the last good
+# image via the deploy hook, or roll back in the Render dashboard (Deploys → ⋮ → Rollback)
+curl -sSf -X POST "https://api.render.com/deploy/srv-d9obfaou01pc73akt160?key=1UBHLVgO49I"
 ```
 
 Vercel:
@@ -51,6 +54,8 @@ Vercel:
 - Go to Vercel Dashboard → Deployments → find the previous working deploy → ⋮ → Promote to Production
 
 ## Rollback (Render → Railway)
+
+Only relevant if Railway is ever re-activated as a fallback platform. Steps:
 
 1. Vercel: set `NEXT_PUBLIC_API_URL` back to https://ethiobio-api-production.up.railway.app and redeploy.
 2. Point the Telegram webhook back at Railway:
@@ -61,9 +66,9 @@ Vercel:
 
 3. Pause the Render web service (Render → service → Pause) — keep the Render DB running
    so you can diff/recover any writes that landed on Render during the pilot.
-4. If the Render DB received writes you need: pg_dump Render → restore into Railway's DB
+4. If the Render DB received writes you need: dump via the API admin endpoint → restore into Railway's DB
    (see [Database Restore](#database-restore)) → `alembic upgrade head` → redeploy Railway.
-5. Restore the keep-alive URL to the Railway `/health` and re-enable it.
+5. Restore the keep-alive monitor URL to `https://ethiobio-api.onrender.com/liveness` and re-enable it.
 
 ## Database Restore
 
@@ -129,20 +134,44 @@ curl https://ethiobio-api.onrender.com/models     # expect model list
 
 ## Common Incidents
 
-### Bot is down
+### Bot is down / API unreachable
 
-**Symptoms:** Telegram messages get no response; UptimeRobot reports bot endpoint down.
+**Symptoms:** Telegram messages get no response; `curl https://ethiobio-api.onrender.com/liveness` times out or returns HTTP 000.
 
 **Triage:**
 ```bash
-railway logs --service ethiobio-api --limit 50    # check recent logs
-curl https://ethiobio-api-production.up.railway.app/health
+render logs -r srv-d9obfaou01pc73akt160 --limit 50
+curl -m 15 https://ethiobio-api.onrender.com/liveness
 ```
 
 **Resolution:**
 1. If the service is sleeping: wait 10-15s for cold start, UptimeRobot pings every 5 min
-2. If crashed: `railway redeploy --yes`
-3. If the token is revoked: update `TELEGRAM_BOT_TOKEN` in Railway env vars
+2. If crash-looping / no instance: check `render services instances srv-d9obfaou01pc73akt160 -o json` for `[]` and look for `oomKilled` in service events (see [API OOM crash loop](#api-oom-crash-loop))
+3. If crashed: trigger a redeploy via the deploy hook:
+   `curl -sSf -X POST "https://api.render.com/deploy/srv-d9obfaou01pc73akt160?key=1UBHLVgO49I"` (or `render services update srv-d9obfaou01pc73akt160 --plan free`)
+4. If the token is revoked: update `TELEGRAM_BOT_TOKEN` in Render env vars
+
+### API OOM crash loop
+
+**Symptoms:** `curl https://ethiobio-api.onrender.com/health` times out; service web UI shows repeated "OOM" restarts; `render services instances -o json` returns `[]` while the deploy shows `live`.
+
+**Triage:**
+```bash
+# Instance kill reason (oomKilled = memory limit hit)
+curl -sS -H "Authorization: Bearer rnd_NBhFYIhsnL9p9tqpDaggAytb38UN" \
+  "https://api.render.com/v1/services/srv-d9obfaou01pc73akt160/events?limit=20"
+render logs -r srv-d9obfaou01pc73akt160 --limit 80
+```
+
+**Root cause (fixed 2026-08-04):** the free tier caps memory at 512Mi. The app used to preload
+`sentence-transformers`+torch at startup (via `_preload_models` → embedder fallback), which blew
+past 512Mi → OOM kill → crash loop. Fix: dropped torch from both images and requirements; the
+embedder now only uses fastembed (ONNX), falling back to Ollama if fastembed fails.
+
+**Resolution:**
+1. Confirm the running image has no torch: `docker run --rm <image> python -c "import torch"` should raise ModuleNotFoundError
+2. Ensure the embedder log line reads `local_embedder_loaded backend=fastembed`, not the "falling back to sentence-transformers" warning (that path no longer exists)
+3. If the image still OOMs at ~512Mi, the next lever is upgrading the Render plan (`--plan starter`) — avoid re-adding torch
 
 ### Database unreachable
 
@@ -150,15 +179,16 @@ curl https://ethiobio-api-production.up.railway.app/health
 
 **Triage:**
 ```bash
-railway logs --service ethiobio-api --search "database|psycopg|connection" --limit 30
+render logs -r srv-d9obfaou01pc73akt160 --limit 30
+# or search deploy logs
+render logs -r srv-d9obfaou01pc73akt160 --limit 100 | grep -iE "database|psycopg|connection"
 ```
 
 **Resolution:**
-1. Check Railway Postgres status: `railway service postgres` → is it Online?
+1. Check the Render Postgres is Online: Render Dashboard → ethiobio-pg
 2. If Postgres is up but connection fails: verify `DATABASE_URL` has correct host/port/password
-3. If Postgres is down: Railway restarts it automatically within a few minutes
-4. Worst case: Railway Dashboard → Postgres → Restart
-5. If data is lost: follow [Database Restore](#database-restore)
+3. If Postgres is down: Render restarts it automatically within a few minutes
+4. If data is lost: follow [Database Restore](#database-restore)
 
 ### Ollama Cloud rate-limited
 
@@ -166,7 +196,7 @@ railway logs --service ethiobio-api --search "database|psycopg|connection" --lim
 
 **Triage:**
 ```bash
-railway logs --service ethiobio-api --search "ollama|rate|429" --limit 20
+render logs -r srv-d9obfaou01pc73akt160 --limit 100 | grep -iE "ollama|rate|429"
 ```
 
 **Resolution:**
@@ -188,10 +218,10 @@ curl https://ethio-bio-ai-assistant.vercel.app/api/health
 ```
 
 **Resolution:**
-1. If API proxy returns 502: backend is down — see [Bot is down](#bot-is-down)
+1. If API proxy returns `ROUTER_EXTERNAL_TARGET_ERROR` / 502: backend is down — see [Bot is down / API unreachable](#bot-is-down--api-unreachable)
 2. If static assets 404: `vercel deploy --prod` to rebuild
 3. If JS runtime error: check Vercel Build logs for TypeScript/Next.js errors
-4. If CORS error in browser: verify `ALLOWED_ORIGINS` includes the Vercel domain
+4. If CORS error in browser: verify `DASHBOARD_URL` env on Render includes the Vercel domain
 
 ### Sentry alert triggered
 
@@ -200,9 +230,9 @@ curl https://ethio-bio-ai-assistant.vercel.app/api/health
 **Triage:**
 1. Open Sentry → Issues → find the new error group
 2. Check the stack trace and event context (request body, headers, user)
-3. Correlate with Railway logs:
+3. Correlate with Render logs:
    ```bash
-   railway logs --service ethiobio-api --search "<error-fingerprint>" --limit 20
+   render logs -r srv-d9obfaou01pc73akt160 --limit 100 | grep -iE "<error-fingerprint>"
    ```
 
 **Resolution:**
@@ -210,6 +240,34 @@ curl https://ethio-bio-ai-assistant.vercel.app/api/health
 2. Error spike: roll back to the last working deploy
 3. LLM failure spike: check Ollama Cloud status at [status.ollama.ai](https://status.ollama.ai)
 4. After fix: mark the Sentry issue as Resolved and deploy
+
+## UptimeRobot Monitoring (keep-alive)
+
+The Render free tier sleeps after ~15 min idle; the first request then triggers a cold start
+(~1-2 min) and, historically, exposed OOM crash loops. UptimeRobot keeps the service warm and
+alerts when it is genuinely down.
+
+**Monitors (free tier: 50 monitors, 5-min interval):**
+
+| Monitor | Type | URL | Keyword | Purpose |
+|---------|------|-----|---------|---------|
+| EthioBio API (Keep-Alive) | HTTP(S) | `https://ethiobio-api.onrender.com/liveness` | — | Wake + uptime |
+| EthioBio API (Health) | HTTP(S) | `https://ethiobio-api.onrender.com/health` | `"ok"` | Deep check (DB + LLM) |
+
+**Setup (one-time, manual in https://uptimerobot.com → Add New Monitor):**
+1. Monitor Type: HTTP(S)
+2. Friendly Name: `EthioBio API (Keep-Alive)`
+3. URL: `https://ethiobio-api.onrender.com/liveness`
+4. Interval: 5 minutes (free tier minimum)
+5. Timeout: 30 seconds
+6. Alert contacts: your email/Telegram
+7. Repeat for the Health monitor with keyword `"ok"` (response body must contain it)
+
+**Notes:**
+- 5-min interval beats Render's ~15-min idle timeout, so the service stays warm.
+- The GitHub Actions workflow `.github/workflows/keep-alive.yml` is kept as a backup but
+  GitHub cron is unreliable (±30 min jitter) — UptimeRobot is the primary keep-alive.
+- If you ever add a Telegram bot ping, keep it ≤ 4096 chars (see AGENTS.md gotchas).
 
 ## Backup Configuration
 
@@ -221,20 +279,28 @@ Automatic daily backups are handled by `.github/workflows/backup.yml`:
 - **Format:** compressed SQL dump with timestamp
 - **Alert:** Workflow failure sends email to the GitHub owner
 
-To run a manual backup:
+To run a manual backup (Render blocks external DB connections, so the dump runs server-side):
 
 ```bash
-pg_dump "$DATABASE_URL" | gzip | b2 upload-file ethiobio-db-backups - "manual_$(date +%F).sql.gz"
+# 1. Get a short-lived admin token (credentials in Render env: BACKUP_ADMIN_EMAIL/PASSWORD)
+TOKEN=$(curl -s -X POST https://ethiobio-api.onrender.com/auth/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=$BACKUP_ADMIN_EMAIL&password=$BACKUP_ADMIN_PASSWORD" | jq -r .access_token)
+
+# 2. Stream the dump through the admin endpoint
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  https://ethiobio-api.onrender.com/admin/db-backup \
+  | gzip | b2 upload-file ethiobio-db-backups - "manual_$(date +%F).sql.gz"
 ```
 
 ## Architecture References
 
 | Component | Location                          | URL                                                            |
 |-----------|-----------------------------------|----------------------------------------------------------------|
-| API       | Railway — `ethiobio-api` service  | https://ethiobio-api-production.up.railway.app                 |
+| API       | Render — `ethiobio-api` service (srv-d9obfaou01pc73akt160) | https://ethiobio-api.onrender.com |
 | Dashboard | Vercel — `ethiobio-ai-assistant`  | https://ethio-bio-ai-assistant.vercel.app                       |
-| Bot       | Railway — runs in `ethiobio-api`  | Telegram: @EthioBioBot                                         |
-| DB        | Railway — PostgreSQL + pgvector    | `DATABASE_URL` env var                                          |
-| Cache     | Railway — Redis                    | `REDIS_URL` env var                                             |
-| Monitor   | Sentry                             | https://sentry.io/organizations/ethiobio/                       |
+| Bot       | Render — runs in `ethiobio-api`   | Telegram: @EthioBioBot                                         |
+| DB        | Render — `ethiobio-pg` PostgreSQL + pgvector | `DATABASE_URL` env var                          |
+| Cache     | Render — `ethiobio-kv` Redis      | `REDIS_URL` env var                                             |
+| Monitor   | Sentry + UptimeRobot              | https://sentry.io/organizations/ethiobio/                       |
 | Backups   | Backblaze B2 — `ethiobio-db-backups` | https://backblaze.com/cloud_storage                           |
