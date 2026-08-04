@@ -39,6 +39,6 @@ jobs:
           echo "Uploading backup..."
           b2 upload-file "$B2_BUCKET" "/tmp/ethiobio_prod_$TS.sql.gz" "ethiobio_prod_$TS.sql.gz"
           echo "Uploading latest alias..."
-          b2 cp-file "$B2_BUCKET" "ethiobio_prod_$TS.sql.gz" "$B2_BUCKET" "ethiobio_prod_latest.sql.gz"
+          b2 upload-file "$B2_BUCKET" "/tmp/ethiobio_prod_$TS.sql.gz" "ethiobio_prod_latest.sql.gz"
           rm -f "/tmp/ethiobio_prod_$TS.sql.gz"
           echo "Backup complete: ethiobio_prod_$TS.sql.gz"
