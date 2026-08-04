@@ -11,17 +11,45 @@ jobs:
         env:
           RENDER_PG: ${{ secrets.RENDER_PG_DIAG }}
         run: |
-          set -x
-          docker run --rm postgres:18-alpine psql "$RENDER_PG?sslmode=require&connect_timeout=20" -c "SELECT 1;" 2>&1 | head -5
+          docker run --rm postgres:18-alpine psql "$RENDER_PG?sslmode=require&connect_timeout=15" -c "SELECT 1;" > /tmp/out1.txt 2>&1 || echo "STEP1_EXIT=$?"
+          echo "STEP1_RESULT:"; cat /tmp/out1.txt
       - name: psql external sslsni
         env:
           RENDER_PG: ${{ secrets.RENDER_PG_DIAG }}
         run: |
-          set -x
-          docker run --rm postgres:18-alpine psql "$RENDER_PG?sslmode=require&sslsni=1&connect_timeout=20" -c "SELECT 1;" 2>&1 | head -5
+          docker run --rm postgres:18-alpine psql "$RENDER_PG?sslmode=require&sslsni=1&connect_timeout=15" -c "SELECT 1;" > /tmp/out2.txt 2>&1 || echo "STEP2_EXIT=$?"
+          echo "STEP2_RESULT:"; cat /tmp/out2.txt
       - name: plaintext probe
         env:
           RENDER_PG: ${{ secrets.RENDER_PG_DIAG }}
         run: |
-          set -x
-          docker run --rm postgres:18-alpine psql "$RENDER_PG?sslmode=disable&connect_timeout=20" -c "SELECT 1;" 2>&1 | head -5
+          docker run --rm postgres:18-alpine psql "$RENDER_PG?sslmode=disable&connect_timeout=15" -c "SELECT 1;" > /tmp/out3.txt 2>&1 || echo "STEP3_EXIT=$?"
+          echo "STEP3_RESULT:"; cat /tmp/out3.txt
+      - name: python SNI dance
+        env:
+          RENDER_PG: ${{ secrets.RENDER_PG_DIAG }}
+        run: |
+          python3 - <<'EOF'
+          import socket, ssl
+          import urllib.parse as up
+          u = up.urlparse("$RENDER_PG")
+          host, port = u.hostname, u.port or 5432
+          raw = socket.create_connection((host, port), timeout=15)
+          raw.settimeout(10)
+          raw.sendall((8).to_bytes(4,"big") + (80877103).to_bytes(4,"big"))
+          r = raw.recv(1)
+          print("sslreply:", r)
+          if r != b"S":
+              raise SystemExit(1)
+          ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+          ctx.check_hostname = False
+          ctx.verify_mode = ssl.CERT_NONE
+          s = ctx.wrap_socket(raw, server_hostname=host)
+          print("TLS:", s.version())
+          body = b"\x00\x03\x00\x00" + b"user\x00" + u.username.encode() + b"\x00database\x00" + u.path.lstrip("/").encode() + b"\x00\x00"
+          pkt = (len(body)+4).to_bytes(4,"big") + body
+          s.sendall(pkt)
+          data = s.recv(4096)
+          print("after startup:", len(data), data.hex()[:120])
+          s.close()
+          EOF
