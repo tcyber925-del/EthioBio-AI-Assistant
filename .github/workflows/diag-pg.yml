@@ -7,48 +7,57 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Install psql
+      - name: Install tools
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client python3-pip
+          pip3 install -q psycopg[binary]
           psql --version
-      - name: psql external TLS
-        id: tls
+      - name: Retry TLS 10x
         env:
           RENDER_PG: ${{ secrets.RENDER_PG_DIAG }}
         run: |
-          set +e
-          out=$(psql "$RENDER_PG?sslmode=require&connect_timeout=25" -c "SELECT 1;" 2>&1)
-          rc=$?
-          echo "rc=$rc"
-          echo "$out"
-          exit 0
-      - name: plaintext probe
+          ok=0; fail=0
+          for i in $(seq 1 10); do
+            if psql "$RENDER_PG?sslmode=require&connect_timeout=25" -c "SELECT 1;" >/dev/null 2>&1; then ok=$((ok+1)); else fail=$((fail+1)); fi
+          done
+          echo "TLS ok=$ok fail=$fail"
+      - name: Retry TLS 18 with sslsni 10x
         env:
           RENDER_PG: ${{ secrets.RENDER_PG_DIAG }}
         run: |
-          set +e
-          out=$(psql "$RENDER_PG?sslmode=disable&connect_timeout=25" -c "SELECT 1;" 2>&1)
-          rc=$?
-          echo "rc=$rc"
-          echo "$out"
-          exit 0
-      - name: verify-full probe
+          docker pull -q postgres:18-alpine >/dev/null 2>&1 || true
+          ok=0; fail=0
+          for i in $(seq 1 10); do
+            if docker run --rm postgres:18-alpine psql "$RENDER_PG?sslmode=require&sslsni=1&connect_timeout=25" -c "SELECT 1;" >/dev/null 2>&1; then ok=$((ok+1)); else fail=$((fail+1)); fi
+          done
+          echo "TLS18+sni ok=$ok fail=$fail"
+      - name: Python SNI dance
         env:
           RENDER_PG: ${{ secrets.RENDER_PG_DIAG }}
         run: |
-          set +e
-          out=$(psql "$RENDER_PG?sslmode=verify-full&connect_timeout=25" -c "SELECT 1;" 2>&1)
-          rc=$?
-          echo "rc=$rc"
-          echo "$out"
-          exit 0
-      - name: list tables
-        env:
-          RENDER_PG: ${{ secrets.RENDER_PG_DIAG }}
-        run: |
-          set +e
-          out=$(psql "$RENDER_PG?sslmode=require&connect_timeout=25" -c "SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename LIMIT 10;" 2>&1)
-          rc=$?
-          echo "rc=$rc"
-          echo "$out"
-          exit 0
+          python3 - <<'EOF'
+          import re, socket, ssl, time
+          m = re.match(r"postgresql://([^:]+):([^@]+)@([^:]+):(\d+)/(\w+)", __import__("os").environ["RENDER_PG"])
+          user, pwd, host, port, db = m.group(1), m.group(2), m.group(3), int(m.group(4)), m.group(5)
+          for i in range(5):
+              try:
+                  raw = socket.create_connection((host, port), timeout=20)
+                  raw.settimeout(10)
+                  raw.sendall((8).to_bytes(4,"big") + (80877103).to_bytes(4,"big"))
+                  r = raw.recv(1)
+                  if r != b"S":
+                      print(f"try{i}: no S {r!r}"); raw.close(); continue
+                  ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+                  ctx.check_hostname = False
+                  ctx.verify_mode = ssl.CERT_NONE
+                  ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+                  s = ctx.wrap_socket(raw, server_hostname=host)
+                  body = b"\x00\x03\x00\x00" + f"user\x00{user}\x00database\x00{db}\x00".encode()
+                  pkt = (len(body)+4).to_bytes(4,"big") + body
+                  s.sendall(pkt)
+                  data = s.recv(4096)
+                  print(f"try{i}: TLS={s.version()} reply={data.hex()[:80] if data else 'CLOSED'}")
+                  s.close()
+              except Exception as e:
+                  print(f"try{i}: {type(e).__name__} {str(e)[:80]}")
+          EOF
