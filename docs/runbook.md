@@ -73,6 +73,24 @@ Vercel:
 - `b2` CLI: `pip install b2` or `npx b2` or Docker
 - PostgreSQL `pg_dump` / `pg_restore` (≥16)
 
+### How backups work (Render migration)
+
+External PostgreSQL access is blocked on the Render free tier, so `pg_dump` cannot
+reach the DB from CI or any outside network. Instead the GitHub Actions workflow
+(`.github/workflows/backup.yml`, daily 02:00 UTC + manual dispatch) drives the
+deployed app itself:
+
+1. `POST /auth/token` with `BACKUP_ADMIN_EMAIL` / `BACKUP_ADMIN_PASSWORD` secrets
+   (admin account `backup@ethiobio.ai` on the production API).
+2. `GET /admin/db-backup` — the app runs `pg_dump` **inside the container** using
+   the internal DB host derived from `settings.database_url` (short name
+   `dpg-...-a`; the full `*.render.com` hostname fails with `SSL connection has
+   been closed` even from inside the container) and streams the SQL out.
+3. The workflow gzips, aborts if the dump is empty, and uploads
+   `ethiobio_prod_<date>.sql.gz` + `ethiobio_prod_latest.sql.gz` to the B2 bucket.
+
+Manual trigger: `gh workflow run backup.yml` and watch with `gh run watch`.
+
 ### Restore from latest backup
 
 ```bash
@@ -103,8 +121,8 @@ pg_restore -d "$DATABASE_URL" --clean /tmp/ethiobio_prod_2026-07-12.sql
 ### Post-restore checks
 
 ```bash
-curl https://ethiobio-api-production.up.railway.app/health   # expect 200
-curl https://ethiobio-api-production.up.railway.app/models   # expect model list
+curl https://ethiobio-api.onrender.com/health     # expect 200
+curl https://ethiobio-api.onrender.com/models     # expect model list
 # Telegram: send /start to bot — expect reply
 # Dashboard: login at https://ethio-bio-ai-assistant.vercel.app
 ```
