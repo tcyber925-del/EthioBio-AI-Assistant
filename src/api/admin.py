@@ -1,14 +1,18 @@
+import asyncio
+import os
 from datetime import datetime, timezone
 from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import String, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.api.auth import get_current_user
+from src.config import settings
 from src.database.models import (
     AgentTrace,
     AudioRecording,
@@ -32,6 +36,40 @@ router = APIRouter(prefix="/admin", tags=["Admin"])
 async def require_admin(current_user: User = Depends(get_current_user)):
     if current_user.role != UserRole.admin:
         raise HTTPException(status_code=403, detail="Admin access required")
+
+
+@router.get("/db-backup")
+async def db_backup(_: User = Depends(require_admin)):
+    dsn = os.environ.get("DATABASE_SYNC_URL") or settings.database_sync_url
+    proc = await asyncio.create_subprocess_exec(
+        "pg_dump",
+        dsn,
+        "--clean",
+        "--if-exists",
+        "--no-owner",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    if proc.stdout is None or proc.stderr is None:
+        raise HTTPException(status_code=500, detail="pg_dump pipe setup failed")
+
+    async def stream():
+        try:
+            while True:
+                chunk = await proc.stdout.read(65536)
+                if not chunk:
+                    break
+                yield chunk
+            await proc.wait()
+            if proc.returncode != 0:
+                stderr = (await proc.stderr.read()).decode(errors="replace")
+                logger.error("db_backup_failed", returncode=proc.returncode, stderr=stderr[-2000:])
+        finally:
+            if proc.returncode is None:
+                proc.kill()
+                await proc.wait()
+
+    return StreamingResponse(stream(), media_type="application/sql")
 
 
 @router.get("/dashboard")
@@ -177,25 +215,26 @@ async def get_voice_metrics(
     _: User = Depends(require_admin),
 ):
     try:
-        total_recordings = await session.scalar(
-            select(func.count(AudioRecording.id))
-        )
+        total_recordings = await session.scalar(select(func.count(AudioRecording.id)))
         by_language = (
             await session.execute(
-                select(AudioRecording.language, func.count(AudioRecording.id))
-                .group_by(AudioRecording.language)
+                select(AudioRecording.language, func.count(AudioRecording.id)).group_by(
+                    AudioRecording.language
+                )
             )
         ).all()
         by_direction = (
             await session.execute(
-                select(AudioRecording.direction, func.count(AudioRecording.id))
-                .group_by(AudioRecording.direction)
+                select(AudioRecording.direction, func.count(AudioRecording.id)).group_by(
+                    AudioRecording.direction
+                )
             )
         ).all()
         by_modality = (
             await session.execute(
-                select(AudioRecording.modality, func.count(AudioRecording.id))
-                .group_by(AudioRecording.modality)
+                select(AudioRecording.modality, func.count(AudioRecording.id)).group_by(
+                    AudioRecording.modality
+                )
             )
         ).all()
 
