@@ -1,5 +1,6 @@
 import asyncio
 import os
+import tempfile
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -41,35 +42,46 @@ async def require_admin(current_user: User = Depends(get_current_user)):
 @router.get("/db-backup")
 async def db_backup(_: User = Depends(require_admin)):
     dsn = os.environ.get("DATABASE_SYNC_URL") or settings.database_sync_url
-    proc = await asyncio.create_subprocess_exec(
-        "pg_dump",
-        dsn,
-        "--clean",
-        "--if-exists",
-        "--no-owner",
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    if proc.stdout is None or proc.stderr is None:
-        raise HTTPException(status_code=500, detail="pg_dump pipe setup failed")
+    dump_path = os.path.join(tempfile.gettempdir(), "ethiobio_db_backup.sql")
+    with open(dump_path, "wb") as out:
+        proc = await asyncio.create_subprocess_exec(
+            "pg_dump",
+            dsn,
+            "--clean",
+            "--if-exists",
+            "--no-owner",
+            stdout=out,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        if proc.stderr is None:
+            raise HTTPException(status_code=500, detail="pg_dump pipe setup failed")
+        stderr = (await proc.stderr.read()).decode(errors="replace")
+        returncode = await proc.wait()
+        if returncode != 0:
+            logger.error("db_backup_failed", returncode=returncode, stderr=stderr[-2000:])
+            raise HTTPException(
+                status_code=500,
+                detail=f"pg_dump failed (exit {returncode}): {stderr[-2000:]}",
+            )
+
+    file_size = os.path.getsize(dump_path)
 
     async def stream():
         try:
-            while True:
-                chunk = await proc.stdout.read(65536)
-                if not chunk:
-                    break
-                yield chunk
-            await proc.wait()
-            if proc.returncode != 0:
-                stderr = (await proc.stderr.read()).decode(errors="replace")
-                logger.error("db_backup_failed", returncode=proc.returncode, stderr=stderr[-2000:])
+            with open(dump_path, "rb") as f:
+                while chunk := f.read(65536):
+                    yield chunk
         finally:
-            if proc.returncode is None:
-                proc.kill()
-                await proc.wait()
+            try:
+                os.remove(dump_path)
+            except OSError:
+                pass
 
-    return StreamingResponse(stream(), media_type="application/sql")
+    return StreamingResponse(
+        stream(),
+        media_type="application/sql",
+        headers={"X-Ethiobio-Backup-Size": str(file_size)},
+    )
 
 
 @router.get("/dashboard")
