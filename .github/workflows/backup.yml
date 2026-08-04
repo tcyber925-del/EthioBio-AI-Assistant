@@ -36,6 +36,8 @@ jobs:
           echo "Dumping database..."
           curl -fsS -H "Authorization: Bearer $TOKEN" "$API_BASE/admin/db-backup" \
             | gzip -c > "/tmp/ethiobio_prod_$TS.sql.gz"
+          test -s "/tmp/ethiobio_prod_$TS.sql.gz"
+          echo "backup bytes: $(stat -c%s "/tmp/ethiobio_prod_$TS.sql.gz")"
           echo "Uploading backup..."
           b2 upload-file "$B2_BUCKET" "/tmp/ethiobio_prod_$TS.sql.gz" "ethiobio_prod_$TS.sql.gz"
           echo "Uploading latest alias..."
