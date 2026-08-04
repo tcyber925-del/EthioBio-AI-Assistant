@@ -1,5 +1,6 @@
 import asyncio
 import os
+import socket
 import ssl
 import tempfile
 from datetime import datetime, timezone
@@ -43,38 +44,56 @@ async def require_admin(current_user: User = Depends(get_current_user)):
 
 @router.get("/db-diag")
 async def db_diag(_: User = Depends(require_admin)):
+    import asyncpg
+
     dsn = os.environ.get("DATABASE_SYNC_URL") or settings.database_sync_url
     parsed = urlparse(dsn)
     host = parsed.hostname or ""
     port = parsed.port or 5432
-    results: dict = {"host": host, "port": port, "tests": {}}
+    results: dict = {"host": host, "port": port, "python": ssl.OPENSSL_VERSION}
 
-    async def tls_probe(send_sni: bool) -> dict:
+    # 1) Proper PG-protocol SSLRequest handshake over raw socket.
+    def pg_ssl_probe(send_sni: bool) -> dict:
         try:
-            reader, writer = await asyncio.open_connection(host, port)
-            context = ssl.create_default_context()
-            context.check_hostname = False
-            context.verify_mode = ssl.CERT_NONE
-            sni_host = host if send_sni else None
-            try:
-                tls_reader, tls_writer = await asyncio.wait_for(
-                    asyncio.open_connection(host, port, ssl=context, server_hostname=sni_host),
-                    timeout=10,
-                )
-            finally:
-                writer.close()
-                await writer.wait_closed()
-            await asyncio.sleep(0.5)
-            try:
-                data = await asyncio.wait_for(tls_reader.read(64), timeout=5)
-                return {"ok": True, "post_startup_bytes": len(data), "bytes": data.hex()[:120]}
-            except asyncio.TimeoutError:
-                return {"ok": True, "post_startup_bytes": 0, "note": "no bytes after handshake"}
+            raw = socket.create_connection((host, port), timeout=10)
+            raw.sendall(b"\x00\x00\x00\x08\x04\xd2\x16\x2f")
+            resp = raw.recv(1)
+            if resp in (b"S", b"N"):
+                ssl_ctx = ssl.create_default_context()
+                ssl_ctx.check_hostname = False
+                ssl_ctx.verify_mode = ssl.CERT_NONE
+                wrapped = ssl_ctx.wrap_socket(raw, server_hostname=host if send_sni else None)
+                wrapped.settimeout(10)
+                return {"negotiated": "S" if resp == b"S" else "N", "ok": True}
+            return {"negotiated": "?", "ok": False, "bytes": resp.hex()}
         except Exception as e:
             return {"ok": False, "error": f"{type(e).__name__}: {str(e)[:200]}"}
+        finally:
+            try:
+                raw.close()
+            except Exception:
+                pass
 
-    results["tests"]["tls_with_sni"] = await tls_probe(True)
-    results["tests"]["tls_without_sni"] = await tls_probe(False)
+    results["pg_ssl_with_sni"] = pg_ssl_probe(True)
+    results["pg_ssl_without_sni"] = pg_ssl_probe(False)
+
+    # 2) The app's own asyncpg path (what readiness uses) with ssl=prefer then require.
+    async def asyncpg_probe(ssl_mode: str) -> dict:
+        try:
+            conn = await asyncio.wait_for(
+                asyncpg.connect(dsn, ssl=ssl_mode, timeout=10, command_timeout=10), timeout=12
+            )
+            try:
+                sv = await conn.fetchval("SELECT version()")
+                return {"ok": True, "server": sv, "ssl_mode": ssl_mode}
+            finally:
+                await conn.close()
+        except Exception as e:
+            err = f"{type(e).__name__}: {str(e)[:250]}"
+            return {"ok": False, "ssl_mode": ssl_mode, "error": err}
+
+    results["asyncpg_prefer"] = await asyncpg_probe("prefer")
+    results["asyncpg_require"] = await asyncpg_probe("require")
     return results
 
 
