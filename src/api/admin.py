@@ -1,7 +1,5 @@
 import asyncio
 import os
-import socket
-import ssl
 import tempfile
 from datetime import datetime, timezone
 from urllib.parse import urlparse
@@ -42,169 +40,36 @@ async def require_admin(current_user: User = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Admin access required")
 
 
-@router.get("/db-diag")
-async def db_diag(_: User = Depends(require_admin)):
-    import asyncpg
-
-    dsn = os.environ.get("DATABASE_SYNC_URL") or settings.database_sync_url
-    parsed = urlparse(dsn)
-    host = parsed.hostname or ""
-    port = parsed.port or 5432
-    results: dict = {
-        "host": host,
-        "port": port,
-        "python": ssl.OPENSSL_VERSION,
-        "dsn_query": parsed.query or "(none)",
-        "db_url_host": (urlparse(settings.database_url).hostname or ""),
-    }
-
-    # 1) Proper PG-protocol SSLRequest handshake over raw socket.
-    def pg_ssl_probe(send_sni: bool) -> dict:
-        try:
-            raw = socket.create_connection((host, port), timeout=10)
-            raw.sendall(b"\x00\x00\x00\x08\x04\xd2\x16\x2f")
-            resp = raw.recv(1)
-            if resp not in (b"S", b"N"):
-                return {"negotiated": "?", "ok": False, "bytes": resp.hex()}
-            if resp == b"N":
-                return {"negotiated": "N", "ok": True, "tls": None}
-            ssl_ctx = ssl.create_default_context()
-            ssl_ctx.check_hostname = False
-            ssl_ctx.verify_mode = ssl.CERT_NONE
-            wrapped = ssl_ctx.wrap_socket(raw, server_hostname=host if send_sni else None)
-            wrapped.settimeout(10)
-            # Send a minimal PostgreSQL v3 StartupMessage over TLS.
-            protocol = 196608
-            user = parsed.username or "postgres"
-            dbname = (parsed.path or "").lstrip("/") or user
-            body = (
-                b"user\x00"
-                + user.encode()
-                + b"\x00"
-                + b"database\x00"
-                + dbname.encode()
-                + b"\x00\x00"
-            )
-            startup_msg = len(body) + 4 + 4
-            wrapped.sendall(startup_msg.to_bytes(4, "big") + protocol.to_bytes(4, "big") + body)
-            try:
-                # Read response: TLS is done; expect ErrorResponse ('E') or AuthOk ('R').
-                first = wrapped.recv(1)
-                return {
-                    "negotiated": "S",
-                    "ok": True,
-                    "tls_version": wrapped.version(),
-                    "first_byte": first.hex() if first else "(empty)",
-                }
-            finally:
-                wrapped.close()
-        except Exception as e:
-            return {"ok": False, "error": f"{type(e).__name__}: {str(e)[:200]}"}
-        finally:
-            try:
-                raw.close()
-            except Exception:
-                pass
-
-    results["pg_ssl_with_sni"] = pg_ssl_probe(True)
-    results["pg_ssl_without_sni"] = pg_ssl_probe(False)
-
-    # 2) The app's exact path: SQLAlchemy async engine over settings.database_url.
-    async def app_engine_probe() -> dict:
-        try:
-            from sqlalchemy import text
-            from sqlalchemy.ext.asyncio import create_async_engine
-
-            engine = create_async_engine(settings.database_url)
-            try:
-                async with engine.connect() as conn:
-                    sv = await conn.execute(text("SELECT version()"))
-                    row = sv.scalar()
-                    return {"ok": True, "server": str(row)[:120]}
-            finally:
-                await engine.dispose()
-        except Exception as e:
-            return {"ok": False, "error": f"{type(e).__name__}: {str(e)[:250]}"}
-
-    results["sqlalchemy_asyncpg_path"] = await app_engine_probe()
-
-    # 3) Direct asyncpg: let ssl inherit from DSN query, then prefer/require.
-    async def asyncpg_probe(ssl_mode) -> dict:
-        connect_kwargs = {"timeout": 10, "command_timeout": 10}
-        label = ssl_mode
-        if ssl_mode is None:
-            connect_kwargs.pop("ssl", None)
-            label = "inherit-from-url"
-        else:
-            connect_kwargs["ssl"] = ssl_mode
-        try:
-            conn = await asyncio.wait_for(asyncpg.connect(dsn, **connect_kwargs), timeout=12)
-            try:
-                sv = await conn.fetchval("SELECT version()")
-                return {"ok": True, "server": str(sv)[:120], "ssl_mode": label}
-            finally:
-                await conn.close()
-        except Exception as e:
-            err = f"{type(e).__name__}: {str(e)[:250]}"
-            return {"ok": False, "ssl_mode": label, "error": err}
-
-    results["asyncpg_inherit"] = await asyncpg_probe(None)
-    results["asyncpg_prefer"] = await asyncpg_probe("prefer")
-    results["asyncpg_require"] = await asyncpg_probe("require")
-    return results
-
-
 @router.get("/db-backup")
-async def db_backup(
-    mode: str = Query("auto", pattern="^(auto|require|disable|verify-ca|verify-full|default)$"),
-    _: User = Depends(require_admin),
-):
-    dsn = os.environ.get("DATABASE_SYNC_URL") or settings.database_sync_url
-    variants: list[tuple[str, str]] = []
-    if mode == "auto":
-        variants = [
-            ("default", dsn),
-            ("require", dsn + ("&" if "?" in dsn else "?") + "sslmode=require"),
-            ("disable", dsn + ("&" if "?" in dsn else "?") + "sslmode=disable"),
-        ]
-    else:
-        if mode == "default":
-            variants = [("default", dsn)]
-        else:
-            variants = [(mode, dsn + ("&" if "?" in dsn else "?") + f"sslmode={mode}")]
+async def db_backup(_: User = Depends(require_admin)):
+    async_url = settings.database_url
+    dsn = os.environ.get("DATABASE_SYNC_URL") or async_url.replace(
+        "postgresql+asyncpg://", "postgresql://", 1
+    )
+    if urlparse(dsn).hostname != urlparse(async_url).hostname:
+        dsn = async_url.replace("postgresql+asyncpg://", "postgresql://", 1)
 
     dump_path = os.path.join(tempfile.gettempdir(), "ethiobio_db_backup.sql")
-    last_error = ""
-    chosen_mode = ""
-    for label, variant_dsn in variants:
-        with open(dump_path, "wb") as out:
-            proc = await asyncio.create_subprocess_exec(
-                "pg_dump",
-                variant_dsn,
-                "--clean",
-                "--if-exists",
-                "--no-owner",
-                stdout=out,
-                stderr=asyncio.subprocess.PIPE,
+    with open(dump_path, "wb") as out:
+        proc = await asyncio.create_subprocess_exec(
+            "pg_dump",
+            dsn,
+            "--clean",
+            "--if-exists",
+            "--no-owner",
+            stdout=out,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        if proc.stderr is None:
+            raise HTTPException(status_code=500, detail="pg_dump pipe setup failed")
+        stderr = (await proc.stderr.read()).decode(errors="replace")
+        returncode = await proc.wait()
+        if returncode != 0:
+            logger.error("db_backup_failed", returncode=returncode, stderr=stderr[-2000:])
+            raise HTTPException(
+                status_code=500,
+                detail=f"pg_dump failed (exit {returncode}): {stderr[-2000:]}",
             )
-            if proc.stderr is None:
-                raise HTTPException(status_code=500, detail="pg_dump pipe setup failed")
-            stderr = (await proc.stderr.read()).decode(errors="replace")
-            returncode = await proc.wait()
-            if returncode != 0:
-                last_error = f"mode={label} exit={returncode}: {stderr[-500:]}"
-                logger.error(
-                    "db_backup_failed",
-                    mode=label,
-                    returncode=returncode,
-                    stderr=stderr[-2000:],
-                )
-                continue
-            chosen_mode = label
-            break
-
-    if not chosen_mode:
-        raise HTTPException(status_code=500, detail=f"pg_dump failed all modes; last: {last_error}")
 
     file_size = os.path.getsize(dump_path)
 
@@ -222,7 +87,7 @@ async def db_backup(
     return StreamingResponse(
         stream(),
         media_type="application/sql",
-        headers={"X-Ethiobio-Backup-Size": str(file_size), "X-Ethiobio-Backup-Mode": chosen_mode},
+        headers={"X-Ethiobio-Backup-Size": str(file_size)},
     )
 
 
