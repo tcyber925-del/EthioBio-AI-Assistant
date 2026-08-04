@@ -1,0 +1,27 @@
+name: Diagnostic Render PG connectivity
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: psql external TLS
+        env:
+          RENDER_PG: ${{ secrets.RENDER_PG_DIAG }}
+        run: |
+          set -x
+          docker run --rm postgres:18-alpine psql "$RENDER_PG?sslmode=require&connect_timeout=20" -c "SELECT 1;" 2>&1 | head -5
+      - name: psql external sslsni
+        env:
+          RENDER_PG: ${{ secrets.RENDER_PG_DIAG }}
+        run: |
+          set -x
+          docker run --rm postgres:18-alpine psql "$RENDER_PG?sslmode=require&sslsni=1&connect_timeout=20" -c "SELECT 1;" 2>&1 | head -5
+      - name: plaintext probe
+        env:
+          RENDER_PG: ${{ secrets.RENDER_PG_DIAG }}
+        run: |
+          set -x
+          docker run --rm postgres:18-alpine psql "$RENDER_PG?sslmode=disable&connect_timeout=20" -c "SELECT 1;" 2>&1 | head -5
