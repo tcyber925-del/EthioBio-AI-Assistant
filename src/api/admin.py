@@ -50,7 +50,13 @@ async def db_diag(_: User = Depends(require_admin)):
     parsed = urlparse(dsn)
     host = parsed.hostname or ""
     port = parsed.port or 5432
-    results: dict = {"host": host, "port": port, "python": ssl.OPENSSL_VERSION}
+    results: dict = {
+        "host": host,
+        "port": port,
+        "python": ssl.OPENSSL_VERSION,
+        "dsn_query": parsed.query or "(none)",
+        "db_url_host": (urlparse(settings.database_url).hostname or ""),
+    }
 
     # 1) Proper PG-protocol SSLRequest handshake over raw socket.
     def pg_ssl_probe(send_sni: bool) -> dict:
@@ -58,14 +64,40 @@ async def db_diag(_: User = Depends(require_admin)):
             raw = socket.create_connection((host, port), timeout=10)
             raw.sendall(b"\x00\x00\x00\x08\x04\xd2\x16\x2f")
             resp = raw.recv(1)
-            if resp in (b"S", b"N"):
-                ssl_ctx = ssl.create_default_context()
-                ssl_ctx.check_hostname = False
-                ssl_ctx.verify_mode = ssl.CERT_NONE
-                wrapped = ssl_ctx.wrap_socket(raw, server_hostname=host if send_sni else None)
-                wrapped.settimeout(10)
-                return {"negotiated": "S" if resp == b"S" else "N", "ok": True}
-            return {"negotiated": "?", "ok": False, "bytes": resp.hex()}
+            if resp not in (b"S", b"N"):
+                return {"negotiated": "?", "ok": False, "bytes": resp.hex()}
+            if resp == b"N":
+                return {"negotiated": "N", "ok": True, "tls": None}
+            ssl_ctx = ssl.create_default_context()
+            ssl_ctx.check_hostname = False
+            ssl_ctx.verify_mode = ssl.CERT_NONE
+            wrapped = ssl_ctx.wrap_socket(raw, server_hostname=host if send_sni else None)
+            wrapped.settimeout(10)
+            # Send a minimal PostgreSQL v3 StartupMessage over TLS.
+            protocol = 196608
+            user = parsed.username or "postgres"
+            dbname = (parsed.path or "").lstrip("/") or user
+            body = (
+                b"user\x00"
+                + user.encode()
+                + b"\x00"
+                + b"database\x00"
+                + dbname.encode()
+                + b"\x00\x00"
+            )
+            startup_msg = len(body) + 4 + 4
+            wrapped.sendall(startup_msg.to_bytes(4, "big") + protocol.to_bytes(4, "big") + body)
+            try:
+                # Read response: TLS is done; expect ErrorResponse ('E') or AuthOk ('R').
+                first = wrapped.recv(1)
+                return {
+                    "negotiated": "S",
+                    "ok": True,
+                    "tls_version": wrapped.version(),
+                    "first_byte": first.hex() if first else "(empty)",
+                }
+            finally:
+                wrapped.close()
         except Exception as e:
             return {"ok": False, "error": f"{type(e).__name__}: {str(e)[:200]}"}
         finally:
@@ -77,21 +109,46 @@ async def db_diag(_: User = Depends(require_admin)):
     results["pg_ssl_with_sni"] = pg_ssl_probe(True)
     results["pg_ssl_without_sni"] = pg_ssl_probe(False)
 
-    # 2) The app's own asyncpg path (what readiness uses) with ssl=prefer then require.
-    async def asyncpg_probe(ssl_mode: str) -> dict:
+    # 2) The app's exact path: SQLAlchemy async engine over settings.database_url.
+    async def app_engine_probe() -> dict:
         try:
-            conn = await asyncio.wait_for(
-                asyncpg.connect(dsn, ssl=ssl_mode, timeout=10, command_timeout=10), timeout=12
-            )
+            from sqlalchemy import text
+            from sqlalchemy.ext.asyncio import create_async_engine
+
+            engine = create_async_engine(settings.database_url)
+            try:
+                async with engine.connect() as conn:
+                    sv = await conn.execute(text("SELECT version()"))
+                    row = sv.scalar()
+                    return {"ok": True, "server": str(row)[:120]}
+            finally:
+                await engine.dispose()
+        except Exception as e:
+            return {"ok": False, "error": f"{type(e).__name__}: {str(e)[:250]}"}
+
+    results["sqlalchemy_asyncpg_path"] = await app_engine_probe()
+
+    # 3) Direct asyncpg: let ssl inherit from DSN query, then prefer/require.
+    async def asyncpg_probe(ssl_mode) -> dict:
+        connect_kwargs = {"timeout": 10, "command_timeout": 10}
+        label = ssl_mode
+        if ssl_mode is None:
+            connect_kwargs.pop("ssl", None)
+            label = "inherit-from-url"
+        else:
+            connect_kwargs["ssl"] = ssl_mode
+        try:
+            conn = await asyncio.wait_for(asyncpg.connect(dsn, **connect_kwargs), timeout=12)
             try:
                 sv = await conn.fetchval("SELECT version()")
-                return {"ok": True, "server": sv, "ssl_mode": ssl_mode}
+                return {"ok": True, "server": str(sv)[:120], "ssl_mode": label}
             finally:
                 await conn.close()
         except Exception as e:
             err = f"{type(e).__name__}: {str(e)[:250]}"
-            return {"ok": False, "ssl_mode": ssl_mode, "error": err}
+            return {"ok": False, "ssl_mode": label, "error": err}
 
+    results["asyncpg_inherit"] = await asyncpg_probe(None)
     results["asyncpg_prefer"] = await asyncpg_probe("prefer")
     results["asyncpg_require"] = await asyncpg_probe("require")
     return results
