@@ -14,13 +14,9 @@ COPY requirements-bot.txt .
 RUN pip install uv && rm -rf ~/.cache/pip
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --system torch --index-url https://download.pytorch.org/whl/cpu
+    uv pip install --system -r requirements-bot.txt
 
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --system -r requirements-bot.txt \
-    && uv pip uninstall --system torchvision -y
-
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
+RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='sentence-transformers/all-MiniLM-L6-v2')"
 
 COPY . .
 

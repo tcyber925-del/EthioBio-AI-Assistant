@@ -20,13 +20,9 @@ COPY requirements.txt .
 
 RUN pip install --no-cache-dir uv
 
-RUN uv pip install --system torch --index-url https://download.pytorch.org/whl/cpu
-
 RUN uv pip install --system -r requirements.txt \
-    && uv pip uninstall --system torchvision -y \
     && rm -rf /root/.cache/uv
 
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='sentence-transformers/all-MiniLM-L6-v2')"
 
 COPY . .

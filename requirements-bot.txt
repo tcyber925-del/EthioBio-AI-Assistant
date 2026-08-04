@@ -20,7 +20,6 @@ google-genai>=1.16.0
 edge-tts>=1.5.0
 httpx[socks]>=0.27
 structlog==24.4.0
-sentence-transformers>=3.0.0
 Pillow>=10.0.0
 bcrypt>=4.0.0
 python-jose[cryptography]>=3.3.0
