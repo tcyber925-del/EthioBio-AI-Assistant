@@ -1,7 +1,9 @@
 import asyncio
 import os
+import ssl
 import tempfile
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 from uuid import UUID
 
 import structlog
@@ -39,30 +41,94 @@ async def require_admin(current_user: User = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Admin access required")
 
 
-@router.get("/db-backup")
-async def db_backup(_: User = Depends(require_admin)):
+@router.get("/db-diag")
+async def db_diag(_: User = Depends(require_admin)):
     dsn = os.environ.get("DATABASE_SYNC_URL") or settings.database_sync_url
+    parsed = urlparse(dsn)
+    host = parsed.hostname or ""
+    port = parsed.port or 5432
+    results: dict = {"host": host, "port": port, "tests": {}}
+
+    async def tls_probe(send_sni: bool) -> dict:
+        try:
+            reader, writer = await asyncio.open_connection(host, port)
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+            sni_host = host if send_sni else None
+            try:
+                tls_reader, tls_writer = await asyncio.wait_for(
+                    asyncio.open_connection(host, port, ssl=context, server_hostname=sni_host),
+                    timeout=10,
+                )
+            finally:
+                writer.close()
+                await writer.wait_closed()
+            await asyncio.sleep(0.5)
+            try:
+                data = await asyncio.wait_for(tls_reader.read(64), timeout=5)
+                return {"ok": True, "post_startup_bytes": len(data), "bytes": data.hex()[:120]}
+            except asyncio.TimeoutError:
+                return {"ok": True, "post_startup_bytes": 0, "note": "no bytes after handshake"}
+        except Exception as e:
+            return {"ok": False, "error": f"{type(e).__name__}: {str(e)[:200]}"}
+
+    results["tests"]["tls_with_sni"] = await tls_probe(True)
+    results["tests"]["tls_without_sni"] = await tls_probe(False)
+    return results
+
+
+@router.get("/db-backup")
+async def db_backup(
+    mode: str = Query("auto", pattern="^(auto|require|disable|verify-ca|verify-full|default)$"),
+    _: User = Depends(require_admin),
+):
+    dsn = os.environ.get("DATABASE_SYNC_URL") or settings.database_sync_url
+    variants: list[tuple[str, str]] = []
+    if mode == "auto":
+        variants = [
+            ("default", dsn),
+            ("require", dsn + ("&" if "?" in dsn else "?") + "sslmode=require"),
+            ("disable", dsn + ("&" if "?" in dsn else "?") + "sslmode=disable"),
+        ]
+    else:
+        if mode == "default":
+            variants = [("default", dsn)]
+        else:
+            variants = [(mode, dsn + ("&" if "?" in dsn else "?") + f"sslmode={mode}")]
+
     dump_path = os.path.join(tempfile.gettempdir(), "ethiobio_db_backup.sql")
-    with open(dump_path, "wb") as out:
-        proc = await asyncio.create_subprocess_exec(
-            "pg_dump",
-            dsn,
-            "--clean",
-            "--if-exists",
-            "--no-owner",
-            stdout=out,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        if proc.stderr is None:
-            raise HTTPException(status_code=500, detail="pg_dump pipe setup failed")
-        stderr = (await proc.stderr.read()).decode(errors="replace")
-        returncode = await proc.wait()
-        if returncode != 0:
-            logger.error("db_backup_failed", returncode=returncode, stderr=stderr[-2000:])
-            raise HTTPException(
-                status_code=500,
-                detail=f"pg_dump failed (exit {returncode}): {stderr[-2000:]}",
+    last_error = ""
+    chosen_mode = ""
+    for label, variant_dsn in variants:
+        with open(dump_path, "wb") as out:
+            proc = await asyncio.create_subprocess_exec(
+                "pg_dump",
+                variant_dsn,
+                "--clean",
+                "--if-exists",
+                "--no-owner",
+                stdout=out,
+                stderr=asyncio.subprocess.PIPE,
             )
+            if proc.stderr is None:
+                raise HTTPException(status_code=500, detail="pg_dump pipe setup failed")
+            stderr = (await proc.stderr.read()).decode(errors="replace")
+            returncode = await proc.wait()
+            if returncode != 0:
+                last_error = f"mode={label} exit={returncode}: {stderr[-500:]}"
+                logger.error(
+                    "db_backup_failed",
+                    mode=label,
+                    returncode=returncode,
+                    stderr=stderr[-2000:],
+                )
+                continue
+            chosen_mode = label
+            break
+
+    if not chosen_mode:
+        raise HTTPException(status_code=500, detail=f"pg_dump failed all modes; last: {last_error}")
 
     file_size = os.path.getsize(dump_path)
 
@@ -80,7 +146,7 @@ async def db_backup(_: User = Depends(require_admin)):
     return StreamingResponse(
         stream(),
         media_type="application/sql",
-        headers={"X-Ethiobio-Backup-Size": str(file_size)},
+        headers={"X-Ethiobio-Backup-Size": str(file_size), "X-Ethiobio-Backup-Mode": chosen_mode},
     )
 
 
