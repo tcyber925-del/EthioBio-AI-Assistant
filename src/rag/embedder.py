@@ -1,4 +1,5 @@
 import asyncio
+import gc
 
 import structlog
 
@@ -9,8 +10,11 @@ logger = structlog.get_logger()
 _local_model = None
 _local_backend = None
 
+_LOCAL_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+_LOCAL_BATCH_SIZE = 16
 
-def _encode(model, texts, batch_size=16):
+
+def _encode(model, texts, batch_size=_LOCAL_BATCH_SIZE):
     """Encode texts through the fastembed (ONNX runtime) backend."""
     return [v.tolist() for v in model.embed(texts, batch_size=batch_size)]
 
@@ -29,7 +33,10 @@ def _get_or_create_local_model():
     try:
         from fastembed import TextEmbedding
 
-        _local_model = TextEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
+        # threads=1: onnxruntime allocates per-thread workspaces; the
+        # Render free tier has multiple vCPUs but only 512Mi RAM, so the
+        # default thread count OOMs the process during batch embedding.
+        _local_model = TextEmbedding(model_name=_LOCAL_MODEL_NAME, threads=1)
         _local_backend = "fastembed"
         logger.info("local_embedder_loaded", backend="fastembed")
     except Exception:
@@ -79,9 +86,16 @@ class Embedder:
         model = self._get_local_model()
         if model:
             loop = asyncio.get_running_loop()
-            return await loop.run_in_executor(
-                None, lambda: _encode(model, texts, batch_size=batch_size)
-            )
+            out: list[list[float]] = []
+            for i in range(0, len(texts), batch_size):
+                chunk = texts[i : i + batch_size]
+                emb = await loop.run_in_executor(
+                    None, lambda c=chunk: _encode(model, c, batch_size=_LOCAL_BATCH_SIZE)
+                )
+                out.extend(emb)
+                if i % (batch_size * 8) == 0:
+                    gc.collect()
+            return out
 
         results = []
         for text in texts:

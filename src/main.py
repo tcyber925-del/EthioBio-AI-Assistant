@@ -162,10 +162,18 @@ async def _evaluate_trace(trace):
 def _preload_models():
     """Preload sentence-transformer models at startup.
 
-    No-op by default: the embedder loads lazily on first use with a
-    fallback to Ollama, so eager loading can OOM the 512Mi free tier.
+    The model is baked into the image at /app/cache/fastembed, so this
+    is a disk read, not a download. Loading at boot (fresh memory) is far
+    cheaper than loading lazily inside an upload request, which OOM'd the
+    512Mi free-tier instance mid-pipeline.
     """
-    return
+    try:
+        from src.rag.embedder import _get_or_create_sentence_transformer
+
+        _get_or_create_sentence_transformer()
+        logger.info("embedding_models_preloaded")
+    except Exception:
+        logger.warning("embedding_models_preload_failed", exc_info=True)
 
 
 @asynccontextmanager
