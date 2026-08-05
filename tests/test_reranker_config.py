@@ -1,3 +1,6 @@
+import sys
+import types
+
 from src.config import settings
 
 
@@ -9,9 +12,9 @@ class TestRerankerConfig:
         monkeypatch.setattr(reranker, "_cross_encoder_model", None)
         called = []
 
-        import sentence_transformers
-
-        monkeypatch.setattr(sentence_transformers, "CrossEncoder", lambda name: called.append(name))
+        fake_st = types.ModuleType("sentence_transformers")
+        fake_st.CrossEncoder = lambda name: called.append(name)
+        monkeypatch.setitem(sys.modules, "sentence_transformers", fake_st)
 
         assert reranker._get_or_create_cross_encoder() is None
         assert called == []
@@ -22,10 +25,10 @@ class TestRerankerConfig:
         monkeypatch.setattr(settings, "enable_reranker", True)
         monkeypatch.setattr(reranker, "_cross_encoder_model", None)
 
-        import sentence_transformers
-
+        fake_st = types.ModuleType("sentence_transformers")
         fake = object()
-        monkeypatch.setattr(sentence_transformers, "CrossEncoder", lambda name: fake)
+        fake_st.CrossEncoder = lambda name: fake
+        monkeypatch.setitem(sys.modules, "sentence_transformers", fake_st)
 
         assert reranker._get_or_create_cross_encoder() is fake
 
