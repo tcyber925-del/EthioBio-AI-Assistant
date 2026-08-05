@@ -5,12 +5,12 @@ asyncpg==0.30.0
 alembic==1.13.2
 redis[hiredis]==5.1.1
 python-telegram-bot==21.6
-httpx>=0.27.2,<0.28
+httpx>=0.27.2,<1.0
 pydantic-settings==2.5.2
 pydantic==2.9.2
 # fastembed (ONNX runtime) is the only local embedder; sentence-transformers/torch
 # is intentionally NOT installed to keep memory within the 512MB free-tier budget.
-openai==1.51.0
+openai==2.36.0
 anthropic==0.42.0
 python-multipart==0.0.12
 pypdf==5.0.0
@@ -38,7 +38,7 @@ traceloop-sdk>=0.40.0
 sentry-sdk[fastapi]>=2.0.0  # Free tier error monitoring (https://sentry.io)
 pytest-asyncio==0.24.0
 langgraph>=1.0.0
-httpx[socks]>=0.27,<0.28
+httpx[socks]>=0.27
 structlog==24.4.0
 tenacity==9.0.0
 alembic>=1.13
