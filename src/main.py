@@ -160,11 +160,12 @@ async def _evaluate_trace(trace):
 
 
 def _preload_models():
-    """Preload sentence-transformer models at startup."""
-    from src.rag.embedder import _get_or_create_sentence_transformer
+    """Preload sentence-transformer models at startup.
 
-    _get_or_create_sentence_transformer()
-    logger.info("embedding_models_preloaded")
+    No-op by default: the embedder loads lazily on first use with a
+    fallback to Ollama, so eager loading can OOM the 512Mi free tier.
+    """
+    return
 
 
 @asynccontextmanager

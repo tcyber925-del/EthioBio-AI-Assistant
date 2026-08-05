@@ -23,11 +23,13 @@ RUN pip install --no-cache-dir uv
 RUN uv pip install --system -r requirements.txt \
     && rm -rf /root/.cache/uv
 
+ENV FASTEMBED_CACHE_PATH=/app/cache/fastembed
+
 RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='sentence-transformers/all-MiniLM-L6-v2')"
 
 COPY . .
 RUN find /app -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
-RUN echo "BUILD_CACHE_BUST=2026-07-18-2"
+RUN echo "BUILD_CACHE_BUST=2026-08-05-3"
 
 EXPOSE 8000
 
