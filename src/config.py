@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     openrouter_api_key: Optional[str] = None
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openrouter_default_model: str = "openai/gpt-4o"
+    openrouter_embed_model: str = "nvidia/nemotron-3-embed-1b:free"
+    embedding_dimension: int = 2048
 
     fallback_provider: Optional[str] = None
     fallback_api_key: Optional[str] = None

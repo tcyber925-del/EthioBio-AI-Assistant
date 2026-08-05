@@ -77,7 +77,8 @@ class PGVectorStore:
         sql = sa_text(
             f"""
             SELECT id, content, metadata,
-                   CAST(embedding AS vector(384)) <=> CAST(:query_vec AS vector(384)) AS distance
+                   CAST(embedding AS vector({settings.embedding_dimension}))
+                       <=> CAST(:query_vec AS vector({settings.embedding_dimension})) AS distance
             FROM knowledge_embeddings
             WHERE {' AND '.join(wheres)}
             ORDER BY distance

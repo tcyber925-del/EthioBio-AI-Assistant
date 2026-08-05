@@ -50,6 +50,21 @@ class OpenRouterProvider(OpenAIProvider):
             provider=self._name,
         )
 
+    async def generate_embedding(self, text: str) -> list[float]:
+        embeddings = await self.generate_embeddings([text])
+        return embeddings[0]
+
+    async def generate_embeddings(self, texts: list[str]) -> list[list[float]]:
+        client = self._get_client()
+        response = await client.embeddings.create(
+            model=settings.openrouter_embed_model,
+            input=texts,
+            encoding_format="float",
+            extra_headers=self._extra_headers,
+        )
+        ordered = sorted(response.data, key=lambda item: item.index)
+        return [item.embedding for item in ordered]
+
     async def chat_stream(
         self,
         messages: list[dict],

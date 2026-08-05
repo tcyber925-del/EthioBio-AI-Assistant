@@ -72,38 +72,13 @@ class VectorStoreAdapter:
         bm25_weight: float = 0.4,
     ):
         self.vector_store = vector_store or VectorStore()
-        store_dim = self._detect_store_dimension()
-        local_dim = 384
-
-        if embedder:
-            self.embedder = embedder
-        elif store_dim and store_dim != local_dim:
-            logger.info("embedder_forcing_ollama", store_dim=store_dim, local_dim=local_dim)
-            self.embedder = Embedder(force_ollama=True)
-        else:
-            self.embedder = Embedder()
+        self.embedder = embedder or Embedder()
 
         self.bm25_index = bm25_index or get_bm25_index()
         self.reranker = reranker or Reranker()
         self.use_hybrid = use_hybrid
         self.dense_weight = dense_weight
         self.bm25_weight = bm25_weight
-
-    def _detect_store_dimension(self) -> Optional[int]:
-        """Detect embedding dimension from the vector store."""
-        try:
-            if self.vector_store._use_pgvector:
-                return None
-            collection = self.vector_store._get_collection()
-            count = collection.count()
-            if count == 0:
-                return None
-            sample = collection.get(include=["embeddings"], limit=1)
-            if sample["embeddings"]:
-                return len(sample["embeddings"][0])
-        except Exception as e:
-            logger.warning("store_dimension_detect_failed", error=str(e))
-        return None
 
     async def search(
         self,
