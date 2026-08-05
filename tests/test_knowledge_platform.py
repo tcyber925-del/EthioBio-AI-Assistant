@@ -440,7 +440,13 @@ class TestKnowledgeAPI:
             upload_resp = await client.post(
                 "/api/v1/knowledge/upload",
                 files={"file": ("test.pdf", b"fake pdf content", "application/pdf")},
-                params={"workspace_id": ws_id, "owner_id": owner_id},
+                params={
+                    "workspace_id": ws_id,
+                    "owner_id": owner_id,
+                    "grade_level": 10,
+                    "topic": "Cells",
+                    "unit": "Biochemical Molecules",
+                },
             )
             assert upload_resp.status_code == 201
             data = upload_resp.json()
@@ -452,6 +458,9 @@ class TestKnowledgeAPI:
             assert get_resp.status_code == 200
             ko = get_resp.json()
             assert ko["lifecycle_state"] == "uploaded"
+            assert ko["metadata"]["grade_level"] == 10
+            assert ko["metadata"]["topic"] == "Cells"
+            assert ko["metadata"]["unit"] == "Biochemical Molecules"
 
             lifecycle_resp = await client.patch(
                 f"/api/v1/knowledge/{ko_id}/lifecycle",

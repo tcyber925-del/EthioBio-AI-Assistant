@@ -151,10 +151,21 @@ async def upload_knowledge_object(
     collection_id: str | None = Query(None),
     title: str | None = Query(None),
     content_hash: str | None = Query(None),
+    grade_level: int | None = Query(None, ge=1, le=12),
+    topic: str | None = Query(None),
+    unit: str | None = Query(None),
     storage: StorageAdapter = Depends(_get_storage),
 ):
     upload_title = title or file.filename or "untitled"
     content_type = file.content_type or "application/octet-stream"
+
+    meta: dict = {}
+    if grade_level is not None:
+        meta["grade_level"] = grade_level
+    if topic is not None:
+        meta["topic"] = topic
+    if unit is not None:
+        meta["unit"] = unit
 
     new_ko = NewKnowledgeObject(
         workspace_id=workspace_id,
@@ -163,6 +174,7 @@ async def upload_knowledge_object(
         title=upload_title,
         content_type=content_type,
         content_hash=content_hash,
+        metadata=meta,
     )
 
     ko, events = await _get_registry().register(new_ko)

@@ -77,7 +77,7 @@ class KnowledgeRegistry:
                 title=ko.title,
                 content_type=ko.content_type,
                 content_hash=ko.content_hash,
-                metadata=ko.metadata,
+                ko_metadata=ko.metadata,
             )
             db.add(row)
             await db.flush()
