@@ -163,15 +163,27 @@ curl -sS -H "Authorization: Bearer rnd_NBhFYIhsnL9p9tqpDaggAytb38UN" \
 render logs -r srv-d9obfaou01pc73akt160 --limit 80
 ```
 
-**Root cause (fixed 2026-08-04):** the free tier caps memory at 512Mi. The app used to preload
-`sentence-transformers`+torch at startup (via `_preload_models` → embedder fallback), which blew
-past 512Mi → OOM kill → crash loop. Fix: dropped torch from both images and requirements; the
-embedder now only uses fastembed (ONNX), falling back to Ollama if fastembed fails.
+**Root cause (fixed 2026-08-04/05):** the free tier caps memory at 512Mi. Two separate memory
+ hogs have been removed from the request path:
+ - **2026-08-04 — torch:** the app preloaded `sentence-transformers`+torch at startup (via
+   `_preload_models` → embedder fallback), blowing past 512Mi → OOM → crash loop. Fix: dropped
+   torch from both images and requirements; the embedder now only uses fastembed (ONNX),
+   falling back to Ollama if fastembed fails.
+ - **2026-08-05 — spaCy:** `RetrievalOrchestrator.search()` → `EntityExtractor._get_nlp()`
+   lazily loaded `en_core_web_sm` on the **first memory-retrieval request**, spiking ~200Mi and
+   OOM-killing a long-stable instance (events `server_failed oomKilled` ~5s after a
+   `vector_search_unavailable` log). Fix: spaCy made optional — `_get_nlp()` returns `None`
+   when not installed and entity extraction falls back to the pure-Python biology-term/difficulty
+   regex matcher (which is what the tests assert). spaCy + the model wheel were removed from
+   `requirements.txt`/`pyproject.toml`. Chromadb stays absent (not in requirements); the memory
+   `MemoryVectorStore` caches the unavailable state so it stops re-importing per request, and
+   recall works via Postgres BM25 (`search_vector`) + entity matching.
 
 **Resolution:**
 1. Confirm the running image has no torch: `docker run --rm <image> python -c "import torch"` should raise ModuleNotFoundError
-2. Ensure the embedder log line reads `local_embedder_loaded backend=fastembed`, not the "falling back to sentence-transformers" warning (that path no longer exists)
-3. If the image still OOMs at ~512Mi, the next lever is upgrading the Render plan (`--plan starter`) — avoid re-adding torch
+2. Assess a fresh OOM: does any log line precede the kill? A `vector_search_unavailable` line then ~5s later `server_failed oomKilled` points at the retrieval path; a boot-time kill for this build points at startup preloads. See the triage command above for kill reason.
+3. Ensure the embedder log line reads `local_embedder_loaded backend=fastembed` — no sentence-transformers path exists anymore
+4. If the image still OOMs at ~512Mi, the next lever is upgrading the Render plan or migrating providers (as planned) — avoid re-adding torch or spaCy
 
 ### Database unreachable
 
