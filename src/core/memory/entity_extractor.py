@@ -32,33 +32,32 @@ class EntityExtractor:
         self._nlp = None
 
     def _get_nlp(self):
+        # spaCy is optional: loading en_core_web_sm on the request path spikes
+        # memory past the free-tier 512Mi cap (OOM'd the instance twice). Only
+        # use it when already installed; never download models at runtime.
         if self._nlp is None:
-            import spacy
             try:
+                import spacy
+
                 self._nlp = spacy.load("en_core_web_sm")
-            except OSError:
-                import subprocess
-                import sys
-                subprocess.run(
-                    [sys.executable, "-m", "spacy", "download", "en_core_web_sm"],
-                    capture_output=True,
-                )
-                self._nlp = spacy.load("en_core_web_sm")
-        return self._nlp
+            except (ImportError, OSError):
+                self._nlp = False
+        return self._nlp or None
 
     def _extract_entities_from_text(self, text: str) -> list[dict]:
         nlp = self._get_nlp()
-        doc = nlp(text)
         entities: list[dict] = []
         seen: set[str] = set()
 
-        for ent in doc.ents:
-            entity_text = ent.text.lower().strip()
-            if entity_text in seen or len(entity_text) < 2:
-                continue
-            seen.add(entity_text)
-            etype = "person" if ent.label_ == "PERSON" else "concept"
-            entities.append({"text": entity_text, "type": etype})
+        if nlp is not None:
+            doc = nlp(text)
+            for ent in doc.ents:
+                entity_text = ent.text.lower().strip()
+                if entity_text in seen or len(entity_text) < 2:
+                    continue
+                seen.add(entity_text)
+                etype = "person" if ent.label_ == "PERSON" else "concept"
+                entities.append({"text": entity_text, "type": etype})
 
         text_lower = text.lower()
         for term in BIOLOGY_TERMS:

@@ -15,13 +15,23 @@ class MemoryVectorStore:
         self.collection_name = MEMORY_COLLECTION_NAME
         self._client = None
         self._collection = None
+        self._unavailable = False
 
     def _get_client(self):
         if self._client is None:
-            import chromadb
+            if self._unavailable:
+                raise ImportError("chromadb is not installed")
+            try:
+                import chromadb
 
-            os.makedirs(self.persist_directory, exist_ok=True)
-            self._client = chromadb.PersistentClient(path=self.persist_directory)
+                os.makedirs(self.persist_directory, exist_ok=True)
+                self._client = chromadb.PersistentClient(path=self.persist_directory)
+            except ImportError:
+                # Chroma is not installed in the free-tier image; memory vector
+                # search stays disabled and BM25/entity matching covers recall.
+                logger.warning("memory_vector_store_unavailable_chromadb_missing")
+                self._unavailable = True
+                raise
         return self._client
 
     def _get_collection(self):
