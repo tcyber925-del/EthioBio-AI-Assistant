@@ -64,6 +64,8 @@
     "retry": "Retry",
     "save": "Save",
     "cancel": "Cancel",
+    "copy": "Copy",
+    "copied": "Copied",
     "back": "Back",
     "refresh": "Refresh",
     "search": "Search",
