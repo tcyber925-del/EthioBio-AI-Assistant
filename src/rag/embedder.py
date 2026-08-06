@@ -3,6 +3,7 @@ import gc
 
 import structlog
 
+from src.config import settings
 from src.llm.router import ModelRouter
 
 logger = structlog.get_logger()
@@ -20,11 +21,11 @@ def _encode(model, texts, batch_size=_LOCAL_BATCH_SIZE):
 
 
 def _get_or_create_local_model():
-    """Load a local 384-dim embedder.
+    """Load a local fastembed (ONNX runtime) embedder.
 
-    Uses fastembed (ONNX runtime, low memory footprint) which fits the
-    512MB free-tier instance budget. sentence-transformers/torch is NOT
-    installed in the image; on failure, embeddings fall through to Ollama.
+    Used only as a fallback when no OpenRouter key is configured. With
+    OpenRouter embeddings the model is never loaded in-process, which keeps
+    the 512MB free-tier instance firmly under the memory limit.
     """
     global _local_model, _local_backend
     if _local_model is not None:
@@ -40,7 +41,9 @@ def _get_or_create_local_model():
         _local_backend = "fastembed"
         logger.info("local_embedder_loaded", backend="fastembed")
     except Exception:
-        logger.warning("fastembed unavailable, will use Ollama for embeddings", exc_info=True)
+        logger.warning(
+            "fastembed unavailable, will use OpenRouter/Ollama for embeddings", exc_info=True
+        )
     return _local_model
 
 
@@ -53,7 +56,7 @@ class Embedder:
     def __init__(self, router: ModelRouter = None, force_ollama: bool = False):
         self.router = router or ModelRouter()
         self._force_ollama = force_ollama
-        self._local_dim = 384
+        self._local_dim = settings.embedding_dimension
 
     @property
     def dimension(self) -> int:
@@ -62,9 +65,16 @@ class Embedder:
     def _get_local_model(self):
         return _get_or_create_local_model()
 
+    def _use_openrouter(self) -> bool:
+        return bool(settings.openrouter_api_key) and not self._force_ollama
+
     async def embed_text(self, text: str, use_ollama: bool = False) -> list[float]:
         if use_ollama or self._force_ollama:
             return await self.router.generate_embedding(text)
+
+        if self._use_openrouter():
+            embeddings = await self.router.generate_embeddings([text])
+            return embeddings[0]
 
         model = self._get_local_model()
         if model:
@@ -77,11 +87,19 @@ class Embedder:
         self, texts: list[str], batch_size: int = 16, use_ollama: bool = False
     ) -> list[list[float]]:
         if use_ollama or self._force_ollama:
-            results = []
+            per_text: list[list[float]] = []
             for text in texts:
                 emb = await self.embed_text(text, use_ollama=True)
-                results.append(emb)
-            return results
+                per_text.append(emb)
+            return per_text
+
+        if self._use_openrouter():
+            batched: list[list[float]] = []
+            for i in range(0, len(texts), batch_size):
+                chunk = texts[i : i + batch_size]
+                batched.extend(await self.router.generate_embeddings(list(chunk)))
+                gc.collect()
+            return batched
 
         model = self._get_local_model()
         if model:
@@ -97,8 +115,8 @@ class Embedder:
                     gc.collect()
             return out
 
-        results = []
+        fallback: list[list[float]] = []
         for text in texts:
             emb = await self.embed_text(text, use_ollama=True)
-            results.append(emb)
-        return results
+            fallback.append(emb)
+        return fallback

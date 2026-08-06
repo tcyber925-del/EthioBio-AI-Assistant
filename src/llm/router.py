@@ -182,11 +182,31 @@ class ModelRouter:
         return health.get("ollama", {}).get("healthy", False)
 
     async def generate_embedding(self, text: str) -> list[float]:
-        client = OllamaClient()
+        from src.llm.providers.openrouter import OpenRouterProvider
+
+        provider = OpenRouterProvider()
         try:
-            return await client.generate_embedding(text)
-        finally:
-            await client.close()
+            return await provider.generate_embedding(text)
+        except Exception:
+            logger.warning("openrouter_embed_failed, falling back to Ollama", exc_info=True)
+            client = OllamaClient()
+            try:
+                return await client.generate_embedding(text)
+            finally:
+                await client.close()
+
+    async def generate_embeddings(self, texts: list[str]) -> list[list[float]]:
+        from src.llm.providers.openrouter import OpenRouterProvider
+
+        provider = OpenRouterProvider()
+        try:
+            return await provider.generate_embeddings(list(texts))
+        except Exception:
+            logger.warning("openrouter_embed_batch_failed, falling back to Ollama", exc_info=True)
+            results = []
+            for text in texts:
+                results.append(await self.generate_embedding(text))
+            return results
 
     async def close(self):
         await self._manager.close()

@@ -31,6 +31,12 @@ def _disable_rate_limit(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr("src.config.settings.rate_limit_enabled", False)
 
 
+@pytest.fixture(autouse=True)
+def _disable_openrouter_embeddings(monkeypatch: pytest.MonkeyPatch):
+    """Keep tests hermetic: never call the OpenRouter embeddings API."""
+    monkeypatch.setattr("src.config.settings.openrouter_api_key", None)
+
+
 @pytest.fixture
 def mock_router():
     router = AsyncMock()
@@ -41,6 +47,7 @@ def mock_router():
         "usage": {"total_tokens": 50},
     }
     router.generate_embedding.return_value = [0.1] * 384
+    router.generate_embeddings.return_value = [[0.1] * 384]
     router.manager = AsyncMock()
     return router
 

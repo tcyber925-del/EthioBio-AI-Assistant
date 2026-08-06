@@ -1,3 +1,4 @@
+import json
 import uuid
 from typing import Optional
 
@@ -9,6 +10,20 @@ from src.database.models import KnowledgeEmbedding
 from src.database.session import async_session_factory
 
 logger = structlog.get_logger()
+
+
+def _parse_metadata(raw) -> dict:
+    if isinstance(raw, dict):
+        return dict(raw)
+    if isinstance(raw, str):
+        if not raw:
+            return {}
+        try:
+            parsed = json.loads(raw)
+            return parsed if isinstance(parsed, dict) else {}
+        except (ValueError, TypeError):
+            return {}
+    return {}
 
 
 class PGVectorStore:
@@ -76,8 +91,9 @@ class PGVectorStore:
 
         sql = sa_text(
             f"""
-            SELECT id, content, metadata,
-                   CAST(embedding AS vector(384)) <=> CAST(:query_vec AS vector(384)) AS distance
+            SELECT id, content, metadata, knowledge_object_id,
+                   CAST(embedding AS vector({settings.embedding_dimension}))
+                       <=> CAST(:query_vec AS vector({settings.embedding_dimension})) AS distance
             FROM knowledge_embeddings
             WHERE {' AND '.join(wheres)}
             ORDER BY distance
@@ -89,10 +105,17 @@ class PGVectorStore:
             result = await session.execute(sql, params)
             rows = result.fetchall()
 
+        metadatas = []
+        for r in rows:
+            meta = _parse_metadata(r[2])
+            if r[3]:
+                meta["knowledge_object_id"] = str(r[3])
+            metadatas.append(meta)
+
         return {
             "documents": [r[1] for r in rows],
-            "metadatas": [r[2] if isinstance(r[2], dict) else {} for r in rows],
-            "distances": [float(r[3]) for r in rows],
+            "metadatas": metadatas,
+            "distances": [float(r[4]) for r in rows],
             "ids": [str(r[0]) for r in rows],
         }
 
@@ -108,7 +131,7 @@ class PGVectorStore:
             )
             rows = result.all()
         documents = [r[1] for r in rows]
-        metadatas = [r[2] for r in rows]
+        metadatas = [_parse_metadata(r[2]) for r in rows]
         ids = [str(r[0]) for r in rows]
         return {"documents": documents, "metadatas": metadatas, "ids": ids}
 

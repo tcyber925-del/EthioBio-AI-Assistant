@@ -161,20 +161,13 @@ async def _evaluate_trace(trace):
 
 
 def _preload_models():
-    """Preload sentence-transformer models at startup.
+    """No-op: embeddings are served by OpenRouter (HTTP), never loaded in-process.
 
-    The model is baked into the image at /app/cache/fastembed, so this
-    is a disk read, not a download. Loading at boot (fresh memory) is far
-    cheaper than loading lazily inside an upload request, which OOM'd the
-    512Mi free-tier instance mid-pipeline.
+    Keeping fastembed out of the API process keeps the 512Mi free-tier
+    instance well under its memory limit; loading it at boot burned ~250MiB
+    for zero benefit.
     """
-    try:
-        from src.rag.embedder import _get_or_create_sentence_transformer
-
-        _get_or_create_sentence_transformer()
-        logger.info("embedding_models_preloaded")
-    except Exception:
-        logger.warning("embedding_models_preload_failed", exc_info=True)
+    logger.info("embedding_preload_skipped_openrouter")
 
 
 @asynccontextmanager

@@ -10,7 +10,7 @@ pydantic-settings==2.5.2
 pydantic==2.9.2
 # fastembed (ONNX runtime) is the only local embedder; sentence-transformers/torch
 # is intentionally NOT installed to keep memory within the 512MB free-tier budget.
-openai==1.51.0
+openai==2.36.0
 anthropic==0.42.0
 python-multipart==0.0.12
 pypdf==5.0.0

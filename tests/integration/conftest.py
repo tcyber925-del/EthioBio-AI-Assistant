@@ -53,6 +53,7 @@ def mock_llm_router():
         }
     )
     router.generate_embedding = AsyncMock(return_value=[0.1] * 384)
+    router.generate_embeddings = AsyncMock(return_value=[[0.1] * 384])
     return router
 
 
