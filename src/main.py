@@ -20,6 +20,7 @@ from src.api import (
     bookmark,
     chat,
     collection,
+    config,
     diagnostic,
     diagram,
     digital_twin,
@@ -376,6 +377,7 @@ async def generic_error_handler(request: Request, exc: Exception):
 
 
 app.include_router(chat.router)
+app.include_router(config.router)
 app.include_router(quiz.router)
 app.include_router(diagnostic.router)
 app.include_router(lesson.router)
