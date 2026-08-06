@@ -1,9 +1,8 @@
-import json
 
 import httpx
 import pytest
 
-from src.core.retrieval.openrouter_reranker import OpenRouterReranker, RerankerError
+from src.core.retrieval.jina_reranker import JinaReranker, RerankerError
 
 
 class _FakeClient:
@@ -45,7 +44,7 @@ async def test_rerank_returns_scores_in_index_order(monkeypatch):
             )
         ],
     )
-    out = await OpenRouterReranker().rerank("query", ["doc_a", "doc_b"])
+    out = await JinaReranker().rerank("query", ["doc_a", "doc_b"])
     assert out == pytest.approx([0.5, 0.9])
 
 
@@ -59,7 +58,7 @@ async def test_rerank_batches_documents(monkeypatch):
         ],
     )
     monkeypatch.setattr("src.config.settings.reranker_batch_size", 64)
-    out = await OpenRouterReranker().rerank("query", ["d"] * 129)
+    out = await JinaReranker().rerank("query", ["d"] * 129)
     assert len(out) == 129
     assert out[0] == pytest.approx(0.1)
     assert out[64] == pytest.approx(0.2)
@@ -69,7 +68,7 @@ async def test_rerank_batches_documents(monkeypatch):
 async def test_rerank_raises_on_api_error(monkeypatch):
     _install_fake_client(monkeypatch, [httpx.Response(500, json={})])
     with pytest.raises(RerankerError):
-        await OpenRouterReranker().rerank("q", ["a"])
+        await JinaReranker().rerank("q", ["a"])
 
 
 async def test_rerank_raises_on_timeout(monkeypatch):
@@ -88,16 +87,16 @@ async def test_rerank_raises_on_timeout(monkeypatch):
 
     monkeypatch.setattr(httpx, "AsyncClient", lambda *a, **k: _BoomClient())
     with pytest.raises(RerankerError):
-        await OpenRouterReranker().rerank("q", ["a"])
+        await JinaReranker().rerank("q", ["a"])
 
 
 async def test_rerank_empty_documents_returns_empty():
-    assert await OpenRouterReranker().rerank("q", []) == []
+    assert await JinaReranker().rerank("q", []) == []
 
 
 async def test_missing_index_fills_zero(monkeypatch):
     _install_fake_client(
         monkeypatch, [_json_response({"results": [{"index": 0, "relevance_score": 0.9}]})]
     )
-    out = await OpenRouterReranker().rerank("q", ["a", "b"])
+    out = await JinaReranker().rerank("q", ["a", "b"])
     assert out == pytest.approx([0.9, 0.0])

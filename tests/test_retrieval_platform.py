@@ -383,7 +383,7 @@ class TestRetrievalGateway:
         from unittest.mock import AsyncMock, MagicMock
 
         from src.core.retrieval.gateway import RetrievalGateway
-        from src.core.retrieval.openrouter_reranker import OpenRouterReranker
+        from src.core.retrieval.jina_reranker import JinaReranker
 
         mock_embedder = AsyncMock()
         mock_embedder.embed_text.return_value = [0.1] * 384
@@ -407,11 +407,11 @@ class TestRetrievalGateway:
             workspace_id="ws-1",
             metadata={},
         )
-        mock_reranker = AsyncMock(spec=OpenRouterReranker)
+        mock_reranker = AsyncMock(spec=JinaReranker)
         mock_reranker.rerank.return_value = [0.9, 0.1]
 
         monkeypatch.setattr("src.config.settings.enable_reranker", True)
-        monkeypatch.setattr("src.config.settings.openrouter_api_key", "sk-test")
+        monkeypatch.setattr("src.config.settings.jina_api_key", "sk-test")
 
         gateway = RetrievalGateway(
             embedder=mock_embedder,
@@ -429,7 +429,7 @@ class TestRetrievalGateway:
         from unittest.mock import AsyncMock, MagicMock
 
         from src.core.retrieval.gateway import RetrievalGateway
-        from src.core.retrieval.openrouter_reranker import OpenRouterReranker, RerankerError
+        from src.core.retrieval.jina_reranker import JinaReranker, RerankerError
 
         mock_embedder = AsyncMock()
         mock_embedder.embed_text.return_value = [0.1] * 384
@@ -453,11 +453,11 @@ class TestRetrievalGateway:
             workspace_id="ws-1",
             metadata={},
         )
-        mock_reranker = AsyncMock(spec=OpenRouterReranker)
+        mock_reranker = AsyncMock(spec=JinaReranker)
         mock_reranker.rerank.side_effect = RerankerError("boom")
 
         monkeypatch.setattr("src.config.settings.enable_reranker", True)
-        monkeypatch.setattr("src.config.settings.openrouter_api_key", "sk-test")
+        monkeypatch.setattr("src.config.settings.jina_api_key", "sk-test")
 
         gateway = RetrievalGateway(
             embedder=mock_embedder,
@@ -495,7 +495,7 @@ class TestRetrievalGateway:
         )
 
         monkeypatch.setattr("src.config.settings.enable_reranker", False)
-        monkeypatch.setattr("src.config.settings.openrouter_api_key", "sk-test")
+        monkeypatch.setattr("src.config.settings.jina_api_key", "sk-test")
 
         gateway = RetrievalGateway(
             embedder=mock_embedder,

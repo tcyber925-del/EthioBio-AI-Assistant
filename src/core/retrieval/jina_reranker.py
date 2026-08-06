@@ -1,6 +1,7 @@
-"""Hosted cross-encoder reranking via OpenRouter /api/v1/rerank.
+"""Hosted cross-encoder reranking via Jina AI /v1/rerank.
 
-Never crashes retrieval — callers catch :class:`RerankerError` and fall back.
+Free tier: 10M tokens per API key (100 RPM). Never crashes retrieval —
+callers catch :class:`RerankerError` and fall back.
 """
 from __future__ import annotations
 
@@ -16,11 +17,11 @@ class RerankerError(Exception):
     pass
 
 
-class OpenRouterReranker:
+class JinaReranker:
     def __init__(self) -> None:
-        self.model = settings.openrouter_reranker_model
-        self.base_url = settings.openrouter_base_url
-        self.api_key = settings.openrouter_api_key
+        self.model = settings.jina_reranker_model
+        self.base_url = settings.jina_reranker_base_url
+        self.api_key = settings.jina_api_key
         self.batch_size = settings.reranker_batch_size
 
     async def rerank(self, query: str, documents: list[str]) -> list[float]:
@@ -46,12 +47,12 @@ class OpenRouterReranker:
                         },
                     )
                 if resp.status_code != 200:
-                    raise RerankerError(f"openrouter rerank HTTP {resp.status_code}")
+                    raise RerankerError(f"jina rerank HTTP {resp.status_code}")
                 results = resp.json().get("results", [])
                 for item in results:
                     index = item.get("index")
                     if index is not None and idx + index < len(scores):
                         scores[idx + index] = float(item.get("relevance_score") or 0.0)
             except httpx.HTTPError as e:
-                raise RerankerError(f"openrouter rerank request failed: {e}") from e
+                raise RerankerError(f"jina rerank request failed: {e}") from e
         return scores

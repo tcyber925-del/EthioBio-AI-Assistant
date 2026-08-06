@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 import structlog
 
 from src.config import settings
+from src.core.retrieval.jina_reranker import JinaReranker
 from src.core.retrieval.models import RetrievalResult, TextMatch
-from src.core.retrieval.openrouter_reranker import OpenRouterReranker
 from src.core.retrieval.ranking import TrustRanker
 
 if TYPE_CHECKING:
@@ -25,15 +25,15 @@ class RetrievalGateway:
         vector_store: VectorStore,
         registry: KnowledgeRegistry,
         ranker: TrustRanker | None = None,
-        reranker: OpenRouterReranker | None = None,
+        reranker: JinaReranker | None = None,
     ):
         self._embedder = embedder
         self._vector_store = vector_store
         self._registry = registry
         self._ranker = ranker or TrustRanker()
         self._reranker = reranker
-        if self._reranker is None and settings.enable_reranker and settings.openrouter_api_key:
-            self._reranker = OpenRouterReranker()
+        if self._reranker is None and settings.enable_reranker and settings.jina_api_key:
+            self._reranker = JinaReranker()
 
     async def search(
         self,

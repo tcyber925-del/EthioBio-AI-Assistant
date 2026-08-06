@@ -57,7 +57,9 @@ envVarGroups:
       - key: TELEGRAM_WEBHOOK_URL
         value: https://ethiobio-api.onrender.com/webhook
       - key: ENABLE_RERANKER
-        value: "false"
+        value: "true"
+      - key: JINA_API_KEY
+        sync: false
       - key: STORE_BACKEND
         value: pgvector
       - key: COLLECTION_NAME

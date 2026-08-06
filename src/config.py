@@ -27,7 +27,9 @@ class Settings(BaseSettings):
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openrouter_default_model: str = "openai/gpt-4o"
     openrouter_embed_model: str = "nvidia/nemotron-3-embed-1b:free"
-    openrouter_reranker_model: str = "nvidia/llama-nemotron-rerank-vl-1b-v2"
+    jina_api_key: Optional[str] = None
+    jina_reranker_base_url: str = "https://api.jina.ai/v1"
+    jina_reranker_model: str = "jina-reranker-v3"
     reranker_top_n: int = 30
     reranker_batch_size: int = 64
     embedding_dimension: int = 2048
