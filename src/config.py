@@ -49,6 +49,13 @@ class Settings(BaseSettings):
     azure_speech_region: str = ""
     whisper_model: str = "base"
 
+    # edge-tts voice mapping (env-tunable; see .env.example)
+    edge_tts_en_voice: str = "en-US-AriaNeural"  # was en-US-JennyNeural (poor accent)
+    edge_tts_am_voice: str = "am-ET-AmehaNeural"
+    edge_tts_rate: str = "+0%"
+    edge_tts_pitch: str = "+0Hz"
+    edge_tts_volume: str = "+0%"
+
     dashboard_url: str = "http://localhost:3000"
     api_base_url: str = "http://localhost:8000"
 
