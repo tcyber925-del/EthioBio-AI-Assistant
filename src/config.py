@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openrouter_default_model: str = "openai/gpt-4o"
     openrouter_embed_model: str = "nvidia/nemotron-3-embed-1b:free"
+    openrouter_reranker_model: str = "nvidia/llama-nemotron-rerank-vl-1b-v2"
+    reranker_top_n: int = 30
+    reranker_batch_size: int = 64
     embedding_dimension: int = 2048
 
     fallback_provider: Optional[str] = None
