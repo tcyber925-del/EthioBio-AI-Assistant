@@ -4,24 +4,26 @@ from typing import Optional
 import edge_tts
 import structlog
 
+from src.config import settings
+
 from .base import SpeechProvider
 from .types import SpeechProviderInfo, SynthesisResult
 
 logger = structlog.get_logger(__name__)
 
-LANGUAGE_VOICES: dict[str, str] = {
-    "am": "am-ET-AmehaNeural",
-    "en": "en-US-JennyNeural",
-}
 
-FALLBACK_VOICE = "en-US-JennyNeural"
+def _voice_for(language: Optional[str]) -> str:
+    """Map a clamped am/en language code to the configured edge-tts voice."""
+    if language == "am":
+        return settings.edge_tts_am_voice
+    return settings.edge_tts_en_voice
 
 
 class EdgeTTSProvider(SpeechProvider):
     """Text-to-speech provider using Microsoft Edge's online TTS service.
 
     Free, no API key required. Supports Amharic (am-ET-AmehaNeural)
-    and English (en-US-JennyNeural) voices.
+    and English (en-US-AriaNeural) voices, both env-configurable.
     """
 
     @property
@@ -42,8 +44,14 @@ class EdgeTTSProvider(SpeechProvider):
         voice: Optional[str] = None,
         language: Optional[str] = None,
     ) -> SynthesisResult:
-        voice_name = voice or LANGUAGE_VOICES.get(language or "", FALLBACK_VOICE)
-        communicate = edge_tts.Communicate(text, voice_name)
+        voice_name = voice or _voice_for(language)
+        communicate = edge_tts.Communicate(
+            text,
+            voice_name,
+            rate=settings.edge_tts_rate,
+            pitch=settings.edge_tts_pitch,
+            volume=settings.edge_tts_volume,
+        )
         buffer = io.BytesIO()
         async for chunk in communicate.stream():
             if chunk["type"] == "audio":
@@ -57,7 +65,7 @@ class EdgeTTSProvider(SpeechProvider):
 
     async def is_available(self) -> bool:
         try:
-            communicate = edge_tts.Communicate("test", "en-US-JennyNeural")
+            communicate = edge_tts.Communicate("test", settings.edge_tts_en_voice)
             async for _ in communicate.stream():
                 break
             return True
@@ -68,7 +76,7 @@ class EdgeTTSProvider(SpeechProvider):
         return SpeechProviderInfo(
             name="edge-tts",
             provider_type="edge",
-            supported_languages=list(LANGUAGE_VOICES),
+            supported_languages=["am", "en"],
             stt_supported=False,
             tts_supported=True,
             is_healthy=True,

@@ -27,9 +27,7 @@ def patch_communicate(monkeypatch, captured):
         captured["kwargs"] = kwargs
         return _FakeCommunicate(text, voice, **kwargs)
 
-    monkeypatch.setattr(
-        "src.voice.providers.edge_tts.edge_tts.Communicate", fake_communicate
-    )
+    monkeypatch.setattr("src.voice.providers.edge_tts.edge_tts.Communicate", fake_communicate)
     return captured
 
 
