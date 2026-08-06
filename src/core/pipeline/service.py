@@ -16,6 +16,13 @@ from src.core.knowledge_registry.service import KnowledgeRegistry
 from src.core.pipeline.models import PipelineResult
 from src.core.storage.interface import StorageAdapter
 from src.database.models import KnowledgeObject as KnowledgeObjectModel
+from src.ingestion.textbook import (
+    extract_heading,
+    extract_page_number,
+    extract_pdf_pages,
+    extract_section_subtopic,
+    extract_unit,
+)
 from src.rag.vector_store import VectorStore
 
 if TYPE_CHECKING:
@@ -150,24 +157,54 @@ class PipelineOrchestrator:
         logger.info("validation_passed", ko_id=ko_id, size=size, format=ext)
 
     async def _run_content_extraction_and_chunking(self, ko_id: str, file_path: Path) -> list[dict]:
-        text = await self._extract_text(file_path)
-        chunks = _chunk_text(text, ko_id)
+        ko_meta = await self._load_ko_metadata(ko_id)
+        grade = ko_meta.get("grade_level") or 0
+        source_file = ko_meta.get("source_file") or file_path.name
+
+        if file_path.suffix.lower() == ".pdf":
+            pages = await self._extract_pdf_pages(file_path)
+            chunks: list[dict] = []
+            for page in pages:
+                page_chunks = _chunk_text(page["text"], ko_id)
+                for c in page_chunks:
+                    c["page_number"] = extract_page_number(
+                        page["text"], page["pdf_page"], grade
+                    )
+                    c["pdf_page"] = page["pdf_page"]
+                    c["source_file"] = source_file
+                    chunks.append(c)
+        else:
+            text = await self._extract_text(file_path)
+            chunks = _chunk_text(text, ko_id)
+            for c in chunks:
+                c["source_file"] = source_file
+
         await self._registry.update_metadata(ko_id, {"chunk_count": len(chunks)})
         logger.info("chunking_complete", ko_id=ko_id, chunk_count=len(chunks))
         return chunks
 
+    async def _load_ko_metadata(self, ko_id: str) -> dict:
+        if not self._session_factory:
+            return {}
+        try:
+            async with self._session_factory() as db:
+                ko = await db.get(KnowledgeObjectModel, uuid.UUID(ko_id))
+                if ko:
+                    return ko.ko_metadata or {}
+        except Exception:
+            pass
+        return {}
+
+    async def _extract_pdf_pages(self, file_path: Path) -> list[dict]:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, extract_pdf_pages, str(file_path))
+
     async def _extract_text(self, file_path: Path) -> str:
         ext = file_path.suffix.lower()
-        if ext == ".pdf":
-            return await self._extract_pdf_text(file_path)
         if ext == ".docx":
             loop = asyncio.get_running_loop()
             return await loop.run_in_executor(None, _extract_docx_text, file_path)
         return await _read_text_async(file_path)
-
-    async def _extract_pdf_text(self, file_path: Path) -> str:
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, _extract_pdf_text_sync, file_path)
 
     async def _run_embedding_and_indexing(self, ko_id: str, chunks: list[dict]) -> None:
         if not self._vector_store:
@@ -177,15 +214,17 @@ class PipelineOrchestrator:
         texts = [c["text"] for c in chunks]
         chunk_ids = [c["id"] for c in chunks]
 
-        ko_meta = {}
-        if self._session_factory:
-            try:
-                async with self._session_factory() as db:
-                    ko = await db.get(KnowledgeObjectModel, uuid.UUID(ko_id))
-                    if ko:
-                        ko_meta = ko.ko_metadata or {}
-            except Exception:
-                pass
+        ko_meta = await self._load_ko_metadata(ko_id)
+
+        for c in chunks:
+            if not c.get("unit"):
+                c["unit"] = extract_unit(c["text"])
+            if not c.get("heading"):
+                c["heading"] = extract_heading(c["text"])
+            if not c.get("section") or not c.get("subtopic"):
+                sec, sub = extract_section_subtopic(c["text"])
+                c["section"] = c.get("section") or sec
+                c["subtopic"] = c.get("subtopic") or sub
 
         metadatas = [
             {
@@ -198,7 +237,8 @@ class PipelineOrchestrator:
                 "section": c.get("section", ""),
                 "subtopic": c.get("subtopic", ""),
                 "source_type": ko_meta.get("source_type", c.get("source_type", "")),
-                "page_number": c.get("page_number", 0),
+                "source_file": c.get("source_file") or ko_meta.get("source_file", ""),
+                "page_number": c.get("page_number") or 0,
             }
             for i, c in enumerate(chunks)
         ]
@@ -252,18 +292,6 @@ async def _read_file_async(path: Path) -> bytes:
 async def _read_text_async(path: Path) -> str:
     content = await _read_file_async(path)
     return content.decode("utf-8", errors="replace")
-
-
-def _extract_pdf_text_sync(path: Path) -> str:
-    from pypdf import PdfReader
-
-    reader = PdfReader(str(path))
-    pages: list[str] = []
-    for page in reader.pages:
-        text = page.extract_text()
-        if text:
-            pages.append(text)
-    return "\n\n".join(pages)
 
 
 def _extract_docx_text(path: Path) -> str:

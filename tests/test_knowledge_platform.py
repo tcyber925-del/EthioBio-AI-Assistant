@@ -941,6 +941,63 @@ class TestPipeline:
         assert updated is not None
         assert updated.lifecycle_state == LifecycleState.PUBLISHED
 
+    async def test_pdf_chunks_carry_page_number_and_source_file(self, pipeline, tmp_path):
+        ws_id = "00000000-0000-0000-0000-000000000001"
+        owner_id = "00000000-0000-0000-0000-000000000002"
+
+        ko, _ = await pipeline._registry.register(
+            NewKnowledgeObject(
+                workspace_id=ws_id,
+                owner_id=owner_id,
+                title="doc.pdf",
+                content_type="application/pdf",
+                content_hash="hash123",
+                metadata={"grade_level": 10},
+            )
+        )
+
+        file_path = tmp_path / "doc.pdf"
+        file_path.write_bytes(b"PDF not actually parsed; extraction is mocked")
+
+        with patch(
+            "src.core.pipeline.service.extract_pdf_pages",
+            return_value=[
+                {
+                    "text": "Unit 3: Biochemical Molecules\n\nGlucose is a simple sugar.\n\n7",
+                    "pdf_page": 1,
+                },
+                {"text": "DNA structure is a double helix.\n\n8", "pdf_page": 2},
+            ],
+        ):
+            result = await pipeline.run(ko.id, file_path)
+
+        assert result.success is True
+        metas = pipeline._vector_store.add_documents.call_args.args[2]
+        assert len(metas) >= 2
+        assert all(m["page_number"] > 0 for m in metas)
+        assert all(m["source_file"] == "doc.pdf" for m in metas)
+        assert any("Unit 3" in m["unit"] for m in metas)
+        assert any("Biochemical" in m["heading"] for m in metas)
+
+    async def test_non_pdf_chunks_no_page_number(self, pipeline, tmp_path):
+        ws_id = "00000000-0000-0000-0000-000000000001"
+        owner_id = "00000000-0000-0000-0000-000000000002"
+
+        ko, _ = await pipeline._registry.register(
+            NewKnowledgeObject(
+                workspace_id=ws_id, owner_id=owner_id, title="notes.txt", content_type="text/plain"
+            )
+        )
+
+        file_path = tmp_path / "notes.txt"
+        file_path.write_text("Some simple notes about biology.\n\nMore notes here.")
+        result = await pipeline.run(ko.id, file_path)
+
+        assert result.success is True
+        metas = pipeline._vector_store.add_documents.call_args.args[2]
+        assert all(m["page_number"] == 0 for m in metas)
+        assert all(m["source_file"] == "notes.txt" for m in metas)
+
     async def test_pipeline_handles_empty_file(self, pipeline, tmp_path):
         ws_id = "00000000-0000-0000-0000-000000000001"
         owner_id = "00000000-0000-0000-0000-000000000002"
