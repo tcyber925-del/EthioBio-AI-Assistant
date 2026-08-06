@@ -27,10 +27,8 @@ def _json_response(payload):
 
 
 def _install_fake_client(monkeypatch, responses):
-    def fake_client(*a, **k):
-        return _FakeClient(responses)
-
-    monkeypatch.setattr(httpx, "AsyncClient", fake_client)
+    fake = _FakeClient(responses)
+    monkeypatch.setattr(httpx, "AsyncClient", lambda *a, **k: fake)
 
 
 async def test_rerank_returns_scores_in_index_order(monkeypatch):
