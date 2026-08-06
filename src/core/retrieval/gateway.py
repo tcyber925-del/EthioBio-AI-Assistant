@@ -5,7 +5,9 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from src.config import settings
 from src.core.retrieval.models import RetrievalResult, TextMatch
+from src.core.retrieval.openrouter_reranker import OpenRouterReranker
 from src.core.retrieval.ranking import TrustRanker
 
 if TYPE_CHECKING:
@@ -23,11 +25,15 @@ class RetrievalGateway:
         vector_store: VectorStore,
         registry: KnowledgeRegistry,
         ranker: TrustRanker | None = None,
+        reranker: OpenRouterReranker | None = None,
     ):
         self._embedder = embedder
         self._vector_store = vector_store
         self._registry = registry
         self._ranker = ranker or TrustRanker()
+        self._reranker = reranker
+        if self._reranker is None and settings.enable_reranker and settings.openrouter_api_key:
+            self._reranker = OpenRouterReranker()
 
     async def search(
         self,
@@ -43,10 +49,24 @@ class RetrievalGateway:
         if not raw["documents"]:
             return []
 
+        rerank_scores = None
+        if self._reranker is not None:
+            try:
+                rerank_scores = await self._reranker.rerank(q, raw["documents"])
+            except Exception:
+                logger.warning("reranker_failed_falling_back", query=q[:50])
+
         seen: dict[str, dict] = {}
         for i in range(len(raw["documents"])):
             ko_id = raw["metadatas"][i].get("knowledge_object_id", "")
-            score = 1.0 - raw["distances"][i]
+            if rerank_scores is not None and i < len(rerank_scores):
+                rs = rerank_scores[i]
+                if rs > 0:
+                    score = min(1.0, max(0.01, rs))
+                else:
+                    score = 0.4 * max(0.01, 1.0 - raw["distances"][i])
+            else:
+                score = 1.0 - raw["distances"][i]
             if ko_id not in seen:
                 seen[ko_id] = {"score": score, "chunks": [], "ko_id": ko_id}
             else:

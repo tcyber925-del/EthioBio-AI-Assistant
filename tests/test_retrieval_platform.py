@@ -1,3 +1,5 @@
+import pytest
+
 from src.core.retrieval.models import (
     EvidencePackage,
     EvidenceSource,
@@ -376,6 +378,133 @@ class TestRetrievalGateway:
         results = await gateway.search(q="biology", workspace_id=None, limit=10)
         assert len(results) == 1
         assert len(results[0].matches) == 2
+
+    async def test_search_uses_reranker_when_enabled(self, monkeypatch):
+        from unittest.mock import AsyncMock, MagicMock
+
+        from src.core.retrieval.gateway import RetrievalGateway
+        from src.core.retrieval.openrouter_reranker import OpenRouterReranker
+
+        mock_embedder = AsyncMock()
+        mock_embedder.embed_text.return_value = [0.1] * 384
+        mock_vs = MagicMock()
+        mock_vs.query = AsyncMock(
+            return_value={
+                "documents": ["cell biology", "dna structure"],
+                "metadatas": [
+                    {"knowledge_object_id": "ko-1", "chunk_index": 0},
+                    {"knowledge_object_id": "ko-1", "chunk_index": 1},
+                ],
+                "distances": [0.1, 0.9],
+                "ids": ["ko-1:chunk:0", "ko-1:chunk:1"],
+            }
+        )
+        mock_registry = AsyncMock()
+        mock_registry.get.return_value = MagicMock(
+            id="ko-1",
+            title="Cell Biology",
+            content_type="pdf",
+            workspace_id="ws-1",
+            metadata={},
+        )
+        mock_reranker = AsyncMock(spec=OpenRouterReranker)
+        mock_reranker.rerank.return_value = [0.9, 0.1]
+
+        monkeypatch.setattr("src.config.settings.enable_reranker", True)
+        monkeypatch.setattr("src.config.settings.openrouter_api_key", "sk-test")
+
+        gateway = RetrievalGateway(
+            embedder=mock_embedder,
+            vector_store=mock_vs,
+            registry=mock_registry,
+            reranker=mock_reranker,
+        )
+        results = await gateway.search(q="biology", workspace_id=None, limit=10)
+        assert len(results) == 1
+        mock_reranker.rerank.assert_awaited_once()
+        reranked_score = results[0].matches[0].score
+        assert reranked_score == pytest.approx(0.9)
+
+    async def test_search_falls_back_when_reranker_raises(self, monkeypatch):
+        from unittest.mock import AsyncMock, MagicMock
+
+        from src.core.retrieval.gateway import RetrievalGateway
+        from src.core.retrieval.openrouter_reranker import OpenRouterReranker, RerankerError
+
+        mock_embedder = AsyncMock()
+        mock_embedder.embed_text.return_value = [0.1] * 384
+        mock_vs = MagicMock()
+        mock_vs.query = AsyncMock(
+            return_value={
+                "documents": ["cell biology", "dna structure"],
+                "metadatas": [
+                    {"knowledge_object_id": "ko-1", "chunk_index": 0},
+                    {"knowledge_object_id": "ko-1", "chunk_index": 1},
+                ],
+                "distances": [0.1, 0.9],
+                "ids": ["ko-1:chunk:0", "ko-1:chunk:1"],
+            }
+        )
+        mock_registry = AsyncMock()
+        mock_registry.get.return_value = MagicMock(
+            id="ko-1",
+            title="Cell Biology",
+            content_type="pdf",
+            workspace_id="ws-1",
+            metadata={},
+        )
+        mock_reranker = AsyncMock(spec=OpenRouterReranker)
+        mock_reranker.rerank.side_effect = RerankerError("boom")
+
+        monkeypatch.setattr("src.config.settings.enable_reranker", True)
+        monkeypatch.setattr("src.config.settings.openrouter_api_key", "sk-test")
+
+        gateway = RetrievalGateway(
+            embedder=mock_embedder,
+            vector_store=mock_vs,
+            registry=mock_registry,
+            reranker=mock_reranker,
+        )
+        results = await gateway.search(q="biology", workspace_id=None, limit=10)
+        assert len(results) == 1
+        assert results[0].matches[0].score == pytest.approx(1.0 - 0.1)
+
+    async def test_search_no_reranker_when_disabled(self, monkeypatch):
+        from unittest.mock import AsyncMock, MagicMock
+
+        from src.core.retrieval.gateway import RetrievalGateway
+
+        mock_embedder = AsyncMock()
+        mock_embedder.embed_text.return_value = [0.1] * 384
+        mock_vs = MagicMock()
+        mock_vs.query = AsyncMock(
+            return_value={
+                "documents": ["cell biology"],
+                "metadatas": [{"knowledge_object_id": "ko-1", "chunk_index": 0}],
+                "distances": [0.1],
+                "ids": ["ko-1:chunk:0"],
+            }
+        )
+        mock_registry = AsyncMock()
+        mock_registry.get.return_value = MagicMock(
+            id="ko-1",
+            title="Cell Biology",
+            content_type="pdf",
+            workspace_id="ws-1",
+            metadata={},
+        )
+
+        monkeypatch.setattr("src.config.settings.enable_reranker", False)
+        monkeypatch.setattr("src.config.settings.openrouter_api_key", "sk-test")
+
+        gateway = RetrievalGateway(
+            embedder=mock_embedder,
+            vector_store=mock_vs,
+            registry=mock_registry,
+        )
+        results = await gateway.search(q="biology", workspace_id=None, limit=10)
+        assert len(results) == 1
+        assert results[0].matches[0].score == pytest.approx(1.0 - 0.1)
 
 
 class TestCitationFormatter:
