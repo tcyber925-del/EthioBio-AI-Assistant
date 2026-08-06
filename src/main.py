@@ -26,6 +26,7 @@ from src.api import (
     ekg,
     export,
     gamification,
+    health,
     intelligence,
     intervention,
     knowledge,
@@ -387,6 +388,7 @@ app.include_router(ekg.router)
 app.include_router(digital_twin.router)
 app.include_router(export.router)
 app.include_router(gamification.router)
+app.include_router(health.router)
 app.include_router(intervention.router)
 app.include_router(intelligence.router)
 app.include_router(continue_learning_router)
