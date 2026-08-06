@@ -7,6 +7,8 @@ import Link from 'next/link'
 import { Send, MessageSquare, AlertTriangle, BookOpen, Loader2, RefreshCw, ClipboardCheck, Mic, Square, Volume2, Plus } from 'lucide-react'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import ModelSelector from '@/components/ModelSelector'
+import { CopyButton } from '@/components/CopyButton'
+import { markdownToPlainText } from '@/lib/markdownToPlainText'
 import { DashboardLayout } from '@/components/dashboard-v2/DashboardLayout'
 import { ConversationSidebar } from '@/components/ConversationSidebar'
 import { useConversationHistory } from '@/hooks/useConversationHistory'
@@ -411,6 +413,7 @@ export default function AskPage() {
             <div className="mt-4 pt-3 border-t border-v2-border flex items-center gap-2">
               <TTSPlayButton text={answer!} language="am" />
               <span className="text-xs text-v2-text-muted">{ta('listen')}</span>
+              <CopyButton text={markdownToPlainText(answer!)} />
             </div>
           )}
           {!loading && !turnAnswer && sources.length > 0 && (
