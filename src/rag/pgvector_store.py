@@ -44,8 +44,21 @@ class PGVectorStore:
         ids: list[str],
     ):
         factory = async_session_factory()
+        n = len(texts)
+        if not (len(embeddings) == len(metadatas) == len(ids) == n):
+            logger.warning(
+                "add_documents_length_mismatch",
+                texts=len(texts),
+                embeddings=len(embeddings),
+                metadatas=len(metadatas),
+                ids=len(ids),
+            )
+            n = min(len(texts), len(embeddings), len(metadatas), len(ids))
         async with factory() as session:
-            for i, (text, emb, meta, _doc_id) in enumerate(zip(texts, embeddings, metadatas, ids)):
+            for i in range(n):
+                text = texts[i]
+                emb = embeddings[i]
+                meta = metadatas[i]
                 ko_id = meta.get("knowledge_object_id")
                 embedding = KnowledgeEmbedding(
                     id=uuid.uuid4(),
@@ -68,7 +81,7 @@ class PGVectorStore:
                 )
                 session.add(embedding)
             await session.commit()
-        logger.info("vectors_added_pgvector", count=len(texts))
+        logger.info("vectors_added_pgvector", count=n)
 
     async def query(
         self,

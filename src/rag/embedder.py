@@ -83,6 +83,16 @@ class Embedder:
 
         return await self.router.generate_embedding(text)
 
+    async def _embed_with_fallback(
+        self, texts: list[str]
+    ) -> list[list[float]]:
+        """Re-embed a batch one text at a time when the provider dropped items."""
+        embeddings: list[list[float]] = []
+        for text in texts:
+            emb = await self.router.generate_embeddings([text])
+            embeddings.append(emb[0] if emb else await self.router.generate_embedding(text))
+        return embeddings
+
     async def embed_batch(
         self, texts: list[str], batch_size: int = 16, use_ollama: bool = False
     ) -> list[list[float]]:
@@ -97,7 +107,16 @@ class Embedder:
             batched: list[list[float]] = []
             for i in range(0, len(texts), batch_size):
                 chunk = texts[i : i + batch_size]
-                batched.extend(await self.router.generate_embeddings(list(chunk)))
+                embeddings = await self.router.generate_embeddings(list(chunk))
+                if len(embeddings) != len(chunk):
+                    logger.warning(
+                        "embed_batch_length_mismatch",
+                        expected=len(chunk),
+                        got=len(embeddings),
+                        offset=i,
+                    )
+                    embeddings = await self._embed_with_fallback(list(chunk))
+                batched.extend(embeddings)
                 gc.collect()
             return batched
 
