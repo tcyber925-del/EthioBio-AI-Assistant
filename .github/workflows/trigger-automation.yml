@@ -1,0 +1,35 @@
+name: Trigger AI Automation
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  trigger-automation:
+    if: github.event.label.name == 'ai-ready'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Hermes Automation
+        run: |
+          # Option 1: Call Hermes API (if public endpoint available)
+          # curl -X POST https://your-public-endpoint/webhooks/trigger-automation \
+          #   -H "Content-Type: application/json" \
+          #   -d "{\"issue_number\": ${{ github.event.issue.number }}, \"repo\": \"${{ github.repository }}\"}"
+          
+          # Option 2: Use repository_dispatch to trigger self-hosted runner
+          # This requires a self-hosted runner on the orchestrator
+          
+          # Option 3: For now, just log - we'll use cron + webhook as backup
+          echo "Issue ${{ github.event.issue.number }} labeled ai-ready in ${{ github.repository }}"
+          echo "Automation will be picked up by cron (every 3 hours) or manual trigger"
+          
+      - name: Comment on Issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🤖 **Automation Triggered**\n\nIssue labeled `ai-ready`. The AI engineering automation will process this issue on the next cron run (every 3 hours) or you can trigger manually.\n\n**Next cron run:** Every 3 hours at :00\n**Manual trigger:** Reply `/run automation` in Telegram General topic'
+            })
