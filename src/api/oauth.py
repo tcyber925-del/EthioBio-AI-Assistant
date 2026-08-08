@@ -169,9 +169,13 @@ async def _exchange_code_for_tokens(
     return data
 
 
-def _verify_google_id_token(id_token: str, client_id: str, jwks: dict) -> dict:
+def _verify_google_id_token(
+    id_token: str, client_id: str, jwks: dict, access_token: str
+) -> dict:
     """Verify a Google id_token against the current Google JWKS.
 
+    Google id_tokens carry an at_hash claim; python-jose verifies it against
+    the access_token from the same code exchange, so it must be supplied.
     Raises ValueError when the token is not a valid, unexpired token signed by
     Google for this client."""
     try:
@@ -180,6 +184,7 @@ def _verify_google_id_token(id_token: str, client_id: str, jwks: dict) -> dict:
             jwks,
             algorithms=["RS256"],
             audience=client_id,
+            access_token=access_token,
             options={"verify_aud": True, "verify_exp": True, "require_exp": True},
         )
     except JWTError as exc:
@@ -311,7 +316,9 @@ async def oauth_callback(
 
     try:
         jwks = await _load_google_jwks()
-        claims = _verify_google_id_token(tokens["id_token"], provider_config["client_id"](), jwks)
+        claims = _verify_google_id_token(
+            tokens["id_token"], provider_config["client_id"](), jwks, tokens["access_token"]
+        )
     except ValueError as exc:
         unverified_header = jwt.get_unverified_header(tokens["id_token"])
         try:

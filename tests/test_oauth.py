@@ -429,7 +429,17 @@ def _make_rsa_jwks(kid: str):
     return pem, jwks
 
 
-def _signed_token(pem, kid, iss="https://accounts.google.com", aud="google-id", ttl_hours=1, sub="g"):
+def _signed_token(
+    pem,
+    kid,
+    iss="https://accounts.google.com",
+    aud="google-id",
+    ttl_hours=1,
+    sub="g",
+    access_token=None,
+):
+    import hashlib
+
     claims = {
         "iss": iss,
         "aud": aud,
@@ -438,6 +448,12 @@ def _signed_token(pem, kid, iss="https://accounts.google.com", aud="google-id", 
         "email": "ok@example.com",
         "email_verified": True,
     }
+    if access_token is not None:
+        claims["at_hash"] = (
+            base64.urlsafe_b64encode(hashlib.sha256(access_token.encode()).digest()[:16])
+            .rstrip(b"=")
+            .decode()
+        )
     return jose_jwt.encode(claims, pem, algorithm="RS256", headers={"kid": kid})
 
 
@@ -445,9 +461,22 @@ def test_verify_id_token_accepts_valid_google_token():
     from src.api.oauth import _verify_google_id_token
 
     pem, jwks = _make_rsa_jwks("kid1")
-    token = _signed_token(pem, "kid1", sub="g-user-1")
-    result = _verify_google_id_token(token, "google-id", jwks=jwks)
+    token = _signed_token(pem, "kid1", sub="g-user-1", access_token="at-1")
+    result = _verify_google_id_token(token, "google-id", jwks=jwks, access_token="at-1")
     assert result["sub"] == "g-user-1"
+
+
+def test_verify_id_token_verifies_at_hash_claim():
+    """Google id_tokens carry at_hash (required by python-jose defaults); it
+    must be checked against the access token from the same code exchange."""
+    from src.api.oauth import _verify_google_id_token
+
+    pem, jwks = _make_rsa_jwks("kid1")
+    token = _signed_token(pem, "kid1", access_token="at-1")
+    with pytest.raises(ValueError, match="id_token"):
+        _verify_google_id_token(token, "google-id", jwks=jwks, access_token="at-2")
+    result = _verify_google_id_token(token, "google-id", jwks=jwks, access_token="at-1")
+    assert result["sub"] == "g"
 
 
 def test_verify_id_token_rejects_wrong_audience():
@@ -456,7 +485,7 @@ def test_verify_id_token_rejects_wrong_audience():
     pem, jwks = _make_rsa_jwks("kid2")
     token = _signed_token(pem, "kid2", aud="other-client")
     with pytest.raises(ValueError, match="id_token"):
-        _verify_google_id_token(token, "google-id", jwks=jwks)
+        _verify_google_id_token(token, "google-id", jwks=jwks, access_token="at-1")
 
 
 def test_verify_id_token_rejects_expired():
@@ -465,7 +494,7 @@ def test_verify_id_token_rejects_expired():
     pem, jwks = _make_rsa_jwks("kid3")
     token = _signed_token(pem, "kid3", ttl_hours=-1)
     with pytest.raises(ValueError, match="id_token"):
-        _verify_google_id_token(token, "google-id", jwks=jwks)
+        _verify_google_id_token(token, "google-id", jwks=jwks, access_token="at-1")
 
 
 def test_verify_id_token_rejects_wrong_issuer():
@@ -474,4 +503,4 @@ def test_verify_id_token_rejects_wrong_issuer():
     pem, jwks = _make_rsa_jwks("kid4")
     token = _signed_token(pem, "kid4", iss="https://evil.example.com")
     with pytest.raises(ValueError, match="id_token"):
-        _verify_google_id_token(token, "google-id", jwks=jwks)
+        _verify_google_id_token(token, "google-id", jwks=jwks, access_token="at-1")
