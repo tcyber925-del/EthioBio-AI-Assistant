@@ -685,7 +685,7 @@ The project uses cookie-based JWT authentication:
 - **Login** — new users are created from verified profile; an existing email (password/Telegram account) reveals via `?oauth_error=email_conflict` — no auto-merge.
 - **Linking** — start with `?link=1` while logged in (`oauth_accounts` row is added to the current user and authenticated immediately). Doing it anonymously returns `?oauth_error=login_required`.
 - `oauth_accounts` table: unique `(provider, provider_user_id)` and `(user_id, provider)`, so a Google account can only ever bind to one EthioBio user.
-- Requires `OAUTH_GOOGLE_CLIENT_ID`, `OAUTH_GOOGLE_CLIENT_SECRET`, `OAUTH_CALLBACK_BASE_URL` (defaults to `DASHBOARD_URL`); errors surface as `not_configured` when unset.
+- Requires `OAUTH_GOOGLE_CLIENT_ID`, `OAUTH_GOOGLE_CLIENT_SECRET`, and `OAUTH_CALLBACK_BASE_URL` — defaults to `API_BASE_URL` (`{base}/auth/oauth/google/callback` is the exact redirect URI Google must match); errors surface as `not_configured` when unset.
 
 ## Testing
 
