@@ -56,7 +56,14 @@
     "teacher_dashboard": "Teacher Dashboard",
     "email_placeholder": "teacher@school.edu",
     "password_placeholder": "••••••••",
-    "otp_placeholder": "123456"
+    "otp_placeholder": "123456",
+    "continue_with_google": "Continue with Google",
+    "oauth_redirecting": "Signing you in…",
+    "oauth_error_not_configured": "Google sign-in isn't configured yet. Please sign in with email or Telegram.",
+    "oauth_error_email_conflict": "An account with this email already exists. Please sign in with your email and password.",
+    "oauth_error_access_denied": "Google sign-in was declined. Try again or sign in with email.",
+    "oauth_error_unknown": "Sign-in failed ({code}). Please try again.",
+    "back_to_login": "Back to login"
   },
   "common": {
     "loading": "Loading...",

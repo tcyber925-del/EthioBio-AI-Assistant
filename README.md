@@ -391,6 +391,9 @@ Key environment variables (see `.env.example` for full list):
 | GET | `/auth/me` | Current user info |
 | POST | `/auth/request-otp` | Request OTP for dashboard login (via Telegram) |
 | POST | `/auth/verify-otp` | Verify OTP, issue JWT |
+| GET | `/auth/oauth/{provider}/login` | Google OAuth start (Auth Code + PKCE, state in Redis) |
+| GET | `/auth/oauth/{provider}/callback` | OAuth callback → validates id_token (JWKS), links/creates user |
+| POST | `/auth/oauth/claim` | Exchange one-time ticket for session cookies |
 | GET | `/auth/public-stats` | Aggregated public stats |
 
 ### Internal
@@ -675,6 +678,14 @@ The project uses cookie-based JWT authentication:
 - **Redis JTI revocation** — Token reuse detection via Redis `refresh:{jti}` key
 - **OTP flow** — Telegram → `/dashboard_login` generates OTP → `/auth/verify-otp` issues JWT
 - **Internal API key** — `X-API-Key` header for service-to-service auth
+
+### Google OAuth (login & linking)
+
+- Flow: dashboard → `/auth/oauth/google/login?redirect=/classroom` (307 to Google, PKCE S256, state single-use in Redis) → callback validates `id_token` against cached Google JWKS, resolves or creates the user, and returns a one-time `ticket` to the dashboard → `/auth/oauth/claim` swaps the ticket for the standard cookie pair.
+- **Login** — new users are created from verified profile; an existing email (password/Telegram account) reveals via `?oauth_error=email_conflict` — no auto-merge.
+- **Linking** — start with `?link=1` while logged in (`oauth_accounts` row is added to the current user and authenticated immediately). Doing it anonymously returns `?oauth_error=login_required`.
+- `oauth_accounts` table: unique `(provider, provider_user_id)` and `(user_id, provider)`, so a Google account can only ever bind to one EthioBio user.
+- Requires `OAUTH_GOOGLE_CLIENT_ID`, `OAUTH_GOOGLE_CLIENT_SECRET`, `OAUTH_CALLBACK_BASE_URL` (defaults to `DASHBOARD_URL`); errors surface as `not_configured` when unset.
 
 ## Testing
 

@@ -56,7 +56,14 @@
     "email_placeholder": "teacher@school.edu",
     "otp_placeholder": "123456",
     "password_placeholder": "••••••••",
-    "teacher_dashboard": "የመምህር ዳሽቦርድ"
+    "teacher_dashboard": "የመምህር ዳሽቦርድ",
+    "continue_with_google": "በጉግል ይቀጥሉ",
+    "oauth_redirecting": "ወደ መለያዎ እያስገባዎት ነው…",
+    "oauth_error_not_configured": "የጉግል መግቢያ ገና አልተዘጋጀም። እባክዎ በኢሜይል ወይም በቴሌግራም ይግቡ።",
+    "oauth_error_email_conflict": "በዚህ ኢሜይል መለያ አስቀድሞ አለ። እባክዎ በኢሜይል እና በይለፍ ቃልዎ ይግቡ።",
+    "oauth_error_access_denied": "የጉግል መግቢያ ተሰርዟል። እንደገና ይሞክሩ ወይም በኢሜይል ይግቡ።",
+    "oauth_error_unknown": "መግባት አልተሳካም ({code})። እባክዎ እንደገና ይሞክሩ።",
+    "back_to_login": "ወደ መግቢያ ተመለስ"
   },
   "common": {
     "loading": "በመጫን ላይ...",

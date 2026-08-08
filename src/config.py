@@ -64,6 +64,13 @@ class Settings(BaseSettings):
     dashboard_url: str = "http://localhost:3000"
     api_base_url: str = "http://localhost:8000"
 
+    # OAuth (Google) sign-in. Client id/secret from the Google Cloud console.
+    oauth_google_client_id: str = ""
+    oauth_google_client_secret: str = ""
+    # Public base URL where the OAuth callback can be reached (e.g. https://api.example.com).
+    # Defaults to api_base_url when left empty.
+    oauth_callback_base_url: str = ""
+
     cloudflare_account_id: str = ""
     cloudflare_api_token: str = ""
     cloudflare_image_model: str = "@cf/black-forest-labs/flux-1-schnell"

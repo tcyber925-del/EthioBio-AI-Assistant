@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasAccess = request.cookies.has("access_token");
-  const isLoginPage = pathname === "/login";
+  const isLoginPage = pathname === "/login" || pathname.startsWith("/login/");
   const isPublic = pathname === "/";
   const isApiPath = pathname.startsWith("/auth/") || pathname.startsWith("/api/");
 

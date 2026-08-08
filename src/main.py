@@ -46,6 +46,7 @@ from src.api import (
     workspace,
 )
 from src.api import memory as memory_api
+from src.api import oauth as oauth_api
 from src.api.graph import router as graph_router
 from src.api.intelligence.continue_learning_router import (
     router as continue_learning_router,
@@ -409,6 +410,7 @@ app.include_router(assignment.router)
 app.include_router(bookmark.router)
 app.include_router(agent_orchestrator.router)
 app.include_router(auth.router)
+app.include_router(oauth_api.router)
 app.include_router(internal_router)
 
 app.include_router(parent.router)

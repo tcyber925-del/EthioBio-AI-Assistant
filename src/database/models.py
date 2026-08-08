@@ -76,6 +76,9 @@ class User(Base):
         secondaryjoin="User.id == ParentChild.parent_id",
         back_populates="children",
     )
+    oauth_accounts: Mapped[list["OAuthAccount"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class ParentChild(Base):
@@ -87,6 +90,28 @@ class ParentChild(Base):
     student_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True
     )
+
+
+class OAuthAccount(Base):
+    __tablename__ = "oauth_accounts"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    provider: Mapped[str] = mapped_column(String(32))
+    provider_user_id: Mapped[str] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    __table_args__ = (
+        UniqueConstraint("provider", "provider_user_id", name="uq_oauth_accounts_provider_subject"),
+        UniqueConstraint("user_id", "provider", name="uq_oauth_accounts_user_provider"),
+    )
+
+    user: Mapped["User"] = relationship(back_populates="oauth_accounts")
 
 
 class StudentProfile(Base):
