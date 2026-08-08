@@ -313,7 +313,27 @@ async def oauth_callback(
         jwks = await _load_google_jwks()
         claims = _verify_google_id_token(tokens["id_token"], provider_config["client_id"](), jwks)
     except ValueError as exc:
-        logger.warning("oauth_id_token_rejected", error=str(exc))
+        unverified_header = jwt.get_unverified_header(tokens["id_token"])
+        try:
+            unverified_claims = jwt.get_unverified_claims(tokens["id_token"])
+        except Exception:  # noqa: BLE001
+            unverified_claims = {}
+        logger.warning(
+            "oauth_id_token_rejected",
+            error=str(exc),
+            cause=(
+                f"{type(exc.__cause__).__name__}: {exc.__cause__}"
+                if exc.__cause__ is not None
+                else "unknown"
+            ),
+            kid=unverified_header.get("kid"),
+            alg=unverified_header.get("alg"),
+            aud=unverified_claims.get("aud"),
+            iss=unverified_claims.get("iss"),
+            iat_age_seconds=time.time() - float(unverified_claims.get("iat", 0)),
+            exp_age_seconds=float(unverified_claims.get("exp", 0)) - time.time(),
+            jwks_kids=sorted(j["kid"] for j in jwks.get("keys", [])),
+        )
         return _error_redirect("profile_invalid")
 
     if not claims.get("email_verified"):
