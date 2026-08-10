@@ -2,13 +2,16 @@
 
 Requires ADDIS_API_KEY. REST API at https://api.addisassistant.com
 (see docs/research/addis-ai-voice-integration.md):
-- STT: POST /api/v2/stt (multipart; 60s/10MB limits; WAV/MP3/M4A/WebM)
-- TTS: POST /api/v1/voice/generations -> signed audio_url (full clips,
-  no partial streaming; idempotent via client_request_id)
+- STT: POST /api/v2/stt (multipart; 60s/10MB limits; WAV/MP3/M4A/WebM;
+  language_code is REQUIRED — addis-whisper has no auto-detect)
+- TTS: POST /api/v1/voice/generations -> 201 with inline data.audio
+  (base64 data URL) or signed audio_url (full clips, no partial
+  streaming; idempotent via client_request_id)
 Addis Voices 2 voices are Amharic/Afan Oromo only; English synthesis
 raises NotImplementedError so the registry falls back to other providers.
 """
 
+import base64
 import json
 import re
 import uuid
@@ -24,6 +27,7 @@ from .types import (
     SpeechProviderInfo,
     SynthesisResult,
     TranscriptResult,
+    detect_transcript_language,
     normalize_language_code,
 )
 
@@ -55,9 +59,17 @@ class AddisProvider(SpeechProvider):
         if not settings.addis_api_key:
             raise RuntimeError("ADDIS_API_KEY not configured")
 
-        request_data: dict = {}
-        if language:
-            request_data["language_code"] = language
+        # addis-whisper cannot auto-detect (verified live: omitting
+        # language_code returns 400), but the "am" hint is universal-safe:
+        # Amharic speech comes back in Ethiopic script, English speech
+        # comes back as correct English text (verified live both ways;
+        # the "en" hint romanizes Amharic, so it is never safe).
+        language_code = normalize_language_code(language)
+        auto_detected = language_code not in ("am", "en")
+        if auto_detected:
+            language_code = "am"
+
+        request_data = {"language_code": language_code}
 
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
@@ -75,9 +87,13 @@ class AddisProvider(SpeechProvider):
         data = result.get("data") or {}
         usage = data.get("usage_metadata") or {}
         duration = _parse_billed_duration(usage.get("totalBilledDuration"))
+        text = data.get("transcription", "")
         return TranscriptResult(
-            text=data.get("transcription", ""),
-            language=normalize_language_code(language) or "am",
+            text=text,
+            # Explicit am/en keeps the caller-declared code; the default
+            # "am" hint gets a script-sniffed tag so downstream knows the
+            # actual language spoken.
+            language=detect_transcript_language(text) if auto_detected else language_code,
             language_confidence=float(result.get("confidence") or 0.0),
             duration_seconds=duration,
         )
@@ -112,14 +128,27 @@ class AddisProvider(SpeechProvider):
                 json=body,
             )
 
-        if response.status_code != 200:
+        if not (200 <= response.status_code < 300):
             logger.error("addis_tts_failed", status=response.status_code, body=response.text)
             raise RuntimeError(f"Addis TTS failed: {response.status_code} {response.text}")
 
-        data = (response.json().get("data") or {})
+        data = response.json().get("data") or {}
+        duration = float(data.get("duration_seconds") or 0.0)
+
+        inline = data.get("audio") or ""
+        if inline.startswith("data:"):
+            # Fast path: first response carries the clip inline as a
+            # base64 data URL (e.g. data:audio/mpeg;base64,<...>).
+            _, _, encoded = inline.partition(",")
+            return SynthesisResult(
+                audio_bytes=base64.b64decode(encoded),
+                format="mp3",
+                duration_seconds=duration,
+            )
+
         audio_url = data.get("audio_url")
         if not audio_url:
-            raise RuntimeError(f"Addis TTS returned no audio_url: {response.text}")
+            raise RuntimeError(f"Addis TTS returned no audio: {response.text}")
 
         async with httpx.AsyncClient(timeout=60.0) as client:
             audio_response = await client.get(audio_url)
@@ -136,6 +165,7 @@ class AddisProvider(SpeechProvider):
         return SynthesisResult(
             audio_bytes=audio_response.content,
             format="mp3",
+            duration_seconds=duration,
         )
 
     async def is_available(self) -> bool:

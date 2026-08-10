@@ -45,6 +45,16 @@ def _contains_ethiopic(text: str) -> bool:
     )
 
 
+def detect_transcript_language(text: str) -> str:
+    """Best-effort language tag from a transcript's script.
+
+    Returns "am" when the text contains Ethiopic script, otherwise "en".
+    Used to label results when a provider was given no explicit
+    language (e.g. addis-whisper's universal "am" hint).
+    """
+    return "am" if _contains_ethiopic(text) else "en"
+
+
 def resolve_tts_language(language: Optional[str], text: str = "") -> str:
     """Clamp any TTS language input to a supported code: "am" or "en".
 

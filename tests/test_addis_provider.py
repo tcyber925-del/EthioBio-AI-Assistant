@@ -1,3 +1,4 @@
+import base64
 import json
 
 import httpx
@@ -84,15 +85,36 @@ class TestTranscribe:
         assert kwargs["files"]["audio"] == ("audio.wav", AUDIO_BYTES, "audio/wav")
         assert json.loads(kwargs["data"]["request_data"]) == {"language_code": "am"}
 
-    async def test_omits_language_code_for_auto_detect(self, monkeypatch, provider):
+    async def test_none_defaults_to_am_hint_and_sniffs_amharic(self, monkeypatch, provider):
         fake = _install_fake_client(monkeypatch, [_stt_response()])
         _set_key(monkeypatch)
 
         result = await provider.transcribe(AUDIO_BYTES, mime_type="audio/webm")
 
         _, _, kwargs = fake.calls[0]
-        assert json.loads(kwargs["data"]["request_data"]) == {}
+        assert json.loads(kwargs["data"]["request_data"]) == {"language_code": "am"}
+        assert result.text == "ሰላም"
         assert result.language == "am"
+
+    async def test_none_defaults_am_hint_but_tags_english_transcript(self, monkeypatch, provider):
+        fake = _install_fake_client(monkeypatch, [_stt_response(text="Hello world")])
+        _set_key(monkeypatch)
+
+        result = await provider.transcribe(AUDIO_BYTES, mime_type="audio/webm")
+
+        _, _, kwargs = fake.calls[0]
+        assert json.loads(kwargs["data"]["request_data"]) == {"language_code": "am"}
+        assert result.language == "en"
+
+    async def test_accepts_english_and_normalizes_locale(self, monkeypatch, provider):
+        fake = _install_fake_client(monkeypatch, [_stt_response(text="Hello")])
+        _set_key(monkeypatch)
+
+        result = await provider.transcribe(AUDIO_BYTES, language="en-US", mime_type="audio/webm")
+
+        _, _, kwargs = fake.calls[0]
+        assert json.loads(kwargs["data"]["request_data"]) == {"language_code": "en"}
+        assert result.language == "en"
 
     async def test_raises_runtime_error_on_api_error(self, monkeypatch, provider):
         _install_fake_client(monkeypatch, [httpx.Response(500, text="boom")])
@@ -118,6 +140,33 @@ class TestSynthesize:
                 "data": {"id": "clip_1", "audio_url": audio_url, "usage": {}},
             },
         )
+
+    def _generation_response_201_inline(self, base64_audio):
+        return httpx.Response(
+            201,
+            json={
+                "status": "success",
+                "data": {
+                    "id": "clip_2",
+                    "audio": f"data:audio/mpeg;base64,{base64_audio}",
+                    "audio_url": "https://cdn.example/clip2.mp3",
+                    "duration_seconds": 1.63,
+                    "usage": {},
+                },
+            },
+        )
+
+    async def test_accepts_201_with_inline_audio(self, monkeypatch, provider):
+        payload = base64.b64encode(b"\xaa" * 64).decode()
+        fake = _install_fake_client(monkeypatch, [self._generation_response_201_inline(payload)])
+        _set_key(monkeypatch)
+
+        result = await provider.synthesize("ሰላም", language="am")
+
+        assert result.format == "mp3"
+        assert result.audio_bytes == b"\xaa" * 64
+        assert result.duration_seconds == pytest.approx(1.63)
+        assert len(fake.calls) == 1  # inline audio: no second fetch
 
     async def test_generates_clip_then_fetches_audio(self, monkeypatch, provider):
         fake = _install_fake_client(

@@ -18,6 +18,7 @@ Every claim is tagged **[DOC]** (documented) or **[ASSUMPTION]** (inference; ver
 ## 2. STT — addis-whisper
 
 - POST `https://api.addisassistant.com/api/v2/stt`, `multipart/form-data`; fields `audio` (file) + `request_data` (JSON string: `{"language_code": "am"}`). Headers: `x-api-key`. [DOC]
+- **`language_code` is REQUIRED — no true auto-detect.** Verified live 2026-08-10: omitting it returns 400 `missing_parameter`. The provider sends the universal `"am"` hint when no `am`/`en` code is derivable — verified that Amharic speech returns Ethiopic script and English speech returns correct English under that hint, while the `"en"` hint romanizes Amharic ("Salam alaykum…") and is never the default. Result language is tagged via `detect_transcript_language()` script sniffing (`src/voice/providers/types.py`).
 - Response: `{"status":"success","data":{"transcription": "...", "usage_metadata": {"totalBilledDuration": "15s","requestId": "..."}},"confidence": 0.982}` [DOC]
 - Formats: WAV, MP3, M4A, WebM (WAV fastest). **OGG/Opus NOT listed** — Telegram voice notes are OGG/Opus → conversion or verification needed. [DOC + ASSUMPTION]
 - Limits: max 60 s duration, max 10 MB file. Mono preferred, 16 kHz+ recommended. [DOC]
@@ -28,7 +29,7 @@ Every claim is tagged **[DOC]** (documented) or **[ASSUMPTION]** (inference; ver
 ## 3. TTS — Addis Voices 2
 
 - POST `https://api.addisassistant.com/api/v1/voice/generations`; body `text`, `voice_id`, `language` (`am`/`om`), `output_format` (`mp3_44100` | `wav_44100` | `pcm_16000`), optional `client_request_id` (idempotency). [DOC]
-- Response: durable clip metadata + signed `audio_url` (first response may include an inline data URL; replay may not → always use signed URL). [DOC]
+- Response: durable clip metadata + signed `audio_url` (first response may include an inline data URL; replay may not → always use signed URL). [DOC] **Verified live 2026-08-10:** generation returns **HTTP 201** with the clip inline as `data.audio` (`data:audio/mpeg;base64,...`) plus `audio_url`, `duration_seconds`, `usage.credits_remaining`. Provider accepts 200/201, prefers the inline data URL (avoids an extra signed-URL fetch), falls back to `audio_url`, and records `duration_seconds` (721 ms → 0.1358 ETB).
 - **Does not stream partial audio**; billed **5 ETB per generated minute**; estimate endpoint `POST /api/v1/voice/estimate` before generation. [DOC]
 - Voice catalog: `GET /api/v1/voice/voices?language=am` (filters: language, gender, search, include_unavailable); canonical example `am-hamen`; 19 Amharic + 9 Afan Oromo voices live at doc verification date; **availability can change without a docs release** → call `voices.list()` at runtime. [DOC]
 - Preview: `GET /api/v1/voice/voices/{id}/preview` (signed, expiring). [DOC]
