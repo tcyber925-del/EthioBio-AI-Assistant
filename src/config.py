@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     azure_speech_key: str = ""
     azure_speech_region: str = ""
+    addis_api_key: str = ""
+    addis_base_url: str = "https://api.addisassistant.com"
+    addis_stt_language: Optional[str] = None  # None = auto-detect (am/om/en)
+    addis_tts_voice_am: str = "am-hamen"
+    addis_tts_output_format: str = "mp3_44100"  # mp3_44100 | wav_44100 | pcm_16000
     whisper_model: str = "base"
 
     # edge-tts voice mapping (env-tunable; see .env.example)

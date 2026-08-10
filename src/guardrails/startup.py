@@ -42,6 +42,11 @@ async def run_startup_checks() -> list[str]:
     if not settings.azure_speech_key or not settings.azure_speech_region:
         logger.info("voice_azure_unavailable", reason="Azure speech key/region not set")
 
+    if settings.addis_api_key:
+        logger.info("voice_addis_available")
+    else:
+        logger.info("voice_addis_unavailable", reason="ADDIS_API_KEY not set")
+
     if settings.gemini_api_key:
         logger.info("voice_gemini_tts_available")
     else:

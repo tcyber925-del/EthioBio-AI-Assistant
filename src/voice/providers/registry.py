@@ -12,6 +12,7 @@ from src.observability.voice_metrics import (
     record_tts_request,
 )
 
+from .addis import AddisProvider
 from .azure import AzureSTTProvider
 from .base import SpeechProvider
 from .edge_tts import EdgeTTSProvider
@@ -61,6 +62,12 @@ class SpeechProviderRegistry:
         if settings.azure_speech_key and settings.azure_speech_region:
             self._tts_providers["azure"] = AzureSTTProvider()
             self._tts_fallback_chain.insert(0, "azure")
+        if settings.addis_api_key:
+            addis = AddisProvider()
+            self._stt_providers["addis"] = addis
+            self._stt_fallback_chain.insert(0, "addis")
+            self._tts_providers["addis"] = addis
+            self._tts_fallback_chain.insert(0, "addis")
         logger.info(
             "speech_providers_initialized",
             stt=list(self._stt_providers),
@@ -104,6 +111,9 @@ class SpeechProviderRegistry:
                 breaker.record_success()
                 record_stt_request(name, language or "unknown", "ok")
                 return result
+            except NotImplementedError as e:
+                logger.debug("provider_stt_unsupported", provider=name, error=str(e))
+                last_error = e
             except Exception as e:
                 breaker.record_failure()
                 record_stt_request(name, language or "unknown", "error")
@@ -143,6 +153,9 @@ class SpeechProviderRegistry:
                 breaker.record_success()
                 record_tts_request(name, "ok")
                 return result
+            except NotImplementedError as e:
+                logger.debug("provider_tts_unsupported", provider=name, error=str(e))
+                last_error = e
             except Exception as e:
                 breaker.record_failure()
                 record_tts_request(name, "error")
