@@ -44,6 +44,8 @@ services:
         sync: false
       - key: INTERNAL_API_KEY
         sync: false
+      - key: ADDIS_API_KEY
+        sync: false
       - key: OLLAMA_API_KEY
         sync: false
       - key: SENTRY_DSN
@@ -60,6 +62,12 @@ envVarGroups:
         value: "true"
       - key: JINA_API_KEY
         sync: false
+      - key: ADDIS_BASE_URL
+        value: https://api.addisassistant.com
+      - key: ADDIS_TTS_VOICE_AM
+        value: am-hamen
+      - key: ADDIS_TTS_OUTPUT_FORMAT
+        value: mp3_44100
       - key: STORE_BACKEND
         value: pgvector
       - key: COLLECTION_NAME
