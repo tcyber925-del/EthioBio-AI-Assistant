@@ -7,21 +7,12 @@ on:
 jobs:
   trigger-automation:
     if: github.event.label.name == 'ai-ready'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Trigger Hermes Automation
         run: |
-          # Option 1: Call Hermes API (if public endpoint available)
-          # curl -X POST https://your-public-endpoint/webhooks/trigger-automation \
-          #   -H "Content-Type: application/json" \
-          #   -d "{\"issue_number\": ${{ github.event.issue.number }}, \"repo\": \"${{ github.repository }}\"}"
-          
-          # Option 2: Use repository_dispatch to trigger self-hosted runner
-          # This requires a self-hosted runner on the orchestrator
-          
-          # Option 3: For now, just log - we'll use cron + webhook as backup
           echo "Issue ${{ github.event.issue.number }} labeled ai-ready in ${{ github.repository }}"
-          echo "Automation will be picked up by cron (every 3 hours) or manual trigger"
+          echo "Self-hosted runner will execute the automation"
           
       - name: Comment on Issue
         uses: actions/github-script@v7
@@ -31,5 +22,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '🤖 **Automation Triggered**\n\nIssue labeled `ai-ready`. The AI engineering automation will process this issue on the next cron run (every 3 hours) or you can trigger manually.\n\n**Next cron run:** Every 3 hours at :00\n**Manual trigger:** Reply `/run automation` in Telegram General topic'
+              body: '🤖 **Automation Triggered**\n\nIssue labeled `ai-ready`. The AI engineering automation will process this issue via the self-hosted runner.\n\n**Runner:** `self-hosted` on `tcyber-hp-probook-1`\n**Status:** Queued for execution'
             })
