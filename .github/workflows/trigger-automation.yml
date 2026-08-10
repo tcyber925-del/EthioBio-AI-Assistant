@@ -6,27 +6,20 @@ on:
 
 jobs:
   trigger-automation:
-    if: github.event.label.name == 'ai-ready'
     runs-on: self-hosted
+    permissions:
+      issues: write
+      contents: read
     steps:
-      - name: Trigger Hermes Automation
+      - name: Debug Event
         run: |
-          echo "Issue ${{ github.event.issue.number }} labeled ai-ready in ${{ github.repository }}"
-          echo "Self-hosted runner will execute the automation"
-          
-          # Trigger the actual automation by calling the cron job or running the skill
-          # For now, we'll just comment and let the cron job pick it up
-          # In the future, this could trigger the actual automation directly
+          echo "Event: ${{ github.event_name }}"
+          echo "Label: ${{ github.event.label.name }}"
+          echo "Action: ${{ github.event.action }}"
+          echo "Issue: ${{ github.event.issue.number }}"
+          echo "Repo: ${{ github.repository }}"
           
       - name: Comment on Issue
-        run: |
-          gh issue comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "🤖 **Automation Triggered**
-
-Issue labeled \`ai-ready\`. The AI engineering automation will process this issue via the self-hosted runner.
-
-**Runner:** \`self-hosted\` on \`tcyber-hp-probook-1\`
-**Status:** Queued for execution
-**Next cron run:** Every 6 hours (0 */6 * * *)
-**Manual trigger:** Reply \`/run automation\` in Telegram General topic"
+        run: gh issue comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "🤖 **Automation Triggered** Issue labeled \`ai-ready\`. The AI engineering automation will process this issue via the self-hosted runner. **Runner:** \`self-hosted\` on \`tcyber-hp-probook-1\` **Status:** Queued for execution"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
