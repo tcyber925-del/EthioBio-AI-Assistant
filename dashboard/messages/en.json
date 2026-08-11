@@ -67,6 +67,8 @@
   },
   "errors": {
     "generic": "Something went wrong. Please try again.",
+    "retry": "Try again",
+    "error_title": "Something went wrong",
     "http": {
       "400": "The request could not be completed.",
       "401": "Your session is invalid or has expired. Please sign in again.",
