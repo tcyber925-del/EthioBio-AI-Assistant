@@ -10,6 +10,9 @@
 
 **Design doc:** `docs/superpowers/specs/2026-08-11-error-handling-design.md`
 
+**Amendments (execution):**
+- Task 03: plan test listing grew 17 → 19 via two quality-review edge tests (`retry_after: 0` preserved; numeric `loc` segments stringified). Reference `normalizeException` hardened — name-based shape check instead of `instanceof Error` (legacy WebViews' `DOMException` doesn't inherit `Error`; abort must stay retryable). `SAFE_CONTEXT_KEYS` constant removed as dead code (`params` always `{}` per design §4.3). Implemented in `396b3ff`, hardened in `90d2e38`; full suite 68 passing at completion.
+
 ---
 
 ## File Structure
@@ -308,6 +311,10 @@ describe("normalizeHttpError — structured envelope", () => {
     expect(err.retryable).toBe(true);
     expect(err.retryAfter).toBe(42);
   });
+  it("retry_after 0 is preserved, not dropped", () => {
+    const err = normalizeHttpError(429, envelope(429, "rate_limit_exceeded", "Slow down", { retry_after: 0 }));
+    expect(err.retryAfter).toBe(0);
+  });
   it("drops unsafe context params", () => {
     const err = normalizeHttpError(500, envelope(500, "internal_error", "boom", { retry_after: 5, secret: "hunter2" }));
     expect(err.params).toEqual({});
@@ -349,6 +356,13 @@ describe("normalizeHttpError — Pydantic validation", () => {
     });
     const err = normalizeHttpError(400, body);
     expect(err.fieldErrors).toEqual({ x: ["errors.validation.generic"] });
+  });
+  it("stringifies numeric loc segments (list items)", () => {
+    const body = JSON.stringify({
+      detail: [{ loc: ["body", "items", 0, "name"], msg: "field required", type: "missing" }],
+    });
+    const err = normalizeHttpError(422, body);
+    expect(err.fieldErrors).toEqual({ "items.0.name": ["errors.validation.missing"] });
   });
 });
 
@@ -425,7 +439,6 @@ Replace the placeholder `src/lib/errors/normalizeError.ts`:
 ```ts
 import { fromHttpStatus, type AppError } from "./AppError";
 
-const SAFE_CONTEXT_KEYS = new Set(["retry_after"]);
 const VALIDATION_TYPE_MAP: Record<string, string> = {
   missing: "errors.validation.missing",
   string_type: "errors.validation.string_type",
@@ -477,14 +490,12 @@ export function normalizeHttpError(status: number, bodyText: string): AppError {
 }
 
 export function normalizeException(error: unknown): AppError {
-  if (error instanceof Error && (error.name === "AbortError" || error.name === "TimeoutError")) {
+  const name = typeof error === "object" && error !== null ? (error as { name?: unknown }).name : undefined;
+  if (name === "AbortError" || name === "TimeoutError") {
     return { category: "network", retryable: true, cause: error };
   }
   if (error instanceof TypeError && /fetch|network|failed/i.test(error.message)) {
     return { category: "network", retryable: true, cause: error };
-  }
-  if (error instanceof Error) {
-    return { category: "unknown", retryable: false, cause: error };
   }
   return { category: "unknown", retryable: false, cause: error };
 }
