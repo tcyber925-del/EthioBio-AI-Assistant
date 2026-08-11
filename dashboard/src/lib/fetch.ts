@@ -1,4 +1,6 @@
 import { getToken } from './auth'
+import { normalizeHttpError, normalizeStreamError } from './errors'
+import type { AppError } from './errors'
 
 const DEFAULT_TIMEOUT = 30000
 
@@ -16,12 +18,7 @@ export async function fetchWithTimeout(url: string, options: RequestInit = {}, t
     const res = await fetch(cacheBust, { ...options, headers, credentials: 'include', signal: controller.signal })
     if (!res.ok) {
       const text = await res.text().catch(() => '')
-      try {
-        const json = JSON.parse(text)
-        throw new Error(json.detail || json.error || `HTTP ${res.status}`)
-      } catch {
-        throw new Error(text || `HTTP ${res.status}`)
-      }
+      throw normalizeHttpError(res.status, text)
     }
     return await res.json()
   } finally {
@@ -44,7 +41,7 @@ export type StreamCallbacks = {
   onToken?: (token: string) => void
   onAudio?: (base64: string) => void
   onMetadata?: (metadata: Record<string, unknown>) => void
-  onError?: (error: string) => void
+  onError?: (error: AppError) => void
   onDone?: () => void
 }
 
@@ -68,18 +65,13 @@ export async function streamFetch(
 
   if (!res.ok) {
     const text = await res.text().catch(() => '')
-    try {
-      const json = JSON.parse(text)
-      callbacks.onError?.(json.detail || json.error || `HTTP ${res.status}`)
-    } catch {
-      callbacks.onError?.(text || `HTTP ${res.status}`)
-    }
+    callbacks.onError?.(normalizeHttpError(res.status, text))
     return
   }
 
   const reader = res.body?.getReader()
   if (!reader) {
-    callbacks.onError?.('No response body')
+    callbacks.onError?.({ category: 'service', code: 'no_response_body', retryable: true })
     return
   }
 
@@ -99,7 +91,7 @@ export async function streamFetch(
       try {
         const chunk: StreamChunk = JSON.parse(line.slice(6))
         if (chunk.error) {
-          callbacks.onError?.(chunk.error)
+          callbacks.onError?.(normalizeStreamError(chunk.error))
           return
         }
         if (chunk.audio_b64) {

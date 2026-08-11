@@ -30,6 +30,7 @@ export default function AskPage() {
   const router = useRouter()
   const ta = useTranslations('ask')
   const tc = useTranslations('common')
+  const tRoot = useTranslations()
   const locale = useLocale()
 
   useEffect(() => {
@@ -130,7 +131,7 @@ export default function AskPage() {
         if (meta.sources) setSources(meta.sources as string[])
       },
       onError: (err) => {
-        setError(err)
+        setError(tRoot(err.category === 'network' ? 'errors.categories.network' : 'errors.generic'))
         setLoading(false)
       },
       onDone: () => {
