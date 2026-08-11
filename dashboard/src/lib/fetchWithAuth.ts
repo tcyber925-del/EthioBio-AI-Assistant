@@ -1,4 +1,3 @@
-import * as fwa from "./fetchWithAuth";
 import { normalizeHttpError } from "./errors";
 
 const REFRESH_URL = "/auth/refresh";
@@ -30,11 +29,9 @@ function singleFlightRefresh(): Promise<boolean> {
 function redirectToLogin(): void {
   if (typeof window === "undefined") return;
   const current = window.location.pathname + window.location.search;
-  if (current === "/login" || current.startsWith("/login/")) return;
+  if (current.startsWith("/login")) return;
   window.location.href = `/login?next=${encodeURIComponent(current)}`;
 }
-
-export { redirectToLogin }; // exported for tests; do not import elsewhere
 
 function authorized(url: string, options: RequestInit = {}): [string, RequestInit] {
   const headers = { "Content-Type": "application/json", ...(options.headers ?? {}) };
@@ -51,7 +48,7 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
     res = await fetch(authUrl, authOpts);
     if (res.status !== 401) return res;
   }
-  fwa.redirectToLogin();
+  redirectToLogin();
   return res;
 }
 
