@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fromHttpStatus, isAppError } from "../errors/AppError";
+import { ERROR_CATEGORIES, fromHttpStatus, isAppError } from "../errors/AppError";
 
 describe("fromHttpStatus", () => {
   it("classifies common statuses", () => {
@@ -31,5 +31,13 @@ describe("isAppError", () => {
     expect(isAppError(new Error("x"))).toBe(false);
     expect(isAppError(null)).toBe(false);
     expect(isAppError({ category: "server" })).toBe(false); // missing retryable
+  });
+  it("rejects unknown categories", () => {
+    expect(isAppError({ category: "bogus", retryable: false })).toBe(false);
+  });
+  it("accepts every exported category", () => {
+    for (const category of ERROR_CATEGORIES) {
+      expect(isAppError({ category, retryable: false })).toBe(true);
+    }
   });
 });

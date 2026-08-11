@@ -9,14 +9,7 @@ import { setToken } from '@/lib/auth'
 import { setCookie } from '@/lib/cookies'
 import { normalizeException, type AppError } from '@/lib/errors'
 import { fetchWithTimeout } from '@/lib/fetch'
-
-function safeNextPath(): string | null {
-  if (typeof window === 'undefined') return null
-  const next = new URLSearchParams(window.location.search).get('next')
-  if (!next) return null
-  if (!next.startsWith('/') || next.startsWith('//') || next.startsWith('/login')) return null
-  return next
-}
+import { safeNextPath } from '@/lib/safeNextPath'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -57,7 +50,7 @@ export default function LoginPage() {
       if (data.language_preference) {
         setCookie('NEXT_LOCALE', data.language_preference, 365)
       }
-      router.push(safeNextPath() ?? '/classroom')
+      router.push(safeNextPath(window.location.search, window.location.origin) ?? '/classroom')
     } catch (err) {
       setError(normalizeException(err))
     } finally {
@@ -94,7 +87,7 @@ export default function LoginPage() {
         body: JSON.stringify({ telegram_id: Number(telegramId), otp: otpCode }),
       })
       setToken(data.access_token)
-      router.push(safeNextPath() ?? '/v2/overview')
+      router.push(safeNextPath(window.location.search, window.location.origin) ?? '/v2/overview')
     } catch (err) {
       setError(normalizeException(err))
     } finally {
@@ -212,7 +205,7 @@ export default function LoginPage() {
                 </svg>
                 {t('continue_with_google')}
               </a>
-              <button type="button" onClick={() => setLoginMode('telegram')}
+              <button type="button" onClick={() => { setLoginMode('telegram'); setError(null) }}
                 className="w-full py-2 bg-card border border-border text-foreground rounded-lg text-sm hover:bg-border transition-colors">
                 {t('login_telegram')}
               </button>

@@ -23,6 +23,20 @@ export interface AppError {
   cause?: unknown;
 }
 
+export const ERROR_CATEGORIES: readonly ErrorCategory[] = [
+  "authentication",
+  "authorization",
+  "validation",
+  "conflict",
+  "not_found",
+  "rate_limit",
+  "network",
+  "server",
+  "service",
+  "client",
+  "unknown",
+];
+
 const SERVER_STATUS = new Set<number>([500, 502, 503, 504, 599]);
 
 export function fromHttpStatus(status: number): AppError {
@@ -40,5 +54,8 @@ export function fromHttpStatus(status: number): AppError {
 export function isAppError(value: unknown): value is AppError {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
-  return typeof v.category === "string" && typeof v.retryable === "boolean";
+  return (
+    ERROR_CATEGORIES.includes(v.category as ErrorCategory) &&
+    typeof v.retryable === "boolean"
+  );
 }
