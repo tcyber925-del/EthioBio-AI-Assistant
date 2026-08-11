@@ -216,7 +216,6 @@ export interface AppError {
   cause?: unknown;
 }
 
-const NON_RETRYABLE = new Set<number>([400, 401, 403, 404, 409, 422]);
 const SERVER_STATUS = new Set<number>([500, 502, 503, 504, 599]);
 
 export function fromHttpStatus(status: number): AppError {
@@ -227,12 +226,11 @@ export function fromHttpStatus(status: number): AppError {
   if (status === 422) return { category: "validation", status, retryable: false };
   if (status === 429) return { category: "rate_limit", status, retryable: true };
   if (SERVER_STATUS.has(status)) return { category: "server", status, retryable: true };
-  if (status >= 400) {
-    return {
-      category: NON_RETRYABLE.has(status) ? "client" : "unknown",
-      status,
-      retryable: false,
-    };
+  if (status >= 400 && status < 500) {
+    return { category: "client", status, retryable: false };
+  }
+  if (status >= 500) {
+    return { category: "unknown", status, retryable: false };
   }
   return { category: "unknown", status, retryable: false };
 }
@@ -250,6 +248,8 @@ export function isAppError(value: unknown): value is AppError {
 export * from "./AppError";
 export * from "./normalizeError";
 ```
+
+**Plan amendment (post-review, Task 02):** the original `NON_RETRYABLE`-set version classified unlisted 4xx (e.g. 418) as `"unknown"`, contradicting its own test (expects `"client"`). Fixed: any 4xx that isn't one of the named statuses → `"client"`/non-retryable; 5xx not in `SERVER_STATUS` → `"unknown"`/non-retryable.
 
 - [ ] **Step 4: Run test to verify it passes**
 
