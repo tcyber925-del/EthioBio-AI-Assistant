@@ -1,11 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { AlertTriangle, RefreshCw, Users, BookOpen, FileQuestion, BarChart3 } from 'lucide-react'
+import { Users, BookOpen, FileQuestion, BarChart3 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserRole } from '@/lib/auth'
 import { HeroSection, InsightCard, MetricStrip, AIInsightPanel } from '@/components/dashboard-v2'
+import { ErrorState } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 interface DashboardData {
   users: number; teachers: number; students: number
@@ -34,10 +36,9 @@ function deriveInsights(data: DashboardData, t: TFn): string[] {
 
 export function TeacherDashboard() {
   const t = useTranslations('v2.teacher')
-  const tc = useTranslations('common')
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
 
   const fetchData = async () => {
     const role = getUserRole()
@@ -47,8 +48,8 @@ export function TeacherDashboard() {
       const response = await fetchWithAuth(endpoint)
       const d = await response.json()
       setData(d)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err))
+    } catch (err) {
+      setError(normalizeException(err))
     } finally { setLoading(false) }
   }
 
@@ -63,17 +64,7 @@ export function TeacherDashboard() {
   }
 
   if (error) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <AlertTriangle className="w-10 h-10 text-v2-error mx-auto mb-3" />
-          <p className="text-sm font-medium text-v2-text-secondary mb-4">{error}</p>
-          <button onClick={fetchData} className="inline-flex items-center gap-2 px-4 h-9 rounded-xl bg-v2-accent text-v2-inverted text-sm font-medium hover:bg-white transition-colors">
-            <RefreshCw className="w-4 h-4" /> {tc('retry')}
-          </button>
-        </div>
-      </div>
-    )
+    return <ErrorState error={error} title={t('load_error')} onRetry={() => void fetchData()} />
   }
 
   if (!data) return null

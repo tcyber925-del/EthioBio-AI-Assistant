@@ -918,7 +918,8 @@
       "milestone_level5": "Level 5",
       "milestone_strengthen": "Strengthen {topic}",
       "recent_quizzes": "Recent Quiz Attempts",
-      "view_all": "View all"
+      "view_all": "View all",
+      "load_error": "We couldn't load your dashboard"
     },
     "teacher": {
       "title": "Teaching Command Center",
@@ -946,7 +947,8 @@
       "insight_engagement": "Quiz engagement is high — **{count} attempts** logged. Review question performance to improve assessment quality.",
       "insight_failed": "{count, plural, one {**# failed request** in recent logs. Check the AI infrastructure for potential issues.} other {**# failed requests** in recent logs. Check the AI infrastructure for potential issues.}}",
       "insight_latency_healthy": "Average AI response time: **{seconds}s**. Model performance is healthy.",
-      "insight_latency_degraded": "Average AI response time: **{seconds}s**. Model performance is degraded."
+      "insight_latency_degraded": "Average AI response time: **{seconds}s**. Model performance is degraded.",
+      "load_error": "We couldn't load your dashboard"
     },
     "parent": {
       "title": "Your Child's Learning Journey",
@@ -962,7 +964,8 @@
       "insight_weak": "{count, plural, one {# area needs attention: {topics}.} other {# areas need attention: {topics}.}}",
       "insight_strong": "{count, plural, one {# strength: {topics}. Keep up the good work!} other {# strengths: {topics}. Keep up the good work!}}",
       "insight_warning": "⚠️ Low performance warning for this period. Consider scheduling additional support.",
-      "insight_streak": "{days, plural, one {#-day streak! Consistency is building.} other {#-day streak! Consistency is building.}}"
+      "insight_streak": "{days, plural, one {#-day streak! Consistency is building.} other {#-day streak! Consistency is building.}}",
+      "load_error": "We couldn't load your dashboard"
     },
     "school": {
       "title": "School Health Overview",
@@ -985,7 +988,8 @@
       "insight_intervention": "{students, plural, one {# student} other {# students}} across {classrooms, plural, one {# classroom} other {# classrooms}} need intervention.",
       "insight_health_up": "School health increased by {points} points since last snapshot.",
       "insight_health_down": "School health decreased by {points} points. Review at-risk classrooms.",
-      "insight_critical": "{count, plural, one {# student} other {# students}} in critical readiness band. Immediate intervention recommended."
+      "insight_critical": "{count, plural, one {# student} other {# students}} in critical readiness band. Immediate intervention recommended.",
+      "load_error": "We couldn't load your dashboard"
     },
     "admin": {
       "title": "Platform Overview",
@@ -1005,7 +1009,8 @@
       "insight_attempts_growing": "{count} quiz attempts logged. Assessment engagement is growing.",
       "insight_failed": "⚠️ {count, plural, one {# failed request} other {# failed requests}} in recent logs. AI infrastructure may need attention.",
       "insight_adoption_fast": "{count, plural, one {# new user} other {# new users}} registered recently. Platform adoption is accelerating.",
-      "insight_adoption_steady": "{count, plural, one {# new user} other {# new users}} registered recently. Platform adoption is steady."
+      "insight_adoption_steady": "{count, plural, one {# new user} other {# new users}} registered recently. Platform adoption is steady.",
+      "load_error": "We couldn't load your dashboard"
     }
   },
   "workspace": {

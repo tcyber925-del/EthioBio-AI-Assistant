@@ -918,7 +918,8 @@
       "milestone_level5": "ደረጃ 5",
       "milestone_strengthen": "{topic} አጠናክር",
       "recent_quizzes": "የቅርብ ጊዜ ፈተናዎች",
-      "view_all": "ሁሉንም ይመልከቱ"
+      "view_all": "ሁሉንም ይመልከቱ",
+      "load_error": "ዳሽቦርድዎን መጫን አልቻልንም"
     },
     "teacher": {
       "title": "የትምህርት መቆጣጠሪያ ማዕከል",
@@ -946,7 +947,8 @@
       "insight_engagement": "የፈተና ተሳትፎ ከፍ ያለ ነው — **{count} ሙከራዎች** ተመዝግበዋል። የጥያቄ አፈጻጸምን በመገምገም የግምገማ ጥራት ያሻሽሉ።",
       "insight_failed": "{count, plural, one {በቅርብ ጊዜ ምዝግቦች ውስጥ **# ያልተሳካ ጥያቄ** አለ። ሊሆኑ የሚችሉ ችግሮችን ለመፈተሽ የAI መሠረተ ልማትን ይፈትሹ።} other {በቅርብ ጊዜ ምዝግቦች ውስጥ **# ያልተሳኩ ጥያቄዎች** አሉ። ሊሆኑ የሚችሉ ችግሮችን ለመፈተሽ የAI መሠረተ ልማትን ይፈትሹ።}}",
       "insight_latency_healthy": "አማካይ የAI ምላሽ ጊዜ፡ **{seconds} ሰከንድ**። የሞዴል አፈጻጸም ጤናማ ነው።",
-      "insight_latency_degraded": "አማካይ የAI ምላሽ ጊዜ፡ **{seconds} ሰከንድ**። የሞዴል አፈጻጸም ዝቅ ያለ ነው።"
+      "insight_latency_degraded": "አማካይ የAI ምላሽ ጊዜ፡ **{seconds} ሰከንድ**። የሞዴል አፈጻጸም ዝቅ ያለ ነው።",
+      "load_error": "ዳሽቦርድዎን መጫን አልቻልንም"
     },
     "parent": {
       "title": "የልጅዎ የትምህርት ጉዞ",
@@ -962,7 +964,8 @@
       "insight_weak": "{count, plural, one {# መስክ ትኩረት ያስፈልገዋል፡ {topics}.} other {# መስኮች ትኩረት ያስፈልጋቸዋል፡ {topics}.}}",
       "insight_strong": "{count, plural, one {# ጠንካራ ጎን፡ {topics}. ጥሩ ሥራን ይቀጥሉ!} other {# ጠንካራ ጎኖች፡ {topics}. ጥሩ ሥራን ይቀጥሉ!}}",
       "insight_warning": "⚠️ ለዚህ ጊዜ ዝቅተኛ አፈጻጸም ማስጠንቀቂያ። ተጨማሪ ድጋፍ ማዘጋጀት ይፈልጋሉ።",
-      "insight_streak": "{days, plural, one {የ# ቀን ተከታታይ! ወጥነት እየገነባ ነው።} other {የ# ቀናት ተከታታይ! ወጥነት እየገነባ ነው።}}"
+      "insight_streak": "{days, plural, one {የ# ቀን ተከታታይ! ወጥነት እየገነባ ነው።} other {የ# ቀናት ተከታታይ! ወጥነት እየገነባ ነው።}}",
+      "load_error": "ዳሽቦርድዎን መጫን አልቻልንም"
     },
     "school": {
       "title": "የትምህርት ቤት ጤና አጠቃላይ እይታ",
@@ -985,7 +988,8 @@
       "insight_intervention": "{students, plural, one {# ተማሪ} other {# ተማሪዎች}} በ{classrooms, plural, one {# ክፍል} other {# ክፍሎች}} ውስጥ ጣልቃ ገብነት ያስፈልጋል።",
       "insight_health_up": "የትምህርት ቤት ጤና ካለፈው ስናፕሾት ጀምሮ በ{points} ነጥቦች ጨምሯል።",
       "insight_health_down": "የትምህርት ቤት ጤና በ{points} ነጥቦች ቀንሷል። በአደጋ ላይ ያሉ ክፍሎችን ይገምግሙ።",
-      "insight_critical": "{count, plural, one {# ተማሪ} other {# ተማሪዎች}} በወሳኝ ዝግጁነት ባንድ ውስጥ። ወዲያውኑ ጣልቃ ገብነት ይመከራል።"
+      "insight_critical": "{count, plural, one {# ተማሪ} other {# ተማሪዎች}} በወሳኝ ዝግጁነት ባንድ ውስጥ። ወዲያውኑ ጣልቃ ገብነት ይመከራል።",
+      "load_error": "ዳሽቦርድዎን መጫን አልቻልንም"
     },
     "admin": {
       "title": "የመድረክ አጠቃላይ እይታ",
@@ -1005,7 +1009,8 @@
       "insight_attempts_growing": "{count} የፈተና ሙከራዎች ተመዝግበዋል። የግምገማ ተሳትፎ እያደገ ነው።",
       "insight_failed": "⚠️ {count, plural, one {# ያልተሳካ ጥያቄ} other {# ያልተሳኩ ጥያቄዎች}} በቅርብ ጊዜ ምዝግቦች ውስጥ። የAI መሠረተ ልማት ትኩረት ሊያስፈልገው ይችላል።",
       "insight_adoption_fast": "{count, plural, one {# አዲስ ተጠቃሚ} other {# አዳዲስ ተጠቃሚዎች}} በቅርቡ ተመዝግበዋል። የመድረክ ምዝገባ እያፋጠነ ነው።",
-      "insight_adoption_steady": "{count, plural, one {# አዲስ ተጠቃሚ} other {# አዳዲስ ተጠቃሚዎች}} በቅርቡ ተመዝግበዋል። የመድረክ ምዝገባ የተረጋጋ ነው።"
+      "insight_adoption_steady": "{count, plural, one {# አዲስ ተጠቃሚ} other {# አዳዲስ ተጠቃሚዎች}} በቅርቡ ተመዝግበዋል። የመድረክ ምዝገባ የተረጋጋ ነው።",
+      "load_error": "ዳሽቦርድዎን መጫን አልቻልንም"
     }
   },
   "workspace": {

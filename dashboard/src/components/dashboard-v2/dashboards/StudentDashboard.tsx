@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { BookOpen, AlertTriangle, RefreshCw, Lock, Star, TrendingUp, Target, ClipboardCheck, ChevronRight } from 'lucide-react'
+import { BookOpen, Lock, Star, TrendingUp, Target, ClipboardCheck, ChevronRight } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserId } from '@/lib/auth'
 import { HeroSection, InsightCard, MetricStrip, ActivityTimeline, AIInsightPanel, LearningProgress } from '@/components/dashboard-v2'
 import { MisconceptionPanel } from '@/components/misconceptions/MisconceptionPanel'
 import { getBioIcon, BIO_ICON_IDS } from '@/components/dashboard-v2/BioIcon'
+import { ErrorState, ErrorBanner } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 interface StudentData {
   user: { id: string; email: string; grade_level: number | null; created_at: string | null }
@@ -60,16 +62,30 @@ interface RecentAttempt {
 }
 
 function RecentQuizAttempts({ t }: { t: TFn }) {
+  const tc = useTranslations('common')
   const [attempts, setAttempts] = useState<RecentAttempt[]>([])
   const [loading, setLoading] = useState(true)
+  const [widgetError, setWidgetError] = useState<AppError | null>(null)
 
-  useEffect(() => {
-    fetchWithAuth('/api/quiz/attempts?limit=5')
-      .then(r => r.json())
-      .then(d => setAttempts(d.items || []))
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [])
+  const loadAttempts = async () => {
+    setLoading(true)
+    setWidgetError(null)
+    try {
+      const response = await fetchWithAuth('/api/quiz/attempts?limit=5')
+      const d = await response.json()
+      setAttempts(d.items || [])
+    } catch (err) {
+      setWidgetError(normalizeException(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { loadAttempts() }, [])
+
+  if (widgetError) {
+    return <ErrorBanner error={widgetError} actionLabel={tc('retry')} onAction={() => void loadAttempts()} />
+  }
 
   if (loading || attempts.length === 0) return null
 
@@ -107,10 +123,9 @@ function userName(data: StudentData): string {
 
 export function StudentDashboard() {
   const t = useTranslations('v2.student')
-  const tc = useTranslations('common')
   const [data, setData] = useState<StudentData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
 
   const fetchData = async () => {
     setLoading(true); setError(null)
@@ -118,14 +133,12 @@ export function StudentDashboard() {
       const response = await fetchWithAuth('/api/student/dashboard')
       const d = await response.json()
       setData(d)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err))
+    } catch (err) {
+      setError(normalizeException(err))
     } finally { setLoading(false) }
   }
 
   useEffect(() => { fetchData() }, [])
-
-  const retry = () => fetchData()
 
   if (loading && !data) {
     return (
@@ -139,18 +152,7 @@ export function StudentDashboard() {
   }
 
   if (error) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center max-w-sm">
-          <AlertTriangle className="w-10 h-10 text-v2-error mx-auto mb-3" />
-          <p className="text-sm font-medium text-v2-error">{tc('error')}</p>
-          <p className="text-xs text-v2-text-secondary mt-1 mb-4">{error}</p>
-          <button onClick={retry} className="inline-flex items-center gap-2 px-4 h-9 rounded-xl bg-v2-accent text-v2-inverted text-sm font-medium hover:bg-white transition-colors">
-            <RefreshCw className="w-4 h-4" /> {tc('retry')}
-          </button>
-        </div>
-      </div>
-    )
+    return <ErrorState error={error} title={t('load_error')} onRetry={() => void fetchData()} />
   }
 
   if (!data) return null

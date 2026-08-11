@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { AlertTriangle, RefreshCw, ChevronDown, Shield } from 'lucide-react'
+import { ChevronDown, Shield } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { HeroSection, InsightCard, MetricStrip, AIInsightPanel } from '@/components/dashboard-v2'
+import { ErrorState, ErrorBanner } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 interface SchoolItem { id: string; name: string }
 interface TeacherMetric {
@@ -55,7 +57,8 @@ export function SchoolDashboard() {
   const [profile, setProfile] = useState<SchoolProfile | null>(null)
   const [trends, setTrends] = useState<TrendPoint[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
+  const [schoolError, setSchoolError] = useState<AppError | null>(null)
 
   const fetchSchools = async () => {
     setLoading(true); setError(null)
@@ -65,20 +68,22 @@ export function SchoolDashboard() {
       const schoolsList = d.schools || d || []
       setSchools(schoolsList)
       if (schoolsList[0]?.id) setSelectedId(schoolsList[0].id)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err))
+    } catch (err) {
+      setError(normalizeException(err))
     } finally { setLoading(false) }
   }
 
   const fetchSchoolData = async (schoolId: string) => {
     setProfile(null)
     setTrends([])
+    setSchoolError(null)
     try {
       const [p, t] = await Promise.allSettled([
         fetchWithAuth(`/teacher/schools/${schoolId}/overview`).then(r => r.json()),
         fetchWithAuth(`/teacher/schools/${schoolId}/trends?days=30`).then(r => r.json()),
       ])
       if (p.status === 'fulfilled') setProfile(p.value)
+      else setSchoolError(normalizeException(p.reason))
       if (t.status === 'fulfilled') setTrends(t.value.trends || t.value || [])
     } catch {
       // partial data ok
@@ -97,17 +102,7 @@ export function SchoolDashboard() {
   }
 
   if (error) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <AlertTriangle className="w-10 h-10 text-v2-error mx-auto mb-3" />
-          <p className="text-sm font-medium text-v2-text-secondary mb-4">{error}</p>
-          <button onClick={fetchSchools} className="inline-flex items-center gap-2 px-4 h-9 rounded-xl bg-v2-accent text-v2-inverted text-sm font-medium hover:bg-white transition-colors">
-            <RefreshCw className="w-4 h-4" /> {tc('retry')}
-          </button>
-        </div>
-      </div>
-    )
+    return <ErrorState error={error} title={t('load_error')} onRetry={() => void fetchSchools()} />
   }
 
   return (
@@ -241,6 +236,10 @@ export function SchoolDashboard() {
             </div>
           </div>
         </>
+      ) : schoolError ? (
+        <div className="mb-6">
+          <ErrorBanner error={schoolError} actionLabel={tc('retry')} onAction={() => void (selectedId && fetchSchoolData(selectedId))} />
+        </div>
       ) : (
         <div className="bg-v2-surface rounded-[20px] border border-v2-border p-12 text-center">
           <p className="text-sm text-v2-text-secondary">{t('select_school')}</p>
