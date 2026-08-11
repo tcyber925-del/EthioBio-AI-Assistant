@@ -13,6 +13,8 @@ const CATEGORY_KEY = (c: string): string => `errors.categories.${c}`;
 const HTTP_KEY = (s: number): string => `errors.http.${s}`;
 const CODE_KEY = (c: string): string => `errors.codes.${c}`;
 
+const SHIPPED_HTTP = new Set([400, 401, 403, 404, 409, 422, 429, 500]);
+
 const KNOWN_CODES = new Set([
   "auth_invalid_credentials",
   "auth_invalid_otp",
@@ -25,7 +27,7 @@ const KNOWN_CODES = new Set([
 
 export function errorMessageKeys(error: AppError): MessageKey {
   if (error.code && KNOWN_CODES.has(error.code)) return { key: CODE_KEY(error.code) };
-  if (error.status) return { key: HTTP_KEY(error.status) };
+  if (error.status && SHIPPED_HTTP.has(error.status)) return { key: HTTP_KEY(error.status) };
   if (error.category === "unknown") return { key: GENERIC_KEY };
   return { key: CATEGORY_KEY(error.category) };
 }

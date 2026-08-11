@@ -1,6 +1,7 @@
 import { render } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it } from "vitest";
+import en from "../../../messages/en.json";
 import { errorMessageKeys, useErrorMessage } from "../useErrorMessage";
 
 const error = {
@@ -17,11 +18,21 @@ describe("errorMessageKeys", () => {
   it("unknown code falls back to http.<status>", () => {
     expect(errorMessageKeys({ ...error, code: "bogus_xyz" }).key).toBe("errors.http.401");
   });
+  it("unshipped status falls back to categories.<category>", () => {
+    expect(
+      errorMessageKeys({ category: "server", code: "bogus_xyz", status: 502, retryable: true }).key,
+    ).toBe("errors.categories.server");
+  });
   it("no status falls back to categories.<category>", () => {
     expect(errorMessageKeys({ category: "network", retryable: true }).key).toBe("errors.categories.network");
   });
   it("complete fallback chain ends at errors.generic", () => {
     expect(errorMessageKeys({ category: "unknown", retryable: false }).key).toBe("errors.generic");
+  });
+  it("every shipped code in the en catalog resolves to its own codes.* key", () => {
+    for (const code of Object.keys(en.errors.codes)) {
+      expect(errorMessageKeys({ category: "unknown", code, retryable: false }).key).toBe(`errors.codes.${code}`);
+    }
   });
 });
 
