@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { AppError } from "../errors";
 import { normalizeException, normalizeHttpError, normalizeStreamError } from "../errors/normalizeError";
 
 const envelope = (status: number, code: string, detail: string, context?: Record<string, unknown>) =>
@@ -112,6 +113,10 @@ describe("normalizeException", () => {
     expect(err.category).toBe("unknown");
     expect(err.retryable).toBe(false);
     expect(err.cause).toBe(original);
+  });
+  it("AppError passthrough preserves code and status", () => {
+    const app: AppError = { category: "authentication", status: 401, code: "auth_invalid_credentials", retryable: false };
+    expect(normalizeException(app)).toBe(app);
   });
   it("non-Error throw (string) → unknown", () => {
     const err = normalizeException("boom");

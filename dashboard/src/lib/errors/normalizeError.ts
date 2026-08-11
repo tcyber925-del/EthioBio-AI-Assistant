@@ -1,4 +1,4 @@
-import { fromHttpStatus, type AppError } from "./AppError";
+import { fromHttpStatus, isAppError, type AppError } from "./AppError";
 
 const VALIDATION_TYPE_MAP: Record<string, string> = {
   missing: "errors.validation.missing",
@@ -51,6 +51,7 @@ export function normalizeHttpError(status: number, bodyText: string): AppError {
 }
 
 export function normalizeException(error: unknown): AppError {
+  if (isAppError(error)) return error;
   const name = typeof error === "object" && error !== null ? (error as { name?: unknown }).name : undefined;
   if (name === "AbortError" || name === "TimeoutError") {
     return { category: "network", retryable: true, cause: error };

@@ -3,17 +3,27 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { GraduationCap, AlertTriangle, Eye, EyeOff } from 'lucide-react'
+import { GraduationCap, Eye, EyeOff } from 'lucide-react'
+import { ErrorAlert } from '@/components/ui/errors'
 import { setToken } from '@/lib/auth'
 import { setCookie } from '@/lib/cookies'
+import { normalizeException, type AppError } from '@/lib/errors'
 import { fetchWithTimeout } from '@/lib/fetch'
+
+function safeNextPath(): string | null {
+  if (typeof window === 'undefined') return null
+  const next = new URLSearchParams(window.location.search).get('next')
+  if (!next) return null
+  if (!next.startsWith('/') || next.startsWith('//') || next.startsWith('/login')) return null
+  return next
+}
 
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isRegister, setIsRegister] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [loginMode, setLoginMode] = useState<'email' | 'telegram'>('email')
@@ -47,9 +57,9 @@ export default function LoginPage() {
       if (data.language_preference) {
         setCookie('NEXT_LOCALE', data.language_preference, 365)
       }
-      router.push('/classroom')
-    } catch (err: any) {
-      setError(err.message)
+      router.push(safeNextPath() ?? '/classroom')
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -66,8 +76,8 @@ export default function LoginPage() {
         body: JSON.stringify({ telegram_id: Number(telegramId) }),
       })
       setOtpSent(true)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -84,9 +94,9 @@ export default function LoginPage() {
         body: JSON.stringify({ telegram_id: Number(telegramId), otp: otpCode }),
       })
       setToken(data.access_token)
-      router.push('/v2/overview')
-    } catch (err: any) {
-      setError(err.message)
+      router.push(safeNextPath() ?? '/v2/overview')
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -111,12 +121,7 @@ export default function LoginPage() {
               {isRegister ? t('create_account') : t('sign_in')}
             </h2>
 
-            {error && (
-              <div className="flex items-center gap-2 text-sm text-red-400 bg-red-500/10 rounded-lg px-3 py-2">
-                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
+            {error && <ErrorAlert error={error} title={t('error')} />}
 
             <div>
               <label className="block text-sm font-medium text-foreground-muted mb-1">{t('email')}</label>
@@ -246,7 +251,7 @@ export default function LoginPage() {
                   </button>
                 </>
               )}
-              {error && <p className="text-sm text-red-400">{error}</p>}
+              {error && <ErrorAlert error={error} title={t('telegram_error')} />}
               <div className="border-t border-border pt-4 mt-4">
                 <button type="button" onClick={() => { setLoginMode('email'); setOtpSent(false); setOtpCode(''); setTelegramId(''); setError(null) }}
                   className="w-full py-2 bg-card border border-border text-foreground rounded-lg text-sm hover:bg-border transition-colors">
