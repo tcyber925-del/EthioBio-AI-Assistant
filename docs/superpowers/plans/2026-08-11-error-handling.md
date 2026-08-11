@@ -12,6 +12,11 @@
 
 **Amendments (execution):**
 - Task 03: plan test listing grew 17 → 19 via two quality-review edge tests (`retry_after: 0` preserved; numeric `loc` segments stringified). Reference `normalizeException` hardened — name-based shape check instead of `instanceof Error` (legacy WebViews' `DOMException` doesn't inherit `Error`; abort must stay retryable). `SAFE_CONTEXT_KEYS` constant removed as dead code (`params` always `{}` per design §4.3). Implemented in `396b3ff`, hardened in `90d2e38`; full suite 68 passing at completion.
+- Task 04: `errorMessageKeys` gained `SHIPPED_HTTP` status whitelist (unshipped statuses like 502 fall to `categories.*`, never raw `errors.http.502` keys — `e3dcab0`) + catalog-sync test. Plan reference code's `unknown`-code/`unknown`-category branches were corrected to match the plan's own tests.
+- Task 05: plan's `vi.spyOn` namespace-spy claim was false under Vite ESM — implementer used a self-import shim, then removed it in `98d1423` (behavioral `window.location` tests + real single-flight test with 5 mocks + `fetchWithAuthJson` tests). `redirectToLogin` guard extended to `startsWith("/login")` (covers `/login?`). Retry-once loop protection tested.
+- Task 06: `Button` is default-export only (plan's named import fixed); ErrorAlert/ErrorState test fixtures gained missing catalog keys (`errors.retry`, `errors.http.500`); FieldError a11y corrected (`role="alert"` removed, `aria-live="polite"` kept) + duplicate-key fix + ErrorBanner smoke tests (`d2f0c10`).
+- Task 07: verbatim; `global-error.tsx` renders `<html lang="en">` hardcoded (plan-mandated; am users see English fallback — accepted).
+- Task 08: plan claimed `login.error`/`login.telegram_error` exist — they didn't; added to both catalogs. `normalizeException` gained `isAppError` passthrough (required: `fetchWithTimeout` throws AppError objects; without it login tests can't pass). `safeNextPath()` added (Task 05 review follow-up: `next` param was dead) — later hardened against CWE-601 backslash open-redirect + exported to `src/lib/safeNextPath.ts` with 13-case table test (`c7ae9c1`). `isAppError` now validates category against `ERROR_CATEGORIES`.
 
 ---
 
