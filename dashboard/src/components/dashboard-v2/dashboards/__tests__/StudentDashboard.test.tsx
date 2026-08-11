@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -71,6 +71,7 @@ function renderDashboard(messages: Record<string, unknown>, locale: string) {
 
 describe("StudentDashboard", () => {
   beforeEach(() => {
+    vi.mocked(fetchWithAuth).mockReset();
     vi.mocked(fetchWithAuth).mockResolvedValue({
       json: () => Promise.resolve(STUDENT_DATA),
     } as Response);
@@ -94,5 +95,61 @@ describe("StudentDashboard", () => {
     expect(screen.getByText("ዝግጁነት")).toBeInTheDocument();
     expect(screen.getByText("ሳምንታዊ እድገት")).toBeInTheDocument();
     expect(screen.getByText("ስኬቶች")).toBeInTheDocument();
+  });
+
+  it("renders ErrorState with the translated title on load failure", async () => {
+    vi.mocked(fetchWithAuth).mockRejectedValue(new TypeError("Failed to fetch"));
+    renderDashboard(en, "en");
+    expect(
+      await screen.findByText("We couldn't load your dashboard"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Retry" }),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the retry button for non-retryable failures", async () => {
+    vi.mocked(fetchWithAuth).mockRejectedValue(new Error("Network Error"));
+    renderDashboard(en, "en");
+    expect(
+      await screen.findByText("We couldn't load your dashboard"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Retry" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("refetches the dashboard when retry is clicked", async () => {
+    vi.mocked(fetchWithAuth).mockRejectedValue(new TypeError("Failed to fetch"));
+    renderDashboard(en, "en");
+    await screen.findByText("We couldn't load your dashboard");
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(fetchWithAuth).toHaveBeenCalledTimes(2));
+    expect(fetchWithAuth).toHaveBeenCalledWith("/api/student/dashboard");
+  });
+
+  it("keeps the page shell and shows an ErrorBanner when the quiz widget fails", async () => {
+    vi.mocked(fetchWithAuth).mockImplementation((url) => {
+      if (url === "/api/quiz/attempts?limit=5") {
+        return Promise.reject(new TypeError("Failed to fetch"));
+      }
+      return Promise.resolve({
+        json: () => Promise.resolve(STUDENT_DATA),
+      } as Response);
+    });
+    renderDashboard(en, "en");
+    expect(await screen.findByText("Welcome back, abebe")).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(
+      screen.getByText("Please check your internet connection and try again."),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => {
+      const quizCalls = vi.mocked(fetchWithAuth).mock.calls.filter(
+        ([url]) => url === "/api/quiz/attempts?limit=5",
+      );
+      expect(quizCalls.length).toBe(2);
+    });
   });
 });

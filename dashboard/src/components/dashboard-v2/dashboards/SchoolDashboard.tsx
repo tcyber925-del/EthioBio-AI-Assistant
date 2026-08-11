@@ -77,17 +77,13 @@ export function SchoolDashboard() {
     setProfile(null)
     setTrends([])
     setSchoolError(null)
-    try {
-      const [p, t] = await Promise.allSettled([
-        fetchWithAuth(`/teacher/schools/${schoolId}/overview`).then(r => r.json()),
-        fetchWithAuth(`/teacher/schools/${schoolId}/trends?days=30`).then(r => r.json()),
-      ])
-      if (p.status === 'fulfilled') setProfile(p.value)
-      else setSchoolError(normalizeException(p.reason))
-      if (t.status === 'fulfilled') setTrends(t.value.trends || t.value || [])
-    } catch {
-      // partial data ok
-    }
+    const [p, t] = await Promise.allSettled([
+      fetchWithAuth(`/teacher/schools/${schoolId}/overview`).then(r => r.json()),
+      fetchWithAuth(`/teacher/schools/${schoolId}/trends?days=30`).then(r => r.json()),
+    ])
+    if (p.status === 'fulfilled') setProfile(p.value)
+    else setSchoolError(normalizeException(p.reason))
+    if (t.status === 'fulfilled') setTrends(t.value.trends || t.value || [])
   }
 
   useEffect(() => { fetchSchools() }, [])
