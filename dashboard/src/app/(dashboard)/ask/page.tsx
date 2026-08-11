@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
-import { Send, MessageSquare, AlertTriangle, BookOpen, Loader2, RefreshCw, ClipboardCheck, Mic, Square, Volume2, Plus } from 'lucide-react'
+import { Send, MessageSquare, BookOpen, Loader2, ClipboardCheck, Mic, Square, Volume2, Plus } from 'lucide-react'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import ModelSelector from '@/components/ModelSelector'
 import { CopyButton } from '@/components/CopyButton'
@@ -16,13 +16,12 @@ import { TTSPlayButton } from '@/components/TTSPlayButton'
 import { VoiceRecorderButton } from '@/components/VoiceRecorderButton'
 import { AudioPlayer, type AudioPlayerHandle } from '@/components/AudioPlayer'
 import { WaveAnimation } from '@/components/WaveAnimation'
+import { ErrorAlert } from '@/components/ui/errors'
 import { getToken, getUserId, initAuth, isAuthenticated } from '@/lib/auth'
 import { streamFetch } from '@/lib/fetch'
 import { useVoiceTurn } from '@/hooks/useVoiceTurn'
 import { isVoiceTurnEnabled } from '@/lib/voice-turn'
-
-const isServerError = (msg: string) =>
-  msg.includes('502') || msg.includes('504') || msg.includes('Application failed to respond')
+import type { AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,7 +29,6 @@ export default function AskPage() {
   const router = useRouter()
   const ta = useTranslations('ask')
   const tc = useTranslations('common')
-  const tRoot = useTranslations()
   const locale = useLocale()
 
   useEffect(() => {
@@ -52,7 +50,7 @@ export default function AskPage() {
   const [sources, setSources] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [statusText, setStatusText] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const voiceTriggeredRef = useRef(false)
   const lastAnswerRef = useRef('')
   const [grade, setGrade] = useState(12)
@@ -92,7 +90,7 @@ export default function AskPage() {
     if (!question.trim()) return
     const userId = getUserId()
     if (!userId) {
-      setError(ta('auth_required'))
+      setError({ category: 'authorization', retryable: false })
       router.push('/login')
       return
     }
@@ -131,7 +129,7 @@ export default function AskPage() {
         if (meta.sources) setSources(meta.sources as string[])
       },
       onError: (err) => {
-        setError(tRoot(err.category === 'network' ? 'errors.categories.network' : 'errors.generic'))
+        setError(err)
         setLoading(false)
       },
       onDone: () => {
@@ -264,7 +262,7 @@ export default function AskPage() {
               turn.reset()
             }
           }}
-          onError={(err) => setError(err)}
+          onError={setError}
         />
         <div className="flex gap-3">
           {voiceTurnEnabled ? (
@@ -348,24 +346,12 @@ export default function AskPage() {
       </div>
 
       {error && (
-        <div className="rounded-[20px] border border-red-500/20 bg-red-500/10 p-5 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5 shrink-0" />
-          <div>
-            <p className="font-medium text-red-400">{tc('error')}</p>
-            <p className="text-sm text-red-400/80 mt-1">{error}</p>
-            {isServerError(error) && (
-              <p className="text-xs text-red-400/60 mt-2">{ta('server_error_hint')}</p>
-            )}
-            <button
-              onClick={askQuestion}
-              disabled={loading}
-              className="mt-3 px-4 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-xs font-medium hover:bg-red-500/30 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-              {tc('retry')}
-            </button>
-          </div>
-        </div>
+        <ErrorAlert
+          error={error}
+          title={error.category === 'service' ? ta('service_error_title') : tc('error')}
+          onRetry={error.retryable ? () => void askQuestion() : undefined}
+          retrying={loading}
+        />
       )}
 
       {loading && !answer && (

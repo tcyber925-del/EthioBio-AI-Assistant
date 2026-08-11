@@ -3,12 +3,13 @@
 import { useRef, useState } from 'react'
 import { Mic, Loader2, StopCircle } from 'lucide-react'
 import { getToken } from '@/lib/auth'
+import { normalizeException, normalizeHttpError, type AppError } from '@/lib/errors'
 
 type VoiceState = 'idle' | 'recording' | 'processing'
 
 interface QuizVoiceButtonProps {
   onTranscript: (text: string) => void
-  onError?: (error: string) => void
+  onError?: (error: AppError) => void
   disabled?: boolean
   language?: string
 }
@@ -48,14 +49,14 @@ export function QuizVoiceButton({
       recorder.onerror = () => {
         stream.getTracks().forEach(t => t.stop())
         setState('idle')
-        onError?.('Voice input failed')
+        onError?.({ category: 'client', retryable: false })
       }
 
       recorder.start()
       setState('recording')
     } catch {
       setState('idle')
-      onError?.('Microphone access denied')
+      onError?.({ category: 'client', retryable: false })
     }
   }
 
@@ -78,14 +79,17 @@ export function QuizVoiceButton({
         body: formData,
       })
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        throw normalizeHttpError(res.status, text)
+      }
 
       const data = await res.json()
       if (data.transcript) {
         onTranscript(data.transcript)
       }
     } catch (err) {
-      onError?.(err instanceof Error ? err.message : 'Voice input failed')
+      onError?.(normalizeException(err))
     } finally {
       setState('idle')
     }

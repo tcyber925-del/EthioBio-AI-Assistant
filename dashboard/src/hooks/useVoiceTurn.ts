@@ -3,6 +3,7 @@
 import { useRef, useState, useCallback } from 'react'
 import type { AudioPlayerHandle } from '@/components/AudioPlayer'
 import { voiceTurnFetch } from '@/lib/voice-turn'
+import type { AppError } from '@/lib/errors'
 
 export type VoiceTurnState = 'idle' | 'recording' | 'processing' | 'speaking' | 'error'
 
@@ -12,14 +13,14 @@ interface UseVoiceTurnOptions {
   selectedModel?: string
   onTranscript?: (text: string) => void
   onToken?: (text: string) => void
-  onError?: (error: string) => void
+  onError?: (error: AppError) => void
 }
 
 interface UseVoiceTurnReturn {
   audioPlayerRef: React.RefObject<AudioPlayerHandle | null>
   state: VoiceTurnState
   audioLevel: number
-  error: string | null
+  error: AppError | null
   startRecording: () => Promise<void>
   stopRecording: () => void
   stopPlayback: () => void
@@ -37,7 +38,7 @@ export function useVoiceTurn({
   const audioPlayerRef = useRef<AudioPlayerHandle | null>(null)
   const [state, setState] = useState<VoiceTurnState>('idle')
   const [audioLevel, setAudioLevel] = useState(0)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -97,7 +98,7 @@ export function useVoiceTurn({
 
         const blob = new Blob(chunksRef.current, { type: mimeType })
         if (blob.size === 0) {
-          setError('No audio captured')
+          setError({ category: 'client', retryable: false })
           setState('error')
           return
         }
@@ -121,10 +122,10 @@ export function useVoiceTurn({
               setState('speaking')
               audioPlayerRef.current?.enqueueChunk(b64)
             },
-            onError: (err) => {
-              setError(err)
+            onError: () => {
+              setError({ category: 'service', retryable: true })
               setState('error')
-              onError?.(err)
+              onError?.({ category: 'service', retryable: true })
             },
             onDone: () => {
               audioPlayerRef.current?.endStream()
@@ -137,12 +138,11 @@ export function useVoiceTurn({
 
       recorder.start()
       setState('recording')
-    } catch (err) {
+    } catch {
       cleanupMedia()
-      const msg = err instanceof Error ? err.message : 'Microphone access denied'
-      setError(msg)
+      setError({ category: 'client', retryable: false })
       setState('error')
-      onError?.(msg)
+      onError?.({ category: 'client', retryable: false })
     }
   }, [gradeLevel, language, selectedModel, cleanupMedia, onTranscript, onToken, onError])
 

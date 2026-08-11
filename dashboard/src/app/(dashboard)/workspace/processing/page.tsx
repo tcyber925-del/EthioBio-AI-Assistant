@@ -5,7 +5,9 @@ import { useTranslations } from 'next-intl'
 import { useWorkspace } from '../context'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
-import { Activity, RefreshCw, AlertCircle, CheckCircle2, Clock, PlayCircle } from 'lucide-react'
+import { Activity, RefreshCw, CheckCircle2, Clock, PlayCircle } from 'lucide-react'
+import { ErrorBanner } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 interface KnowledgeObject {
   id: string
@@ -24,7 +26,7 @@ export default function ProcessingQueuePage() {
   const t = useTranslations('workspace')
   const { activeWorkspace } = useWorkspace()
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const [assets, setAssets] = useState<KnowledgeObject[]>([])
 
   const fetchAssets = async () => {
@@ -34,8 +36,8 @@ export default function ProcessingQueuePage() {
       const list = await response.json()
       setAssets(list)
       setError(null)
-    } catch (err: any) {
-      setError(err.message || t('processing_error'))
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -97,10 +99,7 @@ export default function ProcessingQueuePage() {
 
         {/* Error State */}
         {error && (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-error/10 border border-v2-error/30 text-v2-error text-sm">
-            <AlertCircle className="w-5 h-5 shrink-0" />
-            <div className="flex-1">{error}</div>
-          </div>
+          <ErrorBanner error={error} onAction={() => void fetchAssets()} />
         )}
 
         {/* Ingestion Cards List */}

@@ -660,6 +660,7 @@
     "this_week": "This Week",
     "retry": "Retry",
     "server_error_hint": "The backend may be starting up. Please wait a moment and retry.",
+    "service_error_title": "AI assistant unavailable",
     "voice_button": "Voice input",
     "voice_recording": "Recording... tap again to stop",
     "voice_processing": "Processing audio...",

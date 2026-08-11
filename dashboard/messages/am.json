@@ -660,6 +660,7 @@
     "this_week": "በዚህ ሳምንት",
     "retry": "ደግሞ ሞክር",
     "server_error_hint": "የኋላ መጨረሻው እየተነሳ ሊሆን ይችላል። እባክዎ ትንሽ ይጠብቁ እና እንደገና ይሞክሩ።",
+    "service_error_title": "የAI ረዳት አይገኝም",
     "voice_button": "የድምጽ ግቤት",
     "voice_recording": "በመቅዳት ላይ... ለማቆም እንደገና ይንኩ",
     "voice_processing": "ድምጽ በማስኬድ ላይ...",

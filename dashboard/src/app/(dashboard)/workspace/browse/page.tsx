@@ -6,7 +6,9 @@ import { useWorkspace } from '../context'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserId } from '@/lib/auth'
-import { FileText, Folder, Trash2, Download, Plus, AlertCircle, RefreshCw, FolderOpen, Calendar, ChevronRight, X } from 'lucide-react'
+import { FileText, Folder, Trash2, Download, Plus, FolderOpen, Calendar, ChevronRight, X } from 'lucide-react'
+import { ErrorAlert, ErrorBanner } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 interface KnowledgeObject {
   id: string
@@ -31,7 +33,8 @@ export default function BrowseAssetsPage() {
   const tc = useTranslations('common')
   const { activeWorkspace } = useWorkspace()
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
+  const [actionError, setActionError] = useState<AppError | null>(null)
   const [assets, setAssets] = useState<KnowledgeObject[]>([])
   const [collections, setCollections] = useState<Collection[]>([])
   
@@ -57,8 +60,8 @@ export default function BrowseAssetsPage() {
       const collectionResponse = await fetchWithAuth(`/api/v1/collections?workspace_id=${activeWorkspace.id}`)
       const collectionList = await collectionResponse.json()
       setCollections(collectionList)
-    } catch (err: any) {
-      setError(err.message || t('browse_error_load'))
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -77,6 +80,7 @@ export default function BrowseAssetsPage() {
     e.preventDefault()
     if (!newColName.trim() || !activeWorkspace) return
     setCreatingCollection(true)
+    setActionError(null)
     try {
       const userId = getUserId() || 'system'
       await fetchWithAuth(`/api/v1/collections?created_by=${userId}`, {
@@ -92,8 +96,8 @@ export default function BrowseAssetsPage() {
       setNewColDesc('')
       setShowAddCollection(false)
       fetchData()
-    } catch (err: any) {
-      alert(err.message || t('browse_error_create'))
+    } catch (err) {
+      setActionError(normalizeException(err))
     } finally {
       setCreatingCollection(false)
     }
@@ -101,21 +105,23 @@ export default function BrowseAssetsPage() {
 
   const handleDeleteAsset = async (id: string) => {
     if (!confirm(t('browse_confirm_delete_asset'))) return
+    setActionError(null)
     try {
       await fetchWithAuth(`/api/v1/knowledge/${id}`, { method: 'DELETE' })
       fetchData()
-    } catch (err: any) {
-      alert(err.message || t('browse_error_delete_asset'))
+    } catch (err) {
+      setActionError(normalizeException(err))
     }
   }
 
   const handleDeleteCollection = async (id: string) => {
     if (!confirm(t('browse_confirm_delete_collection'))) return
+    setActionError(null)
     try {
       await fetchWithAuth(`/api/v1/collections/${id}`, { method: 'DELETE' })
       fetchData()
-    } catch (err: any) {
-      alert(err.message || t('browse_error_delete_collection'))
+    } catch (err) {
+      setActionError(normalizeException(err))
     }
   }
 
@@ -153,13 +159,16 @@ export default function BrowseAssetsPage() {
 
         {/* Error State */}
         {error && (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-error/10 border border-v2-error/30 text-v2-error text-sm">
-            <AlertCircle className="w-5 h-5 shrink-0" />
-            <div className="flex-1">{error}</div>
-            <button onClick={fetchData} className="p-1 hover:bg-v2-error/15 rounded-lg">
-              <RefreshCw className="w-4 h-4" />
-            </button>
-          </div>
+          <ErrorAlert
+            error={error}
+            title={t('browse_error_load')}
+            onRetry={() => void fetchData()}
+            retrying={loading}
+          />
+        )}
+
+        {actionError && !showAddCollection && (
+          <ErrorBanner error={actionError} />
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -323,6 +332,9 @@ export default function BrowseAssetsPage() {
                   className="bg-v2-bg border border-v2-border text-v2-text-primary text-sm rounded-xl px-3 py-2 outline-none focus:border-v2-accent resize-none"
                 />
               </div>
+              {actionError && (
+                <ErrorBanner error={actionError} />
+              )}
               <button
                 type="submit"
                 disabled={creatingCollection}

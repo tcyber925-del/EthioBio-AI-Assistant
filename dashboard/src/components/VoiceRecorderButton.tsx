@@ -4,13 +4,14 @@ import { useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Mic, Loader2 } from 'lucide-react'
 import { getToken, getUserId } from '@/lib/auth'
+import { normalizeException, normalizeHttpError, type AppError } from '@/lib/errors'
 
 type VoiceState = 'idle' | 'recording' | 'processing'
 
 interface VoiceRecorderButtonProps {
   onTranscript: (text: string) => void
   onPartialTranscript?: (text: string) => void
-  onError?: (error: string) => void
+  onError?: (error: AppError) => void
   disabled?: boolean
   gradeLevel?: number
   topic?: string
@@ -78,7 +79,10 @@ export function VoiceRecorderButton({
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
       })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        throw normalizeHttpError(res.status, text)
+      }
       const data = await res.json()
       if (data.partial_transcript) {
         onPartialTranscriptRef.current?.(data.partial_transcript)
@@ -88,7 +92,7 @@ export function VoiceRecorderButton({
       }
     } catch (err) {
       if (isFinal) {
-        onErrorRef.current?.(err instanceof Error ? err.message : 'Voice error')
+        onErrorRef.current?.(normalizeException(err))
       }
     } finally {
       isSendingRef.current = false
@@ -111,11 +115,14 @@ export function VoiceRecorderButton({
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
       })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        throw normalizeHttpError(res.status, text)
+      }
       const data = await res.json()
       if (data.transcript) onTranscriptRef.current(data.transcript)
     } catch (err) {
-      onErrorRef.current?.(err instanceof Error ? err.message : 'Voice error')
+      onErrorRef.current?.(normalizeException(err))
     }
   }
 
@@ -179,7 +186,7 @@ export function VoiceRecorderButton({
       recorder.onerror = () => {
         stopTracks()
         setState('idle')
-        onErrorRef.current?.(ta('voice_error'))
+        onErrorRef.current?.({ category: 'client', retryable: false })
       }
 
       recorder.start(streaming ? 1000 : undefined)
@@ -187,7 +194,7 @@ export function VoiceRecorderButton({
     } catch {
       stopTracks()
       setState('idle')
-      onErrorRef.current?.('Microphone access denied')
+      onErrorRef.current?.({ category: 'client', retryable: false })
     }
   }
 

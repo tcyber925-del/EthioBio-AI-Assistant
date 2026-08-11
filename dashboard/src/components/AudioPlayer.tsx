@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useCallback, useEffect, forwardRef, useImperativeHandle } from 'react'
+import type { AppError } from '@/lib/errors'
 
 export interface AudioPlayerHandle {
   enqueueChunk: (base64Mp3: string) => void
@@ -10,7 +11,7 @@ export interface AudioPlayerHandle {
 
 interface AudioPlayerProps {
   onStateChange?: (state: 'idle' | 'playing') => void
-  onError?: (error: string) => void
+  onError?: (error: AppError) => void
 }
 
 const MIME_TYPE = 'audio/mpeg'
@@ -130,7 +131,7 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(
       })
 
       sb.addEventListener('error', () => {
-        onError?.('SourceBuffer error')
+        onError?.({ category: 'client', retryable: false })
       })
 
       for (const chunk of queueRef.current) {
@@ -148,7 +149,7 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(
     })
 
     ms.addEventListener('error', () => {
-      onError?.('MediaSource error')
+      onError?.({ category: 'client', retryable: false })
     })
 
     audio.addEventListener('ended', () => {
@@ -158,7 +159,7 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(
     })
 
     audio.addEventListener('error', () => {
-      onError?.('Audio playback error')
+      onError?.({ category: 'client', retryable: false })
     })
 
     const url = URL.createObjectURL(ms)

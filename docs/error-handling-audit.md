@@ -241,7 +241,7 @@ Counts: ~98 `RAW_UI` sites, 3 `RAW_SRC` bug sites (fetch.ts ×2, voice-turn.ts, 
 | Login / OAuth | `login/page.tsx`, `login/oauth/callback/page.tsx`, `src/middleware.ts`, `fetchWithAuth.ts` | `setToken` on success; three `RAW_UI` error sites; hard redirect on refresh failure |
 | Students list + detail | `students/page.tsx`, `students/[id]/page.tsx` | `RAW_UI` at :36 / :34; Bearer via `fetchWithTimeout` in detail — migrated (Task 09) |
 | v2 dashboards | `dashboard-v2/dashboards/*.tsx` (5 files) + `dashboard/page.tsx` | per-dashboard `setError` — migrated (Task 10) |
-| Ask / voice / workspace | `ask/page.tsx`, `voice-turn.ts`, `useVoiceTurn.ts`, `VoiceRecorderButton.tsx`, `QuizVoiceButton.tsx`, `workspace/*` (6 pages) | `streamFetch` + `RAW_SRC` bug sites; `alert()` in browse |
+| Ask / voice / workspace | `ask/page.tsx`, `voice-turn.ts`, `useVoiceTurn.ts`, `VoiceRecorderButton.tsx`, `QuizVoiceButton.tsx`, `workspace/*` (6 pages) | `streamFetch` + `RAW_SRC` bug sites; `alert()` in browse — migrated (Task 11: ask page + voice hooks/components + workspace browse/processing; remaining: `voice-turn.ts` raw extraction → sweep, upload page → Task 12) |
 | Uploads in workspace | `workspace/upload/page.tsx` | third `RAW_SRC` copy |
 
 ---
