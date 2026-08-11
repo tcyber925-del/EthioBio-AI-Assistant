@@ -107,7 +107,7 @@ src/hooks/useConversationHistory.ts
 
 ### Other entry points
 
-- **All `catch (` blocks (69 files):** every one of them eventually renders `err.message` (RAW_UI) or `String(err)`.
+- **All `catch (` blocks (55 files):** every one of them eventually renders `err.message` (RAW_UI) or `String(err)`.
 - **`initAuth()`/`getToken()`/`clearToken()`/`setToken()` consumers:** login + oauth callback (`setToken`), `layout.tsx` bootstraps (`getToken`), `ask/page.tsx` (`initAuth`), `Sidebar.tsx`, `SidebarV2.tsx` (`clearToken`), plus Bearer-token users of `TTSPlayButton`, `QuizVoiceButton`, `VoiceRecorderButton`, `useConversationHistory`, `admin/layout.tsx`, `workspace/upload/page.tsx`.
 
 ### Direct raw-`fetch` spots that duplicate the error-shape logic
@@ -133,7 +133,7 @@ src/hooks/useConversationHistory.ts
 - Pydantic validation 422 → `{"detail": [{loc, msg, type}]}`.
 - Ad-hoc `{"error": "string"}` at `src/main.py:518` (503 "bot not ready") and `src/main.py:524` (403 "forbidden").
 - Sanitized 500 `{error: {code: "internal_error", detail: "An unexpected error occurred"}}` handler at `src/main.py:371-377`.
-- Known backend codes (enumerated): `auth_invalid_credentials, auth_invalid_token, auth_invalid_refresh, auth_missing_token, auth_missing_refresh, auth_refresh_expired, auth_refresh_reused, auth_token_expired, auth_otp_expired, auth_otp_invalid, auth_user_inactive, auth_login_required, auth_invalid_payload, auth_internal_api_key_not_configured, auth_invalid_internal_api_key, conflict_email, conflict_oauth_identity_conflict, not_found_user, not_found_telegram_id, not_found_provider, rate_limit_exceeded, internal_error`
+- Known backend codes (enumerated): `auth_invalid_credentials, auth_invalid_token, auth_invalid_refresh, auth_invalid_ticket, auth_missing_token, auth_missing_refresh, auth_refresh_expired, auth_refresh_reused, auth_token_expired, auth_otp_expired, auth_otp_invalid, auth_user_inactive, auth_login_required, auth_invalid_payload, auth_internal_api_key_not_configured, auth_invalid_internal_api_key, conflict_email, conflict_oauth_identity_conflict, not_found_user, not_found_telegram_id, not_found_provider, rate_limit_exceeded, internal_error`
 
 **Consequence for the frontend:** three mutually incompatible error shapes (`{"error": {code,detail,context}}`, `{"detail": "string"}`, `{"detail": [...]}`) plus plain-text bodies — every consumer must normalize, and the current `json.detail || json.error` reads the *object* branch when an `AppError` is involved, producing `[object Object]`.
 
@@ -249,7 +249,7 @@ Counts: ~98 `RAW_UI` sites, 3 `RAW_SRC` bug sites (fetch.ts ×2, voice-turn.ts, 
 ## 7. Test infrastructure
 
 - **vitest**: `vitest.config.ts` — jsdom, `globals: true`, `@`→`src` alias, `vitest.setup.ts` (jest-dom), excludes `e2e/` and `playwright/`. Existing component tests e.g. `src/components/dashboard-v2/dashboards/__tests__/StudentDashboard.test.tsx`.
-- **Playwright**: `playwright.config.ts` — testDir `./e2e`, `BASE_URL` env (default `http://localhost:3000`), single chromium project, CI retries ×2. Two specs: `e2e/landing-page.spec.ts`, `e2e/recovery-visuals.spec.ts`.
+- **Playwright**: `playwright.config.ts` — testDir `./e2e`, `BASE_URL` env (default `http://localhost:3000`), single chromium project, CI retries ×2. Executed suite: `e2e/landing-page.spec.ts` (1 spec). Note: `playwright/recovery-visuals.spec.ts` lives outside the configured `testDir` and is **not currently executed**.
 - **CI**: lint + typecheck, vitest (`-m "not slow"` runs apply to backend; dashboard job runs `npm run i18n:check` strict + vitest + lint + `tsc --noEmit` per `package.json` scripts).
 
 ---
