@@ -65,6 +65,48 @@
     "oauth_error_unknown": "Sign-in failed ({code}). Please try again.",
     "back_to_login": "Back to login"
   },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "http": {
+      "400": "The request could not be completed.",
+      "401": "Your session is invalid or has expired. Please sign in again.",
+      "403": "You don't have permission to do this.",
+      "404": "The item you're looking for could not be found.",
+      "409": "This action conflicts with existing data.",
+      "422": "Please check the highlighted fields.",
+      "429": "Too many requests. Please try again shortly.",
+      "500": "Something went wrong on our side. Please try again in a moment."
+    },
+    "categories": {
+      "authentication": "Please sign in to continue.",
+      "authorization": "You don't have permission to do this.",
+      "validation": "Please check your input and try again.",
+      "conflict": "This action conflicts with existing data.",
+      "not_found": "The item you're looking for could not be found.",
+      "rate_limit": "Too many requests. Please try again shortly.",
+      "network": "Please check your internet connection and try again.",
+      "server": "Something went wrong on our side. Please try again in a moment.",
+      "service": "This service is temporarily unavailable. Please try again in a moment.",
+      "client": "The request could not be completed.",
+      "unknown": "Something went wrong. Please try again."
+    },
+    "codes": {
+      "auth_invalid_credentials": "Invalid email or password. Please check your credentials and try again.",
+      "auth_invalid_otp": "The verification code is invalid. Please try again.",
+      "auth_otp_expired": "The verification code has expired. Please request a new one.",
+      "auth_token_expired": "Your session has expired. Please sign in again.",
+      "auth_refresh_expired": "Your session has expired. Please sign in again.",
+      "auth_user_inactive": "This account is inactive. Please contact support.",
+      "rate_limit_exceeded": "Too many requests. Please try again shortly."
+    },
+    "validation": {
+      "generic": "Please check the {field} field.",
+      "missing": "Please fill in the {field} field.",
+      "string_type": "Please enter valid text in the {field} field.",
+      "integer_type": "Please enter a number in the {field} field.",
+      "value_error": "Please enter a valid value for the {field} field."
+    }
+  },
   "common": {
     "loading": "Loading...",
     "error": "Something went wrong",
