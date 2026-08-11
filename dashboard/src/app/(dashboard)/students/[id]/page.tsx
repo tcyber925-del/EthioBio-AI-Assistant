@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { ArrowLeft, AlertTriangle, BarChart3, RefreshCw } from 'lucide-react'
+import { ArrowLeft, BarChart3 } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
+import { ErrorState } from '@/components/ui/errors'
 import { fetchWithTimeout } from '@/lib/fetch'
 import { isAuthenticated } from '@/lib/auth'
+import { normalizeException, type AppError } from '@/lib/errors'
 import ContinueLearningFeed from '@/components/learning/ContinueLearningFeed'
 import GamificationProfile from '@/components/gamification/GamificationProfile'
 import ActivityFeed from '@/components/ActivityFeed'
@@ -22,7 +24,7 @@ export default function StudentDetailPage() {
   const tc = useTranslations('common')
   const [student, setStudent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
 
   const fetchStudent = async () => {
     setLoading(true)
@@ -30,8 +32,8 @@ export default function StudentDetailPage() {
     try {
       const d = await fetchWithTimeout(`/progress/student/${params.id}`)
       setStudent(d)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err))
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -44,17 +46,15 @@ export default function StudentDetailPage() {
 
   if (loading) return <div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)}</div>
   if (error) return (
-    <div className="text-center py-16">
-      <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-      <p className="text-red-400">{error}</p>
-      <div className="mt-4 flex gap-3 justify-center">
-        <button onClick={fetchStudent} className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover transition-colors">
-          <RefreshCw className="w-4 h-4 inline mr-1" /> {tc('retry')}
-        </button>
-        <Link href="/students" className="px-4 py-2 bg-card border border-border text-foreground rounded-lg text-sm hover:bg-border transition-colors">
-          {ts('back_to_students')}
-        </Link>
-      </div>
+    <div>
+      <Link href="/students" className="flex items-center gap-2 text-sm text-foreground-muted hover:text-foreground mb-4 transition-colors">
+        <ArrowLeft className="w-4 h-4" /> {ts('back_to_students')}
+      </Link>
+      <ErrorState
+        error={error}
+        title={tc('students_load_error')}
+        onRetry={() => void fetchStudent()}
+      />
     </div>
   )
   if (!student) return null

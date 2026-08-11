@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
-import { Users, AlertTriangle, RefreshCw } from 'lucide-react'
+import { Users } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
+import { ErrorState } from '@/components/ui/errors'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,7 +25,7 @@ export default function StudentsPage() {
   const t = useTranslations('common')
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
 
   const fetchStudents = async () => {
     setLoading(true)
@@ -32,8 +34,8 @@ export default function StudentsPage() {
       const response = await fetchWithAuth('/api/teacher/students')
       const d = await response.json()
       setStudents(d || [])
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err))
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -46,13 +48,11 @@ export default function StudentsPage() {
 
   if (loading) return <div className="space-y-4">{Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)}</div>
   if (error) return (
-    <div className="text-center py-16">
-      <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-      <p className="text-red-400">{error}</p>
-      <button onClick={fetchStudents} className="mt-4 px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover transition-colors">
-        <RefreshCw className="w-4 h-4 inline mr-1" /> {t('retry')}
-      </button>
-    </div>
+    <ErrorState
+      error={error}
+      title={t('students_load_error')}
+      onRetry={() => void fetchStudents()}
+    />
   )
 
   return (

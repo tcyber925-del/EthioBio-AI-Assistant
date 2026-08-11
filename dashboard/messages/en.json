@@ -134,6 +134,7 @@
     "type": "Type",
     "students": "Students",
     "students_subtitle": "View registered users",
+    "students_load_error": "We couldn't load your students",
     "no_students": "No students yet",
     "no_students_desc": "Students will appear here when they interact with the bot",
     "telegram_id": "Telegram ID",

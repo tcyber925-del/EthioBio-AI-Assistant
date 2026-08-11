@@ -134,6 +134,7 @@
     "type": "አይነት",
     "students": "ተማሪዎች",
     "students_subtitle": "የተመዘገቡ ተጠቃሚዎችን ይመልከቱ",
+    "students_load_error": "ተማሪዎችን መጫን አልቻልንም",
     "no_students": "ገና ምንም ተማሪዎች የሉም",
     "no_students_desc": "ተማሪዎች ከቦት ጋር ሲገናኙ እዚህ ይታያሉ",
     "telegram_id": "የቴሌግራም መለያ",
