@@ -23,6 +23,10 @@ describe("normalizeHttpError — structured envelope", () => {
     expect(err.params).toEqual({});
     expect(err.retryAfter).toBe(5);
   });
+  it("preserves retry_after of 0", () => {
+    const err = normalizeHttpError(429, envelope(429, "rate_limit_exceeded", "x", { retry_after: 0 }));
+    expect(err.retryAfter).toBe(0);
+  });
 });
 
 describe("normalizeHttpError — FastAPI string detail", () => {
@@ -60,6 +64,13 @@ describe("normalizeHttpError — Pydantic validation", () => {
     const err = normalizeHttpError(400, body);
     expect(err.fieldErrors).toEqual({ x: ["errors.validation.generic"] });
   });
+  it("maps numeric loc segments for list items", () => {
+    const body = JSON.stringify({
+      detail: [{ loc: ["body", "items", 0, "name"], msg: "x", type: "missing" }],
+    });
+    const err = normalizeHttpError(422, body);
+    expect(err.fieldErrors).toEqual({ "items.0.name": ["errors.validation.missing"] });
+  });
 });
 
 describe("normalizeHttpError — plain/ad-hoc/malformed", () => {
@@ -85,7 +96,7 @@ describe("normalizeHttpError — plain/ad-hoc/malformed", () => {
 
 describe("normalizeException", () => {
   it("AbortError → network retryable", () => {
-    const abort = Object.assign(new Error("The operation was aborted."), { name: "AbortError" });
+    const abort = new DOMException("The operation was aborted.", "AbortError");
     const err = normalizeException(abort);
     expect(err.category).toBe("network");
     expect(err.retryable).toBe(true);

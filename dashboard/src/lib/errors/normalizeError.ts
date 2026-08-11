@@ -51,14 +51,12 @@ export function normalizeHttpError(status: number, bodyText: string): AppError {
 }
 
 export function normalizeException(error: unknown): AppError {
-  if (error instanceof Error && (error.name === "AbortError" || error.name === "TimeoutError")) {
+  const name = typeof error === "object" && error !== null ? (error as { name?: unknown }).name : undefined;
+  if (name === "AbortError" || name === "TimeoutError") {
     return { category: "network", retryable: true, cause: error };
   }
   if (error instanceof TypeError && /fetch|network|failed/i.test(error.message)) {
     return { category: "network", retryable: true, cause: error };
-  }
-  if (error instanceof Error) {
-    return { category: "unknown", retryable: false, cause: error };
   }
   return { category: "unknown", retryable: false, cause: error };
 }
