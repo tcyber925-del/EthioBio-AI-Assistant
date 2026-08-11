@@ -13,9 +13,9 @@ export function FieldError({ id, field, messages, className = "" }: FieldErrorPr
   const t = useTranslations();
   if (!messages.length) return null;
   return (
-    <span id={id} role="alert" aria-live="polite" className={`text-sm text-red-400 block mt-1 ${className}`}>
-      {messages.map((key) => (
-        <span key={key} className="block">
+    <span id={id} aria-live="polite" className={`text-sm text-red-400 block mt-1 ${className}`}>
+      {messages.map((key, i) => (
+        <span key={`${key}-${i}`} className="block">
           {t(key, { field })}
         </span>
       ))}

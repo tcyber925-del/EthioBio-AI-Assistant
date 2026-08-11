@@ -47,4 +47,8 @@ describe("ErrorAlert", () => {
     renderAlert({ error: { category: "authentication", status: 401, retryable: false } });
     expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
   });
+  it("disables the retry button while retrying", () => {
+    renderAlert({ error: { category: "server", status: 500, retryable: true }, onRetry: () => {}, retrying: true });
+    expect(screen.getByRole("button", { name: "Try again" })).toBeDisabled();
+  });
 });

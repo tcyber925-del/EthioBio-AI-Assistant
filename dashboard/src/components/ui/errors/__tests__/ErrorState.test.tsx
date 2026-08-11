@@ -31,6 +31,10 @@ describe("ErrorState", () => {
     renderState({ error: { category: "not_found", status: 404, retryable: false }, onRetry: () => {} });
     expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
   });
+  it("hides retry when onRetry is absent even for retryable errors", () => {
+    renderState({ error: { category: "server", status: 500, retryable: true } });
+    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+  });
   it("supports an explicit title override", () => {
     renderState({ error: { category: "server", retryable: false }, title: "Couldn't load students", onRetry: () => {} });
     expect(screen.getByText("Couldn't load students")).toBeInTheDocument();
