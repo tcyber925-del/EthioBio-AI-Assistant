@@ -252,7 +252,7 @@ Counts: ~98 `RAW_UI` sites, 3 `RAW_SRC` bug sites (fetch.ts ×2, voice-turn.ts, 
 ## 7. Test infrastructure
 
 - **vitest**: `vitest.config.ts` — jsdom, `globals: true`, `@`→`src` alias, `vitest.setup.ts` (jest-dom), excludes `e2e/` and `playwright/`. Existing component tests e.g. `src/components/dashboard-v2/dashboards/__tests__/StudentDashboard.test.tsx`.
-- **Playwright**: `playwright.config.ts` — testDir `./e2e`, `BASE_URL` env (default `http://localhost:3000`), single chromium project, CI retries ×2. Executed suite: `e2e/landing-page.spec.ts` (1 spec). Note: `playwright/recovery-visuals.spec.ts` lives outside the configured `testDir` and is **not currently executed**.
+- **Playwright**: `playwright.config.ts` — testDir `./e2e`, `BASE_URL` env (default `http://localhost:3000`), single chromium project, CI retries ×2. Executed suite: `e2e/landing-page.spec.ts`, `e2e/login-error.spec.ts`, `e2e/session-expiry.spec.ts` (3 specs). Note: `playwright/recovery-visuals.spec.ts` lives outside the configured `testDir` and is **not currently executed**.
 - **CI**: lint + typecheck, vitest (`-m "not slow"` runs apply to backend; dashboard job runs `npm run i18n:check` strict + vitest + lint + `tsc --noEmit` per `package.json` scripts).
 
 ---
