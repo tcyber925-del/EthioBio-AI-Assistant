@@ -90,7 +90,7 @@ export default function AskPage() {
     if (!question.trim()) return
     const userId = getUserId()
     if (!userId) {
-      setError({ category: 'authorization', retryable: false })
+      setError({ category: 'authentication', retryable: false })
       router.push('/login')
       return
     }

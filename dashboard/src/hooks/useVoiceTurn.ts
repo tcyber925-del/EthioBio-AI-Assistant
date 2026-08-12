@@ -3,7 +3,7 @@
 import { useRef, useState, useCallback } from 'react'
 import type { AudioPlayerHandle } from '@/components/AudioPlayer'
 import { voiceTurnFetch } from '@/lib/voice-turn'
-import type { AppError } from '@/lib/errors'
+import { fromHttpStatus, type AppError } from '@/lib/errors'
 
 export type VoiceTurnState = 'idle' | 'recording' | 'processing' | 'speaking' | 'error'
 
@@ -98,8 +98,10 @@ export function useVoiceTurn({
 
         const blob = new Blob(chunksRef.current, { type: mimeType })
         if (blob.size === 0) {
-          setError({ category: 'client', retryable: false })
+          const appErr: AppError = { category: 'client', retryable: false }
+          setError(appErr)
           setState('error')
+          onError?.(appErr)
           return
         }
 
@@ -122,10 +124,14 @@ export function useVoiceTurn({
               setState('speaking')
               audioPlayerRef.current?.enqueueChunk(b64)
             },
-            onError: () => {
-              setError({ category: 'service', retryable: true })
+            onError: (err) => {
+              const match = /HTTP (\d{3})/.exec(err)
+              const appErr: AppError = match
+                ? fromHttpStatus(Number(match[1]))
+                : { category: 'service', retryable: true }
+              setError(appErr)
               setState('error')
-              onError?.({ category: 'service', retryable: true })
+              onError?.(appErr)
             },
             onDone: () => {
               audioPlayerRef.current?.endStream()

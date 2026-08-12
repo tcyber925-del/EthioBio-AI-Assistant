@@ -306,7 +306,7 @@ export default function BrowseAssetsPage() {
           <div className="bg-v2-surface border border-v2-border rounded-[20px] w-full max-w-md p-6 flex flex-col gap-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-v2-border/40 pb-2">
               <h3 className="text-lg font-bold text-v2-text-primary">{t('modal_create_title')}</h3>
-              <button onClick={() => setShowAddCollection(false)} className="p-1 text-v2-text-secondary hover:text-white">
+              <button onClick={() => { setShowAddCollection(false); setActionError(null) }} className="p-1 text-v2-text-secondary hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
