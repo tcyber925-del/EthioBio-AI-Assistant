@@ -5,8 +5,9 @@ import { useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import ReviewQueue from '@/components/governance/ReviewQueue'
 import Card from '@/components/ui/Card'
-import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
+import { ErrorAlert } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 interface ReviewItem {
   trace_id: string
@@ -40,7 +41,8 @@ export default function AdminReviewPage() {
   const [items, setItems] = useState<ReviewItem[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
+  const [resolveError, setResolveError] = useState<AppError | null>(null)
   const [filter, setFilter] = useState<FilterTab>('pending')
 
   const fetchItems = useCallback(async () => {
@@ -54,7 +56,7 @@ export default function AdminReviewPage() {
       setItems(data.traces)
       setTotal(data.total)
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('error_load'))
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -65,6 +67,7 @@ export default function AdminReviewPage() {
   }, [fetchItems])
 
   const handleResolve = async (traceId: string, notes: string) => {
+    setResolveError(null)
     try {
       await fetchWithAuth(`/api/admin/review/${traceId}`, {
         method: 'PATCH',
@@ -73,7 +76,7 @@ export default function AdminReviewPage() {
       })
       fetchItems()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('error_resolve'))
+      setResolveError(normalizeException(err))
     }
   }
 
@@ -108,9 +111,17 @@ export default function AdminReviewPage() {
       </Card>
 
       {error && (
-        <Card className="mb-4 flex items-center gap-2 text-red-400 bg-red-500/5 border-red-500/20">
-          {error}
-        </Card>
+        <ErrorAlert
+          error={error}
+          title={t('error_load')}
+          onRetry={() => void fetchItems()}
+          retrying={loading}
+          className="mb-4"
+        />
+      )}
+
+      {resolveError && (
+        <ErrorAlert error={resolveError} title={t('error_resolve')} className="mb-4" />
       )}
 
       <ReviewQueue items={items} onResolve={handleResolve} loading={loading} />

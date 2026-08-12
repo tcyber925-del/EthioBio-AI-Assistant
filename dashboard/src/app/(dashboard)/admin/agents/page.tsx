@@ -5,20 +5,21 @@ import { useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import PageHeader from '@/components/ui/PageHeader'
 import { CardSkeleton } from '@/components/Skeleton'
-import { Cpu, AlertTriangle, RefreshCw } from 'lucide-react'
+import { Cpu } from 'lucide-react'
 import AgentCard from '@/components/agents/AgentCard'
 import type { AgentInfo } from '@/components/agents/AgentCard'
 import ExecutionPanel from '@/components/agents/ExecutionPanel'
 import ReflectionTable from '@/components/agents/ReflectionTable'
+import { ErrorState } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
 export default function AdminAgentsPage() {
   const t = useTranslations('admin.agents')
-  const tc = useTranslations('common')
   const [agents, setAgents] = useState<AgentInfo[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -34,7 +35,7 @@ export default function AdminAgentsPage() {
       setAgents(data)
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return
-      setError(err instanceof Error ? err.message : String(err))
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -48,17 +49,7 @@ export default function AdminAgentsPage() {
 
   if (error && agents.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <AlertTriangle className="w-12 h-12 text-red-400" />
-        <p className="text-body text-red-400">{error}</p>
-        <button
-          onClick={fetchAgents}
-          className="flex items-center gap-2 text-primary hover:underline text-subhead"
-        >
-          <RefreshCw className="w-4 h-4" />
-          {tc('retry')}
-        </button>
-      </div>
+      <ErrorState error={error} onRetry={() => void fetchAgents()} />
     )
   }
 

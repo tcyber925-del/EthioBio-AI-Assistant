@@ -1,11 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
+import { ErrorState } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,10 +29,12 @@ export default function AdminContentPage() {
   const [loading, setLoading] = useState(true)
   const [type, setType] = useState('all')
   const [status, setStatus] = useState('all')
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const router = useRouter()
 
-  useEffect(() => {
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
     const fetchType = async (ct: string) => {
       const params = new URLSearchParams()
       params.set('content_type', ct)
@@ -39,35 +43,28 @@ export default function AdminContentPage() {
       const data = await response.json()
       return data.items || []
     }
-    if (type === 'all') {
-      Promise.all([fetchType('quiz'), fetchType('lesson')])
-        .then(([quizzes, lessons]) => {
-          setItems([...quizzes, ...lessons])
-          setLoading(false)
-        })
-        .catch(err => {
-          setError(err instanceof Error ? err.message : String(err))
-          setLoading(false)
-        })
-    } else {
-      fetchType(type)
-        .then(items => {
-          setItems(items)
-          setLoading(false)
-        })
-        .catch(err => {
-          setError(err instanceof Error ? err.message : String(err))
-          setLoading(false)
-        })
+    try {
+      if (type === 'all') {
+        const [quizzes, lessons] = await Promise.all([fetchType('quiz'), fetchType('lesson')])
+        setItems([...quizzes, ...lessons])
+      } else {
+        setItems(await fetchType(type))
+      }
+    } catch (err) {
+      setError(normalizeException(err))
+    } finally {
+      setLoading(false)
     }
   }, [type, status])
+
+  useEffect(() => { load() }, [load])
 
   const updateStatus = async (contentType: string, id: string, newStatus: string) => {
     await fetchWithAuth(`/api/admin/content/${contentType}/${id}/status?status=${newStatus}`, { method: 'PATCH' })
     setItems(prev => prev.map(i => i.id === id ? { ...i, status: newStatus } : i))
   }
 
-  if (error) return <p className="text-red-400">{tcommon('error')}: {error}</p>
+  if (error) return <ErrorState error={error} onRetry={() => void load()} />
   if (loading) return <p className="text-foreground-muted text-body">{tcommon('loading')}</p>
 
   const statusBadge = (s: string) => {

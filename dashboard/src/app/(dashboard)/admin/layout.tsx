@@ -6,11 +6,13 @@ import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getToken } from '@/lib/auth'
+import { ErrorState } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations('admin.access')
   const [authorized, setAuthorized] = useState<boolean | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -22,14 +24,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     fetchWithAuth('/api/admin/dashboard')
       .then(() => setAuthorized(true))
       .catch(err => {
-        const msg = err instanceof Error ? err.message : String(err)
-        if (msg.includes('401') || msg.includes('Session expired')) {
+        const error = normalizeException(err)
+        if (error.category === 'authentication') {
           router.push('/login')
-        } else if (msg.includes('403')) {
-          setError(t('denied_reason'))
-        } else {
-          setError(msg)
+          return
         }
+        setError(error)
       })
   }, [router])
 
@@ -37,8 +37,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
-          <h2 className="text-xl font-bold text-red-400 mb-2">{t('denied_title')}</h2>
-          <p className="text-foreground-muted mb-4">{error}</p>
+          <ErrorState error={error} title={t('denied_title')} />
           <Link href="/" className="text-primary hover:underline text-subhead">
             {t('back_to_dashboard')}
           </Link>

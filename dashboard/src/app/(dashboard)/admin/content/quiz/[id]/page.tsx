@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
+import { ErrorState } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,15 +35,19 @@ export default function AdminQuizDetailPage() {
   const tc = useTranslations('admin.content')
   const tcommon = useTranslations('common')
   const [quiz, setQuiz] = useState<QuizData | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const router = useRouter()
 
-  useEffect(() => {
-    fetchWithAuth(`/api/admin/content/quiz/${id}`)
-      .then(res => res.json())
-      .then(setQuiz)
-      .catch(err => setError(err instanceof Error ? err.message : String(err)))
+  const load = useCallback(async () => {
+    try {
+      const response = await fetchWithAuth(`/api/admin/content/quiz/${id}`)
+      setQuiz(await response.json())
+    } catch (err) {
+      setError(normalizeException(err))
+    }
   }, [id])
+
+  useEffect(() => { load() }, [load])
 
   const toggleStatus = async () => {
     if (!quiz) return
@@ -50,7 +56,7 @@ export default function AdminQuizDetailPage() {
     setQuiz({ ...quiz, status: newStatus })
   }
 
-  if (error) return <p className="text-red-600">{tcommon('error')}: {error}</p>
+  if (error) return <ErrorState error={error} onRetry={() => void load()} />
   if (!quiz) return <p className="text-gray-500">{tcommon('loading')}</p>
 
   return (

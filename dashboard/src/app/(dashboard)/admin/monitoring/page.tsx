@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import Card from '@/components/ui/Card'
+import { ErrorState } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,16 +20,20 @@ export default function AdminMonitoringPage() {
   const tm = useTranslations('admin.monitoring')
   const tc = useTranslations('common')
   const [data, setData] = useState<MonitoringData | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
 
-  useEffect(() => {
-    fetchWithAuth('/api/admin/monitoring')
-      .then(res => res.json())
-      .then(setData)
-      .catch(err => setError(err instanceof Error ? err.message : String(err)))
+  const load = useCallback(async () => {
+    try {
+      const response = await fetchWithAuth('/api/admin/monitoring')
+      setData(await response.json())
+    } catch (err) {
+      setError(normalizeException(err))
+    }
   }, [])
 
-  if (error) return <p className="text-red-400">{tc('error')}: {error}</p>
+  useEffect(() => { load() }, [load])
+
+  if (error) return <ErrorState error={error} onRetry={() => void load()} />
   if (!data) return <p className="text-foreground-muted text-body">{tc('loading')}</p>
 
   return (

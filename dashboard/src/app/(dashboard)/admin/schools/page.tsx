@@ -1,10 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
+import { ErrorState } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,21 +26,21 @@ export default function AdminSchoolsPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       const response = await fetchWithAuth('/api/admin/schools')
       const data = await response.json()
       setSchools(data)
     } catch (err: any) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [load])
 
   const create = async () => {
     if (!name.trim()) return
@@ -53,11 +55,11 @@ export default function AdminSchoolsPage() {
       setShowForm(false)
       load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(normalizeException(err))
     }
   }
 
-  if (error) return <p className="text-red-400">{tc('error')}: {error}</p>
+  if (error) return <ErrorState error={error} onRetry={() => void load()} />
   if (loading) return <p className="text-foreground-muted text-body">{tc('loading')}</p>
 
   return (

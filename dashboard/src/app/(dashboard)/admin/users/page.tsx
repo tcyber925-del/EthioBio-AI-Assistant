@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
-import { AlertTriangle, ChevronLeft, ChevronRight, RefreshCw, Search, Shield, UserCheck, Users } from 'lucide-react'
+import { ChevronLeft, ChevronRight, RefreshCw, Search, UserCheck, Users } from 'lucide-react'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
+import { ErrorAlert } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,7 +32,7 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [role, setRole] = useState('all')
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const perPage = 20
 
@@ -48,7 +50,7 @@ export default function AdminUsersPage() {
       setUsers(data.users || [])
       setTotal(data.total || 0)
     } catch (err: any) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -68,7 +70,7 @@ export default function AdminUsersPage() {
       })
       load()
     } catch (err: any) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(normalizeException(err))
     } finally {
       setUpdatingId(null)
     }
@@ -84,7 +86,7 @@ export default function AdminUsersPage() {
       })
       load()
     } catch (err: any) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(normalizeException(err))
     } finally {
       setUpdatingId(null)
     }
@@ -137,10 +139,7 @@ export default function AdminUsersPage() {
         </div>
 
         {error && (
-          <div className="flex items-center gap-2 text-sm text-red-400 bg-red-500/10 px-4 py-3 mx-4 mt-4 rounded-lg">
-            <AlertTriangle className="w-4 h-4 shrink-0" />
-            {error}
-          </div>
+          <ErrorAlert error={error} onRetry={() => void load()} className="mx-4 mt-4" />
         )}
 
         {loading ? (

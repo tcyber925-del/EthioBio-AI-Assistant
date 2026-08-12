@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import Card from '@/components/ui/Card'
+import { ErrorState } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,16 +25,20 @@ export default function AdminDashboardPage() {
   const ta = useTranslations('admin.dashboard')
   const tc = useTranslations('common')
   const [data, setData] = useState<DashboardData | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
 
-  useEffect(() => {
-    fetchWithAuth('/api/admin/dashboard')
-      .then(res => res.json())
-      .then(setData)
-      .catch(err => setError(err instanceof Error ? err.message : String(err)))
+  const load = useCallback(async () => {
+    try {
+      const response = await fetchWithAuth('/api/admin/dashboard')
+      setData(await response.json())
+    } catch (err) {
+      setError(normalizeException(err))
+    }
   }, [])
 
-  if (error) return <p className="text-red-400">{tc('error')}: {error}</p>
+  useEffect(() => { load() }, [load])
+
+  if (error) return <ErrorState error={error} title={ta('error_load')} onRetry={() => void load()} />
   if (!data) return <p className="text-foreground-muted text-body">{tc('loading')}</p>
 
   return (
