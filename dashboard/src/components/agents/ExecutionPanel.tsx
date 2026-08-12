@@ -6,6 +6,8 @@ import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
+import { ErrorBanner } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 import type { AgentInfo } from './AgentCard'
 
 interface ExecutionResult {
@@ -28,7 +30,7 @@ export default function ExecutionPanel({ agents, onExecute }: ExecutionPanelProp
   const [task, setTask] = useState('')
   const [result, setResult] = useState<ExecutionResult | null>(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
 
   const handleExecute = async () => {
     if (!selectedAgent || !task.trim()) return
@@ -45,7 +47,7 @@ export default function ExecutionPanel({ agents, onExecute }: ExecutionPanelProp
       setResult(data as ExecutionResult)
       onExecute()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -87,11 +89,7 @@ export default function ExecutionPanel({ agents, onExecute }: ExecutionPanelProp
           {loading ? t('executing') : t('execute')}
         </Button>
 
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-red-400 text-body">
-            {error}
-          </div>
-        )}
+        {error && <ErrorBanner error={error} />}
 
         {result && (
           <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 space-y-2">

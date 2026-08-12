@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import {
-  AlertTriangle,
   Check,
   Image,
   Layers,
@@ -11,6 +10,8 @@ import {
   X,
 } from 'lucide-react'
 import { fetchWithTimeout } from '@/lib/fetch'
+import { ErrorBanner } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 interface IconCategory {
   name: string
@@ -48,7 +49,7 @@ export default function IconPalette({ onComposedSvg }: IconPaletteProps) {
   const [icons, setIcons] = useState<IconEntry[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [search, setSearch] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -70,8 +71,8 @@ export default function IconPalette({ onComposedSvg }: IconPaletteProps) {
         method: 'GET',
       })
       setCategories(data.categories)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(normalizeException(err))
     }
   }
 
@@ -89,8 +90,8 @@ export default function IconPalette({ onComposedSvg }: IconPaletteProps) {
       )
       setIcons(data.icons)
       setTotal(data.total)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -111,8 +112,8 @@ export default function IconPalette({ onComposedSvg }: IconPaletteProps) {
       )
       setIcons(data.icons)
       setTotal(data.total)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -141,8 +142,8 @@ export default function IconPalette({ onComposedSvg }: IconPaletteProps) {
         }),
       })
       onComposedSvg(data.diagram_svg, data.title)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(normalizeException(err))
     } finally {
       setComposing(false)
     }
@@ -181,12 +182,7 @@ export default function IconPalette({ onComposedSvg }: IconPaletteProps) {
         </div>
       </div>
 
-      {error && (
-        <div className="flex items-center gap-2 text-sm text-red-400 bg-red-500/10 rounded-lg px-3 py-2">
-          <AlertTriangle className="w-4 h-4" />
-          {error}
-        </div>
-      )}
+      {error && <ErrorBanner error={error} />}
 
       {loading && (
         <div className="text-center py-8">

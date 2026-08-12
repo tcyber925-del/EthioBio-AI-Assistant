@@ -2,11 +2,10 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useTranslations } from 'next-intl'
-import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { CardSkeleton } from '@/components/Skeleton'
-import Card from '@/components/ui/Card'
-import Button from '@/components/ui/Button'
+import { ErrorBanner } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 import XpCard from './XpCard'
 import StreakWidget from './StreakWidget'
 import MasteryProgressBar from './MasteryProgressBar'
@@ -44,10 +43,9 @@ interface GamificationData {
 
 export default function GamificationProfile({ userId }: { userId: string }) {
   const tg = useTranslations('gamification')
-  const tc = useTranslations('common')
   const [data, setData] = useState<GamificationData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const [showLevelUp, setShowLevelUp] = useState(false)
   const [levelUpLevel, setLevelUpLevel] = useState(0)
   const prevLevel = useRef<number | null>(null)
@@ -60,12 +58,12 @@ export default function GamificationProfile({ userId }: { userId: string }) {
       setData(d)
       setError(null)
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err)
-      if (message.includes('404') || message.includes('Not Found')) {
+      const appErr = normalizeException(err)
+      if (appErr.category === 'not_found' || appErr.status === 404) {
         setData(null)
         setError(null)
       } else {
-        setError(message)
+        setError(appErr)
       }
     } finally {
       setLoading(false)
@@ -96,16 +94,7 @@ export default function GamificationProfile({ userId }: { userId: string }) {
   }
 
   if (error) {
-    return (
-      <Card className="text-center">
-        <AlertTriangle className="w-8 h-8 text-red-400 mx-auto mb-2" />
-        <p className="text-small text-red-400 mb-2">{error}</p>
-        <Button variant="ghost" size="sm" onClick={fetchProfile}>
-          <RefreshCw className="w-3 h-3" />
-          {tc('retry')}
-        </Button>
-      </Card>
-    )
+    return <ErrorBanner error={error} onAction={fetchProfile} />
   }
 
   if (!data) {

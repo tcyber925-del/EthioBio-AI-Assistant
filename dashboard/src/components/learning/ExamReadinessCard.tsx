@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { AlertTriangle, RefreshCw, TrendingUp } from 'lucide-react'
+import { TrendingUp } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
 import { fetchWithTimeout } from '@/lib/fetch'
+import { ErrorAlert } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 interface TopicReadiness {
   topic: string
@@ -78,14 +80,14 @@ export default function ExamReadinessCard({ userId }: { userId: string }) {
   const t = useTranslations('common')
   const [data, setData] = useState<ExamReadinessProfile | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
 
   const load = () => {
     setLoading(true)
     setError(null)
     fetchWithTimeout(`/intelligence/readiness/${userId}`)
       .then(d => setData(d))
-      .catch(err => setError(err.message))
+      .catch(err => setError(normalizeException(err)))
       .finally(() => setLoading(false))
   }
 
@@ -93,17 +95,7 @@ export default function ExamReadinessCard({ userId }: { userId: string }) {
 
   if (loading) return <CardSkeleton />
 
-  if (error) return (
-    <div className="bg-card rounded-xl border border-border p-5">
-      <div className="flex items-center gap-2 text-red-400 mb-2">
-        <AlertTriangle className="w-4 h-4" />
-        <span className="text-sm font-medium">{t('load_error')}</span>
-      </div>
-      <button onClick={load} className="text-xs text-primary hover:underline flex items-center gap-1">
-        <RefreshCw className="w-3 h-3" /> {t('retry')}
-      </button>
-    </div>
-  )
+  if (error) return <ErrorAlert error={error} title={t('load_error')} onRetry={load} />
 
   if (!data || data.topic_readiness.length === 0) return (
     <div className="bg-card rounded-xl border border-border p-5">

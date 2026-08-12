@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
-import { AlertTriangle, Check, RefreshCw, Flame, CheckCircle } from 'lucide-react'
+import { Check, RefreshCw, Flame, CheckCircle } from 'lucide-react'
+import { ErrorBanner } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 interface MisconceptionDetail {
   id: string
@@ -36,7 +38,7 @@ export function MisconceptionPanel({ userId }: { userId: string }) {
   const t = useTranslations('misconceptions')
   const [profile, setProfile] = useState<MisconceptionProfile | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const [resolvingId, setResolvingId] = useState<string | null>(null)
   const [resolvingTopic, setResolvingTopic] = useState<string | null>(null)
 
@@ -47,8 +49,8 @@ export function MisconceptionPanel({ userId }: { userId: string }) {
       const response = await fetchWithAuth(`/api/misconceptions/${userId}/profile`)
       const data = await response.json()
       setProfile(data)
-    } catch (err: any) {
-      setError(err.message || t('error_fetch'))
+    } catch (err: unknown) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -65,8 +67,8 @@ export function MisconceptionPanel({ userId }: { userId: string }) {
         method: 'POST',
       })
       await fetchProfile()
-    } catch (err: any) {
-      setError(err.message || t('error_resolve'))
+    } catch (err: unknown) {
+      setError(normalizeException(err))
     } finally {
       setResolvingId(null)
     }
@@ -79,8 +81,8 @@ export function MisconceptionPanel({ userId }: { userId: string }) {
         method: 'POST',
       })
       await fetchProfile()
-    } catch (err: any) {
-      setError(err.message || t('error_resolve_topic'))
+    } catch (err: unknown) {
+      setError(normalizeException(err))
     } finally {
       setResolvingTopic(null)
     }
@@ -95,15 +97,7 @@ export function MisconceptionPanel({ userId }: { userId: string }) {
   }
 
   if (error && !profile) {
-    return (
-      <div className="p-5 border border-v2-error/30 bg-v2-error/10 text-v2-error rounded-xl flex items-center gap-3">
-        <AlertTriangle className="w-5 h-5 shrink-0" />
-        <div className="flex-1 text-sm">{error}</div>
-        <button onClick={fetchProfile} className="p-1 hover:bg-v2-error/20 rounded-lg">
-          <RefreshCw className="w-4 h-4" />
-        </button>
-      </div>
-    )
+    return <ErrorBanner error={error} onAction={fetchProfile} />
   }
 
   if (!profile || profile.total_patterns === 0) {

@@ -5,11 +5,13 @@ import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import {
   Sparkles, Target, BookOpen, ClipboardList, FileCheck,
-  MessageSquare, BarChart3, Flame, Zap, AlertTriangle,
-  RefreshCw, Clock, ChevronRight,
+  MessageSquare, BarChart3, Flame, Zap,
+  Clock, ChevronRight,
 } from 'lucide-react'
 import { fetchWithTimeout } from '@/lib/fetch'
 import { CardSkeleton } from '@/components/Skeleton'
+import { ErrorBanner } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 interface LearningCardData {
   id: string
@@ -74,7 +76,7 @@ export default function ContinueLearningFeed({ userId }: { userId: string }) {
   const t = useTranslations('common')
   const [feed, setFeed] = useState<ContinueLearningFeedData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
 
   const fetchFeed = async () => {
     setLoading(true)
@@ -83,7 +85,7 @@ export default function ContinueLearningFeed({ userId }: { userId: string }) {
       const d = await fetchWithTimeout(`/intelligence/continue-learning/${userId}`)
       setFeed(d)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -94,15 +96,7 @@ export default function ContinueLearningFeed({ userId }: { userId: string }) {
   if (loading) return <CardSkeleton />
 
   if (error) {
-    return (
-      <div className="bg-card rounded-xl border border-border p-5 text-center">
-        <AlertTriangle className="w-8 h-8 text-red-400 mx-auto mb-2" />
-        <p className="text-sm text-red-400 mb-2">{error}</p>
-        <button onClick={fetchFeed} className="text-xs text-primary hover:underline flex items-center gap-1 mx-auto">
-          <RefreshCw className="w-3 h-3" /> {t('retry')}
-        </button>
-      </div>
-    )
+    return <ErrorBanner error={error} onAction={fetchFeed} />
   }
 
   const hasContent = feed?.primary_action || Object.keys(feed?.sections || {}).length > 0

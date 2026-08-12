@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
-import { Zap, FileCheck, MessageSquare, Medal, AlertTriangle, RefreshCw } from 'lucide-react'
+import { Zap, FileCheck, MessageSquare, Medal } from 'lucide-react'
 import { fetchWithTimeout } from '@/lib/fetch'
 import { CardSkeleton } from '@/components/Skeleton'
+import { ErrorBanner } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 interface ActivityItem {
   activity_type: string
@@ -40,7 +42,7 @@ export default function ActivityFeed({ userId }: { userId: string }) {
   const tc = useTranslations('common')
   const [activities, setActivities] = useState<ActivityItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
 
   const fetchFeed = async () => {
     setLoading(true)
@@ -49,8 +51,7 @@ export default function ActivityFeed({ userId }: { userId: string }) {
       setActivities(d.activities || [])
       setError(null)
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err)
-      setError(message)
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -61,15 +62,7 @@ export default function ActivityFeed({ userId }: { userId: string }) {
   if (loading) return <CardSkeleton />
 
   if (error) {
-    return (
-      <div className="bg-card rounded-xl border border-border p-5 text-center">
-        <AlertTriangle className="w-8 h-8 text-red-400 mx-auto mb-2" />
-        <p className="text-sm text-red-400 mb-2">{error}</p>
-        <button onClick={fetchFeed} className="text-xs text-primary hover:underline flex items-center gap-1 mx-auto">
-          <RefreshCw className="w-3 h-3" /> {tc('retry')}
-        </button>
-      </div>
-    )
+    return <ErrorBanner error={error} onAction={fetchFeed} />
   }
 
   if (activities.length === 0) {

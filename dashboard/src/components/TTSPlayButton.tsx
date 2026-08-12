@@ -4,6 +4,8 @@ import { useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Volume2, Loader2 } from 'lucide-react'
 import { getToken } from '@/lib/auth'
+import { ErrorBanner } from '@/components/ui/errors'
+import { normalizeException, normalizeHttpError, type AppError } from '@/lib/errors'
 
 interface TTSPlayButtonProps {
   text: string
@@ -14,6 +16,7 @@ export function TTSPlayButton({ text, language = 'am' }: TTSPlayButtonProps) {
   const tc = useTranslations('common')
   const [playing, setPlaying] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<AppError | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   const handlePlay = async () => {
@@ -25,6 +28,7 @@ export function TTSPlayButton({ text, language = 'am' }: TTSPlayButtonProps) {
     }
 
     setLoading(true)
+    setError(null)
     try {
       const token = getToken()
       const res = await fetch('/chat/tts', {
@@ -36,7 +40,7 @@ export function TTSPlayButton({ text, language = 'am' }: TTSPlayButtonProps) {
         body: JSON.stringify({ text, language }),
       })
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      if (!res.ok) throw normalizeHttpError(res.status, await res.text().catch(() => ''))
 
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
@@ -54,7 +58,8 @@ export function TTSPlayButton({ text, language = 'am' }: TTSPlayButtonProps) {
 
       await audio.play()
       setPlaying(true)
-    } catch {
+    } catch (err: unknown) {
+      setError(normalizeException(err))
       setPlaying(false)
     } finally {
       setLoading(false)
@@ -62,21 +67,24 @@ export function TTSPlayButton({ text, language = 'am' }: TTSPlayButtonProps) {
   }
 
   return (
-    <button
-      onClick={handlePlay}
-      disabled={loading}
-      title={tc('play_audio')}
-      className={`p-2 rounded-lg transition-colors shrink-0 ${
-        playing
-          ? 'bg-v2-accent text-v2-inverted'
-          : 'bg-v2-accent/10 text-v2-accent hover:bg-v2-accent/20'
-      }`}
-    >
-      {loading ? (
-        <Loader2 className="w-4 h-4 animate-spin" />
-      ) : (
-        <Volume2 className="w-4 h-4" />
-      )}
-    </button>
+    <div className="flex flex-col items-start gap-2">
+      <button
+        onClick={handlePlay}
+        disabled={loading}
+        title={tc('play_audio')}
+        className={`p-2 rounded-lg transition-colors shrink-0 ${
+          playing
+            ? 'bg-v2-accent text-v2-inverted'
+            : 'bg-v2-accent/10 text-v2-accent hover:bg-v2-accent/20'
+        }`}
+      >
+        {loading ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <Volume2 className="w-4 h-4" />
+        )}
+      </button>
+      {error && <ErrorBanner error={error} />}
+    </div>
   )
 }

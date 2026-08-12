@@ -7,6 +7,8 @@ import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import { TableSkeleton } from '@/components/Skeleton'
+import { ErrorBanner } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export interface ReflectionInfo {
   agent: string
@@ -42,7 +44,7 @@ export default function ReflectionTable({ refreshKey }: { refreshKey: number }) 
   const tc = useTranslations('common')
   const [reflections, setReflections] = useState<ReflectionInfo[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
 
   const requestIdRef = useRef(0)
 
@@ -58,7 +60,7 @@ export default function ReflectionTable({ refreshKey }: { refreshKey: number }) 
       }
     } catch (err: unknown) {
       if (requestId === requestIdRef.current) {
-        setError(err instanceof Error ? err.message : String(err))
+        setError(normalizeException(err))
       }
     } finally {
       if (requestId === requestIdRef.current) {
@@ -70,12 +72,7 @@ export default function ReflectionTable({ refreshKey }: { refreshKey: number }) 
   useEffect(() => { fetchReflections() }, [refreshKey, fetchReflections])
 
   if (loading) return <TableSkeleton rows={5} />
-  if (error) return (
-    <div className="flex items-center gap-2 text-red-400 text-body">
-      <span>{t('reflections_error')}</span>
-      <Button variant="ghost" onClick={fetchReflections}>{tc('retry')}</Button>
-    </div>
-  )
+  if (error) return <ErrorBanner error={error} onAction={fetchReflections} />
 
   return (
     <Card className="mt-6">
