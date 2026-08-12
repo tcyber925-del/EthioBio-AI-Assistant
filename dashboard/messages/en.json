@@ -113,7 +113,7 @@
       "value_error": "Please enter a valid value for the {field} field."
     },
     "upload": {
-      "unsupported_type": "Unsupported file type. Please upload a supported document or image.",
+      "unsupported_type": "Unsupported file type. Please upload a supported document (PDF, TXT, or MD).",
       "too_large": "That file is too big."
     }
   },

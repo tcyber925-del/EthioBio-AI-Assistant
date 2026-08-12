@@ -11,7 +11,7 @@ import { ErrorAlert } from '@/components/ui/errors'
 import { normalizeException, normalizeHttpError, type AppError } from '@/lib/errors'
 
 const ALLOWED_EXTENSIONS = ['pdf', 'txt', 'md']
-const MAX_FILE_SIZE = 10 * 1024 * 1024
+const MAX_FILE_SIZE = 50 * 1024 * 1024
 
 function validateFile(file: File): AppError | null {
   const extension = file.name.split('.').pop()?.toLowerCase() ?? ''
@@ -54,6 +54,7 @@ export default function UploadPage() {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    if (uploading || success) return
     const selectedFile = e.dataTransfer.files?.[0]
     if (selectedFile) selectFile(selectedFile)
   }
