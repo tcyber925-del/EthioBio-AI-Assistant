@@ -54,6 +54,7 @@ export function TTSPlayButton({ text, language = 'am' }: TTSPlayButtonProps) {
       audio.onerror = () => {
         URL.revokeObjectURL(url)
         setPlaying(false)
+        setError({ category: 'client', retryable: true, params: {} })
       }
 
       await audio.play()

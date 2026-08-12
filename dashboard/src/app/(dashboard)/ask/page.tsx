@@ -21,7 +21,7 @@ import { getToken, getUserId, initAuth, isAuthenticated } from '@/lib/auth'
 import { streamFetch } from '@/lib/fetch'
 import { useVoiceTurn } from '@/hooks/useVoiceTurn'
 import { isVoiceTurnEnabled } from '@/lib/voice-turn'
-import type { AppError } from '@/lib/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -112,37 +112,44 @@ export default function AskPage() {
     let accumulated = ''
     let gotMetadata = false
 
-    await streamFetch(endpoint, body, {
-      onStatus: (status) => {
-        setStatusText(status)
-      },
-      onToken: (token) => {
-        if (gotMetadata) return
-        accumulated += token
-        lastAnswerRef.current = accumulated
-        setAnswer(accumulated)
-      },
-      onMetadata: (meta) => {
-        gotMetadata = true
-        if (meta.model_used) setSelectedModel(meta.model_used as string)
-        if (meta.confidence != null) setConfidence(meta.confidence as number)
-        if (meta.sources) setSources(meta.sources as string[])
-      },
-      onError: (err) => {
-        setError(err)
-        setLoading(false)
-      },
-      onDone: () => {
-        setStatusText(null)
-        setLoading(false)
-        setActiveHistoryId(null)
-        if (voiceTriggeredRef.current && lastAnswerRef.current) {
-          voiceTriggeredRef.current = false
-          playTTS(lastAnswerRef.current)
-        }
-        fetchHistory()
-      },
-    })
+    try {
+      await streamFetch(endpoint, body, {
+        onStatus: (status) => {
+          setStatusText(status)
+        },
+        onToken: (token) => {
+          if (gotMetadata) return
+          accumulated += token
+          lastAnswerRef.current = accumulated
+          setAnswer(accumulated)
+        },
+        onMetadata: (meta) => {
+          gotMetadata = true
+          if (meta.model_used) setSelectedModel(meta.model_used as string)
+          if (meta.confidence != null) setConfidence(meta.confidence as number)
+          if (meta.sources) setSources(meta.sources as string[])
+        },
+        onError: (err) => {
+          setError(err)
+          setLoading(false)
+        },
+        onDone: () => {
+          setStatusText(null)
+          setLoading(false)
+          setActiveHistoryId(null)
+          if (voiceTriggeredRef.current && lastAnswerRef.current) {
+            voiceTriggeredRef.current = false
+            playTTS(lastAnswerRef.current)
+          }
+          fetchHistory()
+        },
+      })
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
+      setError(normalizeException(err))
+      setLoading(false)
+      setStatusText(null)
+    }
   }
 
   const handleHistorySelect = (pair: { question: { content: string }, answer: { content: string } | null, id: string }) => {

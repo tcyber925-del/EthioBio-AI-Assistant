@@ -3,7 +3,7 @@
 import { useRef, useState, useCallback } from 'react'
 import type { AudioPlayerHandle } from '@/components/AudioPlayer'
 import { voiceTurnFetch } from '@/lib/voice-turn'
-import { fromHttpStatus, type AppError } from '@/lib/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export type VoiceTurnState = 'idle' | 'recording' | 'processing' | 'speaking' | 'error'
 
@@ -108,38 +108,42 @@ export function useVoiceTurn({
         const ctrl = new AbortController()
         abortRef.current = ctrl
 
-        await voiceTurnFetch(
-          blob,
-          gradeLevel,
-          language,
-          selectedModel ?? '',
-          {
-            onSttTranscript: (text) => {
-              onTranscript?.(text)
+        try {
+          await voiceTurnFetch(
+            blob,
+            gradeLevel,
+            language,
+            selectedModel ?? '',
+            {
+              onSttTranscript: (text) => {
+                onTranscript?.(text)
+              },
+              onToken: (token) => {
+                onToken?.(token)
+              },
+              onAudio: (b64) => {
+                setState('speaking')
+                audioPlayerRef.current?.enqueueChunk(b64)
+              },
+              onError: (err) => {
+                setError(err)
+                setState('error')
+                onError?.(err)
+              },
+              onDone: () => {
+                audioPlayerRef.current?.endStream()
+                setState('idle')
+              },
             },
-            onToken: (token) => {
-              onToken?.(token)
-            },
-            onAudio: (b64) => {
-              setState('speaking')
-              audioPlayerRef.current?.enqueueChunk(b64)
-            },
-            onError: (err) => {
-              const match = /HTTP (\d{3})/.exec(err)
-              const appErr: AppError = match
-                ? fromHttpStatus(Number(match[1]))
-                : { category: 'service', retryable: true }
-              setError(appErr)
-              setState('error')
-              onError?.(appErr)
-            },
-            onDone: () => {
-              audioPlayerRef.current?.endStream()
-              setState('idle')
-            },
-          },
-          ctrl.signal,
-        )
+            ctrl.signal,
+          )
+        } catch (err: unknown) {
+          if (err instanceof DOMException && err.name === 'AbortError') return
+          const appErr = normalizeException(err)
+          setError(appErr)
+          setState('error')
+          onError?.(appErr)
+        }
       }
 
       recorder.start()

@@ -60,6 +60,7 @@ export default function QuizTakePage() {
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<QuizResult | null>(null)
+  const [voiceError, setVoiceError] = useState<AppError | null>(null)
 
   const fetchQuiz = useCallback(async () => {
     setLoading(true)
@@ -282,19 +283,25 @@ export default function QuizTakePage() {
         )}
 
         {!isMcOrTf && (
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={selectedAnswer}
-              onChange={e => setAnswer(question.id, e.target.value)}
-              placeholder={t('answer_placeholder')}
-              className="flex-1 px-4 py-3 border border-v2-border rounded-lg text-sm bg-v2-surface text-v2-text-primary placeholder:text-v2-text-muted/50 focus:outline-none focus:ring-1 focus:ring-v2-accent"
-            />
-            <QuizVoiceButton
-              onTranscript={(text) => setAnswer(question.id, text)}
-              onError={console.error}
-              disabled={submitting}
-            />
+          <div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={selectedAnswer}
+                onChange={e => setAnswer(question.id, e.target.value)}
+                placeholder={t('answer_placeholder')}
+                className="flex-1 px-4 py-3 border border-v2-border rounded-lg text-sm bg-v2-surface text-v2-text-primary placeholder:text-v2-text-muted/50 focus:outline-none focus:ring-1 focus:ring-v2-accent"
+              />
+              <QuizVoiceButton
+                onTranscript={(text) => {
+                  setVoiceError(null)
+                  setAnswer(question.id, text)
+                }}
+                onError={setVoiceError}
+                disabled={submitting}
+              />
+            </div>
+            {voiceError && <ErrorAlert error={voiceError} className="mt-2" />}
           </div>
         )}
       </div>
