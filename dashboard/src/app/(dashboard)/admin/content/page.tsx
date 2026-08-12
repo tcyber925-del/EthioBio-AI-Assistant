@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
-import { ErrorState } from '@/components/ui/errors'
+import { ErrorBanner, ErrorState } from '@/components/ui/errors'
 import { normalizeException, type AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
@@ -30,6 +30,7 @@ export default function AdminContentPage() {
   const [type, setType] = useState('all')
   const [status, setStatus] = useState('all')
   const [error, setError] = useState<AppError | null>(null)
+  const [actionError, setActionError] = useState<AppError | null>(null)
   const router = useRouter()
 
   const load = useCallback(async () => {
@@ -60,8 +61,13 @@ export default function AdminContentPage() {
   useEffect(() => { load() }, [load])
 
   const updateStatus = async (contentType: string, id: string, newStatus: string) => {
-    await fetchWithAuth(`/api/admin/content/${contentType}/${id}/status?status=${newStatus}`, { method: 'PATCH' })
-    setItems(prev => prev.map(i => i.id === id ? { ...i, status: newStatus } : i))
+    setActionError(null)
+    try {
+      await fetchWithAuth(`/api/admin/content/${contentType}/${id}/status?status=${newStatus}`, { method: 'PATCH' })
+      setItems(prev => prev.map(i => i.id === id ? { ...i, status: newStatus } : i))
+    } catch (err) {
+      setActionError(normalizeException(err))
+    }
   }
 
   if (error) return <ErrorState error={error} onRetry={() => void load()} />
@@ -93,6 +99,11 @@ export default function AdminContentPage() {
           </select>
         </div>
       </Card>
+      {actionError && (
+        <div className="mb-6">
+          <ErrorBanner error={actionError} />
+        </div>
+      )}
       <Card className="p-0 overflow-hidden">
         <table className="w-full text-body">
           <thead>

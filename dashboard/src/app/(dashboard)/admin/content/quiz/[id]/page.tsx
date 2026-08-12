@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
-import { ErrorState } from '@/components/ui/errors'
+import { ErrorBanner, ErrorState } from '@/components/ui/errors'
 import { normalizeException, type AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
@@ -36,6 +36,7 @@ export default function AdminQuizDetailPage() {
   const tcommon = useTranslations('common')
   const [quiz, setQuiz] = useState<QuizData | null>(null)
   const [error, setError] = useState<AppError | null>(null)
+  const [actionError, setActionError] = useState<AppError | null>(null)
   const router = useRouter()
 
   const load = useCallback(async () => {
@@ -52,8 +53,13 @@ export default function AdminQuizDetailPage() {
   const toggleStatus = async () => {
     if (!quiz) return
     const newStatus = quiz.status === 'published' ? 'archived' : 'published'
-    await fetchWithAuth(`/api/admin/content/quiz/${id}/status?status=${newStatus}`, { method: 'PATCH' })
-    setQuiz({ ...quiz, status: newStatus })
+    setActionError(null)
+    try {
+      await fetchWithAuth(`/api/admin/content/quiz/${id}/status?status=${newStatus}`, { method: 'PATCH' })
+      setQuiz({ ...quiz, status: newStatus })
+    } catch (err) {
+      setActionError(normalizeException(err))
+    }
   }
 
   if (error) return <ErrorState error={error} onRetry={() => void load()} />
@@ -63,6 +69,11 @@ export default function AdminQuizDetailPage() {
     <div>
       <button onClick={() => router.push('/admin/content')} className="text-blue-600 hover:underline mb-4 inline-block">&larr; {tc('back_to_content')}</button>
       <h1 className="text-2xl font-bold mb-4">{quiz.title}</h1>
+      {actionError && (
+        <div className="mb-4">
+          <ErrorBanner error={actionError} />
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div><strong>{tc('grade_label')}</strong> {quiz.grade_level}</div>
         <div><strong>{tc('topic')}</strong> {quiz.topic}</div>

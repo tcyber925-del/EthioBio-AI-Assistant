@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
-import { ErrorState } from '@/components/ui/errors'
+import { ErrorBanner, ErrorState } from '@/components/ui/errors'
 import { normalizeException, type AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
@@ -57,6 +57,7 @@ export default function AdminLessonDetailPage() {
   const tcommon = useTranslations('common')
   const [lesson, setLesson] = useState<LessonData | null>(null)
   const [error, setError] = useState<AppError | null>(null)
+  const [actionError, setActionError] = useState<AppError | null>(null)
   const router = useRouter()
 
   const load = useCallback(async () => {
@@ -73,8 +74,13 @@ export default function AdminLessonDetailPage() {
   const toggleStatus = async () => {
     if (!lesson) return
     const newStatus = lesson.status === 'published' ? 'archived' : 'published'
-    await fetchWithAuth(`/api/admin/content/lesson/${id}/status?status=${newStatus}`, { method: 'PATCH' })
-    setLesson({ ...lesson, status: newStatus })
+    setActionError(null)
+    try {
+      await fetchWithAuth(`/api/admin/content/lesson/${id}/status?status=${newStatus}`, { method: 'PATCH' })
+      setLesson({ ...lesson, status: newStatus })
+    } catch (err) {
+      setActionError(normalizeException(err))
+    }
   }
 
   if (error) return <ErrorState error={error} onRetry={() => void load()} />
@@ -84,6 +90,11 @@ export default function AdminLessonDetailPage() {
     <div>
       <button onClick={() => router.push('/admin/content')} className="text-blue-600 hover:underline mb-4 inline-block">&larr; {tc('back_to_content')}</button>
       <h1 className="text-2xl font-bold mb-4">{lesson.topic}</h1>
+      {actionError && (
+        <div className="mb-4">
+          <ErrorBanner error={actionError} />
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div><strong>{tc('grade_label')}</strong> {lesson.grade_level}</div>
         <div><strong>{tc('status_label')}</strong> <span className={`px-2 py-0.5 rounded text-xs ${lesson.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{lesson.status}</span></div>
