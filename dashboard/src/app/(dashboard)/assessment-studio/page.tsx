@@ -7,8 +7,10 @@ import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
 import ModelSelector from '@/components/ModelSelector'
-import { Sparkles, AlertCircle, RefreshCw, Eye, Check, Loader2, Layers, Award } from 'lucide-react'
+import { Sparkles, RefreshCw, Eye, Check, Loader2, Layers, Award } from 'lucide-react'
 import Link from 'next/link'
+import { ErrorAlert } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 interface Quiz {
   id: string
@@ -34,7 +36,8 @@ export default function AssessmentStudioPage() {
   const router = useRouter()
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
   const [loadingList, setLoadingList] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
+  const [errorTitle, setErrorTitle] = useState<string | null>(null)
 
   // Generation States
   const [grade, setGrade] = useState(10)
@@ -82,6 +85,7 @@ export default function AssessmentStudioPage() {
     if (!topic.trim()) return
     setGenerating(true)
     setError(null)
+    setErrorTitle(null)
     setPreviewQuestions(null)
     setSuccessMsg(null)
 
@@ -108,14 +112,18 @@ export default function AssessmentStudioPage() {
         await new Promise(r => setTimeout(r, 2000))
         const taskResponse = await fetchWithAuth(`/quiz/generate/status/${task_id}`)
         task = await taskResponse.json()
-        if (task.status === 'completed') break
-        if (task.status === 'failed') throw new Error(task.error || t('error_failed'))
+        if (task.status === 'completed' || task.status === 'failed') break
       }
-      if (!task || task.status !== 'completed') throw new Error(t('error_timeout'))
-      setSuccessMsg(t('success_generated', { type: assessmentType }))
-      fetchQuizzes()
-    } catch (err: any) {
-      setError(err.message || t('error_generate'))
+      if (task && task.status === 'completed') {
+        setSuccessMsg(t('success_generated', { type: assessmentType }))
+        fetchQuizzes()
+      } else {
+        setError({ category: 'service', retryable: false, params: {} })
+        setErrorTitle(task && task.status === 'failed' ? t('error_failed') : t('error_timeout'))
+      }
+    } catch (err) {
+      setError(normalizeException(err))
+      setErrorTitle(t('error_generate'))
     } finally {
       setGenerating(false)
     }
@@ -134,10 +142,7 @@ export default function AssessmentStudioPage() {
 
         {/* Status Messages */}
         {error && (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-error/10 border border-v2-error/30 text-v2-error text-sm">
-            <AlertCircle className="w-5 h-5 shrink-0" />
-            <div className="flex-1">{error}</div>
-          </div>
+          <ErrorAlert error={error} title={errorTitle ?? undefined} />
         )}
 
         {successMsg && (

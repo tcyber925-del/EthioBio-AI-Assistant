@@ -596,6 +596,7 @@
     "subtitle": "System performance and request tracking",
     "provider_status": "Provider Status",
     "active_model": "Active model:",
+    "error_load": "Failed to load monitoring data",
     "total_requests": "Total Requests",
     "failed": "Failed",
     "fallback_rate": "Fallback Rate",

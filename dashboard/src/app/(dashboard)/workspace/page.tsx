@@ -6,8 +6,10 @@ import { useTranslations } from 'next-intl'
 import { useWorkspace } from './context'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
-import { FileText, BookOpen, Search, Activity, Upload, AlertCircle, RefreshCw, Folder, Clock } from 'lucide-react'
+import { FileText, BookOpen, Search, Activity, Upload, Folder, Clock } from 'lucide-react'
 import Link from 'next/link'
+import { ErrorAlert } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 interface KnowledgeObject {
   id: string
@@ -29,7 +31,7 @@ export default function WorkspaceDashboard() {
   const router = useRouter()
   const { activeWorkspace } = useWorkspace()
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const [assets, setAssets] = useState<KnowledgeObject[]>([])
   const [collections, setCollections] = useState<Collection[]>([])
 
@@ -44,8 +46,8 @@ export default function WorkspaceDashboard() {
       ])
       setAssets(assetList)
       setCollections(collectionList)
-    } catch (err: any) {
-      setError(err.message || t('error_load'))
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -78,13 +80,12 @@ export default function WorkspaceDashboard() {
 
         {/* Error State */}
         {error && (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-error/10 border border-v2-error/30 text-v2-error text-sm">
-            <AlertCircle className="w-5 h-5 shrink-0" />
-            <div className="flex-1">{error}</div>
-            <button onClick={fetchData} className="p-1 hover:bg-v2-error/15 rounded-lg">
-              <RefreshCw className="w-4 h-4" />
-            </button>
-          </div>
+          <ErrorAlert
+            error={error}
+            title={t('error_load')}
+            onRetry={() => void fetchData()}
+            retrying={loading}
+          />
         )}
 
         {/* Stats Strip */}

@@ -596,6 +596,7 @@
     "subtitle": "የስርዓት አፈጻጸም እና የጥያቄ ክትትል",
     "provider_status": "የአቅራቢ ሁኔታ",
     "active_model": "ንቁ ሞዴል፡",
+    "error_load": "የክትትል መረጃዎችን መጫን አልተሳካም",
     "total_requests": "ጠቅላላ ጥያቄዎች",
     "failed": "ያልተሳኩ",
     "fallback_rate": "የመጠባበቂያ መጠን",

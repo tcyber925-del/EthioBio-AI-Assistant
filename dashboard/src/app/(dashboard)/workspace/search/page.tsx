@@ -5,7 +5,9 @@ import { useTranslations } from 'next-intl'
 import { useWorkspace } from '../context'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
-import { Search, AlertCircle, RefreshCw, FileText, CheckCircle2, Bookmark } from 'lucide-react'
+import { Search, RefreshCw, FileText, CheckCircle2, Bookmark } from 'lucide-react'
+import { ErrorAlert } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 interface TextMatch {
   text: string
@@ -27,7 +29,7 @@ export default function SearchGatewayPage() {
   const { activeWorkspace } = useWorkspace()
   const [query, setQuery] = useState('')
   const [searching, setSearching] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const [results, setResults] = useState<SearchResult[]>([])
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -41,8 +43,8 @@ export default function SearchGatewayPage() {
       )
       const list = await response.json()
       setResults(list)
-    } catch (err: any) {
-      setError(err.message || t('search_error'))
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setSearching(false)
     }
@@ -81,10 +83,7 @@ export default function SearchGatewayPage() {
 
         {/* Error State */}
         {error && (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-error/10 border border-v2-error/30 text-v2-error text-sm">
-            <AlertCircle className="w-5 h-5 shrink-0" />
-            <div className="flex-1">{error}</div>
-          </div>
+          <ErrorAlert error={error} title={t('search_error')} />
         )}
 
         {/* Search Results Display */}

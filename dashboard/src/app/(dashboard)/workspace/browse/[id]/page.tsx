@@ -8,11 +8,13 @@ import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserId } from '@/lib/auth'
 import {
-  ArrowLeft, FileText, Download, AlertCircle, RefreshCw,
+  ArrowLeft, FileText, Download,
   BookOpen, Clock, Tag, Hash, FileType, Activity,
   Lightbulb, ListTree, ScrollText, Sparkles, FlaskConical,
   ChevronDown, Loader, Star,
 } from 'lucide-react'
+import { ErrorAlert } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 interface EnrichmentData {
   enriched: boolean
@@ -46,7 +48,7 @@ export default function KnowledgeDetailPage() {
   const [detail, setDetail] = useState<KnowledgeDetail | null>(null)
   const [enrichment, setEnrichment] = useState<EnrichmentData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const [showContent, setShowContent] = useState(false)
   const [content, setContent] = useState<string | null>(null)
   const [loadingContent, setLoadingContent] = useState(false)
@@ -84,8 +86,8 @@ export default function KnowledgeDetailPage() {
       ])
       setDetail(ko)
       setEnrichment(enc)
-    } catch (err: any) {
-      setError(err.message || t('detail_error_load'))
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -135,13 +137,12 @@ export default function KnowledgeDetailPage() {
   if (error || !detail) {
     return (
       <DashboardLayout breadcrumbs={[{ label: t('crumb_workspace'), href: '/workspace' }, { label: t('crumb_browse'), href: '/workspace/browse' }, { label: t('crumb_error') }]}>
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-error/10 border border-v2-error/30 text-v2-error text-sm">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          <div className="flex-1">{error || t('detail_not_found')}</div>
-          <button onClick={fetchDetail} className="p-1 hover:bg-v2-error/15 rounded-lg">
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        </div>
+        <ErrorAlert
+          error={error ?? { category: 'client', retryable: false, params: {} }}
+          title={error ? t('detail_error_load') : t('detail_not_found')}
+          onRetry={() => void fetchDetail()}
+          retrying={loading}
+        />
       </DashboardLayout>
     )
   }

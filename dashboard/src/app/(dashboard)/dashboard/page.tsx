@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { BookOpen, ClipboardCheck, FileText, Users, BarChart3, AlertTriangle, RefreshCw } from 'lucide-react'
+import { BookOpen, ClipboardCheck, FileText, Users, BarChart3, RefreshCw } from 'lucide-react'
 import { getUserRole, isAuthenticated } from '@/lib/auth'
 import { CardSkeleton, TableSkeleton } from '@/components/Skeleton'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
@@ -12,6 +12,8 @@ import PageHeader from '@/components/ui/PageHeader'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
+import { ErrorState } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,7 +50,7 @@ export default function Dashboard() {
   const tc = useTranslations('common')
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
 
   const fetchData = async () => {
     setLoading(true)
@@ -58,8 +60,8 @@ export default function Dashboard() {
       const d = await response.json()
       setData(d)
       setError(null)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err))
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -91,16 +93,11 @@ export default function Dashboard() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-3" />
-          <p className="text-red-400 text-subhead font-medium">{t('error_load')}</p>
-          <p className="text-small text-foreground-muted mt-1">{error}</p>
-          <Button variant="primary" onClick={fetchData} className="mt-4">
-            {tc('retry')}
-          </Button>
-        </div>
-      </div>
+      <ErrorState
+        error={error}
+        title={t('error_load')}
+        onRetry={() => void fetchData()}
+      />
     )
   }
 

@@ -53,9 +53,11 @@ export default function OAuthCallbackPage() {
         ? t('oauth_error_email_conflict')
         : error === 'access_denied'
           ? t('oauth_error_access_denied')
-          : error
-            ? t('oauth_error_unknown', { code: error })
-            : null
+          : error === 'session_failed'
+            ? t('error')
+            : error
+              ? t('oauth_error_unknown', { code: error })
+              : null
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">

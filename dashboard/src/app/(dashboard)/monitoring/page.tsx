@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { BarChart3, AlertTriangle, RefreshCw } from 'lucide-react'
+import { BarChart3, RefreshCw } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
+import { ErrorState } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,7 +32,7 @@ export default function MonitoringPage() {
   const [data, setData] = useState<MonitoringData | null>(null)
   const [logs, setLogs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const [providers, setProviders] = useState<any[]>([])
   const [activeModel, setActiveModel] = useState('')
   const [voiceMetrics, setVoiceMetrics] = useState<VoiceMetrics | null>(null)
@@ -54,8 +56,8 @@ export default function MonitoringPage() {
       setActiveModel(active.model)
       setVoiceMetrics(voice)
       setVoiceProviders(vp)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -68,13 +70,11 @@ export default function MonitoringPage() {
 
   if (loading) return <div className="grid grid-cols-1 md:grid-cols-3 gap-5">{Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)}</div>
   if (error) return (
-    <div className="text-center py-16">
-      <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-      <p className="text-red-400">{error}</p>
-      <button onClick={fetchData} className="mt-4 px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover transition-colors">
-        <RefreshCw className="w-4 h-4 inline mr-1" /> {tc('retry')}
-      </button>
-    </div>
+    <ErrorState
+      error={error}
+      title={tm('error_load')}
+      onRetry={() => void fetchData()}
+    />
   )
 
   const pieData = [
