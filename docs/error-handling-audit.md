@@ -279,3 +279,41 @@ rg -n "JSON.stringify\(|\.message\b|\.detail\b|\[object Object\]" src -g '*.tsx'
 rg -n "catch \(" src -g '*.tsx' -g '*.ts' -l
 rg -n "console\.(error|warn|log)" src -g '*.tsx' -g '*.ts'
 ```
+
+---
+
+## 9. Security audit (Task 15) — 2026-08-12
+
+Review-only sweep of `dashboard/src` (excl. `__tests__`). Commands:
+
+```bash
+rg -n "console\.(log|debug|error|info)\(" src -g '*.ts' -g '*.tsx' -g '!**/__tests__/**'
+rg -n "localStorage|sessionStorage|document\.cookie" src -g '*.ts' -g '*.tsx'
+rg -n "Authorization|Bearer|access_token|refresh_token" src -g '*.tsx' -g '*.ts'
+```
+
+### Checklist
+
+| # | Item | Verdict | Evidence |
+|---|------|---------|----------|
+| 1 | No token/secret/credential ever logged or rendered | **PASS** | 11 console sites reviewed (error.tsx:12, global-error.tsx:12, marketing/page.tsx:67, lessons/page.tsx:73, unit-plans/page.tsx:73, ModelSelector.tsx:36, knowledge-graph/page.tsx:133, recovery/page.tsx:236, assessment-studio/page.tsx:63, workspace/layout.tsx:34, quiz/take/[id] voice `onError`): all log fetch error objects (AppError/Error), never headers/bodies/tokens. JWT held in memory `_tokenCache` (`src/lib/auth.ts:3`) + backend HTTP-only `access_token` cookie; client `setToken` writes only `auth_ready`/`user_role` (non-sensitive) cookies (`auth.ts:25-32`). `document.cookie` only inside storage helpers `auth.ts` + `cookies.ts` (NEXT_LOCALE). All 10 `Authorization: Bearer` sites (fetch.ts:16,56, fetchWithAuth via credentials, voice-turn.ts:9,44, useConversationHistory.ts:91, TTSPlayButton.tsx:38, VoiceRecorderButton.tsx:79,115, QuizVoiceButton.tsx:78, upload/page.tsx:90, ask/page.tsx:200) are request headers — never logged. |
+| 2 | `error.cause` never rendered (dev-logged only behind NODE_ENV check) | **PASS** | `src/app/error.tsx:11-13` and `global-error.tsx:11-13` gate `console.error` behind `process.env.NODE_ENV !== "production"` (build-inlined; production builds log nothing). Rendered output is catalog-only (`errors.error_title`/`boundary_message`). `cause` is set by `normalizeException` (normalizeError.ts:57,62) and kept in state on the ask page, but the only renderer, `useErrorMessage` (hooks/useErrorMessage.ts:46-54), never touches `cause`/`params`/`requestId` — `errorMessageKeys` returns only allowlisted catalog keys. |
+| 3 | `normalizeHttpError` does not preserve `detail` bodies; `params` cannot carry backend strings into messages | **PASS** | normalizeError.ts:43-51 extracts only `error.code` (string), `error.context.retry_after` (number-gated, `:18`), and 422 `loc` field names mapped through the `VALIDATION_TYPE_MAP` allowlist (`:3-8`). `params` is hardcoded `{}` (`:19`) — never populated from the body. `retryAfter` has zero render sites in `src` (grep: none). `fieldErrors` is built but never consumed anywhere (grep: only normalizeError.ts + AppError.ts type). `errorMessageKeys` (useErrorMessage.ts:22-31) maps `code`/`status`/`category` exclusively through fixed allowlists (`KNOWN_CODES`, `UPLOAD_CODES`, `SHIPPED_HTTP`) to static catalog strings — no interpolation params are ever passed to `t()`. |
+| 4 | Stream errors carry codes; ask page renders only catalog text | **PASS** | `streamFetch` (fetch.ts:118-122) checks `chunk.error` **before** status/delta handling and short-circuits (`onError(normalizeStreamError(code))` → `{category:"service", code, retryable:true}`) — error strings can never reach `setStatusText`/`setAnswer`. voice-turn.ts:81-84 drops the code entirely (`{category:"service", retryable:true}`). Ask page renders errors only via `ErrorAlert` → `useErrorMessage` (ask/page.tsx:355-362); `normalizeStreamError` codes (e.g. backend codes) fall outside `KNOWN_CODES` → category catalog text (`errors.categories.service`). `chunk.error` never reaches the DOM. |
+| 5 | OAuth callback: no code/token logging; tokens in cookies only | **PASS** (2 MINOR findings) | callback/page.tsx never logs `ticket`/`access_token`; `setToken(data.access_token)` (`:40`) → memory + cookies only, no localStorage. **Finding 1 (LOW):** raw `oauth_error` query param is rendered verbatim via `t('oauth_error_unknown', { code: error })` (`:58-59`) — attacker-craftable URL string reaches the user (React-escaped → no XSS, but unvalidated). **Finding 2 (LOW):** `data.redirect` guarded only by `startsWith('/')` (`:41`) — would accept `//evil.com`; currently safe only because backend `_validate_redirect_target` (src/api/oauth.py:118-133) blocks `//` and `\`. Hardening: route through `safeNextPath`. |
+| 6 | `safeNextPath` open-redirect surface | **PASS** | safeNextPath.ts:1-12 parses `next` via `new URL(next, origin)` and requires exact origin equality + rejects `/login*`. Empirically verified (node): `//evil.com`, `https://evil.com/x`, `https://app.ethiobio.ai@evil.com`, `%2F%2Fevil.com` (decoded → `//evil.com` authority → rejected), `%5C%5Cevil.com` (decoded `\\` → `//evil.com` → rejected), `\login` → rejected; `../evil` and `\evil.com` resolve to same-origin paths (browsers parse `\evil.com` as an authority per WHATWG for special schemes → rejected there too). Returned value always begins with `/` and `router.push` resolves it internally — cross-origin navigation unreachable. |
+| 7 | `fetchWithAuth` redirectToLogin `next` encoding | **PASS** | fetchWithAuth.ts:29-34 — `current` (pathname+search) is `encodeURIComponent`'d once; login page re-reads via `URLSearchParams` + `safeNextPath` (login/page.tsx:53,90). Crafted page paths (incl. `%2F`-encoded query payloads, which URLSearchParams decodes to protocol-relative forms) are origin-checked post-decode by `safeNextPath` — no smuggling possible. |
+| 8 | TTSPlayButton / voice surfaces leak no provider keys | **PASS** | TTSPlayButton.tsx:33-43, VoiceRecorderButton.tsx:79,115, QuizVoiceButton.tsx:78, voice-turn.ts:9,44 send `Bearer` from `getToken()` only; errors are `AppError` (client/service) with no raw payloads; no logging, no keys in any state/UI. |
+| 9 | No credentials in `localStorage`/`sessionStorage` | **FAIL (minor)** | Migration to HTTP-only cookies (commit `ac2cadf`) removed token writes, but two stale reads survive: `workspace/browse/page.tsx:129` and `workspace/browse/[id]/page.tsx:114` — `localStorage.getItem('ethiobio_token')` (always `null` today, dead code, but a latent credential-storage surface if anything ever writes the key again). Non-sensitive writes only: `ethiobio_active_workspace_id` (workspace/layout.tsx:31,40). |
+
+### Observations (out of error-handling scope, filed separately)
+
+- **DOM XSS surface in content rendering:** `MarkdownRenderer.tsx:21,30` runs `marked.parse(content)` (marked ^18.0.3 — no sanitizer) into `dangerouslySetInnerHTML`. Backend/model-controlled content (ask answers, lesson plans) renders raw HTML — prompt-injection → stored/reflected XSS. Not an error path, but adjacent (ask page renders AI answers through it; error-channel text is catalog-only and does not flow here).
+
+### Findings → issues
+
+- `workspace/browse` dead `localStorage('ethiobio_token')` reads (latent token-exposure surface) — LOW.
+- oauth/callback: raw `oauth_error` param rendered + weak `startsWith('/')` redirect guard (backend contract currently protects) — LOW.
+- Unsanitized `dangerouslySetInnerHTML` markdown (XSS surface for model content) — MEDIUM, observation.
+
+All other checks PASS; no genuine credential leak found. Findings feed the Task 16 documentation; recommended follow-ups: remove stale localStorage reads, harden oauth/callback, sanitize markdown.
