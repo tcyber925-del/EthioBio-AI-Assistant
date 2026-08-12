@@ -76,16 +76,24 @@ Filed during Task 15 (`96a4481`), open on GitHub:
 
 | Ticket | Severity | Issue |
 |--------|----------|-------|
-| #103 | — | Stale localStorage token reads (auth state may be read after logout) |
-| #104 | — | OAuth raw `error` param rendered + weak redirect guard in oauth callback |
-| #105 | MEDIUM | `dangerouslySetInnerHTML` markdown rendering — XSS observation |
+| ~~#103~~ | — | Stale localStorage token reads — **closed** (`a8764f2`): dead token param removed (endpoint ignores it) |
+| ~~#104~~ | — | OAuth raw `error` param + weak redirect guard — **closed** (`a8764f2`): param echo removed, redirect hardened via `new URL` origin check |
+| ~~#105~~ | MEDIUM | `dangerouslySetInnerHTML` markdown rendering — **closed** (`a8764f2`): `MarkdownRenderer` now sanitizes via DOMPurify |
+| #106 | LOW-MEDIUM | Backend knowledge download endpoint unauthenticated (`src/api/knowledge.py:235`) — **open**, backend follow-up |
+| ~~#107~~ | — | Admin content toggle PATCH unhandled rejections — **closed** (`4cbf65a`): try/catch → `normalizeException` → inline `ErrorBanner` on all three admin content pages |
 
 Documented pre-existing gaps (tracked in the audit/spec, not regressions from this plan):
 
-- Admin pages: PATCH unhandled rejections (missing `.catch` on optimistic updates)
-- `MisconceptionPanel`: resolve-error visibility
-- `playTTS`: silent error swallow
-- `TTSPlayButton`: `audio.onerror` silent reset
+- ~~Admin pages: PATCH unhandled rejections~~ — **fixed** in `4cbf65a` (see #107)
+- `MisconceptionPanel`: resolve-error visibility (error only shows when `!profile` — by design)
+- `playTTS`: silent error swallow (by design — user can re-tap TTS)
+- `TTSPlayButton`: `audio.onerror` silent reset (no Error object source)
+
+Post-plan polish landed (not part of the original 17 tasks):
+
+- `a8764f2` fixes #103/#104/#105
+- `602d3d9` ErrorBanner/ErrorState button contrast + token drift — `danger` variant solidified to `bg-red-600 text-white`, ErrorState retry now uses `danger`
+- `4cbf65a` fixes #107
 
 ---
 
