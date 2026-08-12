@@ -64,7 +64,7 @@
     "oauth_error_not_configured": "የጉግል መግቢያ ገና አልተዘጋጀም። እባክዎ በኢሜይል ወይም በቴሌግራም ይግቡ።",
     "oauth_error_email_conflict": "በዚህ ኢሜይል መለያ አስቀድሞ አለ። እባክዎ በኢሜይል እና በይለፍ ቃልዎ ይግቡ።",
     "oauth_error_access_denied": "የጉግል መግቢያ ተሰርዟል። እንደገና ይሞክሩ ወይም በኢሜይል ይግቡ።",
-    "oauth_error_unknown": "መግባት አልተሳካም ({code})። እባክዎ እንደገና ይሞክሩ።",
+    "oauth_error_unknown": "መግባት አልተሳካም። እባክዎ እንደገና ይሞክሩ።",
     "back_to_login": "ወደ መግቢያ ተመለስ"
   },
   "errors": {

@@ -38,7 +38,17 @@ export default function OAuthCallbackPage() {
         }
         const data = await res.json()
         setToken(data.access_token)
-        const target = data.redirect && data.redirect.startsWith('/') ? data.redirect : '/classroom'
+        let target = '/classroom'
+        if (data.redirect) {
+          try {
+            const url = new URL(data.redirect, window.location.origin)
+            if (url.origin === window.location.origin && !url.pathname.startsWith('/login')) {
+              target = url.pathname + url.search + url.hash
+            }
+          } catch {
+            // invalid redirect — fall back to default
+          }
+        }
         router.replace(target)
       } catch {
         setError('session_failed')
@@ -56,7 +66,7 @@ export default function OAuthCallbackPage() {
           : error === 'session_failed'
             ? t('error')
             : error
-              ? t('oauth_error_unknown', { code: error })
+              ? t('oauth_error_unknown')
               : null
 
   return (

@@ -111,8 +111,7 @@ export default function KnowledgeDetailPage() {
   }
 
   const handleDownload = () => {
-    const token = localStorage.getItem('ethiobio_token')
-    window.open(`/api/v1/knowledge/${id}/download${token ? `?token=${token}` : ''}`, '_blank')
+    window.open(`/api/v1/knowledge/${id}/download`, '_blank')
   }
 
   const contentClassIcon = (cls: string | undefined) => {

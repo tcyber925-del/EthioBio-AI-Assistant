@@ -126,9 +126,7 @@ export default function BrowseAssetsPage() {
   }
 
   const handleDownload = (id: string) => {
-    const token = localStorage.getItem('ethiobio_token')
-    const url = `/api/v1/knowledge/${id}/download${token ? `?token=${token}` : ''}`
-    window.open(url, '_blank')
+    window.open(`/api/v1/knowledge/${id}/download`, '_blank')
   }
 
   // Filter Logic

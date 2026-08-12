@@ -64,7 +64,7 @@
     "oauth_error_not_configured": "Google sign-in isn't configured yet. Please sign in with email or Telegram.",
     "oauth_error_email_conflict": "An account with this email already exists. Please sign in with your email and password.",
     "oauth_error_access_denied": "Google sign-in was declined. Try again or sign in with email.",
-    "oauth_error_unknown": "Sign-in failed ({code}). Please try again.",
+    "oauth_error_unknown": "Sign-in failed. Please try again.",
     "back_to_login": "Back to login"
   },
   "errors": {
