@@ -111,6 +111,10 @@
       "string_type": "እባክዎ በ{field} መስክ ውስጥ የተሟላ ጽሑፍ ያስገቡ።",
       "integer_type": "እባክዎ በ{field} መስክ ውስጥ ቁጥር ያስገቡ።",
       "value_error": "እባክዎ ለ{field} መስክ ትክክለኛ እሴት ያስገቡ።"
+    },
+    "upload": {
+      "unsupported_type": "ያልተደገፈ የፋይል አይነት። እባክዎ የሚደገፍ ሰነድ ወይም ምስል ይምጡ።",
+      "too_large": "ፋይሉ በጣም ትልቅ ነው።"
     }
   },
   "common": {

@@ -6,7 +6,23 @@ import { useTranslations } from 'next-intl'
 import { useWorkspace } from '../context'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { getUserId, getToken } from '@/lib/auth'
-import { Upload, AlertCircle, FileText, CheckCircle, ArrowRight, Loader } from 'lucide-react'
+import { Upload, CheckCircle, ArrowRight, Loader } from 'lucide-react'
+import { ErrorAlert } from '@/components/ui/errors'
+import { normalizeException, normalizeHttpError, type AppError } from '@/lib/errors'
+
+const ALLOWED_EXTENSIONS = ['pdf', 'txt', 'md']
+const MAX_FILE_SIZE = 10 * 1024 * 1024
+
+function validateFile(file: File): AppError | null {
+  const extension = file.name.split('.').pop()?.toLowerCase() ?? ''
+  if (!ALLOWED_EXTENSIONS.includes(extension)) {
+    return { category: 'client', code: 'unsupported_type', retryable: false, params: {} }
+  }
+  if (file.size > MAX_FILE_SIZE) {
+    return { category: 'client', code: 'too_large', retryable: false, params: {} }
+  }
+  return null
+}
 
 export default function UploadPage() {
   const t = useTranslations('workspace')
@@ -15,7 +31,7 @@ export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null)
   const [title, setTitle] = useState('')
   const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const [success, setSuccess] = useState<boolean>(false)
 
   const handleDrag = (e: React.DragEvent) => {
@@ -23,26 +39,32 @@ export default function UploadPage() {
     e.stopPropagation()
   }
 
+  const selectFile = (selectedFile: File) => {
+    const validationError = validateFile(selectedFile)
+    if (validationError) {
+      setFile(null)
+      setError(validationError)
+      return
+    }
+    setError(null)
+    setFile(selectedFile)
+    if (!title) setTitle(selectedFile.name.split('.')[0])
+  }
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const selectedFile = e.dataTransfer.files[0]
-      setFile(selectedFile)
-      if (!title) setTitle(selectedFile.name.split('.')[0])
-    }
+    const selectedFile = e.dataTransfer.files?.[0]
+    if (selectedFile) selectFile(selectedFile)
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const selectedFile = e.target.files[0]
-      setFile(selectedFile)
-      if (!title) setTitle(selectedFile.name.split('.')[0])
-    }
+    const selectedFile = e.target.files?.[0]
+    if (selectedFile) selectFile(selectedFile)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault()
     if (!file || !activeWorkspace) return
 
     setUploading(true)
@@ -74,25 +96,21 @@ export default function UploadPage() {
       })
 
       if (!res.ok) {
-        const text = await res.text()
-        try {
-          const json = JSON.parse(text)
-          throw new Error(json.detail || json.error || `HTTP ${res.status}`)
-        } catch {
-          throw new Error(text || `HTTP ${res.status}`)
-        }
+        const bodyText = await res.text()
+        setError(normalizeHttpError(res.status, bodyText))
+        return
       }
 
       setSuccess(true)
       setFile(null)
       setTitle('')
-      
+
       // Redirect to processing queue after 1.5 seconds
       setTimeout(() => {
         router.push('/workspace/processing')
       }, 1500)
-    } catch (err: any) {
-      setError(err.message || t('upload_error'))
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setUploading(false)
     }
@@ -111,10 +129,11 @@ export default function UploadPage() {
 
         {/* Status Alerts */}
         {error && (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-error/10 border border-v2-error/30 text-v2-error text-sm">
-            <AlertCircle className="w-5 h-5 shrink-0" />
-            <div className="flex-1">{error}</div>
-          </div>
+          <ErrorAlert
+            error={error}
+            onRetry={error.retryable ? () => void handleSubmit() : undefined}
+            retrying={uploading}
+          />
         )}
 
         {success && (

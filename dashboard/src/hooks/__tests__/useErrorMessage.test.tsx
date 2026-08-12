@@ -26,6 +26,14 @@ describe("errorMessageKeys", () => {
   it("no status falls back to categories.<category>", () => {
     expect(errorMessageKeys({ category: "network", retryable: true }).key).toBe("errors.categories.network");
   });
+  it("every shipped upload code resolves to its own errors.upload.* key", () => {
+    expect(errorMessageKeys({ category: "client", code: "unsupported_type", retryable: false }).key).toBe(
+      "errors.upload.unsupported_type",
+    );
+    expect(errorMessageKeys({ category: "client", code: "too_large", retryable: false }).key).toBe(
+      "errors.upload.too_large",
+    );
+  });
   it("complete fallback chain ends at errors.generic", () => {
     expect(errorMessageKeys({ category: "unknown", retryable: false }).key).toBe("errors.generic");
   });

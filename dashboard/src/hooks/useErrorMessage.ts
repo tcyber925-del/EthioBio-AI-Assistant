@@ -12,6 +12,7 @@ const GENERIC_KEY = "errors.generic";
 const CATEGORY_KEY = (c: string): string => `errors.categories.${c}`;
 const HTTP_KEY = (s: number): string => `errors.http.${s}`;
 const CODE_KEY = (c: string): string => `errors.codes.${c}`;
+const UPLOAD_KEY = (c: string): string => `errors.upload.${c}`;
 
 const SHIPPED_HTTP = new Set([400, 401, 403, 404, 409, 422, 429, 500]);
 
@@ -25,8 +26,11 @@ const KNOWN_CODES = new Set([
   "rate_limit_exceeded",
 ]);
 
+const UPLOAD_CODES = new Set(["unsupported_type", "too_large"]);
+
 export function errorMessageKeys(error: AppError): MessageKey {
   if (error.code && KNOWN_CODES.has(error.code)) return { key: CODE_KEY(error.code) };
+  if (error.code && UPLOAD_CODES.has(error.code)) return { key: UPLOAD_KEY(error.code) };
   if (error.status && SHIPPED_HTTP.has(error.status)) return { key: HTTP_KEY(error.status) };
   if (error.category === "unknown") return { key: GENERIC_KEY };
   return { key: CATEGORY_KEY(error.category) };

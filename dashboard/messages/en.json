@@ -111,6 +111,10 @@
       "string_type": "Please enter valid text in the {field} field.",
       "integer_type": "Please enter a number in the {field} field.",
       "value_error": "Please enter a valid value for the {field} field."
+    },
+    "upload": {
+      "unsupported_type": "Unsupported file type. Please upload a supported document or image.",
+      "too_large": "That file is too big."
     }
   },
   "common": {

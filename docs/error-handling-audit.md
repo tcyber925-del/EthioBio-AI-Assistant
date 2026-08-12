@@ -113,7 +113,7 @@ src/hooks/useConversationHistory.ts
 ### Direct raw-`fetch` spots that duplicate the error-shape logic
 
 - `src/lib/voice-turn.ts:55` — `json.detail || json.error` (copy of fetch.ts pattern).
-- `src/app/(dashboard)/workspace/upload/page.tsx:80` — inline `throw new Error(json.detail || json.error || HTTP status)` (third copy; upload is not routed through any client).
+- `src/app/(dashboard)/workspace/upload/page.tsx:80` — inline `throw new Error(json.detail || json.error || HTTP status)` (third copy; upload is not routed through any client) — **migrated (Task 12: `normalizeHttpError` + `ErrorAlert`, no raw extraction)**.
 
 ---
 
@@ -155,7 +155,7 @@ Classes: `RAW_UI` (rendered user-facing — must migrate later), `LOGGING` (cons
 |------|-------|-------|
 | `src/lib/fetch.ts` | 21 (throw), 73 (onError) | `RAW_SRC` (bug site: `json.error` is object) |
 | `src/lib/voice-turn.ts` | 55 | `RAW_SRC` (duplicate of bug site) |
-| `src/app/(dashboard)/workspace/upload/page.tsx` | 80 (throw), 95 | `RAW_SRC`, `RAW_UI` |
+| `src/app/(dashboard)/workspace/upload/page.tsx` | 80 (throw), 95 | `RAW_SRC`, `RAW_UI` — migrated (Task 12) |
 | `src/app/(marketing)/login/page.tsx` | 52, 70, 89 | `RAW_UI` |
 | `src/app/(marketing)/login/oauth/callback/page.tsx` | 40 | backend-driven via `setToken` (no inline error path; 401 → fetchWithAuth redirect) |
 | `src/app/(dashboard)/students/page.tsx` | 36 | `RAW_UI` |
@@ -230,7 +230,7 @@ Classes: `RAW_UI` (rendered user-facing — must migrate later), `LOGGING` (cons
 | `src/app/(dashboard)/workspace/layout.tsx` | 34 | `LOGGING` |
 | `src/app/(dashboard)/quiz/take/[id]/page.tsx` | 298 (`onError={console.error}`) | `LOGGING` |
 
-Counts: ~98 `RAW_UI` sites, 3 `RAW_SRC` bug sites (fetch.ts ×2, voice-turn.ts, upload/page.tsx), 9 `LOGGING`, 1 `DERIVED` pair (ask). Additional anti-pattern: `catch (err: any)` with implicit `any` (`fetch.ts`-adjacent callers, `assignments/[id]/page.tsx:58`, `workspace/upload/page.tsx` catch) bypasses type-safe error narrowing.
+Counts: ~98 `RAW_UI` sites, 2 `RAW_SRC` bug sites (fetch.ts ×2, voice-turn.ts — upload migrated in Task 12), 9 `LOGGING`, 1 `DERIVED` pair (ask). Additional anti-pattern: `catch (err: any)` with implicit `any` (`fetch.ts`-adjacent callers, `assignments/[id]/page.tsx:58`) bypasses type-safe error narrowing.
 
 ---
 
@@ -241,8 +241,8 @@ Counts: ~98 `RAW_UI` sites, 3 `RAW_SRC` bug sites (fetch.ts ×2, voice-turn.ts, 
 | Login / OAuth | `login/page.tsx`, `login/oauth/callback/page.tsx`, `src/middleware.ts`, `fetchWithAuth.ts` | `setToken` on success; three `RAW_UI` error sites; hard redirect on refresh failure |
 | Students list + detail | `students/page.tsx`, `students/[id]/page.tsx` | `RAW_UI` at :36 / :34; Bearer via `fetchWithTimeout` in detail — migrated (Task 09) |
 | v2 dashboards | `dashboard-v2/dashboards/*.tsx` (5 files) + `dashboard/page.tsx` | per-dashboard `setError` — migrated (Task 10) |
-| Ask / voice / workspace | `ask/page.tsx`, `voice-turn.ts`, `useVoiceTurn.ts`, `VoiceRecorderButton.tsx`, `QuizVoiceButton.tsx`, `workspace/*` (6 pages) | `streamFetch` + `RAW_SRC` bug sites; `alert()` in browse — migrated (Task 11: ask page + voice hooks/components + workspace browse/processing; remaining: `voice-turn.ts` raw extraction → sweep, upload page → Task 12) |
-| Uploads in workspace | `workspace/upload/page.tsx` | third `RAW_SRC` copy |
+| Ask / voice / workspace | `ask/page.tsx`, `voice-turn.ts`, `useVoiceTurn.ts`, `VoiceRecorderButton.tsx`, `QuizVoiceButton.tsx`, `workspace/*` (6 pages) | `streamFetch` + `RAW_SRC` bug sites; `alert()` in browse — migrated (Task 11: ask page + voice hooks/components + workspace browse/processing; remaining: `voice-turn.ts` raw extraction → sweep) |
+| Uploads in workspace | `workspace/upload/page.tsx` | — migrated (Task 12: dropzone/file-input validation → `AppError` + `errors.upload.*` keys; server failures → `normalizeHttpError`/`normalizeException` + ErrorAlert with retry for network errors; raw upload body never rendered; registry gained the `errors.upload.*` code tier) |
 
 ---
 
