@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { ArrowLeft, AlertTriangle, Check, X, Loader2, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Check, X, Loader2 } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
+import { ErrorState } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,10 +31,9 @@ export default function QuizDetailPage() {
   const router = useRouter()
   const [quiz, setQuiz] = useState<QuizDetail | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const [updating, setUpdating] = useState(false)
   const t = useTranslations('quiz')
-  const tc = useTranslations('common')
 
   const fetchQuiz = async () => {
     setLoading(true)
@@ -42,7 +43,7 @@ export default function QuizDetailPage() {
       const data = await response.json()
       setQuiz(data)
     } catch (err: any) {
-      setError(err.message)
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -54,7 +55,7 @@ export default function QuizDetailPage() {
       await fetchWithAuth(`/api/admin/content/quiz/${params.id}/status?status=${newStatus}`, { method: 'PATCH' })
       setQuiz(prev => prev ? { ...prev, status: newStatus } : prev)
     } catch (err: any) {
-      setError(err.message)
+      setError(normalizeException(err))
     } finally {
       setUpdating(false)
     }
@@ -67,14 +68,10 @@ export default function QuizDetailPage() {
 
   if (loading) return <div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)}</div>
   if (error) return (
-    <div className="text-center py-16">
-      <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-      <p className="text-red-400">{error}</p>
-      <div className="mt-4 flex gap-3 justify-center">
-        <button onClick={fetchQuiz} className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover transition-colors">
-          <RefreshCw className="w-4 h-4 inline mr-1" /> {tc('retry')}
-        </button>
-        <Link href="/quizzes" className="px-4 py-2 bg-card border border-border text-foreground rounded-lg text-sm hover:bg-border transition-colors">
+    <div>
+      <ErrorState error={error} onRetry={() => void fetchQuiz()} />
+      <div className="text-center">
+        <Link href="/quizzes" className="px-4 py-2 bg-card border border-border text-foreground rounded-lg text-sm hover:bg-border transition-colors inline-block">
           {t('back')}
         </Link>
       </div>

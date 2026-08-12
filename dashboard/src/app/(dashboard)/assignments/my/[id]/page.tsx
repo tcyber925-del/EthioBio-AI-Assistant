@@ -7,6 +7,8 @@ import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserId } from '@/lib/auth'
 import { FileText, Calendar, AlertCircle, CheckCircle, Upload, ArrowRight, Loader, ArrowUpCircle } from 'lucide-react'
+import { ErrorAlert } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export default function StudentAssignmentDetailPage() {
   const t = useTranslations('assignments')
@@ -17,7 +19,7 @@ export default function StudentAssignmentDetailPage() {
   const [assignment, setAssignment] = useState<any>(null)
   const [mySubmissions, setMySubmissions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
 
   const [content, setContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -33,7 +35,7 @@ export default function StudentAssignmentDetailPage() {
         setAssignment(a)
         setMySubmissions(subs.filter((s: any) => s.assignment_id === id))
       } catch (err: any) {
-        setError(err.message)
+        setError(normalizeException(err))
       } finally { setLoading(false) }
     }
     fetch()
@@ -53,7 +55,7 @@ export default function StudentAssignmentDetailPage() {
       setContent('')
       setTimeout(() => { window.location.reload() }, 1000)
     } catch (err: any) {
-      setError(err.message || t('error_submission'))
+      setError(normalizeException(err))
     } finally { setSubmitting(false) }
   }
 
@@ -76,8 +78,12 @@ export default function StudentAssignmentDetailPage() {
     <div className="py-20 flex justify-center"><div className="w-8 h-8 rounded-full border-2 border-v2-accent border-t-transparent animate-spin" /></div></DashboardLayout>
 
   if (error || !assignment) return <DashboardLayout breadcrumbs={[{ label: 'My Assignments', href: '/assignments/my' }]}>
-    <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-error/10 border border-v2-error/30 text-v2-error text-sm">
-      <AlertCircle className="w-5 h-5" />{error || t('not_found')}</div></DashboardLayout>
+    {error ? (
+      <ErrorAlert error={error} />
+    ) : (
+      <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-error/10 border border-v2-error/30 text-v2-error text-sm">
+        <AlertCircle className="w-5 h-5" />{t('not_found')}</div>
+    )}</DashboardLayout>
 
   const canSubmit = mySubmissions.length < assignment.max_attempts
 
@@ -140,7 +146,6 @@ export default function StudentAssignmentDetailPage() {
               <textarea value={content} onChange={e => setContent(e.target.value)} rows={6} required placeholder={t('answer_placeholder')}
                 className="bg-v2-bg border border-v2-border text-v2-text-primary text-sm rounded-xl px-4 py-3 outline-none focus:border-v2-accent resize-none" />
             </div>
-            {error && <p className="text-xs text-v2-error">{error}</p>}
             {success && <p className="text-xs text-v2-success flex items-center gap-1"><CheckCircle className="w-3 h-3" /> {t('submitted_success')}</p>}
             <button type="submit" disabled={submitting || success || !content.trim()}
               className="h-12 rounded-xl bg-v2-accent text-v2-inverted text-sm font-bold hover:bg-white disabled:opacity-50 transition-all flex items-center justify-center gap-2">

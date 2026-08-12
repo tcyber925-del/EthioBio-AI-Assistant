@@ -11,6 +11,8 @@ import {
   Download, ChevronRight, Send, ArrowUpCircle, Edit3
 } from 'lucide-react'
 import Link from 'next/link'
+import { ErrorAlert, ErrorBanner } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 interface Assignment {
   id: string; title: string; description: string | null; instructions: string | null
@@ -34,7 +36,8 @@ export default function AssignmentDetailPage() {
   const [assignment, setAssignment] = useState<Assignment | null>(null)
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
+  const [publishError, setPublishError] = useState<AppError | null>(null)
 
   const fetchData = useCallback(async () => {
     setLoading(true); setError(null)
@@ -45,7 +48,7 @@ export default function AssignmentDetailPage() {
       ])
       setAssignment(a); setSubmissions(subs)
     } catch (err: any) {
-      setError(err.message || t('error_load_detail'))
+      setError(normalizeException(err))
     } finally { setLoading(false) }
   }, [id, isTeacher])
 
@@ -55,7 +58,7 @@ export default function AssignmentDetailPage() {
     try {
       await fetchWithAuth(`/api/v1/assignments/${id}/publish`, { method: 'POST' })
       fetchData()
-    } catch (err: any) { alert(err.message) }
+    } catch (err: any) { setPublishError(normalizeException(err)) }
   }
 
   const statusBadge = (s: string) => {
@@ -74,8 +77,12 @@ export default function AssignmentDetailPage() {
     <div className="py-20 flex justify-center"><div className="w-8 h-8 rounded-full border-2 border-v2-accent border-t-transparent animate-spin" /></div></DashboardLayout>
 
   if (error || !assignment) return <DashboardLayout breadcrumbs={[{ label: 'Assignments', href: '/assignments' }]}>
-    <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-error/10 border border-v2-error/30 text-v2-error text-sm">
-      <AlertCircle className="w-5 h-5" /> {error || t('not_found')}</div></DashboardLayout>
+    {error ? (
+      <ErrorAlert error={error} title={t('error_load_detail')} />
+    ) : (
+      <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-error/10 border border-v2-error/30 text-v2-error text-sm">
+        <AlertCircle className="w-5 h-5" /> {t('not_found')}</div>
+    )}</DashboardLayout>
 
   return (
     <DashboardLayout breadcrumbs={[{ label: t('crumb'), href: '/assignments' }, { label: assignment.title }]}>
@@ -99,6 +106,8 @@ export default function AssignmentDetailPage() {
             )}
           </div>
         </div>
+
+        {publishError && <ErrorBanner error={publishError} />}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 flex flex-col gap-6">

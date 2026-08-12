@@ -6,8 +6,10 @@ import { useTranslations } from 'next-intl'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserId } from '@/lib/auth'
-import { FileText, Calendar, AlertCircle, RefreshCw, ChevronRight, CheckCircle2, Clock } from 'lucide-react'
+import { FileText, Calendar, ChevronRight, CheckCircle2, Clock } from 'lucide-react'
 import Link from 'next/link'
+import { ErrorBanner } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 interface Assignment {
   id: string; title: string; description: string | null
@@ -19,7 +21,7 @@ export default function MyAssignmentsPage() {
   const t = useTranslations('assignments')
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const [assignments, setAssignments] = useState<Assignment[]>([])
 
   const fetchAssignments = useCallback(async () => {
@@ -30,7 +32,7 @@ export default function MyAssignmentsPage() {
       const list = await response.json()
       setAssignments(list)
     } catch (err: any) {
-      setError(err.message || t('error_load'))
+      setError(normalizeException(err))
     } finally { setLoading(false) }
   }, [])
 
@@ -47,10 +49,7 @@ export default function MyAssignmentsPage() {
         </div>
 
         {error && (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-error/10 border border-v2-error/30 text-v2-error text-sm">
-            <AlertCircle className="w-5 h-5" />{error}
-            <button onClick={fetchAssignments} className="p-1 hover:bg-v2-error/15 rounded-lg"><RefreshCw className="w-4 h-4" /></button>
-          </div>
+          <ErrorBanner error={error} onAction={fetchAssignments} />
         )}
 
         {loading ? (

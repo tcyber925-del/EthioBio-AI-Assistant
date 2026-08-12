@@ -6,7 +6,9 @@ import { useTranslations } from 'next-intl'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserId } from '@/lib/auth'
-import { ArrowRight, AlertCircle, CheckCircle, X } from 'lucide-react'
+import { ArrowRight, CheckCircle, X } from 'lucide-react'
+import { ErrorAlert } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 const ASSIGNMENT_TYPES = ['homework', 'quiz', 'project', 'lab', 'essay', 'worksheet', 'presentation']
 
@@ -21,7 +23,7 @@ export default function NewAssignmentPage() {
   const [maxAttempts, setMaxAttempts] = useState(1)
   const [allowLate, setAllowLate] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const [success, setSuccess] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,7 +35,7 @@ export default function NewAssignmentPage() {
       const userId = getUserId()
       const wsResponse = await fetchWithAuth(`/api/v1/workspaces?user_id=${userId}`)
       const workspaces = await wsResponse.json()
-      if (workspaces.length === 0) throw new Error(t('error_no_workspace'))
+      if (workspaces.length === 0) throw { category: 'client', retryable: false, params: {} } as AppError
 
       await fetchWithAuth(`/api/v1/assignments?teacher_id=${userId}`, {
         method: 'POST',
@@ -52,7 +54,7 @@ export default function NewAssignmentPage() {
       setSuccess(true)
       setTimeout(() => router.push('/assignments'), 1500)
     } catch (err: any) {
-      setError(err.message || t('error_create'))
+      setError(normalizeException(err))
     } finally {
       setSubmitting(false)
     }
@@ -67,9 +69,7 @@ export default function NewAssignmentPage() {
         </div>
 
         {error && (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-error/10 border border-v2-error/30 text-v2-error text-sm">
-            <AlertCircle className="w-5 h-5 shrink-0" /> {error}
-          </div>
+          <ErrorAlert error={error} title={t('error_create')} />
         )}
         {success && (
           <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-success/10 border border-v2-success/30 text-v2-success text-sm">

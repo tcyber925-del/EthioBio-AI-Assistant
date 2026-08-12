@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { AlertTriangle, ArrowLeft, RefreshCw, School, TrendingUp } from 'lucide-react'
+import { ArrowLeft, School, TrendingUp } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
+import { ErrorState } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -74,9 +76,8 @@ export default function ClassroomOverviewPage() {
 
   const [data, setData] = useState<ClassroomProfile | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const t = useTranslations('classroom')
-  const tc = useTranslations('common')
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -92,20 +93,14 @@ export default function ClassroomOverviewPage() {
     fetchWithAuth(`/teacher/classrooms/${classroomId}/overview`)
       .then(res => res.json())
       .then(d => setData(d))
-      .catch(err => setError(err.message))
+      .catch(err => setError(normalizeException(err)))
       .finally(() => setLoading(false))
   }
 
   if (loading) return <div className="space-y-4">{Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)}</div>
 
   if (error) return (
-    <div className="text-center py-16">
-      <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-      <p className="text-red-400">{error}</p>
-      <button onClick={load} className="text-sm text-primary hover:underline mt-3 flex items-center gap-1 mx-auto">
-        <RefreshCw className="w-3 h-3" /> {tc('retry')}
-      </button>
-    </div>
+    <ErrorState error={error} onRetry={() => void load()} />
   )
 
   if (!data || data.total_students === 0) return (

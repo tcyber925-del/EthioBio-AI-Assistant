@@ -9,7 +9,6 @@ import {
   BarChart3,
   BookOpen,
   Calendar,
-  RefreshCw,
   TrendingUp,
   User,
   Zap,
@@ -17,6 +16,8 @@ import {
 import { CardSkeleton } from '@/components/Skeleton'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
+import { ErrorState } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -73,10 +74,9 @@ export default function ParentDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [loadingProgress, setLoadingProgress] = useState(false)
   const [generatingSummary, setGeneratingSummary] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const locale = useLocale()
   const t = useTranslations('parent.dashboard')
-  const tc = useTranslations('common')
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -89,7 +89,7 @@ export default function ParentDashboardPage() {
         setChildren(data)
         if (data.length > 0) setSelectedId(data[0].student_id)
       })
-      .catch(err => setError(err.message))
+      .catch(err => setError(normalizeException(err)))
       .finally(() => setLoading(false))
   }, [])
 
@@ -99,7 +99,7 @@ export default function ParentDashboardPage() {
     fetchWithAuth(`/api/parent/children/${childId}/progress`)
       .then(res => res.json())
       .then(setProgress)
-      .catch(err => setError(err.message))
+      .catch(err => setError(normalizeException(err)))
       .finally(() => setLoadingProgress(false))
   }, [])
 
@@ -167,28 +167,23 @@ export default function ParentDashboardPage() {
       )}
 
       {error && (
-        <div className="text-center py-16">
-          {error.includes('Parent access required') || error.includes('Parent access') ? (
-            <>
-              <User className="w-12 h-12 text-border mx-auto mb-3" />
-              <p className="text-foreground-muted font-medium text-base">{t('parent_access_required')}</p>
-              <p className="text-sm text-foreground-muted mt-2 max-w-md mx-auto leading-relaxed">
-                {t('parent_access_desc')}
-              </p>
-              <a href="/login" className="inline-flex items-center gap-2 mt-5 px-5 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover transition-colors">
-                {t('switch_account')}
-              </a>
-            </>
-          ) : (
-            <>
-              <AlertTriangle className="w-8 h-8 text-red-400 mx-auto mb-2" />
-              <p className="text-red-400 text-sm">{error}</p>
-              <button onClick={() => selectedId && loadProgress(selectedId)} className="text-sm text-primary hover:underline mt-2 flex items-center gap-1 mx-auto">
-                <RefreshCw className="w-3 h-3" /> {tc('retry')}
-              </button>
-            </>
-          )}
-        </div>
+        error.category === 'authorization' ? (
+          <div className="text-center py-16">
+            <User className="w-12 h-12 text-border mx-auto mb-3" />
+            <p className="text-foreground-muted font-medium text-base">{t('parent_access_required')}</p>
+            <p className="text-sm text-foreground-muted mt-2 max-w-md mx-auto leading-relaxed">
+              {t('parent_access_desc')}
+            </p>
+            <a href="/login" className="inline-flex items-center gap-2 mt-5 px-5 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover transition-colors">
+              {t('switch_account')}
+            </a>
+          </div>
+        ) : (
+          <ErrorState
+            error={error}
+            onRetry={() => selectedId && loadProgress(selectedId)}
+          />
+        )
       )}
 
       {selectedChild && (

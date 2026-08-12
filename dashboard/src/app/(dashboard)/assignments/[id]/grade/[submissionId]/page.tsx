@@ -5,7 +5,9 @@ import { useParams, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
-import { AlertCircle, CheckCircle } from 'lucide-react'
+import { CheckCircle } from 'lucide-react'
+import { ErrorBanner } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export default function GradeSubmissionPage() {
   const t = useTranslations('assignments')
@@ -15,14 +17,14 @@ export default function GradeSubmissionPage() {
   const [grade, setGrade] = useState('')
   const [feedback, setFeedback] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const [success, setSuccess] = useState(false)
 
   useEffect(() => {
     fetchWithAuth(`/api/v1/assignments/submissions/${submissionId}`)
       .then(res => res.json())
       .then(setSubmission)
-      .catch(err => setError(err.message))
+      .catch(err => setError(normalizeException(err)))
   }, [submissionId])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,7 +43,7 @@ export default function GradeSubmissionPage() {
       setSuccess(true)
       setTimeout(() => router.push(`/assignments/${id}`), 1500)
     } catch (err: any) {
-      setError(err.message || t('error_submit_grade'))
+      setError(normalizeException(err))
     } finally { setSubmitting(false) }
   }
 
@@ -57,7 +59,7 @@ export default function GradeSubmissionPage() {
           <p className="text-sm text-v2-text-secondary mt-1">{t('grade_subtitle')}</p>
         </div>
 
-        {error && <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-error/10 border border-v2-error/30 text-v2-error text-sm"><AlertCircle className="w-5 h-5" />{error}</div>}
+        {error && <ErrorBanner error={error} />}
         {success && <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-success/10 border border-v2-success/30 text-v2-success text-sm"><CheckCircle className="w-5 h-5" />{t('grade_saved')}</div>}
 
         {submission && (

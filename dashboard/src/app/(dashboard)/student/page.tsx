@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import {
   Activity,
-  AlertTriangle,
   Award,
   BarChart3,
   BookOpen,
@@ -26,6 +25,8 @@ import PageHeader from '@/components/ui/PageHeader'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
+import { ErrorState } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -68,7 +69,7 @@ export default function StudentDashboardPage() {
   const router = useRouter()
   const [data, setData] = useState<StudentDashboard | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const locale = useLocale()
   const t = useTranslations('student.dashboard')
   const tc = useTranslations('common')
@@ -81,7 +82,7 @@ export default function StudentDashboardPage() {
       const d = await response.json()
       setData(d)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -117,16 +118,11 @@ export default function StudentDashboardPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-3" />
-          <p className="text-red-400 text-subhead font-medium">{tc('error')}</p>
-          <p className="text-small text-foreground-muted mt-1">{error}</p>
-          <Button variant="primary" onClick={fetchData} className="mt-4">
-            {tc('retry')}
-          </Button>
-        </div>
-      </div>
+      <ErrorState
+        error={error}
+        title={tc('error')}
+        onRetry={() => void fetchData()}
+      />
     )
   }
 

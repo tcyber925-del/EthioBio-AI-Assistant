@@ -6,8 +6,10 @@ import { useTranslations } from 'next-intl'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserId } from '@/lib/auth'
-import { Plus, FileText, Users, Clock, AlertCircle, RefreshCw, Calendar, ChevronRight } from 'lucide-react'
+import { Plus, FileText, Users, Clock, Calendar, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
+import { ErrorAlert } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 interface Assignment {
   id: string
@@ -23,7 +25,7 @@ export default function AssignmentsPage() {
   const t = useTranslations('assignments')
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const [assignments, setAssignments] = useState<Assignment[]>([])
 
   const fetchAssignments = useCallback(async () => {
@@ -41,7 +43,7 @@ export default function AssignmentsPage() {
       const list = await listResponse.json()
       setAssignments(list)
     } catch (err: any) {
-      setError(err.message || t('error_load'))
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -80,13 +82,12 @@ export default function AssignmentsPage() {
         </div>
 
         {error && (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-error/10 border border-v2-error/30 text-v2-error text-sm">
-            <AlertCircle className="w-5 h-5 shrink-0" />
-            <div className="flex-1">{error}</div>
-            <button onClick={fetchAssignments} className="p-1 hover:bg-v2-error/15 rounded-lg">
-              <RefreshCw className="w-4 h-4" />
-            </button>
-          </div>
+          <ErrorAlert
+            error={error}
+            title={t('error_load')}
+            onRetry={() => void fetchAssignments()}
+            retrying={loading}
+          />
         )}
 
         {loading ? (

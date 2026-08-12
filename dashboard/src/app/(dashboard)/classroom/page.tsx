@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { AlertTriangle, Plus, RefreshCw, School, Users, LogIn } from 'lucide-react'
+import { Plus, School, Users } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
+import { ErrorState } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,7 +27,7 @@ export default function ClassroomListPage() {
   const [ready, setReady] = useState(false)
   const [classes, setClasses] = useState<Classroom[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState('')
   const [newGrade, setNewGrade] = useState(9)
@@ -44,7 +46,7 @@ export default function ClassroomListPage() {
     setError(null)
     fetchWithAuth('/teacher/classrooms')
       .then(d => setClasses(Array.isArray(d) ? d : []))
-      .catch(err => setError(err.message))
+      .catch(err => setError(normalizeException(err)))
       .finally(() => setLoading(false))
   }
 
@@ -60,7 +62,7 @@ export default function ClassroomListPage() {
       setNewName('')
       loadClasses()
     } catch (err: any) {
-      setError(err.message)
+      setError(normalizeException(err))
     }
   }
 
@@ -110,13 +112,7 @@ export default function ClassroomListPage() {
       {loading && <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)}</div>}
 
       {error && (
-        <div className="bg-card rounded-xl border border-border p-8 text-center">
-          <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-          <p className="text-red-400">{error}</p>
-          <button onClick={loadClasses} className="text-sm text-primary hover:underline mt-3 flex items-center gap-1 mx-auto">
-            <RefreshCw className="w-3 h-3" /> {tc('retry')}
-          </button>
-        </div>
+        <ErrorState error={error} onRetry={() => void loadClasses()} />
       )}
 
       {!loading && !error && classes.length === 0 && (

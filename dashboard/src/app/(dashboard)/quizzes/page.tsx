@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { ClipboardCheck, AlertTriangle, Plus, X, Loader2, CheckCircle, XCircle } from 'lucide-react'
+import { ClipboardCheck, Plus, X, Loader2, CheckCircle } from 'lucide-react'
 import { TableSkeleton } from '@/components/Skeleton'
 import ModelSelector from '@/components/ModelSelector'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserId, isAuthenticated } from '@/lib/auth'
+import { ErrorAlert, ErrorState } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,7 +23,7 @@ export default function QuizzesPage() {
   const router = useRouter()
   const [items, setItems] = useState<Quiz[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const [filter, setFilter] = useState('draft')
   const [showModal, setShowModal] = useState(false)
   const [genGrade, setGenGrade] = useState(12)
@@ -31,7 +33,8 @@ export default function QuizzesPage() {
   const [selectedModel, setSelectedModel] = useState('')
   const [generating, setGenerating] = useState(false)
   const [genMsg, setGenMsg] = useState<string | null>(null)
-  const [genStatus, setGenStatus] = useState<'success' | 'error' | null>(null)
+  const [genStatus, setGenStatus] = useState<'success' | null>(null)
+  const [genError, setGenError] = useState<AppError | null>(null)
   const t = useTranslations('quiz')
   const tc = useTranslations('common')
 
@@ -43,7 +46,7 @@ export default function QuizzesPage() {
       const data = await response.json()
       setItems(data.items || [])
     } catch (err: any) {
-      setError(err.message)
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -58,6 +61,7 @@ export default function QuizzesPage() {
     if (!genTopic.trim()) return
     setGenerating(true)
     setGenMsg(null)
+    setGenError(null)
     try {
       const types = genType === 'mixed' ? ['multiple_choice', 'true_false'] : [genType]
       const genResponse = await fetchWithAuth(`/quiz/generate`, {
@@ -80,13 +84,12 @@ export default function QuizzesPage() {
           return
         }
         if (task.status === 'failed') {
-          throw new Error(task.error || 'Generation failed')
+          throw { category: 'server', retryable: true, params: {} } as AppError
         }
       }
-      throw new Error('Generation timed out')
+      throw { category: 'server', retryable: true, params: {} } as AppError
     } catch (err: any) {
-      setGenMsg(err.message)
-      setGenStatus('error')
+      setGenError(normalizeException(err))
     } finally {
       setGenerating(false)
     }
@@ -111,19 +114,20 @@ export default function QuizzesPage() {
         </div>
       </div>
 
-      {genMsg && genStatus && (
-        <div className={`mb-4 px-4 py-3 rounded-lg text-sm flex items-center justify-between ${genStatus === 'success' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+      {genMsg && genStatus === 'success' && (
+        <div className="mb-4 px-4 py-3 rounded-lg text-sm flex items-center justify-between bg-green-500/10 text-green-400 border border-green-500/20">
           <span className="flex items-center gap-2">
-            {genStatus === 'success' ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+            <CheckCircle className="w-4 h-4" />
             {genMsg}
           </span>
           <button onClick={() => { setGenMsg(null); setGenStatus(null); }} className="ml-3 hover:opacity-70"><X className="w-4 h-4" /></button>
         </div>
       )}
+      {genError && <ErrorAlert error={genError} className="mb-4" />}
 
       {loading ? <TableSkeleton rows={5} />
       : error ? (
-        <div className="text-center py-12"><AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" /><p className="text-red-400">{error}</p></div>
+        <ErrorState error={error} onRetry={() => void fetchQuizzes()} />
       ) : items.length === 0 ? (
         <div className="text-center py-16 bg-card rounded-xl border border-border">
           <ClipboardCheck className="w-12 h-12 text-border mx-auto mb-3" />
