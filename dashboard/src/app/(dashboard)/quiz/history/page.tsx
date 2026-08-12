@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { History, Loader2, AlertTriangle, Check, X, ArrowRight, Award } from 'lucide-react'
+import { History, Loader2, Check, X, ArrowRight, Award } from 'lucide-react'
+import { ErrorState } from '@/components/ui/errors'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 interface AttemptItem {
   id: string
@@ -23,11 +25,10 @@ interface AttemptItem {
 export default function QuizHistoryPage() {
   const router = useRouter()
   const t = useTranslations('quiz')
-  const tc = useTranslations('common')
 
   const [attempts, setAttempts] = useState<AttemptItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
 
   const fetchAttempts = async () => {
     setLoading(true)
@@ -36,8 +37,8 @@ export default function QuizHistoryPage() {
       const res = await fetchWithAuth('/api/quiz/attempts')
       const data = await res.json()
       setAttempts(data.items || [])
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -71,11 +72,7 @@ export default function QuizHistoryPage() {
       )}
 
       {error && (
-        <div className="text-center py-16">
-          <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-          <p className="text-red-400">{error}</p>
-          <button onClick={fetchAttempts} className="mt-4 px-4 py-2 bg-v2-accent text-v2-inverted rounded-lg text-sm">{tc('retry')}</button>
-        </div>
+        <ErrorState error={error} onRetry={() => void fetchAttempts()} retrying={loading} />
       )}
 
       {!loading && !error && attempts.length === 0 && (

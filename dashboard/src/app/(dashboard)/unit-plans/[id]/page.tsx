@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { ArrowLeft, AlertTriangle, RefreshCw, Clock, Calendar, BookOpen, Target, ChevronDown, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Clock, Calendar, BookOpen, Target, ChevronDown, ChevronRight } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
+import { ErrorState } from '@/components/ui/errors'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,7 +45,7 @@ export default function UnitPlanDetailPage() {
   const router = useRouter()
   const [plan, setPlan] = useState<UnitPlanDetail | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set())
   const t = useTranslations('unit_plans')
 
@@ -54,8 +56,8 @@ export default function UnitPlanDetailPage() {
       const response = await fetchWithAuth(`/api/lesson-plan/unit/${params.id}`)
       const data = await response.json()
       setPlan(data)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -76,17 +78,11 @@ export default function UnitPlanDetailPage() {
 
   if (loading) return <div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)}</div>
   if (error) return (
-    <div className="text-center py-16">
-      <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-      <p className="text-red-400">{error}</p>
-      <div className="mt-4 flex gap-3 justify-center">
-        <button onClick={fetchPlan} className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover transition-colors">
-          <RefreshCw className="w-4 h-4 inline mr-1" /> Retry
-        </button>
-        <Link href="/unit-plans" className="px-4 py-2 bg-card border border-border text-foreground rounded-lg text-sm hover:bg-border transition-colors">
-          {t('back')}
-        </Link>
-      </div>
+    <div>
+      <Link href="/unit-plans" className="flex items-center gap-2 text-sm text-foreground-muted hover:text-foreground mb-4 transition-colors">
+        <ArrowLeft className="w-4 h-4" /> {t('back')}
+      </Link>
+      <ErrorState error={error} onRetry={() => void fetchPlan()} retrying={loading} />
     </div>
   )
   if (!plan) return null

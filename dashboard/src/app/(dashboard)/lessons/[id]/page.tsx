@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { ArrowLeft, AlertTriangle, Check, X, Loader2, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Check, X, Loader2 } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
+import { ErrorState } from '@/components/ui/errors'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -51,10 +53,9 @@ export default function LessonDetailPage() {
   const router = useRouter()
   const [lesson, setLesson] = useState<LessonDetail | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const [updating, setUpdating] = useState(false)
   const t = useTranslations('lesson')
-  const tc = useTranslations('common')
 
   const fetchLesson = async () => {
     setLoading(true)
@@ -63,8 +64,8 @@ export default function LessonDetailPage() {
       const response = await fetchWithAuth(`/api/lesson-plan/${params.id}`)
       const data = await response.json()
       setLesson(data)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -75,8 +76,8 @@ export default function LessonDetailPage() {
     try {
       await fetchWithAuth(`/api/lesson-plan/${params.id}/rate?status=${newStatus}`, { method: 'PATCH' })
       setLesson(prev => prev ? { ...prev, status: newStatus } : prev)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setUpdating(false)
     }
@@ -89,17 +90,11 @@ export default function LessonDetailPage() {
 
   if (loading) return <div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)}</div>
   if (error) return (
-    <div className="text-center py-16">
-      <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-      <p className="text-red-400">{error}</p>
-      <div className="mt-4 flex gap-3 justify-center">
-        <button onClick={fetchLesson} className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover transition-colors">
-          <RefreshCw className="w-4 h-4 inline mr-1" /> {tc('retry')}
-        </button>
-        <Link href="/lessons" className="px-4 py-2 bg-card border border-border text-foreground rounded-lg text-sm hover:bg-border transition-colors">
-          {t('back')}
-        </Link>
-      </div>
+    <div>
+      <Link href="/lessons" className="flex items-center gap-2 text-sm text-foreground-muted hover:text-foreground mb-4 transition-colors">
+        <ArrowLeft className="w-4 h-4" /> {t('back')}
+      </Link>
+      <ErrorState error={error} onRetry={() => void fetchLesson()} retrying={loading} />
     </div>
   )
   if (!lesson) return null

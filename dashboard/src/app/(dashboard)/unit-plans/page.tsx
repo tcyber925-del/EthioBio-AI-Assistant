@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { FileText, AlertTriangle, Plus, X, Loader2, CheckCircle, XCircle, Sparkles } from 'lucide-react'
+import { FileText, Plus, X, Loader2, CheckCircle, Sparkles } from 'lucide-react'
 import { TableSkeleton } from '@/components/Skeleton'
 import ModelSelector from '@/components/ModelSelector'
+import { ErrorAlert, ErrorState } from '@/components/ui/errors'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,7 +29,7 @@ export default function UnitPlansPage() {
   const router = useRouter()
   const [items, setItems] = useState<UnitPlan[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [genTitle, setGenTitle] = useState('')
   const [genGrade, setGenGrade] = useState(10)
@@ -43,7 +45,8 @@ export default function UnitPlansPage() {
   const [genMisconceptions, setGenMisconceptions] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [genMsg, setGenMsg] = useState<string | null>(null)
-  const [genStatus, setGenStatus] = useState<'success' | 'error' | null>(null)
+  const [genError, setGenError] = useState<AppError | null>(null)
+  const [genStatus, setGenStatus] = useState<'success' | null>(null)
   const [genResult, setGenResult] = useState<any>(null)
   const t = useTranslations('unit_plans')
 
@@ -54,8 +57,8 @@ export default function UnitPlansPage() {
       const response = await fetchWithAuth(`/api/lesson-plan/unit/list`)
       const data = await response.json()
       setItems(data.items || [])
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -81,6 +84,7 @@ export default function UnitPlansPage() {
     if (!genTitle.trim() || !genTopic.trim()) return
     setGenerating(true)
     setGenMsg(null)
+    setGenError(null)
     try {
       const genResponse = await fetchWithAuth(`/lesson-plan/unit/generate`, {
         method: 'POST',
@@ -107,9 +111,8 @@ export default function UnitPlansPage() {
       setGenStatus('success')
       setGenResult(data)
       fetchPlans()
-    } catch (err: any) {
-      setGenMsg(err.message)
-      setGenStatus('error')
+    } catch (err) {
+      setGenError(normalizeException(err))
     } finally {
       setGenerating(false)
     }
@@ -127,10 +130,10 @@ export default function UnitPlansPage() {
         </button>
       </div>
 
-      {genMsg && genStatus && (
-        <div className={`mb-4 px-4 py-3 rounded-lg text-sm flex items-center justify-between ${genStatus === 'success' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+      {genMsg && genStatus === 'success' && (
+        <div className="mb-4 px-4 py-3 rounded-lg text-sm flex items-center justify-between bg-green-500/10 text-green-400 border border-green-500/20">
           <span className="flex items-center gap-2">
-            {genStatus === 'success' ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+            <CheckCircle className="w-4 h-4" />
             {genMsg}
           </span>
           <div className="flex items-center gap-2">
@@ -141,6 +144,7 @@ export default function UnitPlansPage() {
           </div>
         </div>
       )}
+      {genError && <ErrorAlert error={genError} />}
       {genResult && (
         <div className="mb-4 bg-card border border-border rounded-xl p-4 space-y-3">
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -158,7 +162,7 @@ export default function UnitPlansPage() {
 
       {loading ? <TableSkeleton rows={5} />
       : error ? (
-        <div className="text-center py-12"><AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" /><p className="text-red-400">{error}</p></div>
+        <ErrorState error={error} onRetry={() => void fetchPlans()} retrying={loading} />
       ) : items.length === 0 ? (
         <div className="text-center py-16 bg-card rounded-xl border border-border">
           <FileText className="w-12 h-12 text-border mx-auto mb-3" />

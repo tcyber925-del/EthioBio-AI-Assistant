@@ -2,10 +2,12 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { Image, Send, Loader2, AlertTriangle, CheckCircle2, XCircle, RefreshCw, Edit3, Layers, Sparkles, Upload } from 'lucide-react'
+import { Image, Send, Loader2, CheckCircle2, XCircle, RefreshCw, Edit3, Layers, Sparkles, Upload } from 'lucide-react'
 import DOMPurify from 'dompurify'
 import { fetchWithTimeout } from '@/lib/fetch'
 import { getUserId } from '@/lib/auth'
+import { ErrorAlert } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 import SvgEditor from '@/components/svg-editor/SvgEditor'
 import IconPalette from '@/components/icon-palette/IconPalette'
 
@@ -55,7 +57,7 @@ export default function DiagramsPage() {
   const [difficulty, setDifficulty] = useState('beginner')
 
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const [result, setResult] = useState<DiagramResponse | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [validationResult, setValidationResult] = useState<ValidateResponse | null>(null)
@@ -67,7 +69,7 @@ export default function DiagramsPage() {
   const [styleTransferLoading, setStyleTransferLoading] = useState(false)
   const [sketchResult, setSketchResult] = useState<string | null>(null)
   const [sketchLoading, setSketchLoading] = useState(false)
-  const [sketchError, setSketchError] = useState<string | null>(null)
+  const [sketchError, setSketchError] = useState<AppError | null>(null)
   const [editorLabels, setEditorLabels] = useState<DiagramLabel[]>([])
   const [composedSvg, setComposedSvg] = useState<string | null>(null)
   const [composedTitle, setComposedTitle] = useState('')
@@ -97,8 +99,8 @@ export default function DiagramsPage() {
       const inputs: Record<string, string> = {}
       data.labels.forEach((l: DiagramLabel) => { inputs[l.id] = '' })
       setLabelInputs(inputs)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -130,8 +132,8 @@ export default function DiagramsPage() {
       })
       setValidationResult(data)
       setConfirmedCorrectIds(new Set())
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setSubmitting(false)
     }
@@ -171,8 +173,8 @@ export default function DiagramsPage() {
         body: JSON.stringify({ svg: result.diagram_svg, style: 'diagram' }),
       }, 120000)
       setStyleTransferResult(data.image_b64 || data.image)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setStyleTransferLoading(false)
     }
@@ -192,8 +194,8 @@ export default function DiagramsPage() {
         body: formData,
       }, 120000)
       setSketchResult(data.image_b64 || data.image)
-    } catch (err: any) {
-      setSketchError(err.message)
+    } catch (err) {
+      setSketchError(normalizeException(err))
     } finally {
       setSketchLoading(false)
     }
@@ -264,15 +266,7 @@ export default function DiagramsPage() {
         </div>
       )}
 
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-5 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5" />
-          <div>
-            <p className="font-medium text-red-400">{tc('error')}</p>
-            <p className="text-sm text-red-400/80 mt-1">{error}</p>
-          </div>
-        </div>
-      )}
+      {error && <ErrorAlert error={error} title={tc('error')} />}
 
       {result && !loading && (
         <div className="space-y-6">
@@ -466,12 +460,7 @@ export default function DiagramsPage() {
                     <p className="text-sm text-foreground-muted mt-2">Enhancing sketch...</p>
                   </div>
                 )}
-                {sketchError && (
-                  <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-start gap-3">
-                    <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5" />
-                    <p className="text-sm text-red-400/80">{sketchError}</p>
-                  </div>
-                )}
+                {sketchError && <ErrorAlert error={sketchError} />}
                 {sketchResult && (
                   <div className="p-4 bg-background rounded-lg border border-border">
                     <h4 className="text-sm font-medium text-foreground mb-2">Enhanced Diagram</h4>

@@ -7,6 +7,8 @@ import { Activity, ClipboardList, AlertTriangle, Loader2, Search, CheckCircle2, 
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { CardSkeleton } from '@/components/Skeleton'
 import { isAuthenticated } from '@/lib/auth'
+import { normalizeException, type AppError } from '@/lib/errors'
+import { ErrorAlert } from '@/components/ui/errors'
 import { MasteryRadarChart } from '@/components/recovery/MasteryRadarChart'
 import { TopicHeatmap } from '@/components/recovery/TopicHeatmap'
 import { LearningTree } from '@/components/recovery/LearningTree'
@@ -209,7 +211,7 @@ export default function RecoveryPage() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   const [history, setHistory] = useState<TopicHistory>({})
   const [historyLoading, setHistoryLoading] = useState(false)
   const [students, setStudents] = useState<Student[]>([])
@@ -244,8 +246,8 @@ export default function RecoveryPage() {
       const response = await fetchWithAuth(`/recovery/dashboard/${id}`)
       const result = await response.json()
       setData(result)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -334,13 +336,11 @@ export default function RecoveryPage() {
       )}
 
       {error && (
-        <Card className="flex items-start gap-3 mb-6 bg-red-500/5 border-red-500/20">
-          <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-subhead font-medium text-red-400">{t('error_generic')}</p>
-            <p className="text-small text-red-400/80 mt-1">{error}</p>
-          </div>
-        </Card>
+        <ErrorAlert
+          error={error}
+          title={t('error_generic')}
+          onRetry={() => { if (selectedUserId) void fetchDashboard(selectedUserId) }}
+        />
       )}
 
       {data && !loading && (

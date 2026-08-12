@@ -6,7 +6,9 @@ import { useTranslations } from 'next-intl'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
-import { BookOpen, RefreshCw, AlertCircle, Plus, Trash2, CheckCircle2 } from 'lucide-react'
+import { BookOpen, RefreshCw, Plus, Trash2, CheckCircle2 } from 'lucide-react'
+import { ErrorAlert } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 interface CurriculumTopic {
   id: string
@@ -63,7 +65,8 @@ export default function KnowledgeGraphPage() {
   const [submitting, setSubmitting] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
   const fetchVersion = useRef(0)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
+  const [errorTitle, setErrorTitle] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
   const activeTopic = topics.find(t => t.id === selectedTopicId)
@@ -72,6 +75,7 @@ export default function KnowledgeGraphPage() {
   const fetchInitialData = async () => {
     setLoading(true)
     setError(null)
+    setErrorTitle(null)
     try {
       const topicResponse = await fetchWithAuth('/api/ekg/topics')
       const topicData = await topicResponse.json()
@@ -91,8 +95,9 @@ export default function KnowledgeGraphPage() {
         // Suppress failure, default to empty students list
         setStudents([])
       }
-    } catch (err: any) {
-      setError(err.message || t('error_load'))
+    } catch (err) {
+      setError(normalizeException(err))
+      setErrorTitle(t('error_load'))
     } finally {
       setLoading(false)
     }
@@ -104,6 +109,7 @@ export default function KnowledgeGraphPage() {
     const version = ++fetchVersion.current
     setLoadingGraph(true)
     setError(null)
+    setErrorTitle(null)
     try {
       const prereqsResponse = await fetchWithAuth(`/api/ekg/chain/${topicId}/prerequisites?max_depth=3`)
       const prereqs = await prereqsResponse.json()
@@ -123,9 +129,10 @@ export default function KnowledgeGraphPage() {
       } else {
         setGapAnalysis([])
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error(err)
-      setError(t('error_chains'))
+      setError(normalizeException(err))
+      setErrorTitle(t('error_chains'))
     } finally {
       setLoadingGraph(false)
     }
@@ -149,12 +156,14 @@ export default function KnowledgeGraphPage() {
     e.preventDefault()
     if (!selectedTopicId || !newPrereqTopicId) return
     if (selectedTopicId === newPrereqTopicId) {
-      setError(t('error_self_prereq'))
+      setError({ category: 'client', retryable: false, params: {} })
+      setErrorTitle(t('error_self_prereq'))
       return
     }
 
     setSubmitting(true)
     setError(null)
+    setErrorTitle(null)
     setSuccess(null)
     try {
       await fetchWithAuth('/api/ekg/prerequisites', {
@@ -169,8 +178,9 @@ export default function KnowledgeGraphPage() {
       setSuccess(t('success_added'))
       setNewPrereqTopicId('')
       fetchGraphChains(selectedTopicId, selectedStudentId)
-    } catch (err: any) {
-      setError(err.message || t('error_establish'))
+    } catch (err) {
+      setError(normalizeException(err))
+      setErrorTitle(t('error_establish'))
     } finally {
       setSubmitting(false)
     }
@@ -181,6 +191,7 @@ export default function KnowledgeGraphPage() {
     if (!confirm(t('confirm_remove'))) return
     setDeleting(prereqId)
     setError(null)
+    setErrorTitle(null)
     setSuccess(null)
     try {
       // Find the edge in topic prerequisites list
@@ -189,15 +200,18 @@ export default function KnowledgeGraphPage() {
       const matching = prereqs.find((p: any) => p.prerequisite_topic_id === prereqId)
       if (!matching) {
         setDeleting(null)
-        throw new Error(t('error_edge_not_found'))
+        setError({ category: 'client', retryable: false, params: {} })
+        setErrorTitle(t('error_edge_not_found'))
+        return
       }
       await fetchWithAuth(`/api/ekg/prerequisites/${matching.id}`, {
         method: 'DELETE',
       })
       setSuccess(t('success_removed'))
       fetchGraphChains(selectedTopicId, selectedStudentId)
-    } catch (err: any) {
-      setError(err.message || t('error_remove'))
+    } catch (err) {
+      setError(normalizeException(err))
+      setErrorTitle(t('error_remove'))
     } finally {
       setDeleting(null)
     }
@@ -240,10 +254,7 @@ export default function KnowledgeGraphPage() {
 
         {/* Global Notifications */}
         {error && (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-error/10 border border-v2-error/30 text-v2-error text-sm">
-            <AlertCircle className="w-5 h-5 shrink-0" />
-            <div className="flex-1">{error}</div>
-          </div>
+          <ErrorAlert error={error} title={errorTitle ?? undefined} />
         )}
 
         {success && (

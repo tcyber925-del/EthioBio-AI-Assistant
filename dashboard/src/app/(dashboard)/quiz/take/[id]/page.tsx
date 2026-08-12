@@ -5,12 +5,14 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import {
-  ArrowLeft, Check, X, Loader2, AlertTriangle, Award, ChevronLeft, ChevronRight,
+  ArrowLeft, Check, X, Loader2, Award, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import { QuizVoiceButton } from '@/components/QuizVoiceButton'
+import { ErrorAlert, ErrorState } from '@/components/ui/errors'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserId, isAuthenticated } from '@/lib/auth'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 interface QuestionData {
   id: string
@@ -49,11 +51,10 @@ export default function QuizTakePage() {
   const params = useParams()
   const router = useRouter()
   const t = useTranslations('quiz')
-  const tc = useTranslations('common')
 
   const [quiz, setQuiz] = useState<QuizTakeData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
 
   const [currentIdx, setCurrentIdx] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>({})
@@ -65,11 +66,11 @@ export default function QuizTakePage() {
     setError(null)
     try {
       const res = await fetchWithAuth(`/api/quiz/${params.id}/take`)
-      if (!res.ok) throw new Error('Quiz not found')
+      if (!res.ok) throw { category: 'not_found', retryable: false, params: {} }
       const data: QuizTakeData = await res.json()
       setQuiz(data)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -107,11 +108,11 @@ export default function QuizTakePage() {
           })),
         }),
       })
-      if (!res.ok) throw new Error('Submit failed')
+      if (!res.ok) throw { category: 'server', retryable: true, params: {} }
       const data: QuizResult = await res.json()
       setResult(data)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setSubmitting(false)
     }
@@ -127,17 +128,11 @@ export default function QuizTakePage() {
 
   if (error && !quiz) {
     return (
-      <div className="text-center py-16">
-        <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-        <p className="text-red-400">{error}</p>
-        <div className="mt-4 flex gap-3 justify-center">
-          <button onClick={fetchQuiz} className="px-4 py-2 bg-v2-accent text-v2-inverted rounded-lg text-sm">
-            {tc('retry')}
-          </button>
-          <Link href="/ask" className="px-4 py-2 border border-v2-border rounded-lg text-sm text-v2-text-muted">
-            {t('back')}
-          </Link>
-        </div>
+      <div>
+        <Link href="/ask" className="flex items-center gap-2 text-sm text-v2-text-muted hover:text-v2-text-primary">
+          <ArrowLeft className="w-4 h-4" /> {t('back')}
+        </Link>
+        <ErrorState error={error} onRetry={() => void fetchQuiz()} retrying={loading} />
       </div>
     )
   }
@@ -237,6 +232,8 @@ export default function QuizTakePage() {
       <Link href="/ask" className="flex items-center gap-2 text-sm text-v2-text-muted hover:text-v2-text-primary">
         <ArrowLeft className="w-4 h-4" /> {t('back')}
       </Link>
+
+      {error && <ErrorAlert error={error} />}
 
       <div className="flex items-center justify-between">
         <div>

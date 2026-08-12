@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import {
-  ClipboardCheck, Loader2, AlertTriangle, ArrowRight, Sparkles, ChevronDown, History,
+  ClipboardCheck, Loader2, ArrowRight, Sparkles, ChevronDown, History,
 } from 'lucide-react'
+import { ErrorAlert, ErrorState } from '@/components/ui/errors'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserId, isAuthenticated } from '@/lib/auth'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 interface QuizItem {
   id: string
@@ -27,11 +29,10 @@ const QUESTION_TYPES = [
 export default function QuizTakeListPage() {
   const router = useRouter()
   const t = useTranslations('quiz')
-  const tc = useTranslations('common')
 
   const [quizzes, setQuizzes] = useState<QuizItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
 
   const [genTopic, setGenTopic] = useState('')
   const [genGrade, setGenGrade] = useState(12)
@@ -40,7 +41,7 @@ export default function QuizTakeListPage() {
   const [genModel, setGenModel] = useState('')
   const [generating, setGenerating] = useState(false)
   const [genStatus, setGenStatus] = useState<string | null>(null)
-  const [genError, setGenError] = useState<string | null>(null)
+  const [genError, setGenError] = useState<AppError | null>(null)
 
   const fetchQuizzes = async () => {
     setLoading(true)
@@ -49,8 +50,8 @@ export default function QuizTakeListPage() {
       const res = await fetchWithAuth('/api/quiz/published')
       const data = await res.json()
       setQuizzes(data.items || [])
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -85,7 +86,7 @@ export default function QuizTakeListPage() {
           model: genModel || undefined,
         }),
       })
-      if (!res.ok) throw new Error('Generation failed to start')
+      if (!res.ok) throw { category: 'server', retryable: true, params: {} }
       const { task_id } = await res.json()
 
       for (let i = 0; i < 120; i++) {
@@ -97,12 +98,12 @@ export default function QuizTakeListPage() {
           return
         }
         if (task.status === 'failed') {
-          throw new Error(task.error || 'Generation failed')
+          throw { category: 'server', retryable: true, params: {} }
         }
       }
-      throw new Error('Generation timed out')
-    } catch (err: any) {
-      setGenError(err.message)
+      throw { category: 'server', retryable: true, params: {} }
+    } catch (err) {
+      setGenError(normalizeException(err))
       setGenerating(false)
     } finally {
       setGenStatus(null)
@@ -181,11 +182,7 @@ export default function QuizTakeListPage() {
               <><Sparkles className="w-4 h-4" /> {t('generate')}</>
             )}
           </button>
-          {genError && (
-            <p className="text-xs text-red-400 flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3" /> {genError}
-            </p>
-          )}
+          {genError && <ErrorAlert error={genError} />}
         </div>
       </div>
 
@@ -199,11 +196,11 @@ export default function QuizTakeListPage() {
         )}
 
         {error && (
-          <div className="text-center py-8">
-            <AlertTriangle className="w-8 h-8 text-red-400 mx-auto mb-2" />
-            <p className="text-sm text-red-400">{error}</p>
-            <button onClick={fetchQuizzes} className="mt-3 px-4 py-2 bg-v2-accent text-v2-inverted rounded-lg text-xs">{tc('retry')}</button>
-          </div>
+          <ErrorState
+            error={error}
+            onRetry={() => void fetchQuizzes()}
+            retrying={loading}
+          />
         )}
 
         {!loading && !error && quizzes.length === 0 && (

@@ -4,10 +4,12 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { ArrowLeft, Check, X, Loader2, AlertTriangle, Award } from 'lucide-react'
+import { ArrowLeft, Check, X, Loader2, Award } from 'lucide-react'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
+import { ErrorState } from '@/components/ui/errors'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 interface DetailQuestion {
   id: string
@@ -35,22 +37,21 @@ export default function QuizAttemptDetailPage() {
   const params = useParams()
   const router = useRouter()
   const t = useTranslations('quiz')
-  const tc = useTranslations('common')
 
   const [attempt, setAttempt] = useState<AttemptDetail | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
 
   const fetchAttempt = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
       const res = await fetchWithAuth(`/api/quiz/attempts/${params.id}`)
-      if (!res.ok) throw new Error('Attempt not found')
+      if (!res.ok) throw { category: 'not_found', retryable: false, params: {} }
       const data: AttemptDetail = await res.json()
       setAttempt(data)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -71,13 +72,11 @@ export default function QuizAttemptDetailPage() {
 
   if (error || !attempt) {
     return (
-      <div className="text-center py-16">
-        <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-        <p className="text-red-400">{error}</p>
-        <div className="mt-4 flex gap-3 justify-center">
-          <button onClick={fetchAttempt} className="px-4 py-2 bg-v2-accent text-v2-inverted rounded-lg text-sm">{tc('retry')}</button>
-          <Link href="/quiz/history" className="px-4 py-2 border border-v2-border rounded-lg text-sm text-v2-text-muted">{t('back')}</Link>
-        </div>
+      <div>
+        <Link href="/quiz/history" className="flex items-center gap-2 text-sm text-v2-text-muted hover:text-v2-text-primary mb-4">
+          <ArrowLeft className="w-4 h-4" /> {t('back')}
+        </Link>
+        <ErrorState error={error} onRetry={() => void fetchAttempt()} retrying={loading} />
       </div>
     )
   }

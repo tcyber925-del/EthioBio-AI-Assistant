@@ -6,8 +6,10 @@ import { useTranslations } from 'next-intl'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
-import { TrendingUp, Award, Compass, RefreshCw, AlertCircle } from 'lucide-react'
+import { TrendingUp, Award, Compass, RefreshCw } from 'lucide-react'
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar } from 'recharts'
+import { ErrorAlert } from '@/components/ui/errors'
+import { normalizeException, type AppError } from '@/lib/errors'
 
 interface LeaderboardEntry {
   id: string
@@ -34,7 +36,7 @@ export default function InterventionAnalyticsPage() {
   const t = useTranslations('analytics')
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AppError | null>(null)
   
   // Data States
   const [insights, setInsights] = useState<Insights | null>(null)
@@ -53,8 +55,8 @@ export default function InterventionAnalyticsPage() {
       setInsights(ins)
       setLeaderboard(lead)
       setTrends(trendData)
-    } catch (err: any) {
-      setError(err.message || t('error_load'))
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -90,10 +92,12 @@ export default function InterventionAnalyticsPage() {
 
         {/* Error Alert */}
         {error && (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-v2-error/10 border border-v2-error/30 text-v2-error text-sm">
-            <AlertCircle className="w-5 h-5 shrink-0" />
-            <div className="flex-1">{error}</div>
-          </div>
+          <ErrorAlert
+            error={error}
+            title={t('error_load')}
+            onRetry={() => void fetchData()}
+            retrying={loading}
+          />
         )}
 
         {loading && !insights ? (
