@@ -24,7 +24,7 @@ export function ErrorState({ error, title, onRetry, retrying, className = "" }: 
       <p className="font-medium text-foreground">{title ?? t("errors.error_title")}</p>
       <p className="text-foreground-muted mt-1">{message}</p>
       {onRetry && error.retryable && (
-        <Button onClick={onRetry} loading={retrying} className="mt-4">
+        <Button variant="danger" onClick={onRetry} loading={retrying} className="mt-4">
           <RefreshCw className="w-4 h-4" aria-hidden="true" />
           {t("common.retry")}
         </Button>
