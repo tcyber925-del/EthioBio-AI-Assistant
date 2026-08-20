@@ -2,11 +2,11 @@ name: Agent Evaluation
 
 # Runs LangSmith offline evaluation experiments against the ethiobio datasets.
 #
-# NOTE: full evaluation requires Ollama + Postgres (the pipeline runs run_graph),
-# so it should run on a self-hosted runner or the Render cron job
-# (`ethiobio-langsmith-eval` in render.yaml).
-# On GitHub-hosted runners this workflow syncs datasets and runs a tiny
-# smoke subset with --limit 1 to validate wiring.
+# On GitHub-hosted runners the full pipeline cannot reach the Render Postgres
+# (IP allowlist blocks external DB access), so scheduled runs trigger the eval
+# through the app's admin endpoint (/admin/langsmith-eval), which runs
+# in-process where the DB and LLM providers are reachable. PR-labeled runs
+# stay as a smoke subset that validates wiring only.
 on:
   workflow_dispatch:
   schedule:
@@ -31,17 +31,33 @@ jobs:
           LANGSMITH_TRACING_ENABLED: "true"
           LANGSMITH_SAMPLING_RATE: "1.0"
         run: python -m src.evaluation.langsmith.sync_datasets
-      - name: Run evaluation (smoke subset)
-        if: runner.environment == 'github-hosted'
+      - name: Run full evaluation via app admin endpoint
+        env:
+          API_BASE: https://ethiobio-api.onrender.com
+          BACKUP_ADMIN_EMAIL: ${{ secrets.BACKUP_ADMIN_EMAIL }}
+          BACKUP_ADMIN_PASSWORD: ${{ secrets.BACKUP_ADMIN_PASSWORD }}
+          DATASET: ethiobio-curriculum
+        run: |
+          TOKEN=$(curl -fsS -X POST "$API_BASE/auth/token" \
+            -H 'Content-Type: application/json' \
+            -d "{\"email\":\"$BACKUP_ADMIN_EMAIL\",\"password\":\"$BACKUP_ADMIN_PASSWORD\"}" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["access_token"])')
+          RESP=$(curl -fsS -X POST "$API_BASE/admin/langsmith-eval" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d "{\"dataset\":\"$DATASET\"}")
+          echo "$RESP"
+          echo "$RESP" | python3 -c '
+          import json,sys
+          r=json.load(sys.stdin)
+          print("scores:", json.dumps(r["scores"], indent=2))
+          if not r.get("ok"):
+              sys.exit(1)
+          '
+      - name: Run evaluation (smoke subset, PRs only)
+        if: github.event_name == 'pull_request'
         env:
           LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
           LANGSMITH_TRACING_ENABLED: "true"
           LANGSMITH_SAMPLING_RATE: "1.0"
         run: python -m src.evaluation.langsmith.run --dataset ethiobio-curriculum --limit 1 --threshold 0.0 || true
-      - name: Run full evaluation (self-hosted)
-        if: runner.environment != 'github-hosted'
-        env:
-          LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
-          LANGSMITH_TRACING_ENABLED: "true"
-          LANGSMITH_SAMPLING_RATE: "1.0"
-        run: python -m src.evaluation.langsmith.run --dataset ethiobio-curriculum

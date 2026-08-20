@@ -91,6 +91,48 @@ async def db_backup(_: User = Depends(require_admin)):
     )
 
 
+class LangSmithEvalRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    dataset: str = "ethiobio-curriculum"
+    evaluators: list[str] | None = None
+    limit: int | None = None
+    max_concurrency: int = 4
+
+
+@router.post("/langsmith-eval")
+async def run_langsmith_eval(
+    body: LangSmithEvalRequest,
+    _: User = Depends(require_admin),
+):
+    """Run the offline LangSmith evaluation in-process (needs DB + LLM access)."""
+    from src.evaluation.langsmith.run import run_evaluation
+
+    try:
+        scores = await run_evaluation(
+            dataset=body.dataset,
+            evaluators=body.evaluators,
+            max_concurrency=body.max_concurrency,
+            limit=body.limit,
+        )
+        if not scores:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No examples found in dataset '{body.dataset}'",
+            )
+        below = {k: v for k, v in scores.items() if v < 0.5}
+        return {
+            "dataset": body.dataset,
+            "scores": scores,
+            "below_threshold": below,
+            "ok": not below,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("langsmith_eval_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/dashboard")
 async def admin_dashboard(
     session: AsyncSession = Depends(get_session),
