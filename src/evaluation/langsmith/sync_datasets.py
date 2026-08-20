@@ -65,7 +65,13 @@ def _load_gold_set() -> list[dict]:
 
 
 def _examples_for(spec: dict, client) -> tuple[str, list[dict]]:
-    dataset = client.create_dataset(spec["name"], description=spec["description"])
+    if client.has_dataset(dataset_name=spec["name"]):
+        existing = list(client.list_datasets(dataset_name=spec["name"]))
+        if not existing:
+            raise RuntimeError(f"Dataset '{spec['name']}' listed but not found")
+        dataset = existing[0]
+    else:
+        dataset = client.create_dataset(spec["name"], description=spec["description"])
     if spec["source"] == "gold_set":
         items = _load_gold_set()
         examples = [
@@ -113,7 +119,22 @@ def sync_datasets_to_langsmith(client: Optional[object] = None) -> dict[str, int
         if not examples:
             logger.warning("langsmith_dataset_empty", dataset=spec["name"])
             continue
-        client.create_examples(dataset_id=dataset_id, examples=examples)
+        existing_ids = {str(ex.id) for ex in client.list_examples(dataset_id=dataset_id)}
+        for ex in examples:
+            if ex["id"] in existing_ids:
+                client.update_example(
+                    ex["id"],
+                    inputs=ex["inputs"],
+                    outputs=ex.get("outputs"),
+                    dataset_id=dataset_id,
+                )
+            else:
+                client.create_example(
+                    inputs=ex["inputs"],
+                    outputs=ex.get("outputs"),
+                    dataset_id=dataset_id,
+                    example_id=ex["id"],
+                )
         counts[spec["name"]] = len(examples)
         logger.info("langsmith_dataset_synced", dataset=spec["name"], examples=len(examples))
     return counts
@@ -121,12 +142,8 @@ def sync_datasets_to_langsmith(client: Optional[object] = None) -> dict[str, int
 
 def sync_all() -> dict[str, int]:
     """Sync all datasets from the CLI entrypoint."""
-    import asyncio
-
-    return asyncio.run(sync_datasets_to_langsmith())
+    return sync_datasets_to_langsmith()
 
 
 if __name__ == "__main__":
-    import asyncio
-
-    asyncio.run(sync_datasets_to_langsmith())
+    sync_datasets_to_langsmith()
