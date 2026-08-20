@@ -72,8 +72,16 @@ async def run_evaluation(
 
     scores: dict[str, list[float]] = {}
     async for res in results:
-        for er in res.evaluation_results:
-            scores.setdefault(er.key, []).append(float(er.score))
+        eval_results = res["evaluation_results"] if isinstance(res, dict) else res.evaluation_results
+        if not eval_results:
+            continue
+        result_list = eval_results.get("results", []) if isinstance(eval_results, dict) else eval_results
+        for er in result_list:
+            key = er.get("key") if isinstance(er, dict) else er.key
+            score = er.get("score") if isinstance(er, dict) else er.score
+            if key is None or score is None:
+                continue
+            scores.setdefault(key, []).append(float(score))
     return {key: round(sum(v) / len(v), 3) for key, v in scores.items()}
 
 
