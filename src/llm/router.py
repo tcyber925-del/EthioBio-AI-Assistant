@@ -31,16 +31,16 @@ except ImportError:  # pragma: no cover - langsmith optional
     _langsmith = None
 
 
-def _llm_inputs(args, kwargs):
-    """Select JSON-safe inputs for the LangSmith trace (excludes the SQLAlchemy session)."""
-    if "messages" in kwargs:
-        return {
-            "messages": kwargs["messages"],
-            "request_type": kwargs.get("request_type", "chat"),
-        }
+def _llm_inputs(inputs: dict) -> dict:
+    """Select JSON-safe inputs for the LangSmith trace (excludes the SQLAlchemy session).
+
+    langsmith calls this with a single dict keyed by the wrapped function's
+    parameter names (``self`` removed), e.g. {"messages", "request_type",
+    "session", ...}.
+    """
     return {
-        "messages": args[1] if len(args) > 1 else [],
-        "request_type": args[2] if len(args) > 2 else "chat",
+        "messages": inputs.get("messages", []),
+        "request_type": inputs.get("request_type", "chat"),
     }
 
 

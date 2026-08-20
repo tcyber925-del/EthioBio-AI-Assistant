@@ -55,7 +55,12 @@ class TestLangSmithTracing:
 class TestRouterSanitizers:
     def test_llm_inputs_removes_session(self):
         sanitized = _llm_inputs(
-            ("self", [{"role": "user", "content": "hi"}], "chat"), {}
+            {
+                "messages": [{"role": "user", "content": "hi"}],
+                "request_type": "chat",
+                "session": object(),  # not JSON-serializable — must be stripped
+                "temperature": 0.7,
+            }
         )
         assert "session" not in sanitized
         assert sanitized["messages"] == [{"role": "user", "content": "hi"}]
