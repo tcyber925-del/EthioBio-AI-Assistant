@@ -138,6 +138,7 @@ class Settings(BaseSettings):
     langsmith_project: str = "ethiobio"
     langsmith_tracing_enabled: bool = False
     langsmith_sampling_rate: float = 0.1
+    langsmith_workspace_id: Optional[str] = None  # org-scoped API keys
 
     telegram_voice_max_size: int = 20_971_520  # 20 MB (Telegram voice file limit)
     audio_storage_path: str = "./data/audio_recordings"

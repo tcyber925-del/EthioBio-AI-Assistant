@@ -75,6 +75,32 @@ ethiobio-langsmith --dataset ethiobio-adversarial --threshold 0.6   # exit 1 on 
   `.github/workflows/evaluate.yml` syncs datasets on schedule and runs a
   smoke subset on GitHub-hosted runners.
 
+## Querying Traces
+
+Use the `langsmith` CLI (from the `langsmith-trace` skill):
+[install](https://cli.langsmith.com/install.sh) via
+`curl -fsSL https://cli.langsmith.com/install.sh | sh`.
+
+```bash
+export LANGSMITH_API_KEY=lsv2_...
+
+# Quick health check (projects, recent hierarchy, errors, LLM runs)
+scripts/langsmith/verify_tracing.sh
+
+# Manual queries
+langsmith trace list --limit 10 --project ethiobio --show-hierarchy --api-key "$LANGSMITH_API_KEY"
+langsmith trace list --error --last-n-minutes 60 --api-key "$LANGSMITH_API_KEY"
+langsmith trace get <trace-id> --api-key "$LANGSMITH_API_KEY"
+langsmith run list --run-type llm --limit 20 --api-key "$LANGSMITH_API_KEY"
+langsmith trace export ./traces --limit 20 --full --api-key "$LANGSMITH_API_KEY"
+```
+
+- A **trace** is the full execution tree (root `ethiobio.pipeline` + nested
+  LangGraph node runs + `chat_llm` runs); a **run** is one node in that tree.
+  Query traces first — they preserve hierarchy.
+- Filters (`--error`, `--min-latency`, `--tags`, `--filter ...`) apply to the
+  root run for `trace *` and any run for `run *`.
+
 ## Files
 
 | File | Purpose |

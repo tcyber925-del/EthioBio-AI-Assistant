@@ -360,6 +360,7 @@ Key environment variables (see `.env.example` for full list):
 | `LANGSMITH_PROJECT` | LangSmith project name | `ethiobio` |
 | `LANGSMITH_TRACING_ENABLED` | Enable LangSmith tracing | `false` |
 | `LANGSMITH_SAMPLING_RATE` | Fraction of pipeline runs traced (0–1) | `0.1` |
+| `LANGSMITH_WORKSPACE_ID` | LangSmith workspace (org-scoped keys only) | (optional) |
 
 ## API Endpoints
 

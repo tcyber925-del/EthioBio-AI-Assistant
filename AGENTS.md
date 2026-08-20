@@ -40,6 +40,7 @@ curl http://localhost:8000/models                  # list models
 curl -X POST http://localhost:8000/models/refresh  # refresh Ollama cache
 curl http://localhost:8000/health                  # health check
 curl http://localhost:8000/readiness               # readiness check
+LANGSMITH_API_KEY=... scripts/langsmith/verify_tracing.sh   # verify LangSmith traces (needs langsmith CLI)
 ```
 
 ## Deployment
