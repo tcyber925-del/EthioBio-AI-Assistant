@@ -52,8 +52,11 @@ npx render services list                 # check status
 vercel deploy --prod                     # deploy dashboard to Vercel
 ```
 
-Scheduled jobs (reminders, digests, LangSmith eval) run as Render cron jobs in
-`render.yaml`.
+Scheduled jobs (reminders, digests) run as Render cron jobs in
+`render.yaml`; the LangSmith eval runs as the weekly GitHub Actions
+workflow `.github/workflows/evaluate.yml` (Render cron needs a paid plan,
+and GitHub runners can't reach the allowlisted Postgres — the workflow
+triggers `/admin/langsmith-eval`, which runs in-process).
 
 ## Tooling
 
