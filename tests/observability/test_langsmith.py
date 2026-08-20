@@ -126,7 +126,10 @@ class TestSyncDatasets:
                 }
             ],
         )
-        client = SimpleNamespace(create_dataset=lambda name, **kw: SimpleNamespace(id="ds-1"))
+        client = SimpleNamespace(
+            has_dataset=lambda dataset_name: False,
+            create_dataset=lambda name, **kw: SimpleNamespace(id="ds-1"),
+        )
         dataset_id, examples = _examples_for(
             {"name": "ethiobio-gold", "description": "gold set", "source": "gold_set"},
             client,
