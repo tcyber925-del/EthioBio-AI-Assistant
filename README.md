@@ -355,6 +355,11 @@ Key environment variables (see `.env.example` for full list):
 | `INTERNAL_API_KEY` | Inter-service auth key | (optional) |
 | `RATE_LIMIT_ENABLED` | Enable rate limiting | `true` |
 | `EVAL_ENABLED` | Enable async evaluation | `true` |
+| `LANGSMITH_API_KEY` | LangSmith API key (`lsv2_...` for EU) | (optional) |
+| `LANGSMITH_ENDPOINT` | LangSmith API endpoint | `https://api.smith.langchain.com` (use `https://eu.api.smith.langchain.com` for EU) |
+| `LANGSMITH_PROJECT` | LangSmith project name | `ethiobio` |
+| `LANGSMITH_TRACING_ENABLED` | Enable LangSmith tracing | `false` |
+| `LANGSMITH_SAMPLING_RATE` | Fraction of pipeline runs traced (0–1) | `0.1` |
 
 ## API Endpoints
 
@@ -736,17 +741,22 @@ Response headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Res
 
 ## Deployment
 
-### Backend (Railway)
+### Backend (Render)
 
-The API + Telegram bot run as a unified Railway service:
+The API + Telegram bot run as a unified Render web service (`ethiobio-api`,
+deployed from `ghcr.io/tcyber925-del/ethiobio-ai-assistant:latest`), with managed
+Postgres (`ethiobio-pg`) and Redis (`ethiobio-kv`). Infra is codified in
+`render.yaml`:
 
 ```bash
-railway up                    # deploy from local directory
-railway redeploy --yes        # redeploy last image
-railway deployment list       # check status
+npx render blueprint:deploy render.yaml   # (re)provision Postgres/Redis/web/cron
+git push origin main                      # auto-deploys via the Render deploy hook
+npx render services list                  # check status
 ```
 
-Push to `main` triggers auto-deploy (when GitHub connected).
+Push to `main` triggers the image build/deploy (via `.github/workflows/render-image.yml`
+pushing to GHCR + Render deploy hook). Scheduled jobs (reminders, LangSmith eval)
+run as Render cron jobs defined in `render.yaml`.
 
 ### Frontend (Vercel)
 

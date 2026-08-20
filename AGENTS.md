@@ -25,7 +25,7 @@ tutor → hallucination → claim_verifier → route_after_verification
 | API server | `python -m src.main` (FastAPI :8000) | uvicorn, includes bot webhook |
 | Telegram bot | `python -m src.telegram.bot` | PTB polling (or webhook via API) |
 | Full stack | `docker compose up --build` | app + bot + postgres + redis + ollama + cron + jaeger + prometheus + grafana + dashboard |
-| CLI | `ethiobio` / `ethiobio-bot` | pyproject.toml `[project.scripts]` |
+| CLI | `ethiobio` / `ethiobio-bot` / `ethiobio-langsmith` | pyproject.toml `[project.scripts]` |
 
 ## Commands
 
@@ -45,9 +45,14 @@ curl http://localhost:8000/readiness               # readiness check
 ## Deployment
 
 ```bash
-railway up                                       # deploy API+bot to Railway
-vercel deploy --prod                              # deploy dashboard to Vercel
+git push origin main                     # build GHCR image + deploy API+bot to Render (deploy hook)
+npx render blueprint:deploy render.yaml  # (re)provision Postgres/Redis/web/cron resources
+npx render services list                 # check status
+vercel deploy --prod                     # deploy dashboard to Vercel
 ```
+
+Scheduled jobs (reminders, digests, LangSmith eval) run as Render cron jobs in
+`render.yaml`.
 
 ## Tooling
 
@@ -73,6 +78,8 @@ Read the relevant file before working in that area:
 | `.opencode/rules/gotchas.md` | Debugging, unfamiliar modules, unexpected behavior |
 | `.opencode/rules/ingestion.md` | PDF ingestion, OCR, vector store |
 | `.opencode/rules/testing.md` | Test commands, mocking patterns, test architecture |
+| `src/evaluation/langsmith/` | LangSmith datasets, offline eval CLI (`ethiobio-langsmith`), online feedback posting |
+| `src/observability/langsmith.py` | LangSmith client setup, sampling, run-id capture, feedback |
 
 ## Cross-Cutting Gotchas
 

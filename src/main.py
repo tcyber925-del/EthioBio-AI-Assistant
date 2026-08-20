@@ -62,6 +62,7 @@ from src.core.tracing import TraceRepository
 from src.database.session import async_session_factory, close_db, init_db
 from src.guardrails.input.middleware import add_rate_limit_middleware
 from src.llm.router import ModelRouter
+from src.observability.langsmith import post_feedback, setup_langsmith
 from src.schemas.common import HealthResponse
 
 structlog.configure(
@@ -121,6 +122,10 @@ async def _save_trace_from_pipeline(trace, repo):
             response=trace.metadata.get("response"),
             end_time=end,
             error=trace.error,
+            user_id=trace.metadata.get("user_id"),
+            grade_level=trace.metadata.get("grade_level"),
+            language=trace.metadata.get("language"),
+            intent=trace.metadata.get("intent"),
             nodes_visited=trace.nodes_visited,
             node_timings={k: v for k, v in trace.node_timings.items() if not k.endswith("_start")},
             metadata={
@@ -157,7 +162,10 @@ async def _evaluate_trace(trace):
         if _eval_judge is None:
             _eval_judge = LLMJudge()
         try:
-            await evaluate_and_write(_eval_judge, user_message, response, context)
+            results = await evaluate_and_write(_eval_judge, user_message, response, context)
+            run_id = trace.metadata.get("langsmith_run_id")
+            if run_id:
+                post_feedback(run_id, results)
         except Exception:
             logger.exception("eval_trace_failed", trace_id=trace.trace_id)
 
@@ -188,6 +196,7 @@ async def lifespan(app: FastAPI):
 
     init_otel()
     init_openllmetry()
+    setup_langsmith()
 
     from src.observability.health import health_registry as _health_registry
 

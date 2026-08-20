@@ -7,6 +7,7 @@ from typing import Optional
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.config import settings
 from src.database.models import ModelRoutingLog
 from src.llm.manager import ProviderManager
 from src.llm.ollama_client import OllamaClient
@@ -23,6 +24,34 @@ from src.observability.tracing import (
 )
 
 logger = structlog.get_logger()
+
+try:
+    import langsmith as _langsmith
+except ImportError:  # pragma: no cover - langsmith optional
+    _langsmith = None
+
+
+def _llm_inputs(args, kwargs):
+    """Select JSON-safe inputs for the LangSmith trace (excludes the SQLAlchemy session)."""
+    if "messages" in kwargs:
+        return {
+            "messages": kwargs["messages"],
+            "request_type": kwargs.get("request_type", "chat"),
+        }
+    return {
+        "messages": args[1] if len(args) > 1 else [],
+        "request_type": args[2] if len(args) > 2 else "chat",
+    }
+
+
+def _llm_outputs(outputs):
+    if isinstance(outputs, dict):
+        return {
+            "model": outputs.get("model", ""),
+            "usage": outputs.get("usage", {}),
+            "confidence": outputs.get("confidence", 0.0),
+        }
+    return outputs
 
 
 class ModelRouter:
@@ -211,3 +240,12 @@ class ModelRouter:
     async def close(self):
         await self._manager.close()
         await self._registry.close()
+
+
+if _langsmith is not None and settings.langsmith_tracing_enabled:
+    ModelRouter.route = _langsmith.traceable(
+        run_type="llm",
+        name="chat_llm",
+        process_inputs=_llm_inputs,
+        process_outputs=_llm_outputs,
+    )(ModelRouter.route)

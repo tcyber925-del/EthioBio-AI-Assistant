@@ -51,6 +51,29 @@ services:
       - key: SENTRY_DSN
         sync: false
 
+  - type: cron
+    name: ethiobio-langsmith-eval
+    runtime: image
+    plan: free
+    region: frankfurt
+    schedule: "30 2 * * 1" # Monday 02:30 UTC — full LangSmith evaluation
+    image:
+      url: ghcr.io/tcyber925-del/ethiobio-ai-assistant:latest
+    envVars:
+      - fromGroup: ethiobio-app
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ethiobio-pg
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: ethiobio-kv
+          type: keyvalue
+          property: connectionString
+      - key: LANGSMITH_SAMPLING_RATE
+        value: "1.0" # trace every eval run
+    startCommand: python -m src.evaluation.langsmith.run --dataset ethiobio-curriculum
+
 envVarGroups:
   - name: ethiobio-app
     envVars:
@@ -78,3 +101,13 @@ envVarGroups:
         value: https://ethio-bio-ai-assistant.vercel.app
       - key: API_BASE_URL
         value: https://ethiobio-api.onrender.com
+      - key: LANGSMITH_API_KEY
+        sync: false
+      - key: LANGSMITH_ENDPOINT
+        value: https://api.smith.langchain.com
+      - key: LANGSMITH_PROJECT
+        value: ethiobio
+      - key: LANGSMITH_TRACING_ENABLED
+        value: "true"
+      - key: LANGSMITH_SAMPLING_RATE
+        value: "0.1"

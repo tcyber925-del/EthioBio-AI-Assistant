@@ -26,8 +26,31 @@ from src.graph.nodes.synthesis import SynthesisNode
 from src.graph.nodes.tutor import TutorNode
 from src.graph.state import AgentState, GraphOutput
 from src.llm.router import ModelRouter
+from src.observability.langsmith import capture_run_id, should_trace, traced_run
 from src.retrieval.adapter import VectorStoreAdapter
 from src.schemas.streaming import TokenChunk
+
+try:
+    import langsmith as _langsmith
+except ImportError:  # pragma: no cover - langsmith optional
+    _langsmith = None
+
+
+async def _invoke_graph_traced(graph, initial_state, config):
+    """Run the graph, capturing its LangSmith root run id.
+
+    Wrapped with @traceable so LangGraph runs nest under a named root run we
+    can correlate with PipelineMonitor traces and post eval feedback to.
+    """
+    result = await graph.ainvoke(initial_state, config)
+    run_id = capture_run_id()
+    return result, run_id
+
+
+if _langsmith is not None:
+    _invoke_graph_traced = _langsmith.traceable(
+        name="ethiobio.pipeline", run_type="chain"
+    )(_invoke_graph_traced)
 
 
 def build_agentic_graph(
@@ -181,13 +204,38 @@ async def run_graph(
     )
 
     graph = build_unified_graph(router, adapter, db_session_factory=session_maker)
-    config = {"configurable": {"thread_id": f"ethiobio-{session_id or 'default'}"}}
+    config = {
+        "configurable": {"thread_id": f"ethiobio-{session_id or 'default'}"},
+        "tags": ["ethiobio", "agentic-rag"],
+        "metadata": {
+            "user_id": str(user_id) if user_id else None,
+            "session_id": session_id,
+            "grade_level": grade_level,
+            "language": language,
+            "topic": topic,
+            "pipeline_trace_id": trace.trace_id,
+        },
+    }
+
+    trace_graph = should_trace()
+    langsmith_run_id = None
 
     try:
-        result = await graph.ainvoke(initial_state, config)
+        if trace_graph:
+            with traced_run(enabled=True, metadata={"pipeline_trace_id": trace.trace_id}):
+                result, langsmith_run_id = await _invoke_graph_traced(
+                    graph, initial_state, config
+                )
+        else:
+            result = await graph.ainvoke(initial_state, config)
         metadata = {
             "user_message": initial_state.user_message,
             "response": result.get("draft", ""),
+            "user_id": str(user_id) if user_id else None,
+            "grade_level": grade_level,
+            "language": language,
+            "intent": result.get("intent", ""),
+            "session_id": session_id,
             "retrieval_iterations": result.get("retrieval_iterations", 0),
             "coverage_score": result.get("coverage_score", 0.0),
             "groundedness": result.get("groundedness_score", 0.0),
@@ -196,6 +244,8 @@ async def run_graph(
             "requires_teacher_review": result.get("requires_teacher_review", False),
             "evidence_count": len(result.get("evidence_ids", [])),
         }
+        if langsmith_run_id:
+            metadata["langsmith_run_id"] = langsmith_run_id
         await pipeline_monitor.finalize_trace(
             trace.trace_id,
             "completed",

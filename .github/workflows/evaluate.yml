@@ -1,0 +1,47 @@
+name: Agent Evaluation
+
+# Runs LangSmith offline evaluation experiments against the ethiobio datasets.
+#
+# NOTE: full evaluation requires Ollama + Postgres (the pipeline runs run_graph),
+# so it should run on a self-hosted runner or the Render cron job
+# (`ethiobio-langsmith-eval` in render.yaml).
+# On GitHub-hosted runners this workflow syncs datasets and runs a tiny
+# smoke subset with --limit 1 to validate wiring.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * 1" # Monday 02:00 UTC
+  pull_request:
+    branches: [main]
+    types: [labeled]
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Sync LangSmith datasets
+        env:
+          LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+          LANGSMITH_TRACING_ENABLED: "true"
+          LANGSMITH_SAMPLING_RATE: "1.0"
+        run: python -m src.evaluation.langsmith.sync_datasets
+      - name: Run evaluation (smoke subset)
+        if: runner.environment == 'github-hosted'
+        env:
+          LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+          LANGSMITH_TRACING_ENABLED: "true"
+          LANGSMITH_SAMPLING_RATE: "1.0"
+        run: python -m src.evaluation.langsmith.run --dataset ethiobio-curriculum --limit 1 --threshold 0.0 || true
+      - name: Run full evaluation (self-hosted)
+        if: runner.environment != 'github-hosted'
+        env:
+          LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+          LANGSMITH_TRACING_ENABLED: "true"
+          LANGSMITH_SAMPLING_RATE: "1.0"
+        run: python -m src.evaluation.langsmith.run --dataset ethiobio-curriculum

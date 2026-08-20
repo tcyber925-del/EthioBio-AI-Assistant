@@ -132,6 +132,13 @@ class Settings(BaseSettings):
     eval_judge_model: str = "gpt-4o-mini"
     eval_drift_threshold: float = 0.10
 
+    # LangSmith (https://smith.langchain.com) — agent tracing & evaluation
+    langsmith_api_key: Optional[str] = None
+    langsmith_endpoint: str = "https://api.smith.langchain.com"
+    langsmith_project: str = "ethiobio"
+    langsmith_tracing_enabled: bool = False
+    langsmith_sampling_rate: float = 0.1
+
     telegram_voice_max_size: int = 20_971_520  # 20 MB (Telegram voice file limit)
     audio_storage_path: str = "./data/audio_recordings"
     audio_retention_days: int = 90
