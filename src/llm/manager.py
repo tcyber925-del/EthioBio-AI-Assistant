@@ -122,6 +122,7 @@ class ProviderManager:
         start_time = time.monotonic()
         model_to_use = preferred_model or self._active_model
         last_error = None
+        skipped: list[str] = []
 
         if "/" not in model_to_use:
             candidate = f"ollama/{model_to_use}"
@@ -136,11 +137,14 @@ class ProviderManager:
         for provider_name in ordered_providers:
             provider = self._providers.get(provider_name)
             if not provider:
+                skipped.append(f"{provider_name}: not_configured")
                 continue
             breaker = self._get_breaker(provider_name)
             if not breaker.is_available:
+                skipped.append(f"{provider_name}: circuit_open")
                 continue
             if not await provider.is_available():
+                skipped.append(f"{provider_name}: unavailable")
                 continue
 
             try:
@@ -189,6 +193,10 @@ class ProviderManager:
             error=last_error,
             latency_ms=latency,
         )
+        if last_error is None:
+            raise ConnectionError(
+                f"All LLM providers failed (none was attempted; skipped: {skipped})"
+            )
         raise ConnectionError(f"All LLM providers failed. Last error: {last_error}")
 
     async def route_stream(
@@ -202,6 +210,7 @@ class ProviderManager:
         """Stream a response through the provider chain with fallback."""
         model_to_use = preferred_model or self._active_model
         last_error = None
+        skipped: list[str] = []
 
         if "/" not in model_to_use:
             candidate = f"ollama/{model_to_use}"
@@ -216,11 +225,14 @@ class ProviderManager:
         for provider_name in ordered_providers:
             provider = self._providers.get(provider_name)
             if not provider:
+                skipped.append(f"{provider_name}: not_configured")
                 continue
             breaker = self._get_breaker(provider_name)
             if not breaker.is_available:
+                skipped.append(f"{provider_name}: circuit_open")
                 continue
             if not await provider.is_available():
+                skipped.append(f"{provider_name}: unavailable")
                 continue
 
             try:
@@ -249,6 +261,10 @@ class ProviderManager:
                 )
                 continue
 
+        if last_error is None:
+            raise ConnectionError(
+                f"All LLM providers failed for streaming (none was attempted; skipped: {skipped})"
+            )
         raise ConnectionError(f"All LLM providers failed for streaming. Last error: {last_error}")
 
     async def check_health(self) -> dict:
