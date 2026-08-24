@@ -142,15 +142,19 @@ async def get_child_progress(
     quiz_result = await session.execute(
         select(QuizAttempt)
         .where(QuizAttempt.user_id == child.id)
-        .order_by(QuizAttempt.created_at.desc())
+        .order_by(QuizAttempt.started_at.desc())
         .limit(5)
     )
     recent_quizzes = [
         {
             "quiz_id": str(q.quiz_id) if q.quiz_id else None,
             "score": q.score,
-            "total": q.total_questions,
-            "created_at": q.created_at.isoformat(),
+            "total": q.total,
+            "created_at": (
+                (q.completed_at or q.started_at).isoformat()
+                if (q.completed_at or q.started_at)
+                else None
+            ),
         }
         for q in quiz_result.scalars().all()
     ]

@@ -271,47 +271,35 @@ async def _send_child_progress(session, child_id, telegram_id, update, query=Non
         (query.edit_message_text if query else update.message.reply_text)(text)
         return
 
-    mastery_result = await session.execute(
-        select(StudentMastery).where(StudentMastery.user_id == child.id)
-    )
-    mastery_records = list(mastery_result.scalars().all())
-
-    quiz_result = await session.execute(
-        select(QuizAttempt)
-        .where(QuizAttempt.user_id == child.id)
-        .order_by(QuizAttempt.created_at.desc())
-        .limit(5)
-    )
-    recent_quizzes = list(quiz_result.scalars().all())
-
-    gam_result = await session.execute(
-        select(UserGamification).where(UserGamification.user_id == child.id)
-    )
-    gam = gam_result.scalar_one_or_none()
+    data = await fetch_progress_overview(child.id, session)
+    gam = data["gam"]
+    recent_quizzes = data["recent_quizzes"]
+    mastery_records = data["mastery_records"]
 
     score = (
-        sum(r.correct / max(r.total, 1) * 100 for r in recent_quizzes) / max(len(recent_quizzes), 1)
+        sum((q.score or 0.0) for q in recent_quizzes) / len(recent_quizzes)
         if recent_quizzes
-        else 0
+        else 0.0
     )
 
     name = child.email or f"Student {str(child.id)[:8]}"
     lines = [f"<b>📚 {name}'s Progress</b>\n"]
     lines.append(f"🎯 Readiness: {score:.0f}%")
-    lines.append(f"🔥 Streak: {gam.streak if gam else 0} days")
+    lines.append(f"🔥 Streak: {gam.current_streak if gam else 0} days")
     lines.append(f"💎 XP: {gam.total_xp if gam else 0}\n")
 
     if mastery_records:
         lines.append("<b>Topic Mastery:</b>")
         for m in mastery_records[:5]:
-            lines.append(f"• {m.topic}: {m.mastery_score:.0f}%")
+            lines.append(f"• {m.topic}: {m.average_score:.0f}%")
         lines.append("")
 
     if recent_quizzes:
         lines.append("<b>Recent Quizzes:</b>")
         for q in recent_quizzes:
-            pct = q.correct / max(q.total, 1) * 100
-            date_str = q.created_at.strftime("%b %d") if q.created_at else "recent"
+            pct = q.score or 0.0
+            dt = q.completed_at or q.started_at
+            date_str = dt.strftime("%b %d") if dt else "recent"
             lines.append(f"• Quiz — {pct:.0f}% ({date_str})")
 
     keyboard = [

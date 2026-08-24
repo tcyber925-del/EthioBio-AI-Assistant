@@ -1,3 +1,4 @@
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -488,3 +489,40 @@ async def test_progress_command_empty_state_for_zero_data_user(monkeypatch):
     assert "first quiz" in message.reply_text.await_args.args[0]
     callbacks = [btn.callback_data for row in kwargs["reply_markup"].inline_keyboard for btn in row]
     assert callbacks == ["quiz"]
+
+
+@pytest.mark.asyncio
+async def test_send_child_progress_renders_real_model_shape():
+    child = SimpleNamespace(id="c1", email="kid@example.com")
+    gam = SimpleNamespace(current_streak=3, longest_streak=7, total_xp=420)
+    session = _progress_session_mock(
+        [
+            _db_result(scalar=child),
+            _db_result(scalar=gam),
+            _db_result(
+                scalars=[
+                    SimpleNamespace(
+                        score=80.0,
+                        completed_at=None,
+                        started_at=datetime(2026, 8, 20, 10, 30),
+                    )
+                ]
+            ),
+            _db_result(scalars=[SimpleNamespace(topic="Genetics", average_score=64.0)]),
+        ]
+    ).return_value
+    message = SimpleNamespace(reply_text=AsyncMock())
+    update = SimpleNamespace(message=message)
+    context = SimpleNamespace(user_data={})
+
+    await bot._send_child_progress(session, "c1", 999, update, context=context)
+
+    kwargs = message.reply_text.await_args.kwargs
+    text = message.reply_text.await_args.args[0]
+    assert "kid@example.com" in text
+    assert "64%" in text
+    assert "80%" in text
+    assert "Aug 20" in text
+    assert kwargs["parse_mode"] == "HTML"
+    callbacks = [btn.callback_data for row in kwargs["reply_markup"].inline_keyboard for btn in row]
+    assert "parent_summary_c1" in callbacks
