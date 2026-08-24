@@ -190,7 +190,8 @@ def test_format_progress_overview_clamps_out_of_range_scores():
     text = bot._format_progress_overview(
         {"gam": None, "recent_quizzes": [], "mastery_records": masteries}
     )
-    assert "0%" in text and "100%" in text
+    assert "0%" in text
+    assert "100%" in text
 
 
 @pytest.mark.asyncio
@@ -350,3 +351,34 @@ async def test_handle_progress_need_start_when_unregistered(monkeypatch):
     await bot.handle_progress(update, context)
 
     assert "/start" in query.edit_message_text.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_progress_command_sends_overview(monkeypatch):
+    user = SimpleNamespace(id="u1")
+    gam = SimpleNamespace(total_xp=100, level=1, current_streak=1, longest_streak=1)
+    monkeypatch.setattr(bot, "_reply_long", AsyncMock())
+    monkeypatch.setattr(
+        bot,
+        "async_session_factory",
+        MagicMock(
+            return_value=_progress_session_mock(
+                [
+                    _db_result(scalar=user),
+                    _db_result(scalar=gam),
+                    _db_result(scalars=[SimpleNamespace(correct=5, total=10)]),
+                    _db_result(scalars=[SimpleNamespace(topic="Genetics", mastery_score=55.0)]),
+                ]
+            )
+        ),
+    )
+    message = SimpleNamespace(reply_text=AsyncMock())
+    update = SimpleNamespace(message=message)
+    update.effective_user = SimpleNamespace(id=12345)
+    context = SimpleNamespace(user_data={})
+
+    await bot.progress_command(update, context)
+
+    args, kwargs = bot._reply_long.await_args
+    assert "Readiness" in args[1]
+    assert kwargs.get("parse_mode") == "HTML"
