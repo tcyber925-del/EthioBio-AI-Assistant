@@ -454,6 +454,10 @@ async def test_progress_command_sends_overview(monkeypatch):
     kwargs = message.reply_text.await_args.kwargs
     assert "Readiness" in message.reply_text.await_args.args[0]
     assert kwargs["parse_mode"] == "HTML"
+    menu_callbacks = [
+        btn.callback_data for row in kwargs["reply_markup"].inline_keyboard for btn in row
+    ]
+    assert "progress" in menu_callbacks
 
 
 @pytest.mark.asyncio
@@ -480,4 +484,7 @@ async def test_progress_command_empty_state_for_zero_data_user(monkeypatch):
 
     await bot.progress_command(update, context)
 
+    kwargs = message.reply_text.await_args.kwargs
     assert "first quiz" in message.reply_text.await_args.args[0]
+    callbacks = [btn.callback_data for row in kwargs["reply_markup"].inline_keyboard for btn in row]
+    assert callbacks == ["quiz"]

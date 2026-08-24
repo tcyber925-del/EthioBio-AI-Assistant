@@ -2781,6 +2781,7 @@ async def handle_recovery_view(update: Update, context):
 async def progress_command(update: Update, context):
     telegram_id = update.effective_user.id
     language = _lang(context)
+    menu = main_menu_keyboard(context.user_data.get("socratic_mode", False), language=language)
 
     async def _handle():
         factory = async_session_factory()
@@ -2788,14 +2789,23 @@ async def progress_command(update: Update, context):
             result = await session.execute(select(User).where(User.telegram_id == telegram_id))
             user = result.scalar_one_or_none()
             if not user:
-                await update.message.reply_text(t("progress.need_start", language))
+                await update.message.reply_text(
+                    t("progress.need_start", language), reply_markup=menu
+                )
                 return
             data = await fetch_progress_overview(user.id, session)
             if not data["has_data"]:
-                await update.message.reply_text(t("progress.empty", language), parse_mode="HTML")
+                quiz_keyboard = InlineKeyboardMarkup(
+                    [[InlineKeyboardButton(t("take_quiz", language), callback_data="quiz")]]
+                )
+                await update.message.reply_text(
+                    t("progress.empty", language),
+                    parse_mode="HTML",
+                    reply_markup=quiz_keyboard,
+                )
                 return
             await update.message.reply_text(
-                _format_progress_overview(data, language), parse_mode="HTML"
+                _format_progress_overview(data, language), parse_mode="HTML", reply_markup=menu
             )
 
     await _db_try(_handle)
