@@ -131,12 +131,15 @@ def capture_run_id() -> Optional[str]:
 
     Call inside a traced graph invocation to obtain the root run for
     correlation with PipelineMonitor traces and the Feedback API.
+
+    Always returns a string: RunTree.id is a uuid.UUID, which would crash
+    JSON serialization when persisted into agent_traces.event_metadata.
     """
     if not _LS_AVAILABLE or get_current_run_tree is None:
         return None
     try:
         run_tree = get_current_run_tree()
-        return run_tree.id if run_tree else None
+        return str(run_tree.id) if run_tree else None
     except Exception:
         return None
 
