@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 import httpx
 import structlog
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -2064,17 +2065,7 @@ def _format_progress_overview(data: dict, language: str = "en") -> str:
     quizzes = data["recent_quizzes"]
     masteries = data["mastery_records"]
 
-    readiness = (
-        sum(
-            q.correct / max(q.total, 1) * 100
-            if getattr(q, "correct", None) is not None
-            else (q.score or 0.0)
-            for q in quizzes
-        )
-        / len(quizzes)
-        if quizzes
-        else 0.0
-    )
+    readiness = sum((q.score or 0.0) for q in quizzes) / len(quizzes) if quizzes else 0.0
 
     lines = [f"<b>{t('progress.title', language)}</b>", ""]
     lines.append(f"🎯 {t('progress.readiness', language)}: <b>{readiness:.0f}%</b>")
@@ -2091,20 +2082,13 @@ def _format_progress_overview(data: dict, language: str = "en") -> str:
     if masteries:
         lines += ["", f"<b>{t('progress.topic_mastery', language)}</b>"]
         for m in masteries[:5]:
-            mastery = getattr(m, "mastery_score", None)
-            if mastery is None:
-                mastery = m.average_score
-            score = max(0, min(round(mastery), 100))
+            score = max(0, min(round(m.average_score), 100))
             filled = int(score // 10)
             bar = "█" * filled + "░" * (10 - filled)
             icon = "🔴" if score < 40 else "🟡" if score < 60 else "🟢" if score < 80 else "💚"
             lines.append(f"{icon} {html.escape(str(m.topic))} {bar} {score}%")
 
-    def _mastery_value(m):
-        value = getattr(m, "mastery_score", None)
-        return value if value is not None else m.average_score
-
-    weakest = min(masteries, key=_mastery_value) if masteries else None
+    weakest = min(masteries, key=lambda m: m.average_score) if masteries else None
     if weakest:
         lines += [
             "",
@@ -2133,7 +2117,7 @@ async def handle_progress(update: Update, context):
                 text = t("progress.need_start", language)
             else:
                 data = await fetch_progress_overview(user.id, session)
-                if not data["recent_quizzes"] and not data["mastery_records"]:
+                if not data["has_data"]:
                     text = t("progress.empty", language)
                     keyboard = InlineKeyboardMarkup(
                         [[InlineKeyboardButton(t("take_quiz", language), callback_data="quiz")]]
@@ -2153,7 +2137,7 @@ async def handle_progress(update: Update, context):
     await _db_try(_show)
 
 
-async def fetch_progress_overview(user_id, session) -> dict:
+async def fetch_progress_overview(user_id: uuid.UUID, session: AsyncSession) -> dict:
     """Fetch gamification, recent quizzes, and mastery rows for the progress overview."""
     gam = (
         await session.execute(select(UserGamification).where(UserGamification.user_id == user_id))
@@ -2163,7 +2147,7 @@ async def fetch_progress_overview(user_id, session) -> dict:
             await session.execute(
                 select(QuizAttempt)
                 .where(QuizAttempt.user_id == user_id)
-                .order_by(QuizAttempt.completed_at.desc())
+                .order_by(QuizAttempt.started_at.desc())
                 .limit(5)
             )
         )
@@ -2181,7 +2165,12 @@ async def fetch_progress_overview(user_id, session) -> dict:
         .scalars()
         .all()
     )
-    return {"gam": gam, "recent_quizzes": quizzes, "mastery_records": masteries}
+    return {
+        "gam": gam,
+        "recent_quizzes": quizzes,
+        "mastery_records": masteries,
+        "has_data": bool(quizzes or masteries),
+    }
 
 
 async def handle_language(update: Update, context):
@@ -2802,13 +2791,15 @@ async def progress_command(update: Update, context):
             result = await session.execute(select(User).where(User.telegram_id == telegram_id))
             user = result.scalar_one_or_none()
             if not user:
-                await _reply_long(update, t("progress.need_start", language))
+                await update.message.reply_text(t("progress.need_start", language))
                 return
             data = await fetch_progress_overview(user.id, session)
-            if not data["recent_quizzes"] and not data["mastery_records"]:
-                await _reply_long(update, t("progress.empty", language), parse_mode="HTML")
+            if not data["has_data"]:
+                await update.message.reply_text(t("progress.empty", language), parse_mode="HTML")
                 return
-            await _reply_long(update, _format_progress_overview(data, language), parse_mode="HTML")
+            await update.message.reply_text(
+                _format_progress_overview(data, language), parse_mode="HTML"
+            )
 
     await _db_try(_handle)
 
