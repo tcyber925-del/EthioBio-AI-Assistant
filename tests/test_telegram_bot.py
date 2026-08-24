@@ -147,6 +147,61 @@ def test_format_for_telegram_converts_markdown_to_html():
     assert "<code>vertebrae</code>" in formatted
 
 
+def test_format_progress_overview_renders_stats_and_bars():
+    gam = SimpleNamespace(total_xp=1250, level=3, current_streak=4, longest_streak=9)
+    quizzes = [SimpleNamespace(score=70.0), SimpleNamespace(score=80.0)]
+    masteries = [
+        SimpleNamespace(topic="Cell Biology", average_score=82.0),
+        SimpleNamespace(topic="Evolution", average_score=30.0),
+    ]
+    text = bot._format_progress_overview(
+        {"gam": gam, "recent_quizzes": quizzes, "mastery_records": masteries}
+    )
+    assert "75%" in text
+    assert "Cell Biology" in text
+    assert "82%" in text
+    assert "Focus next" in text
+    assert "Evolution" in text
+    assert "<b>" in text
+
+
+def test_format_progress_overview_escapes_topics_and_defaults_gamification():
+    masteries = [SimpleNamespace(topic="Cells <&> DNA", average_score=50.0)]
+    text = bot._format_progress_overview(
+        {"gam": None, "recent_quizzes": [], "mastery_records": masteries}
+    )
+    assert "Cells &lt;&amp;&gt; DNA" in text
+    assert "Level 1" in text
+    assert "0 XP" in text
+
+
+def test_format_progress_overview_empty_data_renders_zeroed_header():
+    text = bot._format_progress_overview({"gam": None, "recent_quizzes": [], "mastery_records": []})
+    assert "Readiness" in text
+    assert "0%" in text
+    assert "Focus next" not in text
+
+
+def test_format_progress_overview_clamps_out_of_range_scores():
+    masteries = [
+        SimpleNamespace(topic="Too Low", average_score=-20.0),
+        SimpleNamespace(topic="Too High", average_score=150.0),
+    ]
+    text = bot._format_progress_overview(
+        {"gam": None, "recent_quizzes": [], "mastery_records": masteries}
+    )
+    assert "0%" in text
+    assert "100%" in text
+
+
+def test_format_progress_overview_treats_null_score_as_zero():
+    quizzes = [SimpleNamespace(score=None)]
+    text = bot._format_progress_overview(
+        {"gam": None, "recent_quizzes": quizzes, "mastery_records": []}
+    )
+    assert "0%" in text
+
+
 @pytest.mark.asyncio
 async def test_handle_question_calls_run_graph(monkeypatch):
     from src.schemas.streaming import TokenChunk
@@ -200,22 +255,6 @@ async def test_help_command_replies_with_text():
 
 
 @pytest.mark.asyncio
-async def test_handle_progress_replies_new_message_for_callback():
-    message = SimpleNamespace(reply_text=AsyncMock())
-    query = SimpleNamespace(
-        answer=AsyncMock(), edit_message_reply_markup=AsyncMock(), message=message
-    )
-    update = SimpleNamespace(callback_query=query)
-    context = SimpleNamespace(user_data={})
-
-    await bot.handle_progress(update, context)
-
-    query.message.reply_text.assert_awaited()
-    sent_text = query.message.reply_text.await_args.args[0]
-    assert "My Progress" in sent_text
-
-
-@pytest.mark.asyncio
 async def test_handle_language_replies_new_message():
     message = SimpleNamespace(reply_text=AsyncMock())
     query = SimpleNamespace(answer=AsyncMock(), message=message)
@@ -226,3 +265,226 @@ async def test_handle_language_replies_new_message():
 
     query.message.reply_text.assert_awaited()
     assert "choose your language" in query.message.reply_text.await_args.args[0].lower()
+
+
+def _db_result(scalar=None, scalars=None):
+    r = MagicMock()
+    r.scalar_one_or_none.return_value = scalar
+    inner = MagicMock()
+    inner.all.return_value = scalars or []
+    r.scalars.return_value = inner
+    return r
+
+
+def _progress_session_mock(side_effects):
+    mock_session = AsyncMock()
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=None)
+    mock_session.execute = AsyncMock(side_effect=side_effects)
+    return MagicMock(return_value=mock_session)
+
+
+@pytest.mark.asyncio
+async def test_handle_progress_shows_onboarding_for_zero_data_user(monkeypatch):
+    user = SimpleNamespace(id="u1")
+    monkeypatch.setattr(
+        bot,
+        "async_session_factory",
+        MagicMock(
+            return_value=_progress_session_mock(
+                [
+                    _db_result(scalar=user),
+                    _db_result(scalar=None),
+                    _db_result(scalars=[]),
+                    _db_result(scalars=[]),
+                ]
+            )
+        ),
+    )
+    message = SimpleNamespace(reply_text=AsyncMock())
+    query = SimpleNamespace(answer=AsyncMock(), edit_message_text=AsyncMock(), message=message)
+    update = SimpleNamespace(callback_query=query)
+    update.effective_user = SimpleNamespace(id=12345)
+    context = SimpleNamespace(user_data={})
+
+    await bot.handle_progress(update, context)
+
+    kwargs = query.edit_message_text.await_args.kwargs
+    assert "first quiz" in query.edit_message_text.await_args.args[0]
+    assert kwargs["parse_mode"] == "HTML"
+
+
+@pytest.mark.asyncio
+async def test_handle_progress_shows_overview_for_returning_user(monkeypatch):
+    user = SimpleNamespace(id="u1")
+    gam = SimpleNamespace(total_xp=500, level=2, current_streak=2, longest_streak=5)
+    monkeypatch.setattr(
+        bot,
+        "async_session_factory",
+        MagicMock(
+            return_value=_progress_session_mock(
+                [
+                    _db_result(scalar=user),
+                    _db_result(scalar=gam),
+                    _db_result(scalars=[SimpleNamespace(score=60.0)]),
+                    _db_result(scalars=[SimpleNamespace(topic="Genetics", average_score=55.0)]),
+                ]
+            )
+        ),
+    )
+    message = SimpleNamespace(reply_text=AsyncMock())
+    query = SimpleNamespace(answer=AsyncMock(), edit_message_text=AsyncMock(), message=message)
+    update = SimpleNamespace(callback_query=query)
+    update.effective_user = SimpleNamespace(id=12345)
+    context = SimpleNamespace(user_data={})
+
+    await bot.handle_progress(update, context)
+
+    assert "Readiness" in query.edit_message_text.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_handle_progress_falls_back_to_reply_when_edit_fails(monkeypatch):
+    user = SimpleNamespace(id="u1")
+    gam = SimpleNamespace(total_xp=500, level=2, current_streak=2, longest_streak=5)
+    monkeypatch.setattr(
+        bot,
+        "async_session_factory",
+        MagicMock(
+            return_value=_progress_session_mock(
+                [
+                    _db_result(scalar=user),
+                    _db_result(scalar=gam),
+                    _db_result(scalars=[SimpleNamespace(score=60.0)]),
+                    _db_result(scalars=[SimpleNamespace(topic="Genetics", average_score=55.0)]),
+                ]
+            )
+        ),
+    )
+    message = SimpleNamespace(reply_text=AsyncMock())
+    query = SimpleNamespace(
+        answer=AsyncMock(),
+        edit_message_text=AsyncMock(side_effect=Exception("message not modified")),
+        message=message,
+    )
+    update = SimpleNamespace(callback_query=query)
+    update.effective_user = SimpleNamespace(id=12345)
+    context = SimpleNamespace(user_data={})
+
+    await bot.handle_progress(update, context)
+
+    kwargs = message.reply_text.await_args.kwargs
+    assert "Readiness" in message.reply_text.await_args.args[0]
+    assert kwargs["parse_mode"] == "HTML"
+
+
+@pytest.mark.asyncio
+async def test_handle_progress_onboarding_offers_take_quiz_button(monkeypatch):
+    user = SimpleNamespace(id="u1")
+    monkeypatch.setattr(
+        bot,
+        "async_session_factory",
+        MagicMock(
+            return_value=_progress_session_mock(
+                [
+                    _db_result(scalar=user),
+                    _db_result(scalar=None),
+                    _db_result(scalars=[]),
+                    _db_result(scalars=[]),
+                ]
+            )
+        ),
+    )
+    message = SimpleNamespace(reply_text=AsyncMock())
+    query = SimpleNamespace(answer=AsyncMock(), edit_message_text=AsyncMock(), message=message)
+    update = SimpleNamespace(callback_query=query)
+    update.effective_user = SimpleNamespace(id=12345)
+    context = SimpleNamespace(user_data={})
+
+    await bot.handle_progress(update, context)
+
+    markup = query.edit_message_text.await_args.kwargs["reply_markup"]
+    callbacks = [btn.callback_data for row in markup.inline_keyboard for btn in row]
+    assert callbacks == ["quiz"]
+
+
+@pytest.mark.asyncio
+async def test_handle_progress_need_start_when_unregistered(monkeypatch):
+    monkeypatch.setattr(
+        bot,
+        "async_session_factory",
+        MagicMock(return_value=_progress_session_mock([_db_result(scalar=None)])),
+    )
+    message = SimpleNamespace(reply_text=AsyncMock())
+    query = SimpleNamespace(answer=AsyncMock(), edit_message_text=AsyncMock(), message=message)
+    update = SimpleNamespace(callback_query=query)
+    update.effective_user = SimpleNamespace(id=12345)
+    context = SimpleNamespace(user_data={})
+
+    await bot.handle_progress(update, context)
+
+    assert "/start" in query.edit_message_text.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_progress_command_sends_overview(monkeypatch):
+    user = SimpleNamespace(id="u1")
+    gam = SimpleNamespace(total_xp=100, level=1, current_streak=1, longest_streak=1)
+    monkeypatch.setattr(
+        bot,
+        "async_session_factory",
+        MagicMock(
+            return_value=_progress_session_mock(
+                [
+                    _db_result(scalar=user),
+                    _db_result(scalar=gam),
+                    _db_result(scalars=[SimpleNamespace(score=50.0)]),
+                    _db_result(scalars=[SimpleNamespace(topic="Genetics", average_score=55.0)]),
+                ]
+            )
+        ),
+    )
+    message = SimpleNamespace(reply_text=AsyncMock())
+    update = SimpleNamespace(message=message)
+    update.effective_user = SimpleNamespace(id=12345)
+    context = SimpleNamespace(user_data={})
+
+    await bot.progress_command(update, context)
+
+    kwargs = message.reply_text.await_args.kwargs
+    assert "Readiness" in message.reply_text.await_args.args[0]
+    assert kwargs["parse_mode"] == "HTML"
+    menu_callbacks = [
+        btn.callback_data for row in kwargs["reply_markup"].inline_keyboard for btn in row
+    ]
+    assert "progress" in menu_callbacks
+
+
+@pytest.mark.asyncio
+async def test_progress_command_empty_state_for_zero_data_user(monkeypatch):
+    user = SimpleNamespace(id="u1")
+    monkeypatch.setattr(
+        bot,
+        "async_session_factory",
+        MagicMock(
+            return_value=_progress_session_mock(
+                [
+                    _db_result(scalar=user),
+                    _db_result(scalar=None),
+                    _db_result(scalars=[]),
+                    _db_result(scalars=[]),
+                ]
+            )
+        ),
+    )
+    message = SimpleNamespace(reply_text=AsyncMock())
+    update = SimpleNamespace(message=message)
+    update.effective_user = SimpleNamespace(id=12345)
+    context = SimpleNamespace(user_data={})
+
+    await bot.progress_command(update, context)
+
+    kwargs = message.reply_text.await_args.kwargs
+    assert "first quiz" in message.reply_text.await_args.args[0]
+    callbacks = [btn.callback_data for row in kwargs["reply_markup"].inline_keyboard for btn in row]
+    assert callbacks == ["quiz"]

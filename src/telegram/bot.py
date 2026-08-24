@@ -1,4 +1,5 @@
 import asyncio
+import html
 import random
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -6,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 import httpx
 import structlog
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -2058,36 +2060,114 @@ async def _save_diagram_rewards(telegram_id, context):
     await _db_try(_save)
 
 
+def _format_progress_overview(data: dict, language: str = "en") -> str:
+    gam = data["gam"]
+    quizzes = data["recent_quizzes"]
+    masteries = data["mastery_records"]
+
+    readiness = sum((q.score or 0.0) for q in quizzes) / len(quizzes) if quizzes else 0.0
+
+    lines = [f"<b>{t('progress.title', language)}</b>", ""]
+    lines.append(f"🎯 {t('progress.readiness', language)}: <b>{readiness:.0f}%</b>")
+    best = gam.longest_streak if gam else 0
+    lines.append(
+        f"🔥 {t('progress.streak', language)}: {gam.current_streak if gam else 0}"
+        f" ({t('progress.best', language)}: {best})"
+    )
+    lines.append(
+        f"💎 {t('progress.level', language)} {gam.level if gam else 1}"
+        f" · {gam.total_xp if gam else 0} XP"
+    )
+
+    if masteries:
+        lines += ["", f"<b>{t('progress.topic_mastery', language)}</b>"]
+        for m in masteries[:5]:
+            score = max(0, min(round(m.average_score), 100))
+            filled = int(score // 10)
+            bar = "█" * filled + "░" * (10 - filled)
+            icon = "🔴" if score < 40 else "🟡" if score < 60 else "🟢" if score < 80 else "💚"
+            lines.append(f"{icon} {html.escape(str(m.topic))} {bar} {score}%")
+
+    weakest = min(masteries, key=lambda m: m.average_score) if masteries else None
+    if weakest:
+        topic = html.escape(str(weakest.topic))
+        lines += ["", f"👉 {t('progress.focus_next', language)}: <b>{topic}</b>"]
+    return "\n".join(lines)
+
+
 async def handle_progress(update: Update, context):
     query = update.callback_query
     if query:
         await query.answer()
-    text = (
-        "📊 My Progress\n\n"
-        "Feature requires PostgreSQL. Set up the database to track:\n"
-        "• Quiz scores and attempts\n"
-        "• Weak areas by topic\n"
-        "• Overall performance trends\n\n"
-        "In the meantime, keep practicing with quizzes!"
+    language = _lang(context)
+    telegram_id = update.effective_user.id
+
+    async def _show():
+        factory = async_session_factory()
+        async with factory() as session:
+            result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+            user = result.scalar_one_or_none()
+            keyboard = main_menu_keyboard(
+                context.user_data.get("socratic_mode", False), language=language
+            )
+            if not user:
+                text = t("progress.need_start", language)
+            else:
+                data = await fetch_progress_overview(user.id, session)
+                if not data["has_data"]:
+                    text = t("progress.empty", language)
+                    keyboard = InlineKeyboardMarkup(
+                        [[InlineKeyboardButton(t("take_quiz", language), callback_data="quiz")]]
+                    )
+                else:
+                    text = _format_progress_overview(data, language)
+
+            if query:
+                try:
+                    await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
+                except Exception:
+                    logger.warning("progress_edit_failed", user_id=telegram_id, exc_info=True)
+                    await query.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
+            else:
+                await update.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
+
+    await _db_try(_show)
+
+
+async def fetch_progress_overview(user_id: uuid.UUID, session: AsyncSession) -> dict:
+    """Fetch gamification, recent quizzes, and mastery rows for the progress overview."""
+    gam = (
+        await session.execute(select(UserGamification).where(UserGamification.user_id == user_id))
+    ).scalar_one_or_none()
+    quizzes = list(
+        (
+            await session.execute(
+                select(QuizAttempt)
+                .where(QuizAttempt.user_id == user_id)
+                .order_by(QuizAttempt.started_at.desc())
+                .limit(5)
+            )
+        )
+        .scalars()
+        .all()
     )
-    if query:
-        try:
-            await query.edit_message_reply_markup(reply_markup=None)
-        except Exception:
-            logger.warning("progress_edit_failed", user_id=update.effective_user.id, exc_info=True)
-        await query.message.reply_text(
-            text,
-            reply_markup=main_menu_keyboard(
-                context.user_data.get("socratic_mode", False), language=_lang(context)
-            ),
+    masteries = list(
+        (
+            await session.execute(
+                select(StudentMastery)
+                .where(StudentMastery.user_id == user_id)
+                .order_by(StudentMastery.average_score.desc())
+            )
         )
-    else:
-        await update.message.reply_text(
-            text,
-            reply_markup=main_menu_keyboard(
-                context.user_data.get("socratic_mode", False), language=_lang(context)
-            ),
-        )
+        .scalars()
+        .all()
+    )
+    return {
+        "gam": gam,
+        "recent_quizzes": quizzes,
+        "mastery_records": masteries,
+        "has_data": bool(quizzes or masteries),
+    }
 
 
 async def handle_language(update: Update, context):
@@ -2699,49 +2779,34 @@ async def handle_recovery_view(update: Update, context):
 
 
 async def progress_command(update: Update, context):
-    from sqlalchemy import select
+    telegram_id = update.effective_user.id
+    language = _lang(context)
+    menu = main_menu_keyboard(context.user_data.get("socratic_mode", False), language=language)
 
     async def _handle():
         factory = async_session_factory()
         async with factory() as session:
-            result = await session.execute(
-                select(User).where(User.telegram_id == update.effective_user.id)
-            )
+            result = await session.execute(select(User).where(User.telegram_id == telegram_id))
             user = result.scalar_one_or_none()
             if not user:
-                await _reply_long(update, t("progress.need_start", _lang(context)))
-                return
-
-            from src.agents.weak_topic_detection import get_weak_topics
-
-            weak_topics = await get_weak_topics(user.id, session)
-
-            if not weak_topics:
-                await _reply_long(
-                    update, t("progress.no_weak", _lang(context)), parse_mode="Markdown"
+                await update.message.reply_text(
+                    t("progress.need_start", language), reply_markup=menu
                 )
                 return
-
-            lines = ["📊 *Mastery Progress*"]
-            for wt in sorted(weak_topics, key=lambda x: x["average_score"]):
-                bar_len = max(1, int(wt["average_score"] / 10))
-                bar = "█" * bar_len + "░" * (10 - bar_len)
-                icon = (
-                    "🔴"
-                    if wt["average_score"] < 40
-                    else "🟡"
-                    if wt["average_score"] < 60
-                    else "🟢"
-                    if wt["average_score"] < 80
-                    else "💚"
+            data = await fetch_progress_overview(user.id, session)
+            if not data["has_data"]:
+                quiz_keyboard = InlineKeyboardMarkup(
+                    [[InlineKeyboardButton(t("take_quiz", language), callback_data="quiz")]]
                 )
-                lines.append(f"\n{icon} *{wt['topic']}*")
-                lines.append(f"`{bar}` {wt['average_score']:.0f}%")
-                lines.append(
-                    f"Confidence: {wt['confidence'] * 100:.0f}% | Attempts: {wt['attempt_count']}"
+                await update.message.reply_text(
+                    t("progress.empty", language),
+                    parse_mode="HTML",
+                    reply_markup=quiz_keyboard,
                 )
-
-            await _reply_long(update, "\n".join(lines), parse_mode="Markdown")
+                return
+            await update.message.reply_text(
+                _format_progress_overview(data, language), parse_mode="HTML", reply_markup=menu
+            )
 
     await _db_try(_handle)
 
