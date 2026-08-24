@@ -2065,7 +2065,15 @@ def _format_progress_overview(data: dict, language: str = "en") -> str:
     masteries = data["mastery_records"]
 
     readiness = (
-        sum(q.correct / max(q.total, 1) * 100 for q in quizzes) / len(quizzes) if quizzes else 0.0
+        sum(
+            q.correct / max(q.total, 1) * 100
+            if getattr(q, "correct", None) is not None
+            else (q.score or 0.0)
+            for q in quizzes
+        )
+        / len(quizzes)
+        if quizzes
+        else 0.0
     )
 
     lines = [f"<b>{t('progress.title', language)}</b>", ""]
@@ -2083,12 +2091,20 @@ def _format_progress_overview(data: dict, language: str = "en") -> str:
     if masteries:
         lines += ["", f"<b>{t('progress.topic_mastery', language)}</b>"]
         for m in masteries[:5]:
-            score = max(0, min(round(m.mastery_score), 100))
-            bar = "█" * round(score / 10) + "░" * (10 - round(score / 10))
+            mastery = getattr(m, "mastery_score", None)
+            if mastery is None:
+                mastery = m.average_score
+            score = max(0, min(round(mastery), 100))
+            filled = int(score // 10)
+            bar = "█" * filled + "░" * (10 - filled)
             icon = "🔴" if score < 40 else "🟡" if score < 60 else "🟢" if score < 80 else "💚"
             lines.append(f"{icon} {html.escape(str(m.topic))} {bar} {score}%")
 
-    weakest = min(masteries, key=lambda m: m.mastery_score) if masteries else None
+    def _mastery_value(m):
+        value = getattr(m, "mastery_score", None)
+        return value if value is not None else m.average_score
+
+    weakest = min(masteries, key=_mastery_value) if masteries else None
     if weakest:
         lines += [
             "",
@@ -2102,32 +2118,72 @@ async def handle_progress(update: Update, context):
     query = update.callback_query
     if query:
         await query.answer()
-    text = (
-        "📊 My Progress\n\n"
-        "Feature requires PostgreSQL. Set up the database to track:\n"
-        "• Quiz scores and attempts\n"
-        "• Weak areas by topic\n"
-        "• Overall performance trends\n\n"
-        "In the meantime, keep practicing with quizzes!"
+    language = _lang(context)
+    telegram_id = update.effective_user.id
+
+    async def _show():
+        factory = async_session_factory()
+        async with factory() as session:
+            result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+            user = result.scalar_one_or_none()
+            keyboard = main_menu_keyboard(
+                context.user_data.get("socratic_mode", False), language=language
+            )
+            if not user:
+                text = t("progress.need_start", language)
+            else:
+                data = await fetch_progress_overview(user.id, session)
+                if not data["recent_quizzes"] and not data["mastery_records"]:
+                    text = t("progress.empty", language)
+                    keyboard = InlineKeyboardMarkup(
+                        [[InlineKeyboardButton(t("take_quiz", language), callback_data="quiz")]]
+                    )
+                else:
+                    text = _format_progress_overview(data, language)
+
+            if query:
+                try:
+                    await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
+                except Exception:
+                    logger.warning("progress_edit_failed", user_id=telegram_id, exc_info=True)
+                    await query.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
+            else:
+                await update.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
+
+    await _db_try(_show)
+
+
+async def fetch_progress_overview(user_id, session) -> dict:
+    """Fetch gamification, recent quizzes, and mastery rows for the progress overview."""
+    gam = (
+        await session.execute(
+            select(UserGamification).where(UserGamification.user_id == user_id)
+        )
+    ).scalar_one_or_none()
+    quizzes = list(
+        (
+            await session.execute(
+                select(QuizAttempt)
+                .where(QuizAttempt.user_id == user_id)
+                .order_by(QuizAttempt.completed_at.desc())
+                .limit(5)
+            )
+        )
+        .scalars()
+        .all()
     )
-    if query:
-        try:
-            await query.edit_message_reply_markup(reply_markup=None)
-        except Exception:
-            logger.warning("progress_edit_failed", user_id=update.effective_user.id, exc_info=True)
-        await query.message.reply_text(
-            text,
-            reply_markup=main_menu_keyboard(
-                context.user_data.get("socratic_mode", False), language=_lang(context)
-            ),
+    masteries = list(
+        (
+            await session.execute(
+                select(StudentMastery)
+                .where(StudentMastery.user_id == user_id)
+                .order_by(StudentMastery.average_score.desc())
+            )
         )
-    else:
-        await update.message.reply_text(
-            text,
-            reply_markup=main_menu_keyboard(
-                context.user_data.get("socratic_mode", False), language=_lang(context)
-            ),
-        )
+        .scalars()
+        .all()
+    )
+    return {"gam": gam, "recent_quizzes": quizzes, "mastery_records": masteries}
 
 
 async def handle_language(update: Update, context):
