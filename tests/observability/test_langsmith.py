@@ -1,3 +1,4 @@
+import uuid
 from types import SimpleNamespace
 
 from src.evaluation.langsmith.evaluators import (
@@ -6,7 +7,7 @@ from src.evaluation.langsmith.evaluators import (
 )
 from src.evaluation.langsmith.sync_datasets import _examples_for, _stable_id
 from src.llm.router import _llm_inputs, _llm_outputs
-from src.observability.langsmith import should_trace, traced_run
+from src.observability.langsmith import capture_run_id, should_trace, traced_run
 
 
 class TestLangSmithTracing:
@@ -50,6 +51,24 @@ class TestLangSmithTracing:
         monkeypatch.setattr("src.config.settings.langsmith_tracing_enabled", False)
         monkeypatch.setattr("src.config.settings.langsmith_api_key", "lsv1_x")
         assert not should_trace(force=True)
+
+
+class TestCaptureRunId:
+    def test_returns_string_not_uuid_object(self, monkeypatch):
+        # RunTree.id is a uuid.UUID; persisting it into a JSON column crashes
+        # save_trace with "Object of type UUID is not JSON serializable".
+        run_uuid = uuid.uuid4()
+        monkeypatch.setattr(
+            "src.observability.langsmith.get_current_run_tree",
+            lambda: SimpleNamespace(id=run_uuid),
+        )
+        run_id = capture_run_id()
+        assert isinstance(run_id, str)
+        assert run_id == str(run_uuid)
+
+    def test_returns_none_without_run_tree(self, monkeypatch):
+        monkeypatch.setattr("src.observability.langsmith.get_current_run_tree", lambda: None)
+        assert capture_run_id() is None
 
 
 class TestRouterSanitizers:

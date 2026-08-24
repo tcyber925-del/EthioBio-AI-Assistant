@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import sys
 from contextlib import asynccontextmanager
@@ -73,9 +74,7 @@ structlog.configure(
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
-        structlog.dev.ConsoleRenderer()
-        if __debug__
-        else structlog.processors.JSONRenderer(),
+        structlog.dev.ConsoleRenderer() if __debug__ else structlog.processors.JSONRenderer(),
     ],
     wrapper_class=structlog.stdlib.BoundLogger,
     context_class=dict,
@@ -110,6 +109,19 @@ def _init_sentry():
         logger.exception("sentry_init_failed")
 
 
+def _json_safe(value):
+    """Return a JSON-serializable copy of value, coercing unknown types to str.
+
+    agent_traces.event_metadata is a JSON column; any non-serializable object
+    (e.g. a uuid.UUID) would abort the whole INSERT and lose the trace.
+    """
+    try:
+        json.dumps(value)
+        return value
+    except (TypeError, ValueError):
+        return json.loads(json.dumps(value, default=str))
+
+
 async def _save_trace_from_pipeline(trace, repo):
     """Save a completed PipelineTrace to persistent storage."""
     try:
@@ -126,11 +138,11 @@ async def _save_trace_from_pipeline(trace, repo):
             grade_level=trace.metadata.get("grade_level"),
             language=trace.metadata.get("language"),
             intent=trace.metadata.get("intent"),
-            nodes_visited=trace.nodes_visited,
+            nodes_visited=trace.nodes_visited or [],
             node_timings={k: v for k, v in trace.node_timings.items() if not k.endswith("_start")},
-            metadata={
-                k: v for k, v in trace.metadata.items() if k not in ("user_message", "response")
-            },
+            metadata=_json_safe(
+                {k: v for k, v in trace.metadata.items() if k not in ("user_message", "response")}
+            ),
             duration_ms=trace.duration_ms,
         )
     except Exception:
@@ -319,7 +331,6 @@ app = FastAPI(
     title=settings.app_name,
     version="1.1.0",
     lifespan=lifespan,
-
 )
 
 

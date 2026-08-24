@@ -82,7 +82,9 @@ envVarGroups:
       - key: TELEGRAM_WEBHOOK_URL
         value: https://ethiobio-api.onrender.com/webhook
       - key: ENABLE_RERANKER
-        value: "true"
+        value: "false" # sentence_transformers not in image (512Mi free-tier limit)
+      - key: EVAL_JUDGE_MODEL
+        value: ollama/gpt-oss:20b # OpenRouter has no credits; judge runs on Ollama cloud
       - key: JINA_API_KEY
         sync: false
       - key: ADDIS_BASE_URL
