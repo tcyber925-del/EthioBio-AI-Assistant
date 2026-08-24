@@ -37,6 +37,7 @@ def _get_lock():
     global _task_lock
     if _task_lock is None:
         import asyncio
+
         _task_lock = asyncio.Lock()
     return _task_lock
 
@@ -60,6 +61,7 @@ async def _get_task(task_id: str) -> dict | None:
     lock = _get_lock()
     async with lock:
         return _task_store.get(task_id)
+
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/quiz", tags=["Quiz"])
@@ -383,6 +385,7 @@ async def take_quiz(
     session: AsyncSession = Depends(get_session),
 ):
     from uuid import UUID
+
     try:
         item_uuid = UUID(quiz_id)
         quiz = await session.get(Quiz, item_uuid)
@@ -635,7 +638,7 @@ async def list_quiz_attempts(
         )
         .join(Quiz, QuizAttempt.quiz_id == Quiz.id)
         .where(QuizAttempt.user_id == current_user.id)
-        .order_by(QuizAttempt.completed_at.desc())
+        .order_by(QuizAttempt.started_at.desc())
         .limit(limit)
     )
     result = await session.execute(stmt)
@@ -673,6 +676,7 @@ async def get_quiz_attempt_detail(
     current_user: User = Depends(get_current_user),
 ):
     from uuid import UUID
+
     try:
         attempt_uuid = UUID(attempt_id)
         attempt = await session.get(QuizAttempt, attempt_uuid)
@@ -730,10 +734,7 @@ async def list_published_quizzes(
     current_user: User = Depends(get_current_user),
 ):
     stmt = (
-        select(Quiz)
-        .where(Quiz.status == "published")
-        .order_by(Quiz.created_at.desc())
-        .limit(limit)
+        select(Quiz).where(Quiz.status == "published").order_by(Quiz.created_at.desc()).limit(limit)
     )
     if grade_level:
         stmt = stmt.where(Quiz.grade_level == grade_level)
@@ -782,6 +783,7 @@ async def get_quiz(
     current_user: User = Depends(get_current_user),
 ):
     from uuid import UUID
+
     try:
         item_uuid = UUID(quiz_id)
         quiz = await session.get(Quiz, item_uuid)

@@ -58,7 +58,7 @@ class EvidenceEngine:
         result = await session.execute(
             select(QuizAttempt)
             .where(QuizAttempt.user_id == user_id)
-            .order_by(QuizAttempt.completed_at.desc())
+            .order_by(QuizAttempt.started_at.desc())
             .limit(10)
         )
         records = result.scalars().all()
@@ -70,7 +70,7 @@ class EvidenceEngine:
                     "quiz_id": str(r.quiz_id),
                     "score": r.score,
                     "total": r.total,
-                    "percent": round(r.score / r.total * 100, 1) if r.total else 0,
+                    "percent": round(r.score, 1) if r.score is not None else 0,
                 },
             }
             for r in records

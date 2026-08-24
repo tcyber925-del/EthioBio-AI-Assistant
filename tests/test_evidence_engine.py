@@ -1,3 +1,5 @@
+import pytest
+
 from src.core.teacher_copilot.evidence_engine import EvidenceEngine
 
 
@@ -82,3 +84,25 @@ class TestEvidenceEngine:
         ]
         result = EvidenceEngine.format_citations(evidence)
         assert "Topic '?'" in result
+
+
+@pytest.mark.asyncio
+async def test_get_quiz_evidence_orders_by_started_at_and_reports_stored_percent():
+    import uuid
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, MagicMock
+
+    engine = EvidenceEngine()
+    row = SimpleNamespace(quiz_id=uuid.uuid4(), score=80.0, total=10)
+    result_mock = MagicMock()
+    scalars = MagicMock()
+    scalars.all.return_value = [row]
+    result_mock.scalars.return_value = scalars
+    session = AsyncMock()
+    session.execute = AsyncMock(return_value=result_mock)
+
+    evidence = await engine._get_quiz_evidence(uuid.uuid4(), session)
+
+    stmt = session.execute.await_args.args[0]
+    assert "started_at DESC" in str(stmt)
+    assert evidence[0]["content"]["percent"] == 80.0

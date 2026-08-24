@@ -161,7 +161,7 @@ async def get_student_dashboard(
                 await session.execute(
                     select(QuizAttempt)
                     .where(QuizAttempt.user_id == user_id)
-                    .order_by(QuizAttempt.completed_at.desc())
+                    .order_by(QuizAttempt.started_at.desc())
                     .limit(10)
                 )
             )
