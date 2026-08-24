@@ -109,7 +109,14 @@
     "back_providers": "← Back to Providers"
   },
   "progress": {
-    "no_weak": "📊 *Mastery Progress*\n\nNo weak topics detected! You're doing great across all subjects.",
+    "title": "📊 My Progress",
+    "readiness": "Readiness",
+    "streak": "Streak",
+    "best": "best",
+    "level": "Level",
+    "topic_mastery": "📚 Topic Mastery",
+    "focus_next": "Focus next",
+    "empty": "📊 No progress yet!\n\nTake your first quiz and your scores, streak, and topic mastery will show up here.",
     "need_start": "Please /start first to register."
   },
   "recovery": {
