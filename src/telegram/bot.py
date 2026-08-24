@@ -2090,11 +2090,8 @@ def _format_progress_overview(data: dict, language: str = "en") -> str:
 
     weakest = min(masteries, key=lambda m: m.average_score) if masteries else None
     if weakest:
-        lines += [
-            "",
-            f"👉 {t('progress.focus_next', language)}: "
-            f"<b>{html.escape(str(weakest.topic))}</b>",
-        ]
+        topic = html.escape(str(weakest.topic))
+        lines += ["", f"👉 {t('progress.focus_next', language)}: <b>{topic}</b>"]
     return "\n".join(lines)
 
 
