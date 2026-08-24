@@ -147,6 +147,34 @@ def test_format_for_telegram_converts_markdown_to_html():
     assert "<code>vertebrae</code>" in formatted
 
 
+def test_format_progress_overview_renders_stats_and_bars():
+    gam = SimpleNamespace(total_xp=1250, level=3, current_streak=4, longest_streak=9)
+    quizzes = [SimpleNamespace(correct=7, total=10), SimpleNamespace(correct=8, total=10)]
+    masteries = [
+        SimpleNamespace(topic="Cell Biology", mastery_score=82.0),
+        SimpleNamespace(topic="Evolution", mastery_score=30.0),
+    ]
+    text = bot._format_progress_overview(
+        {"gam": gam, "recent_quizzes": quizzes, "mastery_records": masteries}
+    )
+    assert "75%" in text
+    assert "Cell Biology" in text
+    assert "82%" in text
+    assert "Focus next" in text
+    assert "Evolution" in text
+    assert "<b>" in text
+
+
+def test_format_progress_overview_escapes_topics_and_defaults_gamification():
+    masteries = [SimpleNamespace(topic="Cells <&> DNA", mastery_score=50.0)]
+    text = bot._format_progress_overview(
+        {"gam": None, "recent_quizzes": [], "mastery_records": masteries}
+    )
+    assert "Cells &lt;&amp;&gt; DNA" in text
+    assert "Level 1" in text
+    assert "0 XP" in text
+
+
 @pytest.mark.asyncio
 async def test_handle_question_calls_run_graph(monkeypatch):
     from src.schemas.streaming import TokenChunk

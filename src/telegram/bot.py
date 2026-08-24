@@ -1,4 +1,5 @@
 import asyncio
+import html
 import random
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -2056,6 +2057,45 @@ async def _save_diagram_rewards(telegram_id, context):
             context.user_data["last_new_level"] = gam_result.level
 
     await _db_try(_save)
+
+
+def _format_progress_overview(data: dict, language: str = "en") -> str:
+    gam = data["gam"]
+    quizzes = data["recent_quizzes"]
+    masteries = data["mastery_records"]
+
+    readiness = (
+        sum(q.correct / max(q.total, 1) * 100 for q in quizzes) / len(quizzes) if quizzes else 0.0
+    )
+
+    lines = [f"<b>{t('progress.title', language)}</b>", ""]
+    lines.append(f"🎯 {t('progress.readiness', language)}: <b>{readiness:.0f}%</b>")
+    best = gam.longest_streak if gam else 0
+    lines.append(
+        f"🔥 {t('progress.streak', language)}: {gam.current_streak if gam else 0}"
+        f" ({t('progress.best', language)}: {best})"
+    )
+    lines.append(
+        f"💎 {t('progress.level', language)} {gam.level if gam else 1}"
+        f" · {gam.total_xp if gam else 0} XP"
+    )
+
+    if masteries:
+        lines += ["", f"<b>{t('progress.topic_mastery', language)}</b>"]
+        for m in masteries[:5]:
+            score = max(0, min(round(m.mastery_score), 100))
+            bar = "█" * round(score / 10) + "░" * (10 - round(score / 10))
+            icon = "🔴" if score < 40 else "🟡" if score < 60 else "🟢" if score < 80 else "💚"
+            lines.append(f"{icon} {html.escape(str(m.topic))} {bar} {score}%")
+
+    weakest = min(masteries, key=lambda m: m.mastery_score) if masteries else None
+    if weakest:
+        lines += [
+            "",
+            f"👉 {t('progress.focus_next', language)}: "
+            f"<b>{html.escape(str(weakest.topic))}</b>",
+        ]
+    return "\n".join(lines)
 
 
 async def handle_progress(update: Update, context):
