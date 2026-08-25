@@ -72,7 +72,7 @@ async def get_activity_feed(user_id: UUID, session: AsyncSession = Depends(get_s
         )
         for thread in thread_result.scalars().all():
             msg_count = len(thread.messages) if isinstance(thread.messages, list) else 0
-            topic = thread.topic or "Biology question"
+            topic = thread.topic or "Science question"
             activities.append(
                 ActivityItem(
                     activity_type="tutor_session",

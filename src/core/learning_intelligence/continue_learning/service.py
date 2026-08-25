@@ -157,7 +157,7 @@ class ContinueLearningService:
         tutor_card = LearningCard(
             id="empty_ask_tutor",
             title="Ask the Tutor",
-            description="Have a question? Ask our AI tutor for help with any biology topic.",
+            description="Have a question? Ask our AI tutor for help with any science topic.",
             action_type=LearningActionType.ASK_TUTOR,
             priority_score=50.0,
             estimated_minutes=ACTIVITY_DURATION_LOOKUP.get(LearningActionType.ASK_TUTOR, 10),

@@ -85,7 +85,7 @@ class TutorSynthesisAgent:
 
         grade_context = f" (Grade {grade_level})" if grade_level else ""
         if language == "am":
-            lang_context = "Respond entirely in Amharic (አማርኛ). Use Amharic biology terminology."
+            lang_context = "Respond entirely in Amharic (አማርኛ). Use Amharic science terminology."
         elif language == "both":
             lang_context = (
                 "Answer in English with Amharic explanation. Provide key terms in both languages."

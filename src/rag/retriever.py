@@ -19,6 +19,7 @@ class Retriever:
         n_results: int = 5,
         grade_level: Optional[int] = None,
         topic: Optional[str] = None,
+        subject: Optional[str] = None,
     ) -> list[dict]:
         query_embedding = await self.embedder.embed_text(query)
 
@@ -27,6 +28,8 @@ class Retriever:
             filters.append({"grade_level": {"$eq": grade_level}})
         if topic:
             filters.append({"topic": {"$eq": topic}})
+        if subject:
+            filters.append({"subject": {"$eq": subject.lower()}})
 
         where_clause = None
         if len(filters) == 1:
@@ -98,7 +101,11 @@ class Retriever:
 
             header = f"[Source {i}]"
             if grade:
-                header += f" Grade {grade} Biology"
+                subject_label = meta.get("subject", "")
+                if subject_label:
+                    header += f" Grade {grade} {subject_label.title()}"
+                else:
+                    header += f" Grade {grade}"
             if unit:
                 header += f" | {unit}"
             if topic:

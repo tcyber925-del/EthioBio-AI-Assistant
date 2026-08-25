@@ -11,7 +11,7 @@ from src.schemas.streaming import TokenChunk
 
 logger = structlog.get_logger()
 
-SUMMARY_SYSTEM_PROMPT = """You are EthioBio Parent Summary Agent. Create short, readable weekly progress reports for parents.
+SUMMARY_SYSTEM_PROMPT = """You are EthioSci Parent Summary Agent. Create short, readable weekly progress reports for parents.
 Focus on:
 1. Topics studied this week
 2. Performance (scores, trends)

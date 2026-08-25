@@ -87,7 +87,7 @@ class AssessmentCreatorNode:
         grade_match = re.search(r"grade\s*(\d+)", msg, re.IGNORECASE)
         grade_level = int(grade_match.group(1)) if grade_match else 10
 
-        topic = "biology"
+        topic = "science"
         topic_keywords = [
             "photosynthesis",
             "respiration",

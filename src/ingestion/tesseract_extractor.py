@@ -1,4 +1,4 @@
-"""Tesseract-based OCR extraction for Ethiopian biology textbooks.
+"""Tesseract-based OCR extraction for Ethiopian curriculum textbooks.
 
 Handles mixed English + Amharic pages by using Tesseract's script-level
 language support. Includes image preprocessing for better accuracy.

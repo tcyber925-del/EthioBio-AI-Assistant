@@ -12,7 +12,7 @@ from src.llm.router import ModelRouter
 
 SYNTHESIS_SYSTEM_PROMPT = """You are the Evidence Synthesis Agent.
 
-Your job: digest raw evidence chunks into a structured summary for the biology tutor.
+Your job: digest raw evidence chunks into a structured summary for the science tutor.
 
 Output structure:
 1. KEY FACTS — List specific factual claims found in the evidence, grouped by topic
@@ -70,7 +70,12 @@ class TutorSynthesisAgent(BaseAgent):
             page = meta.get("page_number", 0)
             source_header = f"[{i}]"
             if grade:
-                source_header += f" Grade {grade} Biology"
+                subject_label = meta.get("subject", "")
+                source_header += (
+                    f" Grade {grade} {subject_label.title()}"
+                    if subject_label
+                    else f" Grade {grade}"
+                )
             if unit:
                 source_header += f" | {unit}"
             if section:

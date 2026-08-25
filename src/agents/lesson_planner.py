@@ -12,7 +12,7 @@ from src.schemas.streaming import TokenChunk
 logger = structlog.get_logger()
 
 LESSON_SYSTEM_PROMPT = (
-    "You are EthioBio Lesson Planner, creating biology lesson plans "
+    "You are EthioSci Lesson Planner, creating science lesson plans "
     "for Ethiopian teachers (Grades 7-12).\n\n"
     "Output a JSON object following this schema:\n"
     "{\n"
@@ -39,13 +39,13 @@ LESSON_SYSTEM_PROMPT = (
     "}\n\n"
     "Structure the lesson into distinct periods (Opening, Direct Instruction, "
     "Guided Practice, Independent Work, Closing) with clear time allocations. "
-    "Ensure content matches the Ethiopian biology curriculum "
+    "Ensure content matches the Ethiopian science curriculum "
     "for the specified grade level."
 )
 
 MISCONCEPTION_ACTIVITY_PROMPT = (
-    "You are EthioBio Misconception Remediation Specialist. "
-    "Given a biology topic and specific student misconceptions, "
+    "You are EthioSci Misconception Remediation Specialist. "
+    "Given a science topic and specific student misconceptions, "
     "create concept conflict activities that confront and resolve them.\n\n"
     "Output a JSON array:\n"
     "[\n"
@@ -62,7 +62,7 @@ MISCONCEPTION_ACTIVITY_PROMPT = (
 )
 
 DIFFERENTIATION_PROMPT = (
-    "You are EthioBio Differentiation Advisor. Given a biology lesson plan, "
+    "You are EthioSci Differentiation Advisor. Given a science lesson plan, "
     "create differentiated activities for three learner groups.\n\n"
     "Output a JSON array:\n"
     "[\n"
@@ -85,7 +85,7 @@ DIFFERENTIATION_PROMPT = (
 )
 
 DIAGRAM_SUGGESTION_PROMPT = (
-    "You are EthioBio Diagram Advisor. Suggest biology diagrams that "
+    "You are EthioSci Diagram Advisor. Suggest science diagrams that "
     "would enhance a specific lesson.\n\n"
     "Output a JSON array:\n"
     "[\n"
@@ -98,8 +98,8 @@ DIAGRAM_SUGGESTION_PROMPT = (
 )
 
 EXIT_TICKET_PROMPT = (
-    "You are EthioBio Exit Ticket Generator. Create a short "
-    "3-question exit ticket for a biology lesson.\n\n"
+    "You are EthioSci Exit Ticket Generator. Create a short "
+    "3-question exit ticket for a science lesson.\n\n"
     "Output a JSON array of question objects:\n"
     "[\n"
     "  {{\n"
@@ -125,7 +125,6 @@ def _derive_activities_from_periods(periods: list[dict]) -> list[dict]:
         }
         for p in periods
     ]
-
 
     def _push_status(self, queue: asyncio.Queue[TokenChunk | None] | None, message: str):
         if queue:
@@ -202,7 +201,7 @@ class LessonPlannerAgent(BaseAgent):
                 "Use recommended teaching strategies."
             )
 
-        user_message = f"""Create a biology lesson plan for Grade {grade_level} on topic: {topic}.
+        user_message = f"""Create a science lesson plan for Grade {grade_level} on topic: {topic}.
 Lesson duration: {duration_minutes} minutes.
 {lang_instruction}
 {context_block}
@@ -336,7 +335,7 @@ Respond with valid JSON only."""
             lang_instruction = "Generate key terms in both English and Amharic."
 
         user_message = (
-            f"Create an exit ticket for Grade {grade_level} biology lesson on {topic}.\n"
+            f"Create an exit ticket for Grade {grade_level} science lesson on {topic}.\n"
             f"{lang_instruction}\n\nRespond with valid JSON only."
         )
 
@@ -360,7 +359,7 @@ Respond with valid JSON only."""
             lang_instruction = "Generate all content in Amharic."
 
         user_message = (
-            f"Create differentiated activities for Grade {grade_level} biology lesson on {topic}.\n"
+            f"Create differentiated activities for Grade {grade_level} science lesson on {topic}.\n"
             f"Lesson explanation: {explanation[:500]}\n"
             f"{lang_instruction}\n\nRespond with valid JSON only."
         )
@@ -384,7 +383,7 @@ Respond with valid JSON only."""
             lang_instruction = "Generate all content in Amharic."
 
         user_message = (
-            f"Suggest diagrams for Grade {grade_level} biology lesson on {topic}.\n"
+            f"Suggest diagrams for Grade {grade_level} science lesson on {topic}.\n"
             f"{lang_instruction}\n\nRespond with valid JSON only."
         )
 
@@ -409,7 +408,7 @@ Respond with valid JSON only."""
 
         user_message = (
             f"Create misconception remediation activities for Grade {grade_level} "
-            f"biology lesson on {topic}.\n"
+            f"science lesson on {topic}.\n"
             f"Detected misconceptions:\n{misconceptions_json[:1000]}\n"
             f"{lang_instruction}\n\nRespond with valid JSON only."
         )

@@ -838,7 +838,7 @@ async def ask_command(update: Update, context):
 async def quiz_command(update: Update, context):
     args = context.args
     grade = context.user_data.get("grade_level", 10)
-    topic = "Biology"
+    topic = "Science"
     if args:
         if args[0].isdigit():
             grade = int(args[0])
@@ -3605,14 +3605,14 @@ async def main():
     commands = [
         BotCommand("start", "Show menu"),
         BotCommand("help", "Show help"),
-        BotCommand("ask", "Ask a biology question"),
+        BotCommand("ask", "Ask a science question"),
         BotCommand("quiz", "Generate a quiz"),
         BotCommand("grade", "Set your grade (7-12)"),
         BotCommand("language", "Set language (en/am/both)"),
         BotCommand("socratic", "Toggle Socratic mode"),
         BotCommand("hint", "Get a hint"),
         BotCommand("reveal", "Reveal the answer"),
-        BotCommand("diagram", "Generate a biology diagram"),
+        BotCommand("diagram", "Generate a science diagram"),
         BotCommand("recovery", "View recovery plans"),
         BotCommand("progress", "View your progress"),
         BotCommand("settings", "Notification settings"),

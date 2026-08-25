@@ -1,5 +1,5 @@
 """
-EthioBio AI Assistant — Curriculum Ingestion Script (PyMuPDF + OCR)
+EthioSci AI Assistant — Curriculum Ingestion Script (PyMuPDF + OCR)
 
 Scans data/textbooks/ for PDF files organized by grade,
 extracts text with PyMuPDF (best quality for Ethiopian curriculum PDFs),
@@ -154,6 +154,7 @@ def _extract_with_ocr(filepath: str, page_numbers: list[int] | None = None) -> l
 def _extract_with_pymupdf(filepath: str) -> list[dict]:
     """Extract text using PyMuPDF (fallback)."""
     import fitz
+
     pages = []
     doc = fitz.open(filepath)
     for page_num in range(len(doc)):
@@ -179,6 +180,7 @@ def _extract_with_easyocr(filepath: str, dpi: int = 100) -> list[dict]:
     import fitz
     import numpy as np
     from PIL import Image
+
     reader = easyocr.Reader(["en"], gpu=False, verbose=False)
 
     doc = fitz.open(filepath)
@@ -186,7 +188,7 @@ def _extract_with_easyocr(filepath: str, dpi: int = 100) -> list[dict]:
     results = []
 
     for i in range(total):
-        print(f"    Page {i+1}/{total}...", end=" ", flush=True)
+        print(f"    Page {i + 1}/{total}...", end=" ", flush=True)
         pix = doc[i].get_pixmap(dpi=dpi)
         img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
         img_np = np.array(img)
@@ -249,6 +251,7 @@ def _extract_with_tesseract(filepath: str) -> list[dict]:
 def extract_text_from_docx(filepath: str) -> list[dict]:
     """Extract text from a DOCX file using python-docx."""
     from docx import Document
+
     doc = Document(filepath)
     full_text = "\n".join(p.text for p in doc.paragraphs if p.text.strip())
     return [{"text": full_text, "page_number": 0}]
@@ -276,33 +279,74 @@ def detect_grade_from_path(filepath: str) -> int:
     return 0
 
 
-_ROMAN_MAP = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5,
-              "VI": 6, "VII": 7, "VIII": 8, "IX": 9, "X": 10}
+def detect_subject_from_path(filepath: str, base_dir: str) -> str:
+    """Extract the subject from the canonical `<Subject>/GradeN/` layout.
+
+    Legacy layout (`GradeN/` directly under base_dir) predates multi-subject
+    support — everything ingested that way is biology.
+    """
+    rel = os.path.relpath(filepath, base_dir)
+    parts = rel.split(os.sep)
+    if len(parts) >= 3:
+        return parts[0].strip().lower()
+    return "biology"
+
+
+_ROMAN_MAP = {
+    "I": 1,
+    "II": 2,
+    "III": 3,
+    "IV": 4,
+    "V": 5,
+    "VI": 6,
+    "VII": 7,
+    "VIII": 8,
+    "IX": 9,
+    "X": 10,
+}
+
 
 def _extract_unit(text: str) -> str:
     """Extract unit name from text (e.g. 'Unit 3: Biochemical Molecules', 'Unit I: Sub-fields of Biology')."""
     # Match "Unit N: Title" — capture capitalized title words, allowing hyphens and short prepositions
-    match = re.search(r"\bUnit\s+(\d+|[IVXLCDM]+):\s*([A-Z][A-Za-z\-]*(?:\s+(?:[A-Z][A-Za-z\-]*|[a-z]{2,4})){0,8})", text, re.IGNORECASE)
+    match = re.search(
+        r"\bUnit\s+(\d+|[IVXLCDM]+):\s*([A-Z][A-Za-z\-]*(?:\s+(?:[A-Z][A-Za-z\-]*|[a-z]{2,4})){0,8})",
+        text,
+        re.IGNORECASE,
+    )
     if match and match.start() < 200:
         num_str = match.group(1)
         name = match.group(2).strip()
-        if re.search(r'\d+\.\d+', name) or re.search(r'\b\d{2,}\b', name):
+        if re.search(r"\d+\.\d+", name) or re.search(r"\b\d{2,}\b", name):
             return ""
-        name = re.sub(r'\s+', ' ', name).strip()
+        name = re.sub(r"\s+", " ", name).strip()
         if 4 < len(name) < 80:
             num = _roman_to_int(num_str.upper()) if num_str.isalpha() else int(num_str)
             return f"Unit {num}: {name}" if num else ""
     # Match "Unit Two: Plants" (title-case word number with colon)
-    match = re.search(r"\bUnit\s+(One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten)\s*:\s*([A-Z][A-Za-z\-]*(?:\s+(?:[A-Z][A-Za-z\-]*|[a-z]{2,4})){0,8})", text)
+    match = re.search(
+        r"\bUnit\s+(One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten)\s*:\s*([A-Z][A-Za-z\-]*(?:\s+(?:[A-Z][A-Za-z\-]*|[a-z]{2,4})){0,8})",
+        text,
+    )
     if match and match.start() < 200:
         num_word = match.group(1)
         name = match.group(2).strip()
-        if re.search(r'\d+\.\d+', name) or re.search(r'\b\d{2,}\b', name):
+        if re.search(r"\d+\.\d+", name) or re.search(r"\b\d{2,}\b", name):
             return ""
-        name = re.sub(r'\s+', ' ', name).strip()
+        name = re.sub(r"\s+", " ", name).strip()
         if 4 < len(name) < 80:
-            num_map = {"ONE": 1, "TWO": 2, "THREE": 3, "FOUR": 4, "FIVE": 5,
-                       "SIX": 6, "SEVEN": 7, "EIGHT": 8, "NINE": 9, "TEN": 10}
+            num_map = {
+                "ONE": 1,
+                "TWO": 2,
+                "THREE": 3,
+                "FOUR": 4,
+                "FIVE": 5,
+                "SIX": 6,
+                "SEVEN": 7,
+                "EIGHT": 8,
+                "NINE": 9,
+                "TEN": 10,
+            }
             num = num_map.get(num_word.upper(), 0)
             return f"Unit {num}: {name}" if num else ""
     # Match "UNIT N WORD" (uppercase word form, e.g. "UNIT FOUR GENETICS")
@@ -310,9 +354,19 @@ def _extract_unit(text: str) -> str:
     if match and match.start() < 200:
         num_word = match.group(1)
         name = match.group(2).strip()
-        if name and not re.search(r'\d+\.\d+', name):
-            num_map = {"ONE": 1, "TWO": 2, "THREE": 3, "FOUR": 4, "FIVE": 5,
-                       "SIX": 6, "SEVEN": 7, "EIGHT": 8, "NINE": 9, "TEN": 10}
+        if name and not re.search(r"\d+\.\d+", name):
+            num_map = {
+                "ONE": 1,
+                "TWO": 2,
+                "THREE": 3,
+                "FOUR": 4,
+                "FIVE": 5,
+                "SIX": 6,
+                "SEVEN": 7,
+                "EIGHT": 8,
+                "NINE": 9,
+                "TEN": 10,
+            }
             num = num_map.get(num_word.upper(), 0)
             return f"Unit {num}: {name.title()}" if num else ""
     return ""
@@ -387,27 +441,27 @@ def _extract_page_number(page_text: str, pdf_page_num: int, grade: int) -> int:
     9/10/11) or in the page header (grade 12). Falls back to the PDF index
     minus the grade's front-matter page count.
     """
-    lines = page_text.strip().split('\n')
+    lines = page_text.strip().split("\n")
     if not lines:
         return max(1, pdf_page_num - _FRONT_MATTER_PAGES.get(grade, 3))
 
     # Pattern 1: standalone number in the last few lines (footer) — most reliable
     for line in reversed(lines[-3:]):
         line = line.strip()
-        if re.match(r'^\d{1,3}$', line):
+        if re.match(r"^\d{1,3}$", line):
             n = int(line)
             if 1 <= n <= 600:
                 return n
 
-    footer_region = '\n'.join(lines[-3:]).strip()
+    footer_region = "\n".join(lines[-3:]).strip()
 
-    # Pattern 2: "Grade X Biology N" (number after grade/subject)
-    m = re.search(rf'Grade\s*{grade}\s*Biology[^A-Za-z0-9]*(\d+)', footer_region)
+    # Pattern 2: "Grade X Biology N" (number after grade/subject; subject word varies)
+    m = re.search(rf"Grade\s*{grade}\s*[A-Za-z]+[^A-Za-z0-9]*(\d+)", footer_region)
     if m:
         return int(m.group(1))
 
     # Pattern 3: "N Grade X Biology" or "N | Grade X Biology" (number before grade/subject)
-    m = re.search(rf'(\d+)\s*[|\u2013\u2014\-]?\s*Grade\s*{grade}\s*Biology', footer_region)
+    m = re.search(rf"(\d+)\s*[|\u2013\u2014\-]?\s*Grade\s*{grade}", footer_region)
     if m:
         return int(m.group(1))
 
@@ -415,20 +469,20 @@ def _extract_page_number(page_text: str, pdf_page_num: int, grade: int) -> int:
     # Pattern 4: standalone number in the first few lines (header)
     for line in lines[:3]:
         line = line.strip()
-        if re.match(r'^\d{1,3}$', line):
+        if re.match(r"^\d{1,3}$", line):
             n = int(line)
             if 1 <= n <= 600:
                 return n
 
-    header_region = '\n'.join(lines[:3]).strip()
+    header_region = "\n".join(lines[:3]).strip()
 
-    # Pattern 5: "Grade X Biology N" (number after grade/subject)
-    m = re.search(rf'Grade\s*{grade}\s*Biology[^A-Za-z0-9]*(\d+)', header_region)
+    # Pattern 5: "Grade X Biology N" (number after grade/subject; subject word varies)
+    m = re.search(rf"Grade\s*{grade}\s*[A-Za-z]+[^A-Za-z0-9]*(\d+)", header_region)
     if m:
         return int(m.group(1))
 
     # Pattern 6: "N Grade X Biology" or "N | Grade X Biology" (number before grade/subject)
-    m = re.search(rf'(\d+)\s*[|\u2013\u2014\-]?\s*Grade\s*{grade}\s*Biology', header_region)
+    m = re.search(rf"(\d+)\s*[|\u2013\u2014\-]?\s*Grade\s*{grade}", header_region)
     if m:
         return int(m.group(1))
 
@@ -476,7 +530,7 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
             unit_match = re.search(r"Unit\s+(\d+|[IVXLCDM]+):\s*([A-Z][^\n]{3,60})", para)
             if unit_match:
                 name = unit_match.group(2).strip()
-                if not re.search(r'\d+\.\d+', name) and not re.search(r'\b\d{2,}\b', name):
+                if not re.search(r"\d+\.\d+", name) and not re.search(r"\b\d{2,}\b", name):
                     current_unit = f"Unit {unit_match.group(1)}: {name}"
                     current_section = ""
                     current_subtopic = ""
@@ -492,12 +546,29 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
             if page_match:
                 current_page = int(page_match.group(1))
             else:
-                page_match = re.search(r"Grade\s+\d+\s+Biology\s+(\d+)", para)
+                page_match = re.search(r"Grade\s+\d+\s+[A-Za-z]+\s+(\d+)", para)
                 if page_match:
                     current_page = int(page_match.group(1))
 
             if len(current_chunk) + len(para) > 1500 and current_chunk:
-                chunks.append({
+                chunks.append(
+                    {
+                        "text": current_chunk.strip(),
+                        "heading": _extract_heading(current_chunk),
+                        "unit": current_unit,
+                        "section": current_section,
+                        "subtopic": current_subtopic,
+                        "topic": _extract_topic(current_chunk),
+                        "page_number": current_page,
+                    }
+                )
+                current_chunk = para
+            else:
+                current_chunk += "\n\n" + para if current_chunk else para
+
+        if current_chunk:
+            chunks.append(
+                {
                     "text": current_chunk.strip(),
                     "heading": _extract_heading(current_chunk),
                     "unit": current_unit,
@@ -505,21 +576,8 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
                     "subtopic": current_subtopic,
                     "topic": _extract_topic(current_chunk),
                     "page_number": current_page,
-                })
-                current_chunk = para
-            else:
-                current_chunk += "\n\n" + para if current_chunk else para
-
-        if current_chunk:
-            chunks.append({
-                "text": current_chunk.strip(),
-                "heading": _extract_heading(current_chunk),
-                "unit": current_unit,
-                "section": current_section,
-                "subtopic": current_subtopic,
-                "topic": _extract_topic(current_chunk),
-                "page_number": current_page,
-            })
+                }
+            )
     else:
         sections = re.split(combined_pattern, text)
         current_unit = ""
@@ -533,21 +591,34 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
                 continue
 
             # Extract unit from this section's header
-            unit_match = re.search(r"(?:^|\n)\s*Unit\s+(\d+|[IVXLCDM]+|One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten):\s*([A-Z][^\n\t]{3,60})", section)
+            unit_match = re.search(
+                r"(?:^|\n)\s*Unit\s+(\d+|[IVXLCDM]+|One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten):\s*([A-Z][^\n\t]{3,60})",
+                section,
+            )
             if unit_match:
                 name = unit_match.group(2).strip()
                 # Reject TOC entries: contain section refs, page numbers, or
                 # are followed by mostly whitespace/numbers
-                if not re.search(r'\d+\.\d+', name) and not re.search(r'\b\d{2,}\b', name):
+                if not re.search(r"\d+\.\d+", name) and not re.search(r"\b\d{2,}\b", name):
                     # Check if the section after the unit header has real content (not just TOC)
-                    after_unit = section[unit_match.end():unit_match.end()+100].strip()
+                    after_unit = section[unit_match.end() : unit_match.end() + 100].strip()
                     # TOC entries are followed by whitespace and page numbers, not paragraphs
-                    if after_unit and not re.match(r'^[\s\d\t]+$', after_unit[:50]):
-                        name = re.split(r'\s{2,}|\t|•', name)[0].strip()
+                    if after_unit and not re.match(r"^[\s\d\t]+$", after_unit[:50]):
+                        name = re.split(r"\s{2,}|\t|•", name)[0].strip()
                         if len(name) < 80 and len(name) > 3:
                             raw = unit_match.group(1)
-                            _word_to_num = {"One": 1, "Two": 2, "Three": 3, "Four": 4, "Five": 5,
-                                            "Six": 6, "Seven": 7, "Eight": 8, "Nine": 9, "Ten": 10}
+                            _word_to_num = {
+                                "One": 1,
+                                "Two": 2,
+                                "Three": 3,
+                                "Four": 4,
+                                "Five": 5,
+                                "Six": 6,
+                                "Seven": 7,
+                                "Eight": 8,
+                                "Nine": 9,
+                                "Ten": 10,
+                            }
                             if raw.isdigit():
                                 unit_num = int(raw)
                             elif raw in _word_to_num:
@@ -571,7 +642,7 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
             if page_match:
                 current_page = int(page_match.group(1))
             else:
-                page_match = re.search(r"Grade\s+\d+\s+Biology\s+(\d+)", section)
+                page_match = re.search(r"Grade\s+\d+\s+[A-Za-z]+\s+(\d+)", section)
                 if page_match:
                     current_page = int(page_match.group(1))
 
@@ -587,12 +658,28 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
                     if p_match:
                         current_page = int(p_match.group(1))
                     else:
-                        p_match = re.search(r"Grade\s+\d+\s+Biology\s+(\d+)", para)
+                        p_match = re.search(r"Grade\s+\d+\s+[A-Za-z]+\s+(\d+)", para)
                         if p_match:
                             current_page = int(p_match.group(1))
 
                     if len(current) + len(para) > 1200 and current:
-                        chunks.append({
+                        chunks.append(
+                            {
+                                "text": current.strip(),
+                                "heading": _extract_heading(current),
+                                "unit": current_unit,
+                                "section": current_section,
+                                "subtopic": current_subtopic,
+                                "topic": _extract_topic(current),
+                                "page_number": current_page,
+                            }
+                        )
+                        current = para
+                    else:
+                        current += "\n\n" + para if current else para
+                if current:
+                    chunks.append(
+                        {
                             "text": current.strip(),
                             "heading": _extract_heading(current),
                             "unit": current_unit,
@@ -600,33 +687,23 @@ def chunk_text(text: str, source_type: str = "student_textbook") -> list[dict]:
                             "subtopic": current_subtopic,
                             "topic": _extract_topic(current),
                             "page_number": current_page,
-                        })
-                        current = para
-                    else:
-                        current += "\n\n" + para if current else para
-                if current:
-                    chunks.append({
-                        "text": current.strip(),
-                        "heading": _extract_heading(current),
-                        "unit": current_unit,
-                        "section": current_section,
-                        "subtopic": current_subtopic,
-                        "topic": _extract_topic(current),
-                        "page_number": current_page,
-                    })
+                        }
+                    )
             else:
                 section_unit = current_unit
                 if not section_unit:
                     section_unit = _extract_unit(section)
-                chunks.append({
-                    "text": section,
-                    "heading": _extract_heading(section),
-                    "unit": section_unit,
-                    "section": current_section,
-                    "subtopic": current_subtopic,
-                    "topic": _extract_topic(section),
-                    "page_number": current_page,
-                })
+                chunks.append(
+                    {
+                        "text": section,
+                        "heading": _extract_heading(section),
+                        "unit": section_unit,
+                        "section": current_section,
+                        "subtopic": current_subtopic,
+                        "topic": _extract_topic(section),
+                        "page_number": current_page,
+                    }
+                )
 
     filtered = [c for c in chunks if len(c["text"]) >= 50]
     return filtered
@@ -642,23 +719,51 @@ def _extract_heading(text: str) -> str:
     return lines[0][:100] if lines else ""
 
 
-def scan_files(base_dir: str) -> list[dict]:
-    """Scan the textbooks directory for curriculum files organized by grade."""
+def _files_in_grade_dir(grade_dir: str, subject: str) -> list[dict]:
+    grade = detect_grade_from_path(grade_dir)
+    if not grade:
+        return []
     files = []
-    for grade_dir in sorted(glob.glob(os.path.join(base_dir, "Grade*"))):
-        grade = detect_grade_from_path(grade_dir)
-        if not grade:
-            continue
-        for ext in SUPPORTED_EXTENSIONS:
-            for fp in sorted(glob.glob(os.path.join(grade_dir, f"*{ext}"))):
-                filename = os.path.basename(fp)
-                files.append({
+    for ext in SUPPORTED_EXTENSIONS:
+        for fp in sorted(glob.glob(os.path.join(grade_dir, f"*{ext}"))):
+            filename = os.path.basename(fp)
+            files.append(
+                {
                     "filepath": fp,
                     "filename": filename,
                     "grade_level": grade,
+                    "subject": subject,
                     "source_type": detect_source_type(filename),
                     "extension": ext,
-                })
+                }
+            )
+    return files
+
+
+def scan_files(base_dir: str) -> list[dict]:
+    """Scan the textbooks directory for curriculum files.
+
+    Canonical layout: `<Subject>/GradeN/<file>` (e.g. Chemistry/Grade10/).
+    Legacy layout: `GradeN/<file>` directly under base_dir — tagged biology.
+    """
+    files = []
+    seen = set()
+    # Canonical multi-subject layout
+    for subject_dir in sorted(glob.glob(os.path.join(base_dir, "*"))):
+        if not os.path.isdir(subject_dir):
+            continue
+        if re.search(r"Grade\d+", os.path.basename(subject_dir)):
+            continue  # legacy layout, handled below
+        subject = os.path.basename(subject_dir).strip().lower()
+        for grade_dir in sorted(glob.glob(os.path.join(subject_dir, "Grade*"))):
+            for f in _files_in_grade_dir(grade_dir, subject):
+                seen.add(f["filepath"])
+                files.append(f)
+    # Legacy layout (biology only)
+    for grade_dir in sorted(glob.glob(os.path.join(base_dir, "Grade*"))):
+        for f in _files_in_grade_dir(grade_dir, "biology"):
+            if f["filepath"] not in seen:
+                files.append(f)
     return files
 
 
@@ -675,6 +780,7 @@ async def process_file(
     grade = file_info["grade_level"]
     source_type = file_info["source_type"]
     filename = file_info["filename"]
+    subject = file_info.get("subject", "biology")
 
     if use_easyocr:
         extractor = "EasyOCR"
@@ -684,11 +790,16 @@ async def process_file(
         extractor = "PyMuPDF"
     else:
         extractor = "Docling+OCR"
-    print(f"  Processing: Grade {grade}/{filename} ({source_type}) [{extractor}]")
+    print(f"  Processing: {subject.title()} Grade {grade}/{filename} ({source_type}) [{extractor}]")
 
     try:
         if filepath.endswith(".pdf"):
-            pages = extract_text_from_pdf(filepath, use_pymupdf=use_pymupdf, use_tesseract=use_tesseract, use_easyocr=use_easyocr)
+            pages = extract_text_from_pdf(
+                filepath,
+                use_pymupdf=use_pymupdf,
+                use_tesseract=use_tesseract,
+                use_easyocr=use_easyocr,
+            )
         elif filepath.endswith(".docx"):
             pages = extract_text_from_docx(filepath)
         elif filepath.endswith(".txt"):
@@ -752,13 +863,13 @@ async def process_file(
     for chunk in chunks:
         if not chunk.get("unit"):
             chunk["unit"] = _extract_unit(chunk["text"])
-        if not chunk.get("unit") and chunk.get("section"):
+        if not chunk.get("unit") and subject == "biology" and chunk.get("section"):
             sec_match = re.match(r"^(\d+)", chunk["section"])
             if sec_match and sec_match.group(1) in _SECTION_UNIT_MAP:
                 chunk["unit"] = _SECTION_UNIT_MAP[sec_match.group(1)]
         if not chunk.get("unit"):
             sec_match = re.search(r"(?:^|\n)\s*(\d+)\.\d", chunk["text"])
-            if sec_match and sec_match.group(1) in _SECTION_UNIT_MAP:
+            if sec_match and subject == "biology" and sec_match.group(1) in _SECTION_UNIT_MAP:
                 chunk["unit"] = _SECTION_UNIT_MAP[sec_match.group(1)]
         if not chunk.get("heading"):
             chunk["heading"] = _extract_heading(chunk["text"])
@@ -767,20 +878,24 @@ async def process_file(
     metadatas = []
     ids = []
 
+    id_prefix = "" if subject == "biology" else f"{subject}_"
     for i, chunk in enumerate(chunks):
-        chunk_id = f"g{grade}_{filename}_{i}"
-        metadatas.append({
-            "grade_level": grade,
-            "source_type": source_type,
-            "source_file": filename,
-            "unit": chunk.get("unit", "") or "",
-            "section": chunk.get("section", "") or "",
-            "subtopic": chunk.get("subtopic", "") or "",
-            "topic": chunk.get("topic", "") or _derive_topic_from_unit(chunk.get("unit", "")),
-            "heading": chunk.get("heading", "") or chunk["text"][:80],
-            "page_number": chunk.get("page_number", 0) or 0,
-            "chunk_index": i,
-        })
+        chunk_id = f"{id_prefix}g{grade}_{filename}_{i}"
+        metadatas.append(
+            {
+                "grade_level": grade,
+                "subject": subject,
+                "source_type": source_type,
+                "source_file": filename,
+                "unit": chunk.get("unit", "") or "",
+                "section": chunk.get("section", "") or "",
+                "subtopic": chunk.get("subtopic", "") or "",
+                "topic": chunk.get("topic", "") or _derive_topic_from_unit(chunk.get("unit", "")),
+                "heading": chunk.get("heading", "") or chunk["text"][:80],
+                "page_number": chunk.get("page_number", 0) or 0,
+                "chunk_index": i,
+            }
+        )
         ids.append(chunk_id)
 
     try:
@@ -803,28 +918,34 @@ async def main():
         description="Ingest curriculum materials into RAG vector store"
     )
     parser.add_argument(
-        "--textbooks-dir", default=TEXTBOOKS_DIR,
-        help="Path to textbooks directory"
+        "--textbooks-dir", default=TEXTBOOKS_DIR, help="Path to textbooks directory"
     )
     parser.add_argument("--clear", action="store_true", help="Clear all vectors before ingestion")
     parser.add_argument("--stats", action="store_true", help="Show store statistics")
     parser.add_argument("--query", type=str, help="Test retrieval with a query string")
     parser.add_argument("--grade", type=int, help="Filter query by grade level")
     parser.add_argument(
-        "--use-docling", action="store_true",
-        help="Use Docling+OCR instead of PyMuPDF"
+        "--subject",
+        type=str,
+        help="Filter files/query by subject (e.g. biology, chemistry, physics, mathematics)",
     )
     parser.add_argument(
-        "--use-tesseract", action="store_true",
-        help="Use Tesseract OCR with English+Ethiopic support (best for mixed Amharic/English PDFs)"
+        "--use-docling", action="store_true", help="Use Docling+OCR instead of PyMuPDF"
     )
     parser.add_argument(
-        "--use-easyocr", action="store_true",
-        help="Use EasyOCR (English only, no Amharic model). Best for garbled English PDFs."
+        "--use-tesseract",
+        action="store_true",
+        help="Use Tesseract OCR with English+Ethiopic support (best for mixed Amharic/English PDFs)",
     )
     parser.add_argument(
-        "--ollama-embed", action="store_true",
-        help="Use Ollama for embeddings instead of local model"
+        "--use-easyocr",
+        action="store_true",
+        help="Use EasyOCR (English only, no Amharic model). Best for garbled English PDFs.",
+    )
+    parser.add_argument(
+        "--ollama-embed",
+        action="store_true",
+        help="Use Ollama for embeddings instead of local model",
     )
 
     args = parser.parse_args()
@@ -857,18 +978,22 @@ async def main():
 
     if args.query:
         from src.rag.retriever import Retriever
-        print(f"Testing retrieval for: \"{args.query}\"")
+
+        print(f'Testing retrieval for: "{args.query}"')
         retriever = Retriever(embedder=embedder, vector_store=store)
         results = await retriever.retrieve(
             query=args.query,
             n_results=3,
             grade_level=args.grade,
+            subject=args.subject,
         )
         print(f"   Retrieved {len(results)} results")
         for i, r in enumerate(results, 1):
             meta = r.get("metadata", {})
-            src = meta.get('source_file', '?')
-            print(f"\n   [{i}] Grade {meta.get('grade_level', '?')} - {src}")
+            src = meta.get("source_file", "?")
+            print(
+                f"\n   [{i}] {meta.get('subject', 'biology').title()} Grade {meta.get('grade_level', '?')} - {src}"
+            )
             print(f"       {r['content'][:150]}...")
             print(f"       Score: {r.get('score', 0.0):.3f}")
         return
@@ -879,12 +1004,18 @@ async def main():
         files = [f for f in files if f["grade_level"] == args.grade]
         print(f"Filtered to Grade {args.grade} only")
 
+    if args.subject:
+        subject = args.subject.lower()
+        files = [f for f in files if f["subject"] == subject]
+        print(f"Filtered to {subject.title()} only")
+
     if not files:
         print(f"No supported files found in {args.textbooks_dir}")
         print(f"   Supported: {', '.join(SUPPORTED_EXTENSIONS)}")
         print("   Expected structure:")
-        print(f"     {args.textbooks_dir}/Grade7/biology_textbook.pdf")
-        print(f"     {args.textbooks_dir}/Grade9/biology_teachers_guide.docx")
+        print(f"     {args.textbooks_dir}/Biology/Grade9/biology_textbook.pdf")
+        print(f"     {args.textbooks_dir}/Chemistry/Grade10/chemistry_textbook.pdf")
+        print("   (legacy layout Grade9/file.pdf is still supported, tagged as biology)")
         sys.exit(0)
 
     use_pymupdf = not (args.use_docling or args.use_tesseract or args.use_easyocr)
@@ -901,12 +1032,20 @@ async def main():
     print(f"Found {len(files)} files to process (extractor: {label})\n")
     total_chunks = 0
     for f in files:
-        chunks = await process_file(f, embedder, store, use_pymupdf=use_pymupdf, use_tesseract=use_tesseract, use_easyocr=use_easyocr)
+        chunks = await process_file(
+            f,
+            embedder,
+            store,
+            use_pymupdf=use_pymupdf,
+            use_tesseract=use_tesseract,
+            use_easyocr=use_easyocr,
+        )
         total_chunks += chunks
 
     # Rebuild BM25 index for hybrid search
     print("\nRebuilding BM25 index...")
     from src.retrieval.adapter import VectorStoreAdapter
+
     adapter = VectorStoreAdapter(vector_store=store)
     await adapter.build_bm25_index()
     print("   BM25 index rebuilt")
@@ -920,4 +1059,5 @@ async def main():
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())

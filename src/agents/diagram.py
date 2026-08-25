@@ -20,14 +20,14 @@ PANEL_CONNECTIVES = re.compile(
     re.IGNORECASE,
 )
 
-DIAGRAM_SYSTEM_PROMPT = """You are EthioBio Diagram Generator, creating
-visual biology diagrams for Ethiopian students (Grades 7-12).
+DIAGRAM_SYSTEM_PROMPT = """You are EthioSci Diagram Generator, creating
+visual science diagrams for Ethiopian students (Grades 7-12).
 
-Generate an SVG diagram of a biology structure based on the user's request. The diagram must:
+Generate an SVG diagram of a scientific structure based on the user's request. The diagram must:
 - Be valid SVG markup (no HTML wrapping, no markdown fences in the svg value)
 - Use clear colors and label positions
 - Fit within a 800x600 viewBox
-- Include visual elements (shapes, lines, curves) that represent the biology structure
+- Include visual elements (shapes, lines, curves) that represent the structure
 - Have labeled parts with leader lines connecting labels to structures
 - Be age-appropriate for the specified difficulty level
 
@@ -196,7 +196,7 @@ class DiagramAgent(BaseAgent):
             panels = []
             for i, sub in enumerate(sub_prompts):
                 if token_queue is not None:
-                    self._push_status(token_queue, f"Drawing panel {i+1}...")
+                    self._push_status(token_queue, f"Drawing panel {i + 1}...")
                 panel = await self.generate_panel(
                     sub_prompt=sub,
                     panel_index=i,
@@ -244,7 +244,7 @@ class DiagramAgent(BaseAgent):
         except Exception:
             logger.warning("rag_retrieval_failed", exc_info=True)
 
-        user_message = f"""Create a biology diagram for topic: {topic}.
+        user_message = f"""Create a science diagram for topic: {topic}.
 User request: {prompt}
 Difficulty level: {difficulty}
 Grade level: {grade}

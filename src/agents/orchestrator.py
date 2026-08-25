@@ -11,9 +11,9 @@ class OrchestratorAgent(BaseAgent):
         super().__init__(llm_router, name="orchestrator")
 
     async def classify_intent(self, user_message: str) -> dict:
-        system_prompt = """You are an intent classifier for an Ethiopian biology education assistant.
+        system_prompt = """You are an intent classifier for an Ethiopian science education assistant.
 Classify the user's message into exactly one of these intents:
-- "tutor": biology question, concept explanation, homework help
+- "tutor": science question (biology, chemistry, physics, mathematics), concept explanation, homework help
 - "quiz": wants a quiz, test, practice questions
 - "lesson_plan": wants a lesson plan created
 - "progress": wants to check progress or performance

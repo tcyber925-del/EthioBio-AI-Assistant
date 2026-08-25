@@ -4,13 +4,13 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    app_name: str = "EthioBio AI Assistant"
+    app_name: str = "EthioSci AI Assistant"
     debug: bool = False
     log_level: str = "INFO"
     secret_key: str = "change-me"
 
-    database_url: str = "postgresql+asyncpg://ethiobio:ethiobio_pass@localhost:5432/ethiobio"
-    database_sync_url: str = "postgresql://ethiobio:ethiobio_pass@localhost:5432/ethiobio"
+    database_url: str = "postgresql+asyncpg://ethiosci:ethiosci_pass@localhost:5432/ethiosci"
+    database_sync_url: str = "postgresql://ethiosci:ethiosci_pass@localhost:5432/ethiosci"
 
     redis_url: str = "redis://localhost:6379/0"
 
@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     provider_openai_compatible_name: Optional[str] = None
 
     vector_store_path: str = "./data/vectors_new"
-    collection_name: str = "ethiobio_curriculum"
+    collection_name: str = "ethiosci_curriculum"
     store_backend: str = "pgvector"  # always pgvector
     enable_reranker: bool = True  # cross-encoder reranker; disable on memory-limited hosts
 
@@ -118,7 +118,7 @@ class Settings(BaseSettings):
     drift_alert_threshold: float = 0.05
 
     # Observability settings
-    otel_service_name: str = "ethiobio"
+    otel_service_name: str = "ethiosci"
     otel_endpoint: Optional[str] = None
     otel_traces_sampling_rate: float = 1.0
     sentry_dsn: Optional[str] = None  # Sentry free tier (https://sentry.io)
@@ -135,7 +135,7 @@ class Settings(BaseSettings):
     # LangSmith (https://smith.langchain.com) — agent tracing & evaluation
     langsmith_api_key: Optional[str] = None
     langsmith_endpoint: str = "https://api.smith.langchain.com"
-    langsmith_project: str = "ethiobio"
+    langsmith_project: str = "ethiosci"
     langsmith_tracing_enabled: bool = False
     langsmith_sampling_rate: float = 0.1
     langsmith_workspace_id: Optional[str] = None  # org-scoped API keys

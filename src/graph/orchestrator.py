@@ -1,5 +1,5 @@
 """
-EthioBio AI Assistant — LangGraph orchestration graph.
+EthioSci AI Assistant — LangGraph orchestration graph.
 
 Builds the graph with dependency-injected nodes (router, adapter).
 Supports both the legacy pipeline and the new Agentic RAG pipeline.
@@ -48,9 +48,9 @@ async def _invoke_graph_traced(graph, initial_state, config):
 
 
 if _langsmith is not None:
-    _invoke_graph_traced = _langsmith.traceable(
-        name="ethiobio.pipeline", run_type="chain"
-    )(_invoke_graph_traced)
+    _invoke_graph_traced = _langsmith.traceable(name="ethiosci.pipeline", run_type="chain")(
+        _invoke_graph_traced
+    )
 
 
 def build_agentic_graph(
@@ -205,8 +205,8 @@ async def run_graph(
 
     graph = build_unified_graph(router, adapter, db_session_factory=session_maker)
     config = {
-        "configurable": {"thread_id": f"ethiobio-{session_id or 'default'}"},
-        "tags": ["ethiobio", "agentic-rag"],
+        "configurable": {"thread_id": f"ethiosci-{session_id or 'default'}"},
+        "tags": ["ethiosci", "agentic-rag"],
         "metadata": {
             "user_id": str(user_id) if user_id else None,
             "session_id": session_id,
@@ -223,9 +223,7 @@ async def run_graph(
     try:
         if trace_graph:
             with traced_run(enabled=True, metadata={"pipeline_trace_id": trace.trace_id}):
-                result, langsmith_run_id = await _invoke_graph_traced(
-                    graph, initial_state, config
-                )
+                result, langsmith_run_id = await _invoke_graph_traced(graph, initial_state, config)
         else:
             result = await graph.ainvoke(initial_state, config)
         metadata = {

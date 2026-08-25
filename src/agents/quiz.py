@@ -12,9 +12,9 @@ from src.schemas.streaming import TokenChunk
 
 logger = structlog.get_logger()
 
-QUIZ_SYSTEM_PROMPT = """You are EthioBio Quiz Generator, creating assessments for Ethiopian biology students (Grades 7-12).
+QUIZ_SYSTEM_PROMPT = """You are EthioSci Quiz Generator, creating assessments for Ethiopian science students (Grades 7-12).
 
-CRITICAL RULE: Generate questions BASED STRICTLY on the Ethiopian biology curriculum content provided below. Do NOT use your general biology knowledge. Every question and correct answer must be directly derivable from the curriculum context.
+CRITICAL RULE: Generate questions BASED STRICTLY on the Ethiopian science curriculum content provided below. Do NOT use your general science knowledge. Every question and correct answer must be directly derivable from the curriculum context.
 
 Curriculum Context:
 {context}
@@ -73,7 +73,7 @@ class QuizAgent(BaseAgent):
         context = (
             self.adapter.format_context(results)
             if results
-            else f"Grade {grade_level} biology curriculum - {topic}"
+            else f"Grade {grade_level} science curriculum - {topic}"
         )
         system_prompt = QUIZ_SYSTEM_PROMPT.replace("{context}", context)
 
@@ -116,7 +116,7 @@ STUDENT WEAK TOPICS (focus on these):
             if hints:
                 diff_instruction = " ".join(hints)
 
-        user_message = f"""Generate a biology quiz for Grade {grade_level} on topic: {topic}.
+        user_message = f"""Generate a science quiz for Grade {grade_level} on topic: {topic}.
 - Question count: {question_count}
 - Question types: {types_str}
 - {lang_instruction}

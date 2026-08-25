@@ -144,7 +144,7 @@ def calculate_groundedness(claims: list[Claim]) -> float:
 
 
 LLM_VERIFY_PROMPT = (
-    "You are a strict but fair biology fact-checker. Given the student's "
+    "You are a strict but fair science fact-checker. Given the student's "
     "question, the tutor's draft answer, and the retrieved evidence, determine "
     "whether each claim in the answer is supported.\n\n"
     "Return a JSON object:\n"

@@ -96,7 +96,7 @@ class DiagramAttemptResponse(SchemaModel):
 
 class DiagramExportRequest(SchemaModel):
     svg: str
-    title: str = "Biology Diagram"
+    title: str = "Science Diagram"
     topic: str = ""
     grade: int = 10
     labels: list[DiagramLabel] = []
@@ -144,7 +144,7 @@ class ImageValidationResponse(SchemaModel):
 class StyleTransferRequest(SchemaModel):
     svg: str
     reference_image_base64: str = ""
-    prompt: str = "Apply textbook biology diagram style, clean lines, educational formatting"
+    prompt: str = "Apply textbook science diagram style, clean lines, educational formatting"
 
 
 class StyleTransferResponse(SchemaModel):

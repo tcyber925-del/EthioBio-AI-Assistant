@@ -18,7 +18,7 @@ def _svg_to_png_bytes(svg: str, width: int = 800, height: int = 600) -> Optional
 
 def export_diagram_to_docx(
     svg: str,
-    title: str = "Biology Diagram",
+    title: str = "Science Diagram",
     topic: str = "",
     grade: int = 10,
     labels: Optional[list[dict]] = None,
@@ -63,7 +63,7 @@ def export_diagram_to_docx(
 class DiagramPDF(FPDF):
     def header(self):
         self.set_font("Helvetica", "B", 10)
-        self.cell(0, 8, "EthioBio AI Assistant", align="C", new_x="LMARGIN", new_y="NEXT")
+        self.cell(0, 8, "EthioSci AI Assistant", align="C", new_x="LMARGIN", new_y="NEXT")
         self.ln(2)
 
     def footer(self):
@@ -74,7 +74,7 @@ class DiagramPDF(FPDF):
 
 def export_diagram_to_pdf(
     svg: str,
-    title: str = "Biology Diagram",
+    title: str = "Science Diagram",
     topic: str = "",
     grade: int = 10,
     labels: Optional[list[dict]] = None,

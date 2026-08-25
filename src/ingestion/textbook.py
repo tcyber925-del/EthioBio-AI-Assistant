@@ -56,12 +56,12 @@ def extract_page_number(page_text: str, pdf_page_num: int, grade: int) -> int:
     footer_region = "\n".join(lines[-3:]).strip()
 
     # Pattern 2: "Grade X Biology N" (number after grade/subject)
-    m = re.search(rf"Grade\s*{grade}\s*Biology[^A-Za-z0-9]*(\d+)", footer_region)
+    m = re.search(rf"Grade\s*{grade}\s*[A-Za-z]+[^A-Za-z0-9]*(\d+)", footer_region)
     if m:
         return int(m.group(1))
 
     # Pattern 3: "N Grade X Biology" or "N | Grade X Biology" (number before grade/subject)
-    m = re.search(rf"(\d+)\s*[|\u2013\u2014\-]?\s*Grade\s*{grade}\s*Biology", footer_region)
+    m = re.search(rf"(\d+)\s*[|\u2013\u2014\-]?\s*Grade\s*{grade}", footer_region)
     if m:
         return int(m.group(1))
 
@@ -77,12 +77,12 @@ def extract_page_number(page_text: str, pdf_page_num: int, grade: int) -> int:
     header_region = "\n".join(lines[:3]).strip()
 
     # Pattern 5: "Grade X Biology N" (number after grade/subject)
-    m = re.search(rf"Grade\s*{grade}\s*Biology[^A-Za-z0-9]*(\d+)", header_region)
+    m = re.search(rf"Grade\s*{grade}\s*[A-Za-z]+[^A-Za-z0-9]*(\d+)", header_region)
     if m:
         return int(m.group(1))
 
     # Pattern 6: "N Grade X Biology" or "N | Grade X Biology" (number before grade/subject)
-    m = re.search(rf"(\d+)\s*[|\u2013\u2014\-]?\s*Grade\s*{grade}\s*Biology", header_region)
+    m = re.search(rf"(\d+)\s*[|\u2013\u2014\-]?\s*Grade\s*{grade}", header_region)
     if m:
         return int(m.group(1))
 
@@ -132,8 +132,16 @@ def extract_unit(text: str) -> str:
         name = re.sub(r"\s+", " ", name).strip()
         if 4 < len(name) < 80:
             num_map = {
-                "ONE": 1, "TWO": 2, "THREE": 3, "FOUR": 4, "FIVE": 5,
-                "SIX": 6, "SEVEN": 7, "EIGHT": 8, "NINE": 9, "TEN": 10,
+                "ONE": 1,
+                "TWO": 2,
+                "THREE": 3,
+                "FOUR": 4,
+                "FIVE": 5,
+                "SIX": 6,
+                "SEVEN": 7,
+                "EIGHT": 8,
+                "NINE": 9,
+                "TEN": 10,
             }
             num = num_map.get(num_word.upper(), 0)
             return f"Unit {num}: {name}" if num else ""
@@ -143,8 +151,16 @@ def extract_unit(text: str) -> str:
         name = match.group(2).strip()
         if name and not re.search(r"\d+\.\d+", name):
             num_map = {
-                "ONE": 1, "TWO": 2, "THREE": 3, "FOUR": 4, "FIVE": 5,
-                "SIX": 6, "SEVEN": 7, "EIGHT": 8, "NINE": 9, "TEN": 10,
+                "ONE": 1,
+                "TWO": 2,
+                "THREE": 3,
+                "FOUR": 4,
+                "FIVE": 5,
+                "SIX": 6,
+                "SEVEN": 7,
+                "EIGHT": 8,
+                "NINE": 9,
+                "TEN": 10,
             }
             num = num_map.get(num_word.upper(), 0)
             return f"Unit {num}: {name.title()}" if num else ""

@@ -71,6 +71,7 @@ class BM25Index:
         n_results: int = 20,
         grade_level: Optional[int] = None,
         source_type: Optional[str] = None,
+        subject: Optional[str] = None,
     ) -> list[dict]:
         """Search BM25 index, optionally filtered by metadata.
 
@@ -90,6 +91,9 @@ class BM25Index:
             if grade_level and meta.get("grade_level") != grade_level:
                 continue
             if source_type and meta.get("source_type") != source_type:
+                continue
+            # Legacy chunks without a subject are biology
+            if subject and meta.get("subject", "biology") != subject:
                 continue
             candidates.append(
                 {

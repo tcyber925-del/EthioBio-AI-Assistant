@@ -1,12 +1,12 @@
 {
   "start": {
     "dashboard_login": "Your dashboard login code: <b>{code}</b>\n\nThis code expires in 5 minutes. Enter it on the login page.",
-    "welcome": "Welcome to EthioBio AI Assistant!\n\nI'm your biology learning assistant for Ethiopian Grades 7-12.\n\nSend me any biology question, or use the menu below:"
+    "welcome": "Welcome to EthioSci AI Assistant!\n\nI'm your science learning assistant (biology, chemistry, physics, math) for Ethiopian Grades 7-12.\n\nSend me any science question, or use the menu below:"
   },
   "common": {
     "error": "Sorry, I encountered an error. Please try again.",
     "cancelled": "Cancelled.",
-    "usage_ask": "Usage: /ask <your biology question>",
+    "usage_ask": "Usage: /ask <your science question>",
     "thinking": "Thinking...",
     "generating": "Generating...",
     "choose_option": "Choose an option:",
@@ -20,10 +20,10 @@
     "grade_label": "Grade {grade}"
   },
   "help": {
-    "text": "EthioBio AI Assistant — Help\n\nCommands:\n/start — Show menu\n/help — This message\n/ask <question> — Ask a biology question\n/quiz [grade] [topic] — Generate a quiz\n/grade <7-12> — Set your default grade\n/language <en|am|both> — Set language\n/socratic — Toggle Socratic tutoring mode\n/hint — Get the next hint level (1-3) in Socratic mode\n/cancel — Cancel current operation\n\nOr just type any biology question to get started!"
+    "text": "EthioSci AI Assistant — Help\n\nCommands:\n/start — Show menu\n/help — This message\n/ask <question> — Ask a science question\n/quiz [grade] [topic] — Generate a quiz\n/grade <7-12> — Set your default grade\n/language <en|am|both> — Set language\n/socratic — Toggle Socratic tutoring mode\n/hint — Get the next hint level (1-3) in Socratic mode\n/cancel — Cancel current operation\n\nOr just type any science question to get started!"
   },
   "tutor": {
-    "grade_prompt": "Grade {grade} selected. Send me your biology question. I'll help you understand it!",
+    "grade_prompt": "Grade {grade} selected. Send me your science question. I'll help you understand it!",
     "grade_select": "Select your grade level:",
     "no_question": "No active question. Ask a question first with /ask or select Tutor from the menu.",
     "socratic_on": "Socratic Mode is now ON.\n\nIn Socratic mode, I'll guide you through questions rather than giving direct answers — helping you discover the answer yourself!",
@@ -65,7 +65,7 @@
   },
   "diagram": {
     "grade_prompt": "Select your grade level for the diagram:",
-    "topic_prompt": "Grade {grade} selected. Describe the biology diagram you want:\n(e.g., Draw a plant cell, Show the heart structure, Compare mitosis and meiosis)",
+    "topic_prompt": "Grade {grade} selected. Describe the science diagram you want:\n(e.g., Draw a plant cell, Show the heart structure, Compare mitosis and meiosis)",
     "generating": "Generating your diagram...",
     "grade_label": "Grade",
     "labels_count": "Labels",
@@ -76,7 +76,7 @@
     "grade_prompt": "Select grade level:",
     "generating": "Creating lesson plan...",
     "error": "Error creating lesson plan.",
-    "topic_prompt": "Grade {grade} selected. What biology topic?",
+    "topic_prompt": "Grade {grade} selected. What science topic?",
     "features_prompt": "Grade {grade} selected. Choose features to include:",
     "features_done": "✅ Done — enter topic",
     "feature_exit_ticket": "Exit Ticket",
@@ -187,7 +187,7 @@
   "choose_grade": "Choose your grade:",
   "choose_topic": "Choose a topic:",
   "choose_quiz_type": "Choose quiz type:",
-  "welcome": "Welcome to EthioBio AI Assistant!\n\nI'm your biology learning assistant for Ethiopian Grades 7-12.\n\nSend me any biology question, or use the menu below:",
+  "welcome": "Welcome to EthioSci AI Assistant!\n\nI'm your science learning assistant (biology, chemistry, physics, math) for Ethiopian Grades 7-12.\n\nSend me any science question, or use the menu below:",
   "copilot": {
     "title": "🤖 Teacher Copilot",
     "prompt": "Ask me anything about your classroom.\n\nExamples:\n• Who needs attention today?\n• Why is a student struggling?\n• Create a 5-question quiz on genetics\n• Summarize classroom readiness\n• What interventions work for cell division?",

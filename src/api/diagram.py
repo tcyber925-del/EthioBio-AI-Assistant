@@ -296,7 +296,7 @@ async def auto_label_textbook_diagram(
     try:
         result = await agent.generate(
             prompt=diagram.caption or diagram.topic,
-            topic=diagram.topic or "biology",
+            topic=diagram.topic or "science",
             difficulty="intermediate",
             grade=diagram.grade_level,
             session=session,
@@ -342,7 +342,7 @@ async def auto_label_batch(
             try:
                 gen_result = await agent.generate(
                     prompt=diagram.caption or diagram.topic,
-                    topic=diagram.topic or "biology",
+                    topic=diagram.topic or "science",
                     difficulty="intermediate",
                     grade=diagram.grade_level,
                     session=session,
@@ -457,8 +457,8 @@ async def export_diagram(request: DiagramExportRequest):
 @router.post("/sketch", response_model=SketchToDiagramResponse)
 async def sketch_to_diagram(
     file: UploadFile = File(...),
-    topic: str = Form("biology"),
-    prompt: str = Form("Transform this biology sketch into a clean educational diagram"),
+    topic: str = Form("science"),
+    prompt: str = Form("Transform this science sketch into a clean educational diagram"),
 ):
     from src.config import Settings
 

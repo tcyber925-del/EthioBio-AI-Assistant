@@ -24,7 +24,7 @@ class OpenRouterProvider(OpenAIProvider):
         self._available_models: list[str] | None = None
         self._extra_headers = {
             "HTTP-Referer": "https://ethiobio.ai",
-            "X-Title": "EthioBio AI Assistant",
+            "X-Title": "EthioSci AI Assistant",
         }
 
     async def chat(

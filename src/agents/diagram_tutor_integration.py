@@ -1,6 +1,6 @@
 """Integration between Tutor and Diagram generation.
 
-When the tutor answers a biology question, this module checks if a matching
+When the tutor answers a science question, this module checks if a matching
 textbook diagram exists and generates a diagram to accompany the response.
 """
 
@@ -16,6 +16,7 @@ logger = structlog.get_logger()
 
 DIAGRAM_TOPICS = frozenset(
     {
+        # Biology
         "cells",
         "organ systems",
         "genetics",
@@ -28,6 +29,23 @@ DIAGRAM_TOPICS = frozenset(
         "zoology",
         "biochemistry",
         "biotechnology",
+        # Chemistry
+        "atomic structure",
+        "chemical bonds",
+        "periodic table",
+        "chemical reactions",
+        "acids and bases",
+        # Physics
+        "circuits",
+        "forces",
+        "optics",
+        "waves",
+        "electromagnetism",
+        # Mathematics
+        "geometry",
+        "graphs",
+        "functions",
+        "triangles",
     }
 )
 
@@ -215,7 +233,7 @@ async def generate_tutor_diagram(
     try:
         result = await agent.generate(
             prompt=prompt,
-            topic=topic or "biology",
+            topic=topic or "science",
             difficulty="beginner",
             grade=grade_level or 10,
         )

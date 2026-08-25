@@ -8,11 +8,11 @@ from src.llm.router import ModelRouter
 
 logger = structlog.get_logger()
 
-SAFETY_SYSTEM_PROMPT = """You are EthioBio Safety Agent, responsible for reviewing content for:
-1. Factual accuracy (especially biology curriculum alignment)
+SAFETY_SYSTEM_PROMPT = """You are EthioSci Safety Agent, responsible for reviewing content for:
+1. Factual accuracy (especially science curriculum alignment)
 2. Grade-appropriateness (content suitable for Grade 7-12 students)
 3. Safety (no harmful, dangerous, or inappropriate content)
-4. Curriculum match (does it follow Ethiopian biology curriculum)
+4. Curriculum match (does it follow Ethiopian science curriculum)
 5. Clarity (is the explanation clear and understandable)
 6. Language quality (proper {language})
 
@@ -38,7 +38,7 @@ class SafetyAgent(BaseAgent):
         lang_name = lang_names.get(language, "English")
         safety_prompt = SAFETY_SYSTEM_PROMPT.format(language=lang_name)
         user_message = (
-            f"Review the following biology content{grade_context} "
+            f"Review the following science content{grade_context} "
             "for safety, accuracy, and appropriateness.\n\n"
             f"Content to review:\n{content}"
         )

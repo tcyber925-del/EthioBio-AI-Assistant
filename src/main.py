@@ -260,7 +260,7 @@ async def lifespan(app: FastAPI):
                 commands = [
                     BotCommand("start", "Show menu"),
                     BotCommand("help", "Show help"),
-                    BotCommand("ask", "Ask a biology question"),
+                    BotCommand("ask", "Ask a science question"),
                     BotCommand("quiz", "Generate a quiz"),
                     BotCommand("grade", "Set your grade (7-12)"),
                     BotCommand("language", "Set language (en/am/both)"),

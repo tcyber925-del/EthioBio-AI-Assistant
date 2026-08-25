@@ -11,7 +11,7 @@ from src.llm.router import ModelRouter
 logger = structlog.get_logger()
 
 UNIT_OUTLINE_PROMPT = (
-    "You are EthioBio Unit Planner. Given a biology topic, grade level, "
+    "You are EthioSci Unit Planner. Given a science topic, grade level, "
     "and number of days, create a day-by-day unit outline.\n\n"
     "Output a JSON array:\n"
     "[\n"
@@ -113,7 +113,7 @@ class UnitPlannerAgent(BaseAgent):
     ) -> list[dict]:
         user_message = (
             f"Create a {days}-day unit outline for Grade {grade_level} "
-            f"biology on topic: {topic}.\n"
+            f"science on topic: {topic}.\n"
             f"Unit title: {unit_title}\n"
             f"Each day should be {duration_minutes} minutes.\n\n"
             f"Respond with valid JSON only."

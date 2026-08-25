@@ -8,7 +8,7 @@ from src.llm.router import ModelRouter
 
 logger = structlog.get_logger()
 
-PROGRESS_SYSTEM_PROMPT = """You are EthioBio Progress Analyst. Analyze student performance data and produce insights.
+PROGRESS_SYSTEM_PROMPT = """You are EthioSci Progress Analyst. Analyze student performance data and produce insights.
 Identify weak areas, track improvement or decline, and make recommendations."""
 
 

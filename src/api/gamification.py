@@ -81,7 +81,7 @@ ACHIEVEMENT_DEFINITIONS = {
         "condition": "xp >= 1000",
     },
     "level_5": {
-        "title": "Biology Expert",
+        "title": "Science Expert",
         "description": "Reach Level 5",
         "icon": "🧬",
         "condition": "level >= 5",

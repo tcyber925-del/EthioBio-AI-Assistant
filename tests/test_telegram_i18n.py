@@ -46,7 +46,7 @@ def test_t_returns_amharic():
 def test_t_returns_namespaced():
     _clear_cache()
     result = t("help.text")
-    assert "EthioBio" in result
+    assert "EthioSci" in result
 
 
 def test_t_interpolation():
@@ -64,7 +64,7 @@ def test_t_missing_key_returns_key():
 def test_t_missing_lang_falls_back_to_english():
     _clear_cache()
     result = t("help.text", "xx")
-    assert "EthioBio" in result
+    assert "EthioSci" in result
 
 
 def test_get_flat_key():

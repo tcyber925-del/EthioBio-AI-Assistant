@@ -10,4 +10,4 @@ async def test_config_validate_endpoint():
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get("/config/validate")
         assert response.status_code == 200
-        assert response.json() == {"status": "valid", "service": "ethiobio"}
+        assert response.json() == {"status": "valid", "service": "ethiosci"}

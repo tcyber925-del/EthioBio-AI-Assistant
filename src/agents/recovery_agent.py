@@ -13,8 +13,8 @@ from src.schemas.streaming import TokenChunk
 
 logger = structlog.get_logger()
 
-RECOVERY_SYSTEM_PROMPT = """You are EthioBio Recovery Plan Generator, creating personalized
-remediation plans for Ethiopian biology students (Grades 7-12) based on
+RECOVERY_SYSTEM_PROMPT = """You are EthioSci Recovery Plan Generator, creating personalized
+remediation plans for Ethiopian science students (Grades 7-12) based on
 their detected weak topics.
 
 Given a student's weak topics with severity scores and misconception
@@ -31,7 +31,7 @@ Each task must follow this JSON schema:
 }}
 
 Task type guidance:
-- review_notes: Student needs to review biology notes/textbook for a specific topic
+- review_notes: Student needs to review science notes/textbook for a specific topic
 - guided_quiz: Student takes a targeted quiz on the weak area
 - diagram_exercise: Student practices labeling diagrams related to the topic
 - retake_assessment: Student retakes an assessment after remediation
@@ -171,7 +171,9 @@ Respond with valid JSON only."""
                 content=result.get("content", "")[:200],
             )
             if token_queue is not None:
-                token_queue.put_nowait(TokenChunk(delta="", node="recovery", done=True, error=str(e)))
+                token_queue.put_nowait(
+                    TokenChunk(delta="", node="recovery", done=True, error=str(e))
+                )
             return {"plan": None, "error": f"Failed to generate plan: {str(e)}"}
 
     def _format_weak_topics(self, weak_topics: list[dict]) -> str:

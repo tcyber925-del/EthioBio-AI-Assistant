@@ -1,8 +1,8 @@
 """CLI to run LangSmith offline evaluation experiments.
 
 Usage:
-    ethiobio-langsmith --dataset ethiobio-curriculum --evaluators all
-    ethiobio-langsmith --dataset ethiobio-gold --evaluators faithfulness,relevance --limit 3
+    ethiosci-langsmith --dataset ethiobio-curriculum --evaluators all
+    ethiosci-langsmith --dataset ethiobio-gold --evaluators faithfulness,relevance --limit 3
 
 Exits non-zero when any evaluator's average score falls below --threshold
 (regression gate for CI / nightly runs).
@@ -122,7 +122,7 @@ async def _main() -> int:
 
 
 def main() -> int:
-    """Sync entrypoint for the ethiobio-langsmith console script."""
+    """Sync entrypoint for the ethiosci-langsmith console script."""
     return asyncio.run(_main())
 
 

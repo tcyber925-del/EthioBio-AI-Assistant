@@ -1,7 +1,7 @@
 [project]
-name = "ethiobio-ai-assistant"
+name = "ethiosci-ai-assistant"
 version = "1.1.0"
-description = "AI-powered biology learning assistant for Ethiopian middle and high school education"
+description = "AI-powered science learning assistant for Ethiopian middle and high school education"
 requires-python = ">=3.12"
 dependencies = ["edge-tts", "httpx", "structlog>=24.4.0"]
 
@@ -9,9 +9,9 @@ dependencies = ["edge-tts", "httpx", "structlog>=24.4.0"]
 dev = ["ruff", "pytest>=8", "pytest-asyncio", "mypy", "pytest-timeout"]
 
 [project.scripts]
-ethiobio = "src.main:run"
-ethiobio-bot = "src.telegram.bot:main"
-ethiobio-langsmith = "src.evaluation.langsmith.run:main"
+ethiosci = "src.main:run"
+ethiosci-bot = "src.telegram.bot:main"
+ethiosci-langsmith = "src.evaluation.langsmith.run:main"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

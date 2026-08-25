@@ -10,7 +10,7 @@ ALLOWED_TOOLS = frozenset(
         "generate_quiz",
         "create_diagram",
         "lookup_definition",
-        "search_biology_topic",
+        "search_science_topic",
         "get_student_progress",
         "recommend_next_topic",
         "check_prerequisite",

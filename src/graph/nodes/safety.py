@@ -11,7 +11,7 @@ from src.llm.router import ModelRouter
 
 logger = structlog.get_logger()
 
-SAFETY_PROMPT_EN = """You are EthioBio Safety Agent. Review the following biology content for:
+SAFETY_PROMPT_EN = """You are EthioSci Safety Agent. Review the following science content for:
 1. Factual accuracy (check names, processes, numbers)
 2. Grade-appropriateness
 3. Safety (no harmful content)
@@ -22,7 +22,7 @@ SAFETY_PROMPT_EN = """You are EthioBio Safety Agent. Review the following biolog
 Respond with ONLY a JSON object:
 {{"safe": true/false, "issues": ["issue1"], "score": 0.0-1.0, "suggestions": ["suggestion"]}}"""
 
-SAFETY_PROMPT_AM = """እርስዎ የEthioBio ደህንነት ተቆጣጣሪ ነዎት። የሚከተለውን የባዮሎጂ ይዘት ይገምግሙ፡
+SAFETY_PROMPT_AM = """እርስዎ የEthioSci ደህንነት ተቆጣጣሪ ነዎት። የሚከተለውን የሳይንስ ይዘት ይገምግሙ፡
 1. ትክክለኛነት (ስሞች፣ ሂደቶች፣ ቁጥሮች)
 2. የክፍል ደረጃ ተገቢነት
 3. ደህንነት (ምንም ጎጂ ይዘት የለም)
@@ -127,7 +127,7 @@ class SafetyNode:
             {"role": "system", "content": safety_prompt},
             {
                 "role": "user",
-                "content": f"Review this biology content{grade_context}:\n\n{state.draft}",
+                "content": f"Review this science content{grade_context}:\n\n{state.draft}",
             },
         ]
 

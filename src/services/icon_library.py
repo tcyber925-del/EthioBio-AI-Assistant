@@ -82,7 +82,7 @@ class IconLibrary:
         try:
             import urllib.request
 
-            req = urllib.request.Request(url, headers={"User-Agent": "EthioBio/1.0"})
+            req = urllib.request.Request(url, headers={"User-Agent": "EthioSci/1.0"})
             with urllib.request.urlopen(req, timeout=10) as resp:
                 if resp.status == 200:
                     content = resp.read().decode("utf-8")

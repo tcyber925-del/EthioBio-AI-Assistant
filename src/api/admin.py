@@ -49,7 +49,7 @@ async def db_backup(_: User = Depends(require_admin)):
     if urlparse(dsn).hostname != urlparse(async_url).hostname:
         dsn = async_url.replace("postgresql+asyncpg://", "postgresql://", 1)
 
-    dump_path = os.path.join(tempfile.gettempdir(), "ethiobio_db_backup.sql")
+    dump_path = os.path.join(tempfile.gettempdir(), "ethiosci_db_backup.sql")
     with open(dump_path, "wb") as out:
         proc = await asyncio.create_subprocess_exec(
             "pg_dump",
@@ -87,7 +87,7 @@ async def db_backup(_: User = Depends(require_admin)):
     return StreamingResponse(
         stream(),
         media_type="application/sql",
-        headers={"X-Ethiobio-Backup-Size": str(file_size)},
+        headers={"X-Ethiosci-Backup-Size": str(file_size)},
     )
 
 

@@ -33,12 +33,14 @@ class RetrievalFilter:
         unit: Optional[str] = None,
         source_type: Optional[str] = None,
         language: str = "en",
+        subject: Optional[str] = None,
     ):
         self.grade_level = grade_level
         self.topic = topic
         self.unit = unit
         self.source_type = source_type
         self.language = language
+        self.subject = subject.lower() if subject else None
 
     def to_chroma_where(self) -> Optional[dict]:
         filters = []
@@ -52,6 +54,8 @@ class RetrievalFilter:
             filters.append({"source_type": {"$eq": self.source_type}})
         if self.language and self.language != "en":
             filters.append({"language": {"$eq": self.language}})
+        if self.subject:
+            filters.append({"subject": {"$eq": self.subject}})
 
         if not filters:
             return None
@@ -99,11 +103,14 @@ class VectorStoreAdapter:
         """Hybrid: dense (ChromaDB) + sparse (BM25) → merge → rerank → top-k."""
         grade_level = filter_obj.grade_level if filter_obj else None
         source_type = filter_obj.source_type if filter_obj else None
+        subject = filter_obj.subject if filter_obj else None
 
         fetch_k = max(n_results * 2, 10)
 
         dense_results = await self._dense_search_raw(query, fetch_k, filter_obj)
-        bm25_results = await self._bm25_search_raw(query, fetch_k, grade_level, source_type)
+        bm25_results = await self._bm25_search_raw(
+            query, fetch_k, grade_level, source_type, subject
+        )
 
         merged = self._merge_results(dense_results, bm25_results)
 
@@ -185,6 +192,7 @@ class VectorStoreAdapter:
         n_results: int,
         grade_level: Optional[int] = None,
         source_type: Optional[str] = None,
+        subject: Optional[str] = None,
     ) -> list[dict]:
         """BM25 search returning raw dicts for merging."""
         if not self.bm25_index.exists():
@@ -201,6 +209,7 @@ class VectorStoreAdapter:
                 n_results=n_results,
                 grade_level=grade_level,
                 source_type=source_type,
+                subject=subject,
             )
         except Exception:
             logger.exception("bm25_search_failed")
@@ -272,7 +281,11 @@ class VectorStoreAdapter:
 
             header = f"[Source {i}]"
             if grade:
-                header += f" Grade {grade} Biology"
+                subject_label = r.metadata.get("subject", "")
+                if subject_label:
+                    header += f" Grade {grade} {subject_label.title()}"
+                else:
+                    header += f" Grade {grade}"
             if unit:
                 header += f" | {unit}"
             if section:

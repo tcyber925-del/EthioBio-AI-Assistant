@@ -4,8 +4,9 @@ from dataclasses import dataclass, field
 from src.config import settings
 from src.observability.guardrail_instrumentation import observe_guardrail
 
-ETHIOBIO_TOPICS = frozenset(
+SCIENCE_TOPICS = frozenset(
     {
+        # Biology
         "biology",
         "cell",
         "genetics",
@@ -47,19 +48,73 @@ ETHIOBIO_TOPICS = frozenset(
         "mitosis",
         "meiosis",
         "cell division",
+        # Chemistry
+        "chemistry",
         "atom",
         "molecule",
         "chemical",
         "element",
         "compound",
+        "mixture",
+        "periodic table",
+        "reaction",
+        "acid",
+        "base",
+        "salt",
+        "ion",
+        "bond",
+        "oxidation",
+        "solution",
+        "stoichiometry",
+        "organic chemistry",
+        # Physics
+        "physics",
         "force",
         "motion",
+        "velocity",
+        "acceleration",
         "energy",
+        "work",
+        "power",
         "electricity",
+        "circuit",
+        "current",
+        "voltage",
         "magnetism",
+        "optics",
+        "light",
+        "sound",
+        "wave",
+        "heat",
+        "temperature",
+        "thermodynamics",
+        "gravity",
+        "momentum",
+        "pressure",
+        "density",
+        # Mathematics
+        "mathematics",
+        "math",
+        "algebra",
+        "geometry",
+        "trigonometry",
+        "calculus",
+        "statistics",
+        "probability",
+        "equation",
+        "function",
+        "fraction",
+        "matrix",
+        "vector",
+        "derivative",
+        "integral",
+        "theorem",
+        # General science
         "scientific method",
         "experiment",
         "hypothesis",
+        "measurement",
+        "unit conversion",
     }
 )
 
@@ -110,7 +165,7 @@ class TopicEnforcer:
             topic_lower = topic.lower()
             topic_words = topic_lower.split()
             if not any(tw in text_lower for tw in topic_words if len(tw) > 3):
-                if not any(kt in text_lower for kt in ETHIOBIO_TOPICS):
+                if not any(kt in text_lower for kt in SCIENCE_TOPICS):
                     return TopicEnforcementResult(
                         on_topic=False,
                         off_topic_segments=["Response does not align with the specified topic"],

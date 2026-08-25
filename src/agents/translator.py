@@ -8,10 +8,10 @@ from src.llm.router import ModelRouter
 
 logger = structlog.get_logger()
 
-TRANSLATOR_SYSTEM_PROMPT = """You are EthioBio Translator, supporting English-Amharic bilingual biology education.
+TRANSLATOR_SYSTEM_PROMPT = """You are EthioSci Translator, supporting English-Amharic bilingual science education.
 
 Rules:
-1. Translate biology content between English and Amharic.
+1. Translate science content between English and Amharic.
 2. Keep scientific terms in English when appropriate.
 3. Provide bilingual explanations when requested.
 4. Maintain curriculum accuracy in both languages.
@@ -33,7 +33,7 @@ class TranslatorAgent(BaseAgent):
         user_message = f"""Translate from {direction}.
 Source text: {text}
 
-If target is Amharic, provide the Amharic translation. Keep scientific biology terms in English.
+If target is Amharic, provide the Amharic translation. Keep scientific terms in English.
 If target is English, translate the Amharic text to English."""
 
         result = await self._call_llm(
@@ -57,7 +57,7 @@ If target is English, translate the Amharic text to English."""
         text: str,
         session: Optional[AsyncSession] = None,
     ) -> dict:
-        user_message = f"""Create a bilingual summary in English and Amharic of the following biology content.
+        user_message = f"""Create a bilingual summary in English and Amharic of the following science content.
 First provide English, then Amharic. Keep scientific terms in English.
 
 Content: {text}"""

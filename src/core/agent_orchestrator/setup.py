@@ -35,7 +35,7 @@ def build_registry(
         AgentRegistration(
             agent=tutor,
             name="tutor_agent",
-            description="Answers biology questions with RAG and Socratic tutoring",
+            description="Answers science questions with RAG and Socratic tutoring",
             capabilities=[
                 AgentCapability(
                     name="tutoring",
@@ -50,7 +50,7 @@ def build_registry(
         AgentRegistration(
             agent=quiz,
             name="quiz_agent",
-            description="Generates biology quizzes with configurable difficulty",
+            description="Generates science quizzes with configurable difficulty",
             capabilities=[
                 AgentCapability(name="quiz_generation", description="Create quizzes"),
                 AgentCapability(name="assessment_creation", description="Create assessments"),
@@ -109,7 +109,7 @@ def build_registry(
         AgentRegistration(
             agent=diagram,
             name="diagram_agent",
-            description="Generates biology diagrams",
+            description="Generates science diagrams",
             capabilities=[
                 AgentCapability(name="diagram_generation", description="Generate diagrams")
             ],

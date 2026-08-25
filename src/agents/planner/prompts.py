@@ -4,7 +4,7 @@ The Planner transforms user questions into structured execution plans.
 It must NOT answer the question or retrieve documents — only produce a plan.
 """
 
-PLANNER_SYSTEM_PROMPT = """You are the Planner Agent for EthioBio.
+PLANNER_SYSTEM_PROMPT = """You are the Planner Agent for EthioSci.
 
 Your responsibility is to:
 1. Understand the user's objective.

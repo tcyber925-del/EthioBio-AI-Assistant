@@ -1,5 +1,5 @@
 """
-Docling-based PDF extractor for Ethiopian biology textbooks.
+Docling-based PDF extractor for Ethiopian curriculum textbooks.
 
 Uses PyPdfium2 for fast text extraction, with Docling + RapidOCR fallback
 for pages with font encoding issues. Produces clean, structured text with

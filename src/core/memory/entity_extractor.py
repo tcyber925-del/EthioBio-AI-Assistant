@@ -10,20 +10,56 @@ from src.database.models import MemoryEntity
 
 logger = structlog.get_logger()
 
-BIOLOGY_TERMS = {
-    "mitosis", "meiosis", "genetics", "dna", "rna", "chromosome", "gene",
-    "allele", "phenotype", "genotype", "punnett", "photosynthesis",
-    "cellular respiration", "protein", "enzyme", "mutation", "evolution",
-    "natural selection", "cell division", "cytokinesis", "prophase",
-    "metaphase", "anaphase", "telophase", "interphase", "gamete",
-    "zygote", "homozygous", "heterozygous", "dominant", "recessive",
-    "transcription", "translation", "codon", "anticodon",
+SCIENCE_TERMS = {
+    "mitosis",
+    "meiosis",
+    "genetics",
+    "dna",
+    "rna",
+    "chromosome",
+    "gene",
+    "allele",
+    "phenotype",
+    "genotype",
+    "punnett",
+    "photosynthesis",
+    "cellular respiration",
+    "protein",
+    "enzyme",
+    "mutation",
+    "evolution",
+    "natural selection",
+    "cell division",
+    "cytokinesis",
+    "prophase",
+    "metaphase",
+    "anaphase",
+    "telophase",
+    "interphase",
+    "gamete",
+    "zygote",
+    "homozygous",
+    "heterozygous",
+    "dominant",
+    "recessive",
+    "transcription",
+    "translation",
+    "codon",
+    "anticodon",
 }
 
 DIFFICULTY_PATTERNS = [
-    "struggles with", "struggling with", "confused by", "confused about",
-    "difficulty with", "hard to understand", "don't understand",
-    "doesn't understand", "can't grasp", "weak on", "needs help with",
+    "struggles with",
+    "struggling with",
+    "confused by",
+    "confused about",
+    "difficulty with",
+    "hard to understand",
+    "don't understand",
+    "doesn't understand",
+    "can't grasp",
+    "weak on",
+    "needs help with",
 ]
 
 
@@ -60,7 +96,7 @@ class EntityExtractor:
                 entities.append({"text": entity_text, "type": etype})
 
         text_lower = text.lower()
-        for term in BIOLOGY_TERMS:
+        for term in SCIENCE_TERMS:
             if term in text_lower and term not in seen:
                 seen.add(term)
                 entities.append({"text": term, "type": "concept"})
@@ -68,7 +104,7 @@ class EntityExtractor:
         for pattern in DIFFICULTY_PATTERNS:
             idx = text_lower.find(pattern)
             if idx >= 0:
-                snippet = text[idx + len(pattern): idx + len(pattern) + 60].strip().rstrip(".,!?")
+                snippet = text[idx + len(pattern) : idx + len(pattern) + 60].strip().rstrip(".,!?")
                 if snippet and snippet not in seen:
                     seen.add(snippet)
                     entities.append({"text": snippet, "type": "difficulty"})
@@ -104,23 +140,24 @@ class EntityExtractor:
                     existing.mention_count += 1
                     existing.last_mentioned_at = now
                     if session_id and (
-                        existing.sessions_seen is None
-                        or session_id not in existing.sessions_seen
+                        existing.sessions_seen is None or session_id not in existing.sessions_seen
                     ):
                         if existing.sessions_seen is None:
                             existing.sessions_seen = []
                         existing.sessions_seen.append(session_id)
                 else:
-                    db.add(MemoryEntity(
-                        id=uuid.uuid4(),
-                        user_id=user_id,
-                        entity_text=ent["text"],
-                        entity_type=ent["type"],
-                        mention_count=1,
-                        first_mentioned_at=now,
-                        last_mentioned_at=now,
-                        sessions_seen=[session_id] if session_id else [],
-                    ))
+                    db.add(
+                        MemoryEntity(
+                            id=uuid.uuid4(),
+                            user_id=user_id,
+                            entity_text=ent["text"],
+                            entity_type=ent["type"],
+                            mention_count=1,
+                            first_mentioned_at=now,
+                            last_mentioned_at=now,
+                            sessions_seen=[session_id] if session_id else [],
+                        )
+                    )
             await db.flush()
         except Exception:
             logger.warning("entity_extract_turn_error", exc_info=True)
@@ -135,6 +172,7 @@ class EntityExtractor:
         if not conversation_text or not user_id:
             return
         from src.llm.router import ModelRouter
+
         llm = ModelRouter()
         prompt = (
             "Extract key educational concepts, difficulties, and relationships "
@@ -165,7 +203,7 @@ class EntityExtractor:
                 start = content.find("{")
                 end = content.rfind("}")
                 if start >= 0 and end > start:
-                    data = json.loads(content[start: end + 1])
+                    data = json.loads(content[start : end + 1])
                 else:
                     logger.warning("entity_extract_json_failed", content=content[:200])
                     return
@@ -192,15 +230,17 @@ class EntityExtractor:
                     existing.mention_count += 1
                     existing.last_mentioned_at = now
                 else:
-                    db.add(MemoryEntity(
-                        id=uuid.uuid4(),
-                        user_id=user_id,
-                        entity_text=ent_text,
-                        entity_type=ent_type,
-                        mention_count=1,
-                        first_mentioned_at=now,
-                        last_mentioned_at=now,
-                    ))
+                    db.add(
+                        MemoryEntity(
+                            id=uuid.uuid4(),
+                            user_id=user_id,
+                            entity_text=ent_text,
+                            entity_type=ent_type,
+                            mention_count=1,
+                            first_mentioned_at=now,
+                            last_mentioned_at=now,
+                        )
+                    )
             await db.flush()
         except Exception:
             logger.warning("entity_extract_session_error", exc_info=True)

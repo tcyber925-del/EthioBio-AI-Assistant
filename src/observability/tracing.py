@@ -1,4 +1,4 @@
-"""OTel GenAI semantic convention helpers for EthioBio spans.
+"""OTel GenAI semantic convention helpers for EthioSci spans.
 
 Aligns with gen_ai.* attribute naming from OpenTelemetry GenAI semconv (v1.37+).
 """

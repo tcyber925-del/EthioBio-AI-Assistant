@@ -12,10 +12,10 @@ from src.schemas.streaming import TokenChunk
 logger = structlog.get_logger()
 
 DIAGNOSTIC_SYSTEM_PROMPT = (
-    "You are EthioBio Diagnostic Assessor, creating a baseline diagnostic "
-    "assessment for Ethiopian biology students (Grades 7-12).\n\n"
+    "You are EthioSci Diagnostic Assessor, creating a baseline diagnostic "
+    "assessment for Ethiopian science students (Grades 7-12).\n\n"
     "CRITICAL RULE: Generate questions BASED STRICTLY on the Ethiopian "
-    "biology curriculum. Do NOT use general biology knowledge. Every "
+    "science curriculum. Do NOT use general science knowledge. Every "
     "question must be directly derivable from the curriculum.\n\n"
     "For each topic, generate {questions_per_topic} questions at EASY "
     "difficulty to establish baseline knowledge.\n\n"
@@ -66,7 +66,7 @@ class DiagnosticAgent(BaseAgent):
         )
 
         user_message = (
-            f"Generate a baseline diagnostic assessment for Grade {grade_level} biology.\n"
+            f"Generate a baseline diagnostic assessment for Grade {grade_level} science.\n"
             f"Topics to assess: {', '.join(topics)}\n"
             f"Questions per topic: {questions_per_topic}\n"
             f"All questions at EASY difficulty.\n"
@@ -79,7 +79,9 @@ class DiagnosticAgent(BaseAgent):
 
         if token_queue is not None:
             token_queue.put_nowait(
-                TokenChunk(delta="Generating diagnostic assessment...", node="diagnostic", status=True)
+                TokenChunk(
+                    delta="Generating diagnostic assessment...", node="diagnostic", status=True
+                )
             )
             buf: list[str] = []
             async for token in self._call_llm_stream(

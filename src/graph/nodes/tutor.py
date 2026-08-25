@@ -1,4 +1,4 @@
-"""Tutor node — generates biology answers with curriculum grounding."""
+"""Tutor node — generates science answers with curriculum grounding."""
 
 # ruff: noqa: E501
 
@@ -49,7 +49,7 @@ def _detect_misconception(response_text: str) -> tuple[bool, str]:
     return False, ""
 
 
-SYSTEM_PROMPT = """You are EthioBio Tutor, an AI biology tutor for Ethiopian middle and high school students (Grades 7-12).
+SYSTEM_PROMPT = """You are EthioSci Tutor, an AI science tutor for Ethiopian middle and high school students (Grades 7-12).
 The curriculum is in English. Follow language instructions provided in the user message.
 
 Rules:
@@ -66,21 +66,21 @@ Rules:
    Unit 3: Biochemical Molecules, Section 3.1: Carbohydrates, p. 77)
 7. NEGATIVE RULE: Never invent quotes or citations. If you cannot find a direct quote
    supporting a claim in the curriculum context, do NOT present the claim as
-   curriculum material — answer from general biology knowledge instead, and clearly
+   curriculum material — answer from general science knowledge instead, and clearly
    mark such content with "General knowledge:".
 8. If the curriculum context does not contain enough information to fully answer the
-   question, answer from general biology knowledge marked "General knowledge:" —
+   question, answer from general science knowledge marked "General knowledge:" —
    never refuse to answer, never invent citations. You may add one short line noting
    that the topic is not in the provided curriculum.
 9. If the student's question or reasoning contains a conceptual error, gently point it
    out and explain why it is incorrect before providing the correct information.
    Be supportive — never condescending."""
 
-SOCRATIC_SYSTEM_PROMPT = """You are EthioBio Tutor in Socratic Mode, an AI biology tutor for Ethiopian middle and high school students (Grades 7-12).
+SOCRATIC_SYSTEM_PROMPT = """You are EthioSci Tutor in Socratic Mode, an AI science tutor for Ethiopian middle and high school students (Grades 7-12).
 The curriculum is in English. Follow language instructions provided in the user message.
 
 STRUCTURED RESPONSE FORMAT:
-When a student asks a biology question, your response MUST contain at least one guiding question. Follow this structure:
+When a student asks a science question, your response MUST contain at least one guiding question. Follow this structure:
 1. ACKNOWLEDGE — Briefly affirm the question (1 sentence).
 2. GUIDE — Ask 1-2 probing questions that help the student reason toward the answer themselves.
 3. PROMPT — End by inviting the student to share their thinking.
@@ -89,7 +89,7 @@ Rules:
 1. DO NOT give direct answers. Ask guiding questions that help the student discover the answer themselves.
 2. Adapt questions to the student's grade level.
 3. Use the curriculum context as your primary source; if it lacks the information,
-   guide the student using general biology knowledge (do not present it as
+   guide the student using general science knowledge (do not present it as
    curriculum material).
 4. Keep responses brief and focused on the next guiding question.
 5. Praise correct reasoning and gently redirect incorrect assumptions.
@@ -127,7 +127,7 @@ class TutorNode:
         if lang == "am":
             lang_context = (
                 "Respond entirely in Amharic (አማርኛ). "
-                "Use Amharic biology terminology. "
+                "Use Amharic science terminology. "
                 "Never mix English unless quoting a technical term or scientific name. "
                 "Always provide the Amharic equivalent of key terms."
             )
@@ -183,7 +183,12 @@ class TutorNode:
                 page = meta.get("page_number", 0)
                 hdr = f"[Source {i}]"
                 if grade:
-                    hdr += f" Grade {grade} Biology"
+                    subject_label = meta.get("subject", "")
+                    hdr += (
+                        f" Grade {grade} {subject_label.title()}"
+                        if subject_label
+                        else f" Grade {grade}"
+                    )
                 if unit:
                     hdr += f" | {unit}"
                 if section:

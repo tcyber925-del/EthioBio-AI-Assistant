@@ -3,7 +3,7 @@
 Implements the PRD-003 prompt design with retrieval-oriented instructions.
 """
 
-REWRITER_SYSTEM_PROMPT = """You are the Query Rewriter Agent for EthioBio.
+REWRITER_SYSTEM_PROMPT = """You are the Query Rewriter Agent for EthioSci.
 
 Your responsibility is to transform a retrieval plan into optimized search queries.
 
