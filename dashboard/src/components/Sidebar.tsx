@@ -94,7 +94,7 @@ export default function Sidebar() {
         <div className="flex items-center gap-3">
           <CellAnimation />
           <div>
-            <h2 className="text-heading text-foreground">EthioBio</h2>
+            <h2 className="text-heading text-foreground">EthioSci</h2>
             <p className="text-small text-foreground-muted">{subtitleLabel()}</p>
           </div>
         </div>

@@ -199,7 +199,7 @@ export function SidebarV2() {
                 exit={{ opacity: 0 }}
                 className="min-w-0 overflow-hidden"
               >
-                <p className="verge-display truncate text-[32px] leading-none text-v2-text-primary">EthioBio</p>
+                <p className="verge-display truncate text-[32px] leading-none text-v2-text-primary">EthioSci</p>
                 <p className="verge-label mt-1 text-v2-accent">{ts('brand_sub')}</p>
               </motion.div>
             ) : (

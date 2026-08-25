@@ -28,7 +28,7 @@
     "workspace_processing": "በሂደት ላይ"
   },
   "login": {
-    "title": "EthioBio AI ረዳት",
+    "title": "EthioSci AI ረዳት",
     "subtitle": "ለኢትዮጵያ 7-12 ክፍሎች የተበጀ የባዮሎጂ ትምህርት",
     "email": "ኢሜይል",
     "password": "የይለፍ ቃል",
@@ -53,7 +53,7 @@
     "verifying": "በማረጋገጥ ላይ...",
     "login_telegram": "በቴሌግራም ግባ",
     "back_to_email": "ወደ ኢሜይል መግቢያ ተመለስ",
-    "brand_short": "EthioBio",
+    "brand_short": "EthioSci",
     "email_placeholder": "teacher@school.edu",
     "error": "መግባት አልተሳካም",
     "otp_placeholder": "123456",
@@ -223,7 +223,7 @@
       "quizzes": "ፈተናዎች",
       "request_latency": "የጥያቄ መዘግየት",
       "request_status": "የጥያቄ ሁኔታ",
-      "subtitle": "የEthioBio AI ረዳት አጠቃላይ እይታ",
+      "subtitle": "የEthioSci AI ረዳት አጠቃላይ እይታ",
       "success": "ስኬት",
       "success_rate": "የስኬት መጠን"
     },

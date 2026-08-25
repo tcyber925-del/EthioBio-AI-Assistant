@@ -1,4 +1,8 @@
-# EthioBio AI Assistant — Operations Runbook
+# EthioSci AI Assistant — Operations Runbook
+
+> Note: production resource names still use the legacy `ethiobio` prefix
+> (Render services, domains, B2 buckets). This is intentional — see
+> `docs/superpowers/specs/2026-08-25-ethiosci-rename-design.md`.
 
 ## Deployment Checklist
 

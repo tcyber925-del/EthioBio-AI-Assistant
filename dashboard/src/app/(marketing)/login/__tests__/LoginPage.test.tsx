@@ -8,7 +8,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 const messages = {
   login: {
-    brand_short: "EthioBio", teacher_dashboard: "Teacher Dashboard", sign_in: "Sign In",
+    brand_short: "EthioSci", teacher_dashboard: "Teacher Dashboard", sign_in: "Sign In",
     create_account: "Create Account", email: "Email", password: "Password",
     email_placeholder: "you@school.edu", password_placeholder: "••••••••",
     register_as: "Register as", teacher: "Teacher", student: "Student", parent: "Parent",

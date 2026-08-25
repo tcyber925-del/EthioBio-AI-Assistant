@@ -1,4 +1,4 @@
-# EthioBio AI Assistant
+# EthioSci AI Assistant
 
 AI-powered biology learning and teaching assistant for Ethiopian middle and high school education (Grades 7-12). Uses LangGraph orchestration (unified graph with 12+ nodes), hybrid RAG (Dense + BM25 + Cross-encoder reranker), pgvector, and dynamic multi-provider AI system (Ollama, OpenRouter, OpenAI, Anthropic, OpenAI-compatible).
 
@@ -264,7 +264,7 @@ source .venv/bin/activate
 python -c "
 from sqlalchemy import create_engine
 from src.database.models import Base
-engine = create_engine('postgresql://ethiobio:ethiobio_pass@localhost:5432/ethiobio')
+engine = create_engine('postgresql://ethiosci:ethiosci_pass@localhost:5432/ethiosci')
 Base.metadata.create_all(engine)
 "
 
@@ -357,7 +357,7 @@ Key environment variables (see `.env.example` for full list):
 | `EVAL_ENABLED` | Enable async evaluation | `true` |
 | `LANGSMITH_API_KEY` | LangSmith API key (`lsv2_...` for EU) | (optional) |
 | `LANGSMITH_ENDPOINT` | LangSmith API endpoint | `https://api.smith.langchain.com` (use `https://eu.api.smith.langchain.com` for EU) |
-| `LANGSMITH_PROJECT` | LangSmith project name | `ethiobio` |
+| `LANGSMITH_PROJECT` | LangSmith project name | `ethiosci` (prod pins `ethiobio`) |
 | `LANGSMITH_TRACING_ENABLED` | Enable LangSmith tracing | `false` |
 | `LANGSMITH_SAMPLING_RATE` | Fraction of pipeline runs traced (0–1) | `0.1` |
 | `LANGSMITH_WORKSPACE_ID` | LangSmith workspace (org-scoped keys only) | (optional) |
@@ -690,7 +690,7 @@ The project uses cookie-based JWT authentication:
 - Flow: dashboard → `/auth/oauth/google/login?redirect=/classroom` (307 to Google, PKCE S256, state single-use in Redis) → callback validates `id_token` against cached Google JWKS, resolves or creates the user, and returns a one-time `ticket` to the dashboard → `/auth/oauth/claim` swaps the ticket for the standard cookie pair.
 - **Login** — new users are created from verified profile; an existing email (password/Telegram account) reveals via `?oauth_error=email_conflict` — no auto-merge.
 - **Linking** — start with `?link=1` while logged in (`oauth_accounts` row is added to the current user and authenticated immediately). Doing it anonymously returns `?oauth_error=login_required`.
-- `oauth_accounts` table: unique `(provider, provider_user_id)` and `(user_id, provider)`, so a Google account can only ever bind to one EthioBio user.
+- `oauth_accounts` table: unique `(provider, provider_user_id)` and `(user_id, provider)`, so a Google account can only ever bind to one EthioSci user.
 - Requires `OAUTH_GOOGLE_CLIENT_ID`, `OAUTH_GOOGLE_CLIENT_SECRET`, and `OAUTH_CALLBACK_BASE_URL` — defaults to `API_BASE_URL` (`{base}/auth/oauth/google/callback` is the exact redirect URI Google must match); errors surface as `not_configured` when unset.
 
 ## Testing

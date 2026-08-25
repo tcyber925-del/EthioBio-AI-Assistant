@@ -28,7 +28,7 @@
     "workspace_processing": "Processing"
   },
   "login": {
-    "title": "EthioBio AI Assistant",
+    "title": "EthioSci AI Assistant",
     "subtitle": "Personalized Biology Tutoring for Ethiopian Grades 7-12",
     "email": "Email",
     "password": "Password",
@@ -53,7 +53,7 @@
     "verifying": "Verifying...",
     "login_telegram": "Login with Telegram",
     "back_to_email": "Back to email login",
-    "brand_short": "EthioBio",
+    "brand_short": "EthioSci",
     "teacher_dashboard": "Teacher Dashboard",
     "email_placeholder": "teacher@school.edu",
     "error": "Sign-in failed",
@@ -200,7 +200,7 @@
       "total_students": "Students",
       "recent_activity": "Recent Activity",
       "dashboard": "Dashboard",
-      "subtitle": "EthioBio AI Assistant overview",
+      "subtitle": "EthioSci AI Assistant overview",
       "quizzes": "Quizzes",
       "lesson_plans": "Lesson Plans",
       "quiz_attempts": "Quiz Attempts",

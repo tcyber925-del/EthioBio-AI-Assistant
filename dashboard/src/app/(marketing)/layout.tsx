@@ -26,7 +26,7 @@ export default function MarketingLayout({
           <div className="flex items-center space-x-8">
             <Link href="/" className="flex items-center">
               <span className="verge-display text-2xl font-black tracking-tighter text-white hover:text-[#3cffd0] transition-colors">
-                EthioBio <span className="text-[#3cffd0]">AI</span>
+                EthioSci <span className="text-[#3cffd0]">AI</span>
               </span>
             </Link>
             <nav className="hidden md:flex space-x-6">
@@ -64,7 +64,7 @@ export default function MarketingLayout({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
-              <span className="verge-display text-xl font-bold text-white">EthioBio AI</span>
+              <span className="verge-display text-xl font-bold text-white">EthioSci AI</span>
               <p className="mt-4 text-sm text-gray-500 max-w-xs leading-relaxed">
                 {t('footer_tagline')}
               </p>
@@ -88,7 +88,7 @@ export default function MarketingLayout({
           </div>
           <div className="border-t border-[#1e1e1e] mt-12 pt-8 flex flex-col md:flex-row items-center justify-between">
             <span className="text-xs font-mono text-gray-600">
-              &copy; {new Date().getFullYear()} EthioBio AI Assistant. Inspired by brutalist digital design.
+              &copy; {new Date().getFullYear()} EthioSci AI Assistant. Inspired by brutalist digital design.
             </span>
             <div className="flex space-x-4 mt-4 md:mt-0 text-xs font-mono text-gray-500">
               <span className="text-[#3cffd0]">● System status: healthy</span>

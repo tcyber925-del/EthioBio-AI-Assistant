@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { safeNextPath } from "../safeNextPath";
 
-const ORIGIN = "https://ethiobio.app";
+const ORIGIN = "https://ethiosci.app";
 
 describe("safeNextPath", () => {
   it.each([
@@ -13,7 +13,7 @@ describe("safeNextPath", () => {
     ["?next=/%5Cevil.com", null],
     ["?next=/login?x=1", null],
     ["?next=https://evil.com/x", null],
-    ["?next=https://ethiobio.app/students", "/students"],
+    ["?next=https://ethiosci.app/students", "/students"],
     ["?next=https://%zz/", null],
     ["?next=javascript:alert(1)", null],
     ["?next=data:text/html,x", null],

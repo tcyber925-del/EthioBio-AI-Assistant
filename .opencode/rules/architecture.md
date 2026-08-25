@@ -1,4 +1,4 @@
-# Architecture — EthioBio AI Assistant
+# Architecture — EthioSci AI Assistant
 
 Read when: understanding the pipeline, adding/modifying graph nodes, working with evidence or planning.
 

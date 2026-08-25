@@ -13,8 +13,8 @@ describe("markdownToPlainText", () => {
   });
 
   it("keeps link text and drops the URL", () => {
-    expect(markdownToPlainText("[EthioBio](https://ethiobio.ai)")).toBe(
-      "EthioBio",
+    expect(markdownToPlainText("[EthioSci](https://ethiosci.ai)")).toBe(
+      "EthioSci",
     );
   });
 

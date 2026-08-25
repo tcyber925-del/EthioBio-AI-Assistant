@@ -1,4 +1,4 @@
-# Modules — EthioBio AI Assistant
+# Modules — EthioSci AI Assistant
 
 Read when: working on gamification, export, notifications, recovery plans, or Ralph PRD generation.
 
@@ -64,7 +64,7 @@ Generates downloadable DOCX and PDF files for quizzes and lesson plans.
 - **Per-module health**: `GET /health/modules` — each guardrail module registers on startup.
 - **Eval pipeline**: Async LLM-as-judge on ~10-20% sampled traffic, scores written as `gen_ai.evaluation.*` span attributes.
 - **Instrumentation**: `@observe_guardrail(module, guardrail_type)` decorator wraps guardrail functions with OTel spans + counter metrics + health updates.
-- **Dashboard stack**: Grafana (:3001, admin/ethiobio) + Prometheus (:9090) + Jaeger (:16686). Auto-provisioned datasource + EthioBio Overview dashboard.
+- **Dashboard stack**: Grafana (:3001, admin/ethiobio) + Prometheus (:9090) + Jaeger (:16686). Auto-provisioned datasource + EthioSci Overview dashboard.
 - **Env guards**: `TRACELOOP_API_KEY` must be set for OpenLLMetry auto-instrumentation; code falls back gracefully.
 - **New endpoint registration**: Add route + PlainTextResponse import in `src/main.py` for `/metrics`.
 

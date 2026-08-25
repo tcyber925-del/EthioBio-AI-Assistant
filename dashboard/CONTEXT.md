@@ -1,6 +1,6 @@
 # Dashboard Frontend
 
-The Next.js 14 App Router frontend for the EthioBio AI Assistant. Currently undergoing a full visual redesign (DashboardV2).
+The Next.js 14 App Router frontend for the EthioSci AI Assistant. Currently undergoing a full visual redesign (DashboardV2).
 
 ## Language
 

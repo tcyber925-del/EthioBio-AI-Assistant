@@ -1,4 +1,4 @@
-# PDF Ingestion — EthioBio AI Assistant
+# PDF Ingestion — EthioSci AI Assistant
 
 Read when: re-ingesting curriculum PDFs into the vector store, dealing with garbled PDFs.
 
@@ -23,4 +23,4 @@ python scripts/ingest_curriculum.py --use-easyocr --grade 10 --clear    # Clear 
 python scripts/ingest_curriculum.py --stats                              # Show vector store stats
 ```
 
-Files are copied to the container via `docker cp` (not volume-mounted). After updating the script on the host, run `docker cp scripts/ingest_curriculum.py ethiobio-app:/app/scripts/ingest_curriculum.py`.
+Files are copied to the container via `docker cp` (not volume-mounted). After updating the script on the host, run `docker cp scripts/ingest_curriculum.py ethiosci-app:/app/scripts/ingest_curriculum.py`.

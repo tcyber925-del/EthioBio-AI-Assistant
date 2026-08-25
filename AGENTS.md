@@ -1,4 +1,4 @@
-# EthioBio AI Assistant — Agent Instructions
+# EthioSci AI Assistant — Agent Instructions
 
 Obsidian PARA vault. Codebase at `1-Projects/p000-Active/EthioBio AI Assistant/`. `.env`, `.venv`, and all source files live there — NOT at root.
 
@@ -25,7 +25,7 @@ tutor → hallucination → claim_verifier → route_after_verification
 | API server | `python -m src.main` (FastAPI :8000) | uvicorn, includes bot webhook |
 | Telegram bot | `python -m src.telegram.bot` | PTB polling (or webhook via API) |
 | Full stack | `docker compose up --build` | app + bot + postgres + redis + ollama + cron + jaeger + prometheus + grafana + dashboard |
-| CLI | `ethiobio` / `ethiobio-bot` / `ethiobio-langsmith` | pyproject.toml `[project.scripts]` |
+| CLI | `ethiosci` / `ethiosci-bot` / `ethiosci-langsmith` | pyproject.toml `[project.scripts]` |
 
 ## Commands
 
@@ -82,7 +82,7 @@ Read the relevant file before working in that area:
 | `.opencode/rules/gotchas.md` | Debugging, unfamiliar modules, unexpected behavior |
 | `.opencode/rules/ingestion.md` | PDF ingestion, OCR, vector store |
 | `.opencode/rules/testing.md` | Test commands, mocking patterns, test architecture |
-| `src/evaluation/langsmith/` | LangSmith datasets, offline eval CLI (`ethiobio-langsmith`), online feedback posting |
+| `src/evaluation/langsmith/` | LangSmith datasets, offline eval CLI (`ethiosci-langsmith`), online feedback posting |
 | `src/observability/langsmith.py` | LangSmith client setup, sampling, run-id capture, feedback |
 
 ## Cross-Cutting Gotchas

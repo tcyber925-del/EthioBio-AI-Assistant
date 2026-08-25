@@ -1,7 +1,7 @@
 apiVersion: 1
 
 providers:
-  - name: "EthioBio"
+  - name: "EthioSci"
     orgId: 1
     folder: ""
     type: file

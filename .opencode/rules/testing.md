@@ -1,4 +1,4 @@
-# Testing — EthioBio AI Assistant
+# Testing — EthioSci AI Assistant
 
 Read when: running tests, adding tests, debugging test failures.
 

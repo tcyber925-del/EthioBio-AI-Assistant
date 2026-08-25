@@ -264,7 +264,7 @@ export default function LandingPage() {
                     <div className="flex items-center justify-between border-b border-[#2d2d2d] pb-2 mb-4">
                       <div className="flex items-center space-x-2">
                         <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
-                        <span className="verge-label text-xs text-white">EthioBio Assistant Bot</span>
+                        <span className="verge-label text-xs text-white">EthioSci Assistant Bot</span>
                       </div>
                       <span className="text-[10px] text-gray-500">Telegram Mock</span>
                     </div>
@@ -279,7 +279,7 @@ export default function LandingPage() {
 
                     {/* Chat Bubble Assistant */}
                     <div className="flex flex-col items-start mb-4">
-                      <span className="text-[10px] text-[#3cffd0] ml-1 mb-1">EthioBio AI</span>
+                      <span className="text-[10px] text-[#3cffd0] ml-1 mb-1">EthioSci AI</span>
                       <div className="bg-[#1e2a27] border border-[#3cffd0]/30 px-3 py-2 text-[#e5fbf6] max-w-[85%] text-xs">
                         {botFlows[selectedBotQuestion].a}
                       </div>

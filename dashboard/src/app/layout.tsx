@@ -6,7 +6,7 @@ import './globals.css';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'EthioBio AI Assistant',
+  title: 'EthioSci AI Assistant',
   description: 'Personalized Biology Tutoring for Ethiopian Grades 7-12',
 };
 

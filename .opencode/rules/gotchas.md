@@ -1,4 +1,4 @@
-# Gotchas — EthioBio AI Assistant
+# Gotchas — EthioSci AI Assistant
 
 Read when: debugging, getting unexpected behavior, or working in an unfamiliar module.
 
