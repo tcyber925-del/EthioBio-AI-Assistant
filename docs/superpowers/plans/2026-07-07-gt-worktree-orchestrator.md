@@ -17,7 +17,7 @@
 | Create | `scripts/Git-Worktree/gt` | Main entrypoint — dispatch + all subcommands |
 | Create | `scripts/Git-Worktree/install.sh` | Install to ~/.local/bin, add shell wrapper |
 | Create | `scripts/Git-Worktree/README.md` | Quick-start docs |
-| Create | `.gt/config.json` | Project config for EthioBio AI Assistant |
+| Create | `.gt/config.json` | Project config for EthioSci AI Assistant |
 
 ### Task 1: Project scaffold & config module
 

@@ -1,4 +1,4 @@
-# EthioBio AI Assistant - Execution
+# EthioSci AI Assistant - Execution
 
 ## Phase 1: Foundation
 - [x] Scaffold repository and project structure

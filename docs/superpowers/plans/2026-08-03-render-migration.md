@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Move the EthioBio AI Assistant backend (FastAPI API + Telegram bot + Postgres/pgvector + Redis + scheduled reminders) from Railway to Render, with zero data loss and a clean rollback path.
+**Goal:** Move the EthioSci AI Assistant backend (FastAPI API + Telegram bot + Postgres/pgvector + Redis + scheduled reminders) from Railway to Render, with zero data loss and a clean rollback path.
 
 **Architecture:** Replace Railway's services with a Render workspace containing: one **Web Service** (`ethiobio-api`, Docker runtime, holds the API + Telegram bot in webhook mode) — the largest single change is that the bot stops polling and uses a webhook on the API. **Managed Postgres** (pgvector-compatible) replaces the Railway Postgres; **managed Redis (Key Value)** replaces Railway Redis. The always-on reminder loop and proactive reminders move to **Render cron jobs**. The Vercel dashboard stays put and just gets a new `NEXT_PUBLIC_API_URL`. A small `scripts/render-entrypoint.sh` wrapper rewrites Render's `postgresql://` connection strings into the `postgresql+asyncpg://` form the app requires, so no app code changes are needed for the DB.
 
@@ -456,7 +456,7 @@ curl -s -H "Authorization: Bearer $TOKEN" "https://ethiobio-api.onrender.com/kno
 ```
 Expected: rows returned (proves asyncpg + pgvector are working).
 
-- [ ] **Step 3: Bot.** Send `/start` in the Telegram chat; expect a reply < ~15 s. Then ask a biology question to force a full chat + DB + RAG request.
+- [ ] **Step 3: Bot.** Send `/start` in the Telegram chat; expect a reply < ~15 s. Then ask a science question to force a full chat + DB + RAG request.
 - [ ] **Step 4: Dashboard.** Open the Vercel URL, log in, create an assignment — traffic flows against Render.
 - [ ] **Step 5: Failure-mode check (free tier only).** Pause the keep-alive workflow for one hour, wait 17 min, then `curl /liveness` — expect a response within ~90 s (cold start), proving the wake path works.
 

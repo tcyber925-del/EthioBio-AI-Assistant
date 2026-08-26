@@ -215,7 +215,7 @@ If your result class doesn't match, add a property to match one of these convent
 | Guardrail | Class | Decorated Method | What It Checks |
 |-----------|-------|------------------|----------------|
 | Toxicity | `ToxicityDetector` | `check()` | 8 regex pattern groups (violence, hate, self-harm, etc.) |
-| Topic Enforcer | `TopicEnforcer` | `check()` | 44 biology keywords + 5 off-topic regexes |
+| Topic Enforcer | `TopicEnforcer` | `check()` | 44 subject keywords + 5 off-topic regexes |
 | PII Scanner | `PIIScanner` | `scan()` | 6 regex patterns (phone, email, SSN, Ethiopian ID, credit card, Ethiopian phone) |
 
 **OutputGuardrailRunner** composes all three and checks them in sequence. It's the main entry point:
@@ -325,7 +325,7 @@ result = await judge.score(
     DIMENSIONS[0],        # EvalDimension with name, system_prompt, scale
     "What is a cell?",
     "A cell is the basic unit of life.",
-    context="Grade 9 biology unit 1",
+    context="Grade 9 science unit 1",
 )
 # result = {"score": 0.95, "explanation": "..."}
 ```
@@ -341,7 +341,7 @@ scores = await evaluate_and_write(
     judge,
     question="What is a cell?",
     response="A cell is the basic unit of life.",
-    context="Grade 9 biology",
+    context="Grade 9 science",
 )
 ```
 
@@ -388,7 +388,7 @@ Defaults: warning at 10% drop, alert at 20% drop (configurable via `drift_warnin
 - **Alerts**: Configure alerting rules in `prometheus/prometheus.yml`
 
 ### Grafana (`http://localhost:3001`, admin/ethiobio)
-- **EthioBio Overview**: Pre-built dashboard with guardrail invocations, eval scores, durations
+- **EthioSci Overview**: Pre-built dashboard with guardrail invocations, eval scores, durations
 - **Explore**: Raw PromQL queries against the Prometheus datasource (auto-provisioned)
 
 ---

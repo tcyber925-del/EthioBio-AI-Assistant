@@ -4,7 +4,7 @@
 Accepted
 
 ## Context
-The EthioBio AI Assistant needs to handle complex queries that require multi-step reasoning, iterative retrieval, and evidence verification. The existing pipeline (Orchestrator → Retrieval → Tutor → Safety) is sufficient for simple queries but lacks the sophistication needed for complex educational questions.
+The EthioSci AI Assistant needs to handle complex queries that require multi-step reasoning, iterative retrieval, and evidence verification. The existing pipeline (Orchestrator → Retrieval → Tutor → Safety) is sufficient for simple queries but lacks the sophistication needed for complex educational questions.
 
 ## Decision
 Implement a Google-style Multi-Agent Agentic RAG platform with the following components:

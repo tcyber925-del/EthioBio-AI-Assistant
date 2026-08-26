@@ -1,6 +1,6 @@
 # Error Handling — Usage Guide
 
-Shipped error layer for the EthioBio dashboard (Next.js 14 App Router). Read this file
+Shipped error layer for the EthioSci dashboard (Next.js 14 App Router). Read this file
 before touching any `catch`, `setError`, or `_fetch*` call site. Written against the
 shipped code (Tasks 02–15); the design spec lives at
 `../docs/superpowers/specs/2026-08-11-error-handling-design.md` and the audit at

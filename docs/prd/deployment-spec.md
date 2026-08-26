@@ -1,5 +1,5 @@
 ---
-title: EthioBio AI Assistant — Production Deployment Spec
+title: EthioSci AI Assistant — Production Deployment Spec
 status: accepted
 date: 2026-07-10
 authors: [tcyber]
@@ -7,7 +7,7 @@ grilled: yes
 platforms: [railway-free, vercel-hobby, upstash-free, ollama-cloud-free, Sentry-free, UptimeRobot-free]
 ---
 
-# EthioBio AI Assistant — Production Deployment Spec
+# EthioSci AI Assistant — Production Deployment Spec
 
 ## Status
 

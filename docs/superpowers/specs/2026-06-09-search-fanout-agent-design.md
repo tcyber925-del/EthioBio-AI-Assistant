@@ -1,7 +1,7 @@
 # Search Fanout Agent — Design Spec
 
 ## Project
-EthioBio AI Assistant — Multi-Agent Agentic RAG Platform
+EthioSci AI Assistant — Multi-Agent Agentic RAG Platform
 
 ## PRD
 PRD-004 — Search Fanout Agent

@@ -1,6 +1,6 @@
 # Anchored Summary — 2026-06-10
 
-## Project: EthioBio AI Assistant
+## Project: EthioSci AI Assistant
 ## Branch: `superpowers`
 ## Date: 2026-06-10
 

@@ -124,7 +124,7 @@ Create `dashboard/messages/en.json`:
     "amharic": "Amharic"
   },
   "login": {
-    "title": "EthioBio AI Assistant",
+    "title": "EthioSci AI Assistant",
     "subtitle": "Personalized Biology Tutoring for Ethiopian Grades 7-12",
     "email": "Email",
     "password": "Password",
@@ -409,7 +409,7 @@ Copy `dashboard/messages/en.json` to `dashboard/messages/am.json`. Replace every
     "amharic": "አማርኛ"
   },
   "login": {
-    "title": "EthioBio AI ረዳት",
+    "title": "EthioSci AI ረዳት",
     "subtitle": "ለኢትዮጵያ 7-12 ክፍሎች የተበጀ የባዮሎጂ ትምህርት",
     "email": "ኢሜይል",
     "password": "የይለፍ ቃል",
@@ -508,7 +508,7 @@ import Sidebar from '@/components/Sidebar';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'EthioBio AI Assistant',
+  title: 'EthioSci AI Assistant',
   description: 'Personalized Biology Tutoring for Ethiopian Grades 7-12',
 };
 

@@ -1,6 +1,6 @@
 # LangSmith: Tracing & Evaluation Guide
 
-LangSmith (hosted) is the agent tracing + evaluation plane for the EthioBio
+LangSmith (hosted) is the agent tracing + evaluation plane for the EthioSci
 pipeline. It **complements** the existing stack — OTel/PipelineMonitor/Postgres
 remain the source of truth for metrics and dashboards; LangSmith adds
 LLM-trace visualization, prompt/run inspection, and offline experiments.
@@ -59,9 +59,9 @@ Datasets (created from existing benchmark scenarios + gold set):
 python -m src.evaluation.langsmith.sync_datasets
 
 # run an experiment
-ethiobio-langsmith --dataset ethiobio-curriculum --evaluators all
-ethiobio-langsmith --dataset ethiobio-gold --evaluators faithfulness,relevance --limit 3
-ethiobio-langsmith --dataset ethiobio-adversarial --threshold 0.6   # exit 1 on regression
+ethiosci-langsmith --dataset ethiobio-curriculum --evaluators all
+ethiosci-langsmith --dataset ethiobio-gold --evaluators faithfulness,relevance --limit 3
+ethiosci-langsmith --dataset ethiobio-adversarial --threshold 0.6   # exit 1 on regression
 ```
 
 - Evaluators: `topic_coverage` (deterministic, uses `expected_topics`) +
@@ -112,7 +112,7 @@ langsmith trace export ./traces --limit 20 --full --api-key "$LANGSMITH_API_KEY"
 | `src/evaluation/langsmith/sync_datasets.py` | dataset upsert |
 | `src/evaluation/langsmith/eval_target.py` | `run_graph` target wrapper |
 | `src/evaluation/langsmith/evaluators.py` | topic coverage + judge evaluators |
-| `src/evaluation/langsmith/run.py` | `ethiobio-langsmith` CLI |
+| `src/evaluation/langsmith/run.py` | `ethiosci-langsmith` CLI |
 
 ## Known Gaps
 

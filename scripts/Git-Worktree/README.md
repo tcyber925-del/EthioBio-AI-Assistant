@@ -44,7 +44,7 @@ gt remove my-feature    # remove worktree + config entry
 cd /other/project && gt init --auto-detect
 ```
 
-## In This Project (EthioBio AI Assistant)
+## In This Project (EthioSci AI Assistant)
 
 5 pre-configured worktrees in `.worktrees/`:
 

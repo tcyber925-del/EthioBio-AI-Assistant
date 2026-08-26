@@ -5,7 +5,7 @@ Status: Draft
 
 ## Overview
 
-Systematic production hardening of the EthioBio AI Assistant across security, testing/CI, performance/infrastructure, and frontend. No new features — only hardening existing surfaces.
+Systematic production hardening of the EthioSci AI Assistant across security, testing/CI, performance/infrastructure, and frontend. No new features — only hardening existing surfaces.
 
 ## Track 1 — Auth, Rate Limiting, Error Handling
 

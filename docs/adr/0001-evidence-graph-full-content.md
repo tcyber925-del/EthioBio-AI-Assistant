@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-Most RAG systems store only chunk references (IDs) in the evidence registry. The actual content is looked up on demand from the vector store. However, for EthioBio's Agentic RAG, evidence needs to be:
+Most RAG systems store only chunk references (IDs) in the evidence registry. The actual content is looked up on demand from the vector store. However, for EthioSci's Agentic RAG, evidence needs to be:
 
 - **Immutable**: Vector store contents may change (re-indexing, deletion)
 - **Self-contained**: No dependency on external store for verification

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The EthioBio AI Assistant now includes an Agentic RAG (Retrieval-Augmented Generation) platform that handles complex educational queries requiring multi-step reasoning, iterative retrieval, and evidence verification.
+The EthioSci AI Assistant now includes an Agentic RAG (Retrieval-Augmented Generation) platform that handles complex educational queries requiring multi-step reasoning, iterative retrieval, and evidence verification.
 
 ## How It Works
 
@@ -41,7 +41,7 @@ For complex queries, the system expands your question into multiple variants to 
 
 ### Multi-Index Search
 Evidence is retrieved from multiple sources:
-- **Curriculum** — Ethiopian biology textbooks
+- **Curriculum** — Ethiopian science textbooks
 - **Evidence** — Past tutoring sessions
 - **Cross-session** — Historical learning data
 

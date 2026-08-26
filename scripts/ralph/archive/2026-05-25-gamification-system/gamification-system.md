@@ -1,7 +1,7 @@
 # Feature PRD — Gamification System
 
 ## Project
-EthioBio AI Assistant
+EthioSci AI Assistant
 
 ## Branch
 feature/gamification-system

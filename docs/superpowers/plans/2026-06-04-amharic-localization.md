@@ -289,7 +289,7 @@ git commit -m "feat(i18n): 3-way language in quiz, lesson, parent_summary agents
 
 ```python
 # Replace SAFETY_SYSTEM_PROMPT with:
-SAFETY_SYSTEM_PROMPT = """You are EthioBio Safety Agent, responsible for reviewing content for:
+SAFETY_SYSTEM_PROMPT = """You are EthioSci Safety Agent, responsible for reviewing content for:
 1. Factual accuracy (especially biology curriculum alignment)
 2. Grade-appropriateness (content suitable for Grade 7-12 students)
 3. Safety (no harmful, dangerous, or inappropriate content)
@@ -310,7 +310,7 @@ Analyze the content and respond with a JSON object:
 
 ```python
 # In src/graph/nodes/safety.py, replace SAFETY_PROMPT and __call__:
-SAFETY_PROMPT = """You are EthioBio Safety Agent. Review the following biology content for:
+SAFETY_PROMPT = """You are EthioSci Safety Agent. Review the following science content for:
 1. Factual accuracy
 2. Grade-appropriateness
 3. Safety (no harmful content)
@@ -600,7 +600,7 @@ In `start()` and other functions, replace inline English strings with `t()` call
 Add these keys to TRANSLATIONS:
 ```python
     "en": {
-        "welcome": "Welcome to EthioBio AI Assistant!\n\nI'm your biology learning assistant for Ethiopian Grades 7-12.\n\nSend me any biology question, or use the menu below:",
+        "welcome": "Welcome to EthioSci AI Assistant!\n\nI'm your science learning assistant for Ethiopian Grades 7-12.\n\nSend me any science question, or use the menu below:",
         # ...
     },
     "am": {

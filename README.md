@@ -1,10 +1,10 @@
 # EthioSci AI Assistant
 
-AI-powered biology learning and teaching assistant for Ethiopian middle and high school education (Grades 7-12). Uses LangGraph orchestration (unified graph with 12+ nodes), hybrid RAG (Dense + BM25 + Cross-encoder reranker), pgvector, and dynamic multi-provider AI system (Ollama, OpenRouter, OpenAI, Anthropic, OpenAI-compatible).
+AI-powered science learning and teaching assistant for Ethiopian middle and high school education (Grades 7-12), covering biology, chemistry, physics, and mathematics. Uses LangGraph orchestration (unified graph with 12+ nodes), hybrid RAG (Dense + BM25 + Cross-encoder reranker), pgvector, and dynamic multi-provider AI system (Ollama, OpenRouter, OpenAI, Anthropic, OpenAI-compatible).
 
 ## Features
 
-- **Biology Q&A** — Ask biology questions, get curriculum-aligned answers with explicit source citations
+- **Science Q&A** — Ask science questions across biology, chemistry, physics, and mathematics; get curriculum-aligned answers with explicit source citations
 - **Interactive Quiz** — Tap-to-answer quizzes with inline buttons, instant feedback, and score tracking
 - **RAG-Grounded Generation** — Quiz questions and answers strictly based on Ethiopian textbook content
 - **Lesson Planning** — Create structured lesson plans with objectives, activities, and assessments
@@ -68,7 +68,7 @@ src/
 ├── agents/
 │   ├── base.py                 # Base agent with _call_llm
 │   ├── orchestrator.py         # Intent classification + routing
-│   ├── tutor.py                # Biology Q&A with source citations
+│   ├── tutor.py                # Science Q&A with source citations
 │   ├── quiz.py                 # RAG-grounded quiz generation (5 types)
 │   ├── lesson_planner.py       # Lesson plan generation
 │   ├── translator.py           # English-Amharic translation
@@ -289,7 +289,7 @@ python -m src.telegram.bot
 
 ### Curriculum Ingestion
 
-Place Ethiopian biology textbook PDFs in the grade directories:
+Place Ethiopian subject textbook PDFs (biology, chemistry, physics, mathematics) in the grade directories:
 
 ```
 data/textbooks/
@@ -380,7 +380,7 @@ Key environment variables (see `.env.example` for full list):
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/chat` | Biology Q&A with RAG (legacy) |
+| POST | `/chat` | Science Q&A with RAG (legacy) |
 | POST | `/graph/chat` | Unified LangGraph pipeline (intent → planner/retrieve → tutor → safety) |
 | GET | `/graph/status` | Graph structure (nodes + edges) |
 | GET | `/graph/traces` | List recent pipeline traces |
@@ -624,7 +624,7 @@ User taps answer → instant feedback (✅ Correct / ❌ Wrong + explanation)
 | `/start` | Show main menu with icons |
 | `/help` | Show help text |
 | `/menu` | Return to main menu |
-| `/ask <question>` | Ask a biology question directly |
+| `/ask <question>` | Ask a science question directly |
 | `/quiz [grade] [topic]` | Start interactive quiz |
 | `/grade <7-12>` | Set default grade level |
 | `/language <en\|am\|both>` | Set language |

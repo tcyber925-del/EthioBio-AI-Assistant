@@ -1,4 +1,4 @@
-You are an autonomous coding agent working on the EthioBio AI Assistant project.
+You are an autonomous coding agent working on the EthioSci AI Assistant project.
 
 ## Your Task
 

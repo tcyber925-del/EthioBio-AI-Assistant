@@ -565,7 +565,7 @@ from src.retrieval.adapter import RetrievalFilter, VectorStoreAdapter
 
 logger = structlog.get_logger()
 
-DIAGRAM_SYSTEM_PROMPT = """You are EthioBio Diagram Generator, creating
+DIAGRAM_SYSTEM_PROMPT = """You are EthioSci Diagram Generator, creating
 visual biology diagrams for Ethiopian students (Grades 7-12).
 
 Generate an SVG diagram of a biology structure based on the user's request. The diagram must:

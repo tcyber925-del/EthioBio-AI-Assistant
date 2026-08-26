@@ -28,20 +28,20 @@ mkdir -p src/telegram/messages
 {
   "start": {
     "dashboard_login": "Your dashboard login code: <b>{code}</b>\n\nThis code expires in 5 minutes. Enter it on the login page.",
-    "welcome": "Welcome to EthioBio AI Assistant!\n\nI'm your biology learning assistant for Ethiopian Grades 7-12.\n\nSend me any biology question, or use the menu below:"
+    "welcome": "Welcome to EthioSci AI Assistant!\n\nI'm your science learning assistant for Ethiopian Grades 7-12.\n\nSend me any science question, or use the menu below:"
   },
   "common": {
     "error": "Sorry, I encountered an error. Please try again.",
     "cancelled": "Cancelled.",
-    "usage_ask": "Usage: /ask <your biology question>",
+    "usage_ask": "Usage: /ask <your science question>",
     "thinking": "Thinking...",
     "generating": "Generating..."
   },
   "help": {
-    "text": "EthioBio AI Assistant — Help\n\nCommands:\n/start — Show menu\n/help — This message\n/ask <question> — Ask a biology question\n/quiz [grade] [topic] — Take a quiz\n/lesson [grade] [topic] — Get a lesson plan\n/language <en|am|both> — Set language\n/grade <7-12> — Set grade level\n/model — Choose AI model\n/socratic — Toggle Socratic mode\n/reveal — Reveal answer\n/recovery — View recovery plans\n/progress — View mastery progress\n/dashboard_login — Get dashboard login code\n/settings — Notification settings\n/cancel — Cancel current operation"
+    "text": "EthioSci AI Assistant — Help\n\nCommands:\n/start — Show menu\n/help — This message\n/ask <question> — Ask a science question\n/quiz [grade] [topic] — Take a quiz\n/lesson [grade] [topic] — Get a lesson plan\n/language <en|am|both> — Set language\n/grade <7-12> — Set grade level\n/model — Choose AI model\n/socratic — Toggle Socratic mode\n/reveal — Reveal answer\n/recovery — View recovery plans\n/progress — View mastery progress\n/dashboard_login — Get dashboard login code\n/settings — Notification settings\n/cancel — Cancel current operation"
   },
   "tutor": {
-    "grade_prompt": "Grade {grade} selected. Send me your biology question. I'll help you understand it!",
+    "grade_prompt": "Grade {grade} selected. Send me your science question. I'll help you understand it!",
     "no_question": "No active question. Ask a question first with /ask or select Tutor from the menu.",
     "socratic_on": "Socratic Mode is now ON.\n\nIn Socratic mode, I'll guide you through questions rather than giving direct answers — helping you discover the answer yourself!",
     "socratic_off": "Socratic Mode is now OFF.\n\nI'll give you direct answers with explanations.",
@@ -329,7 +329,7 @@ from src.telegram.i18n import t
 assert t('ask_question') == '🧬 Ask a Question', f'Got: {t(\"ask_question\")}'
 assert t('ask_question', 'am') == '🧬 ጥያቄ ጠይቅ', f'Got: {t(\"ask_question\", \"am\")}'
 # Namespaced keys
-assert 'EthioBio AI Assistant' in t('help.text'), f'Got: {t(\"help.text\")}'
+assert 'EthioSci AI Assistant' in t('help.text'), f'Got: {t("help.text")}'
 assert 'ባዮሎጂ' in t('help.text', 'am'), f'Got: {t(\"help.text\", \"am\")}'
 # Interpolation
 assert 'Grade 10' in t('tutor.grade_prompt', 'en', grade=10), f'Got: {t(\"tutor.grade_prompt\", \"en\", grade=10)}'
@@ -393,7 +393,7 @@ def test_t_returns_amharic():
 def test_t_returns_namespaced():
     _clear_cache()
     result = t("help.text")
-    assert "EthioBio" in result
+    assert "EthioSci" in result
 
 
 def test_t_interpolation():
@@ -411,7 +411,7 @@ def test_t_missing_key_returns_key():
 def test_t_missing_lang_falls_back_to_english():
     _clear_cache()
     result = t("help.text", "xx")
-    assert "EthioBio" in result
+    assert "EthioSci" in result
 
 
 def test_get_flat_key():
@@ -516,7 +516,7 @@ To:
 
 Change line 753:
 ```python
-    await update.message.reply_text("Usage: /ask <your biology question>", ...)
+    await update.message.reply_text("Usage: /ask <your science question>", ...)
 ```
 To:
 ```python
@@ -543,7 +543,7 @@ git commit -m "feat(telegram): wire i18n into core handlers (start, help, cancel
 
 - [ ] **Step 1: Replace tutor grade_prompt (search for tutor_grade handler)**
 
-Replace the string `f"Grade {grade} selected. Send me your biology question..."` with:
+Replace the string `f"Grade {grade} selected. Send me your science question..."` with:
 ```python
 t("tutor.grade_prompt", _lang(context), grade=grade)
 ```

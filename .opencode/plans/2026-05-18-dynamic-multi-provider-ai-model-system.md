@@ -866,7 +866,7 @@ from typing import Optional
 
 
 class Settings(BaseSettings):
-    app_name: str = "EthioBio AI Assistant"
+    app_name: str = "EthioSci AI Assistant"
     debug: bool = False
     log_level: str = "INFO"
     secret_key: str = "change-me"
@@ -1324,7 +1324,7 @@ Replace `.env.example` with:
 
 ```bash
 # App
-APP_NAME=EthioBio AI Assistant
+APP_NAME=EthioSci AI Assistant
 DEBUG=false
 LOG_LEVEL=INFO
 SECRET_KEY=change-me-in-production

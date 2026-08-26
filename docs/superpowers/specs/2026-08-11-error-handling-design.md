@@ -1,4 +1,4 @@
-# EthioBio Frontend Error Handling Design
+# EthioSci Frontend Error Handling Design
 
 Date: 2026-08-11
 Scope: `dashboard/` (Next.js 14 App Router frontend) only — backend contracts untouched.

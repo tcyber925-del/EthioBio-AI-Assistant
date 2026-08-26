@@ -235,7 +235,7 @@ Create `src/notifications/templates/milestone_alert.html`:
     <p style="font-size: 24px; text-align: center; margin: 0;">+{{ improvement_pct }}%</p>
     <p style="text-align: center; color: #166534; margin: 4px 0 0;">Mastery improvement in <strong>{{ topic }}</strong></p>
   </div>
-  <p style="color: #6b7280; font-size: 12px; margin-top: 24px;">EthioBio AI Assistant — Personalized Biology Tutoring</p>
+  <p style="color: #6b7280; font-size: 12px; margin-top: 24px;">EthioSci AI Assistant — Personalized Science Tutoring</p>
 </body>
 </html>
 ```
@@ -274,7 +274,7 @@ Create `src/notifications/templates/digest.html`:
     {% endfor %}
   </ul>
   {% endif %}
-  <p style="color: #6b7280; font-size: 12px; margin-top: 24px;">EthioBio AI Assistant</p>
+  <p style="color: #6b7280; font-size: 12px; margin-top: 24px;">EthioSci AI Assistant</p>
 </body>
 </html>
 ```
@@ -294,7 +294,7 @@ Create `src/notifications/templates/review_reminder.html`:
     {% endfor %}
   </ul>
   <p>Regular review helps retain what you've learned!</p>
-  <p style="color: #6b7280; font-size: 12px; margin-top: 24px;">EthioBio AI Assistant</p>
+  <p style="color: #6b7280; font-size: 12px; margin-top: 24px;">EthioSci AI Assistant</p>
 </body>
 </html>
 ```

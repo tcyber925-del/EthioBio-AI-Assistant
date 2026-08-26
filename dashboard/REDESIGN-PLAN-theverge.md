@@ -2,7 +2,7 @@
 
 ## Objective
 
-Redesign the EthioBio dashboard around the visual system in `dashboard/DESIGN-theverge.md`: dark editorial canvas, high-contrast saturated blocks, mono-uppercase metadata, hairline borders, and a StoryStream-style activity rhythm.
+Redesign the EthioSci dashboard around the visual system in `dashboard/DESIGN-theverge.md`: dark editorial canvas, high-contrast saturated blocks, mono-uppercase metadata, hairline borders, and a StoryStream-style activity rhythm.
 
 The redesign should keep the dashboard usable as an education operations product. Use the Verge influence as a system language, not as a literal clone.
 
@@ -94,8 +94,8 @@ Files:
 Work:
 
 - Convert the layout to a dark canvas with a thin bordered sidebar.
-- Replace the light biological background wash with either no background pattern or a very subtle mono-line motif.
-- Change the sidebar logo area into a compact masthead: large `EthioBio` wordmark when expanded, icon-only when collapsed.
+- Replace the light science-themed background wash with either no background pattern or a very subtle mono-line motif.
+- Change the sidebar logo area into a compact masthead: large `EthioSci` wordmark when expanded, icon-only when collapsed.
 - Make nav labels mono-uppercase.
 - Use mint underline or left border for active state.
 - Keep search overlay, language selector, logout, and collapse behavior intact.

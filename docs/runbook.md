@@ -177,7 +177,7 @@ render logs -r srv-d9obfaou01pc73akt160 --limit 80
    lazily loaded `en_core_web_sm` on the **first memory-retrieval request**, spiking ~200Mi and
    OOM-killing a long-stable instance (events `server_failed oomKilled` ~5s after a
    `vector_search_unavailable` log). Fix: spaCy made optional — `_get_nlp()` returns `None`
-   when not installed and entity extraction falls back to the pure-Python biology-term/difficulty
+    when not installed and entity extraction falls back to the pure-Python subject-term/difficulty
    regex matcher (which is what the tests assert). spaCy + the model wheel were removed from
    `requirements.txt`/`pyproject.toml`. Chromadb stays absent (not in requirements); the memory
    `MemoryVectorStore` caches the unavailable state so it stops re-importing per request, and
@@ -267,12 +267,12 @@ alerts when it is genuinely down.
 
 | Monitor | Type | URL | Keyword | Purpose |
 |---------|------|-----|---------|---------|
-| EthioBio API (Keep-Alive) | HTTP(S) | `https://ethiobio-api.onrender.com/liveness` | — | Wake + uptime |
-| EthioBio API (Health) | HTTP(S) | `https://ethiobio-api.onrender.com/health` | `"ok"` | Deep check (DB + LLM) |
+| EthioSci API (Keep-Alive) | HTTP(S) | `https://ethiobio-api.onrender.com/liveness` | — | Wake + uptime |
+| EthioSci API (Health) | HTTP(S) | `https://ethiobio-api.onrender.com/health` | `"ok"` | Deep check (DB + LLM) |
 
 **Setup (one-time, manual in https://uptimerobot.com → Add New Monitor):**
 1. Monitor Type: HTTP(S)
-2. Friendly Name: `EthioBio API (Keep-Alive)`
+2. Friendly Name: `EthioSci API (Keep-Alive)`
 3. URL: `https://ethiobio-api.onrender.com/liveness`
 4. Interval: 5 minutes (free tier minimum)
 5. Timeout: 30 seconds

@@ -2,6 +2,28 @@
 
 Obsidian PARA vault. Codebase at `1-Projects/p000-Active/EthioBio AI Assistant/`. `.env`, `.venv`, and all source files live there — NOT at root.
 
+## Naming & Brand
+
+The product is **EthioSci AI Assistant** ("EthioSci" for short) — a multi-subject
+science learning and teaching assistant covering **biology, chemistry, physics, and
+mathematics** for Ethiopian Grades 7–12. It was renamed from "EthioBio" (biology-only)
+to "EthioSci" (multi-subject); the rename kept several infrastructure identifiers as
+`ethiobio_*` for backward compatibility.
+
+- **Product / brand name:** `EthioSci` / `EthioSci AI Assistant`. Use "science" as the
+  generic subject term ("science Q&A", "science tutor"). Subjects are biology, chemistry,
+  physics, mathematics.
+- **Retained `ethiobio_*` infrastructure identifiers (do NOT rename):** Render service &
+  domain `ethiobio-api.onrender.com`; GHCR image `ghcr.io/tcyber925-del/ethiobio-ai-assistant`;
+  Postgres service/db `ethiobio-pg` with `COLLECTION_NAME=ethiobio_curriculum`; Redis
+  `ethiobio-kv`; LangSmith project `ethiobio` and datasets `ethiobio-curriculum` /
+  `ethiobio-adversarial` / `ethiobio-gold`; `email_from=noreply@ethiobio.com`; Telegram
+  bot `t.me/ethiobio_bot`; localStorage `ethiobio_active_workspace_id`; Grafana default
+  `admin/ethiobio`; historical/archive docs.
+- **Bio textbooks:** the `data/textbooks/Biology/` corpus and any "Biology" domain-specific
+  references (legacy biology corpus, biology-only features) stay as-is — they are
+  subject-specific, not the product name.
+
 ## Pipeline
 
 ```

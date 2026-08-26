@@ -1,4 +1,4 @@
-# EthioBio AI Assistant - Review
+# EthioSci AI Assistant - Review
 
 ## Final Status
 - Completed: v1.3 (Phases 1-5 complete, Phase 4 partially complete)

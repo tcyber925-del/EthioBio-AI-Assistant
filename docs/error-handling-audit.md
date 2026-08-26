@@ -1,4 +1,4 @@
-# Error-Handling Audit — EthioBio Dashboard Frontend
+# Error-Handling Audit — EthioSci Dashboard Frontend
 
 Date: 2026-08-11 · Mode: read-only audit · Task 01 of 17 (design: `docs/superpowers/specs/2026-08-11-error-handling-design.md`, plan: `docs/superpowers/plans/2026-08-11-error-handling.md`)
 
