@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'EthioSci AI Assistant',
-  description: 'Personalized Biology Tutoring for Ethiopian Grades 7-12',
+  description: 'Personalized Science Tutoring for Ethiopian Grades 7-12',
 };
 
 export default async function RootLayout({

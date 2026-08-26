@@ -120,26 +120,26 @@ export default function LandingPage() {
       page: "Page 34"
     },
     {
-      q: "Explain the main stages of cellular respiration.",
-      a: "Cellular respiration occurs in 3 main pathways: 1. Glycolysis (in cytosol, anaerobic, breaks glucose into pyruvate), 2. Krebs Cycle (in mitochondrial matrix, generates NADH/FADH2), and 3. Electron Transport Chain (on inner mitochondrial membrane, generates ~32 ATP).",
-      source: "Grade 11 Biology Textbook",
-      unit: "Unit 3: Cellular Energetics",
-      page: "Page 112"
+      q: "Balance the reaction: hydrogen gas burns in oxygen to form water.",
+      a: "The balanced equation is 2H\u2082 + O\u2082 \u2192 2H\u2082O. Four hydrogen atoms and two oxygen atoms on each side. The reaction is exothermic, releasing energy as new bonds form in water \u2014 always check that both atom counts and charge balance.",
+      source: "Grade 10 Chemistry Textbook",
+      unit: "Unit 3: Chemical Reactions",
+      page: "Page 58"
     },
     {
-      q: "How does natural selection drive biological evolution?",
-      a: "Natural selection acts on phenotypic variations. Organisms with traits better suited to their environment have higher survival and reproductive rates, passing those advantageous alleles to offspring, increasing allele frequency over generations.",
-      source: "Grade 12 Biology Textbook",
-      unit: "Unit 4: Evolution",
-      page: "Page 87"
+      q: "A force of 12 N acts on a 3 kg block. What is its acceleration?",
+      a: "Newton's second law gives a = F/m = 12 N \u00f7 3 kg = 4 m/s\u00b2. The acceleration points in the same direction as the net force, assuming no friction opposes the motion.",
+      source: "Grade 11 Physics Textbook",
+      unit: "Unit 2: Motion and Forces",
+      page: "Page 41"
     }
   ]
 
   const quizQuestions = [
     { question: "Identifies the primary site of photosynthesis inside plant cells.", difficulty: -1.0, label: "Chloroplast (Basic)" },
-    { question: "Splitting of water molecules during light reaction is known as...", difficulty: 0.0, label: "Photolysis (Medium)" },
-    { question: "Calculates total net ATP produced by anaerobic fermentation of 1 glucose molecule.", difficulty: 1.0, label: "Anaerobic Yield (Hard)" },
-    { question: "The enzyme Rubisco is responsible for catalyzing which specific step?", difficulty: 2.0, label: "Carbon Fixation (Extreme)" }
+    { question: "The SI unit of force is named after which scientist?", difficulty: 0.0, label: "Newton (Medium)" },
+    { question: "How many moles of O\u2082 fully combust one mole of CH\u2084?", difficulty: 1.0, label: "Stoichiometry (Hard)" },
+    { question: "The derivative of x\u00b2 with respect to x equals...", difficulty: 2.0, label: "Power Rule (Extreme)" }
   ]
 
   return (

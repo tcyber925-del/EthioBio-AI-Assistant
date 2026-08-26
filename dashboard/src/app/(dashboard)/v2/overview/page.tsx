@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { isAuthenticated, getUserRole } from '@/lib/auth'
+import { initAuth, isAuthenticated, getUserRole } from '@/lib/auth'
 import { DashboardLayout, DashboardSkeleton } from '@/components/dashboard-v2'
 import { StudentDashboard, TeacherDashboard, ParentDashboard, SchoolDashboard, AdminDashboard } from '@/components/dashboard-v2/dashboards'
+
+const KNOWN_ROLES = ['student', 'parent', 'admin', 'teacher', 'school']
 
 export default function V2OverviewPage() {
   const t = useTranslations('v2.nav')
@@ -14,9 +16,18 @@ export default function V2OverviewPage() {
   const [role, setRole] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!isAuthenticated()) { router.push('/login'); return }
-    setRole(getUserRole())
-    setReady(true)
+    let cancelled = false
+    // Rebuild the in-memory role from /auth/me — the user_role cookie is a
+    // 1-day cache and may be expired while the session token is still valid.
+    initAuth().then(() => {
+      if (cancelled) return
+      if (!isAuthenticated()) { router.push('/login'); return }
+      const r = getUserRole()
+      if (!r || !KNOWN_ROLES.includes(r)) { router.push('/login'); return }
+      setRole(r)
+      setReady(true)
+    })
+    return () => { cancelled = true }
   }, [router])
 
   if (!ready) return <DashboardSkeleton />

@@ -89,7 +89,7 @@ export default function DiagramsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: prompt.trim(),
-          topic: 'biology',
+          topic: 'science',
           difficulty,
           grade,
         }),
@@ -240,7 +240,7 @@ export default function DiagramsPage() {
                 value={prompt}
                 onChange={e => setPrompt(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && generateDiagram()}
-                placeholder={'Describe the biology diagram you want...'}
+                placeholder={'Describe the science diagram you want...'}
                 className="flex-1 px-4 py-2 border border-border rounded-lg text-sm bg-background text-foreground placeholder:text-foreground-muted/50 focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <button

@@ -136,9 +136,9 @@ export default function IconPalette({ onComposedSvg }: IconPaletteProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          topic: topic || 'Biology Diagram',
+          topic: topic || 'Science Diagram',
           icon_ids: Array.from(selectedIds),
-          title: topic || 'Biology Diagram',
+          title: topic || 'Science Diagram',
         }),
       })
       onComposedSvg(data.diagram_svg, data.title)

@@ -161,7 +161,7 @@ const ACHIEVEMENT_DEFINITIONS: Achievement[] = [
   { id: 'streak_7', title: 'Dedicated', description: '7-day study streak', icon: 'medal', unlocked_at: null },
   { id: 'streak_30', title: 'Scholar', description: '30-day study streak', icon: 'medal', unlocked_at: null },
   { id: 'xp_1000', title: 'XP Hunter', description: 'Earn 1000 total XP', icon: 'medal', unlocked_at: null },
-  { id: 'level_5', title: 'Biology Expert', description: 'Reach Level 5', icon: 'medal', unlocked_at: null },
+  { id: 'level_5', title: 'Science Expert', description: 'Reach Level 5', icon: 'medal', unlocked_at: null },
   { id: 'level_10', title: 'Master Biologist', description: 'Reach Level 10', icon: 'medal', unlocked_at: null },
 ]
 
