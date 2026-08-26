@@ -5,7 +5,7 @@ class TestDiagramExportSchemas:
     def test_diagram_export_request_minimal(self):
         req = DiagramExportRequest(svg="<svg/>")
         assert req.format == "pdf"
-        assert req.title == "Biology Diagram"
+        assert req.title == "Science Diagram"
 
     def test_diagram_export_request_full(self):
         req = DiagramExportRequest(
