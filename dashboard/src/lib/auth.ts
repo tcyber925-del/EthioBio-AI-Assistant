@@ -49,12 +49,19 @@ export function getUserId(): string | null {
 
 export async function initAuth(): Promise<void> {
   if (_tokenCache || _decodedCache) return
-  if (!isAuthenticated()) return
   try {
+    // Always ask the backend — the client-side auth_ready/user_role cookies are
+    // short-lived caches and may be expired while the httpOnly session token
+    // (which /auth/me reads) is still valid. A successful response proves the
+    // session and lets us refresh those cookies for every consumer.
     const res = await fetch("/auth/me", { credentials: "include" })
     if (!res.ok) return
     const me = await res.json()
     _decodedCache = { sub: me.user_id, role: me.role }
+    setCookie("auth_ready", "1", 1)
+    if (me.role) {
+      setCookie("user_role", me.role, 1)
+    }
   } catch {
     // backend unreachable — leave caches empty
   }
@@ -64,4 +71,16 @@ export function getUserRole(): string {
   if (_decodedCache?.role) return _decodedCache.role
   const match = document.cookie.match(/(?:^|;\s*)user_role=([^;]*)/)
   return match ? decodeURIComponent(match[1]) : ""
+}
+
+/**
+ * Resolve the current role, transparently recovering it from /auth/me when the
+ * cached cookie is missing or expired. Use this in effects instead of reading
+ * getUserRole() synchronously during render.
+ */
+export async function ensureUserRole(): Promise<string> {
+  const existing = getUserRole()
+  if (existing) return existing
+  await initAuth()
+  return getUserRole()
 }

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Users, BookOpen, FileQuestion, BarChart3 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
-import { getUserRole } from '@/lib/auth'
+import { ensureUserRole } from '@/lib/auth'
 import { HeroSection, InsightCard, MetricStrip, AIInsightPanel } from '@/components/dashboard-v2'
 import { ErrorState } from '@/components/ui/errors'
 import { normalizeException, type AppError } from '@/lib/errors'
@@ -41,7 +41,7 @@ export function TeacherDashboard() {
   const [error, setError] = useState<AppError | null>(null)
 
   const fetchData = async () => {
-    const role = getUserRole()
+    const role = await ensureUserRole()
     const endpoint = role === 'admin' ? '/api/admin/dashboard' : '/api/teacher/dashboard'
     setLoading(true); setError(null)
     try {

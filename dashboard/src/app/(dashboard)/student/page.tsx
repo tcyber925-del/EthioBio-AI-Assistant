@@ -18,7 +18,7 @@ import {
   User,
   Zap,
 } from 'lucide-react'
-import { getUserRole, isAuthenticated } from '@/lib/auth'
+import { isAuthenticated } from '@/lib/auth'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { CardSkeleton } from '@/components/Skeleton'
 import PageHeader from '@/components/ui/PageHeader'

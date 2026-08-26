@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { BookOpen, ClipboardCheck, FileText, Users, BarChart3, RefreshCw } from 'lucide-react'
-import { getUserRole, isAuthenticated } from '@/lib/auth'
+import { ensureUserRole, isAuthenticated } from '@/lib/auth'
 import { CardSkeleton, TableSkeleton } from '@/components/Skeleton'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
@@ -52,10 +52,11 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<AppError | null>(null)
 
-  const fetchData = async () => {
+  const fetchData = async (roleHint?: string) => {
     setLoading(true)
     try {
-      const endpoint = getUserRole() === 'admin' ? '/api/admin/dashboard' : '/api/teacher/dashboard'
+      const role = roleHint ?? await ensureUserRole()
+      const endpoint = role === 'admin' ? '/api/admin/dashboard' : '/api/teacher/dashboard'
       const response = await fetchWithAuth(endpoint)
       const d = await response.json()
       setData(d)
@@ -72,9 +73,13 @@ export default function Dashboard() {
   }, [router])
 
   useEffect(() => {
-    const role = getUserRole()
-    if (role === 'student') { router.push('/student'); return }
-    fetchData()
+    let cancelled = false
+    ensureUserRole().then((role) => {
+      if (cancelled) return
+      if (role === 'student') { router.push('/student'); return }
+      fetchData(role)
+    })
+    return () => { cancelled = true }
   }, [router])
 
   if (loading && !data) {
@@ -118,7 +123,7 @@ export default function Dashboard() {
         title={t('dashboard')}
         description={t('subtitle')}
         actions={
-          <Button variant="secondary" size="sm" onClick={fetchData}>
+          <Button variant="secondary" size="sm" onClick={() => void fetchData()}>
             <RefreshCw className="w-4 h-4" />
             {tc('refresh')}
           </Button>

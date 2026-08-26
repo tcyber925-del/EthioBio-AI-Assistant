@@ -28,7 +28,7 @@ import {
 import { DnaIcon } from './BioIcon'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
 import { useTranslations } from 'next-intl'
-import { clearToken, getUserRole, isAuthenticated } from '@/lib/auth'
+import { clearToken, ensureUserRole, isAuthenticated } from '@/lib/auth'
 
 interface NavSection {
   sectionKey: string | null
@@ -122,8 +122,13 @@ export function SidebarV2() {
   const [role, setRole] = useState<string | null>(null)
 
   useEffect(() => {
-    setRole(getUserRole())
-    setReady(true)
+    let cancelled = false
+    ensureUserRole().then((r) => {
+      if (cancelled) return
+      setRole(r)
+      setReady(true)
+    })
+    return () => { cancelled = true }
   }, [])
 
   const authenticated = ready && isAuthenticated()

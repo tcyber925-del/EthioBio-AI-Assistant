@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { DashboardLayout } from '@/components/dashboard-v2'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
-import { getUserId, getUserRole } from '@/lib/auth'
+import { getUserId, ensureUserRole } from '@/lib/auth'
 import {
   FileText, Users, Calendar, Clock, AlertCircle, RefreshCw, CheckCircle2,
   Download, ChevronRight, Send, ArrowUpCircle, Edit3
@@ -30,8 +30,16 @@ export default function AssignmentDetailPage() {
   const t = useTranslations('assignments')
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
-  const role = getUserRole()
+  const [role, setRole] = useState<string>('')
   const isTeacher = role === 'admin' || role === 'teacher'
+
+  useEffect(() => {
+    let cancelled = false
+    ensureUserRole().then((r) => {
+      if (!cancelled) setRole(r)
+    })
+    return () => { cancelled = true }
+  }, [])
 
   const [assignment, setAssignment] = useState<Assignment | null>(null)
   const [submissions, setSubmissions] = useState<Submission[]>([])

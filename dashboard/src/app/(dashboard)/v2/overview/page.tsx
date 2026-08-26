@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { initAuth, isAuthenticated, getUserRole } from '@/lib/auth'
+import { ensureUserRole, isAuthenticated } from '@/lib/auth'
 import { DashboardLayout, DashboardSkeleton } from '@/components/dashboard-v2'
 import { StudentDashboard, TeacherDashboard, ParentDashboard, SchoolDashboard, AdminDashboard } from '@/components/dashboard-v2/dashboards'
 
@@ -17,12 +17,11 @@ export default function V2OverviewPage() {
 
   useEffect(() => {
     let cancelled = false
-    // Rebuild the in-memory role from /auth/me — the user_role cookie is a
-    // 1-day cache and may be expired while the session token is still valid.
-    initAuth().then(() => {
+    // Recover the role from /auth/me if the 1-day user_role cookie expired
+    // while the session token is still valid — never render an unknown role.
+    ensureUserRole().then((r) => {
       if (cancelled) return
       if (!isAuthenticated()) { router.push('/login'); return }
-      const r = getUserRole()
       if (!r || !KNOWN_ROLES.includes(r)) { router.push('/login'); return }
       setRole(r)
       setReady(true)

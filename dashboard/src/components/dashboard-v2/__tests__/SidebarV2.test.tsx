@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -19,6 +19,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/auth", () => ({
   getUserRole: () => "student",
+  ensureUserRole: () => Promise.resolve("student"),
   getUserId: () => null,
   isAuthenticated: () => true,
   clearToken: vi.fn(),
@@ -37,20 +38,24 @@ function renderSidebar(messages: Record<string, unknown>, locale: string) {
 }
 
 describe("SidebarV2", () => {
-  it("renders navigation items for student role", () => {
+  it("renders navigation items for student role", async () => {
     renderSidebar(en, "en");
-    expect(screen.getByText("Overview")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Overview")).toBeInTheDocument());
     expect(screen.getByText("Ask Q&A")).toBeInTheDocument();
   });
 
-  it("renders collapse toggle button", () => {
+  it("renders collapse toggle button", async () => {
     renderSidebar(en, "en");
-    expect(screen.getByLabelText("Collapse sidebar")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByLabelText("Collapse sidebar")).toBeInTheDocument(),
+    );
   });
 
-  it("renders Amharic navigation when locale is am", () => {
+  it("renders Amharic navigation when locale is am", async () => {
     renderSidebar(am, "am");
-    expect(screen.getByText("አጠቃላይ እይታ")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText("አጠቃላይ እይታ")).toBeInTheDocument(),
+    );
     expect(screen.getByText("ጥያቄ ጠይቅ")).toBeInTheDocument();
   });
 });

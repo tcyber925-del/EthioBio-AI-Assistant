@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { isAuthenticated, getUserRole, getUserId } from '@/lib/auth'
+import { isAuthenticated, ensureUserRole, getUserId } from '@/lib/auth'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { DashboardSkeleton } from '@/components/dashboard-v2'
 import { FolderKanban, Plus } from 'lucide-react'
@@ -42,16 +42,22 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
   }
 
   useEffect(() => {
-    if (!isAuthenticated()) {
-      router.push('/login')
-      return
-    }
-    const role = getUserRole()
-    if (role !== 'admin' && role !== 'teacher') {
-      router.push('/v2/overview')
-      return
-    }
-    fetchWorkspaces().then(() => setReady(true))
+    let cancelled = false
+    ensureUserRole().then((role) => {
+      if (cancelled) return
+      if (!isAuthenticated()) {
+        router.push('/login')
+        return
+      }
+      if (role !== 'admin' && role !== 'teacher') {
+        router.push('/v2/overview')
+        return
+      }
+      fetchWorkspaces().then(() => {
+        if (!cancelled) setReady(true)
+      })
+    })
+    return () => { cancelled = true }
   }, [router])
 
   if (!ready) return <DashboardSkeleton />
