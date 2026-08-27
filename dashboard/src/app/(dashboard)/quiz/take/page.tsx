@@ -12,6 +12,7 @@ import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserId, isAuthenticated } from '@/lib/auth'
 import { normalizeException, type AppError } from '@/lib/errors'
 import { useSubjectGrade } from '@/context/SubjectGradeContext'
+import { SubjectSelect } from '@/components/SubjectSelect'
 
 interface QuizItem {
   id: string
@@ -144,7 +145,8 @@ export default function QuizTakeListPage() {
               {[7, 8, 9, 10, 11, 12].map(g => (
                 <option key={g} value={g}>{t('grade_label')} {g}</option>
               ))}
-            </select>
+             </select>
+            <SubjectSelect />
             <div className="relative flex-1">
               <select
                 value={genCount}

@@ -11,6 +11,7 @@ import { normalizeException, type AppError } from '@/lib/errors'
 import SvgEditor from '@/components/svg-editor/SvgEditor'
 import IconPalette from '@/components/icon-palette/IconPalette'
 import { useSubjectGrade } from '@/context/SubjectGradeContext'
+import { SubjectSelect } from '@/components/SubjectSelect'
 
 export const dynamic = 'force-dynamic'
 
@@ -225,10 +226,11 @@ export default function DiagramsPage() {
             <select value={grade} onChange={e => setGrade(Number(e.target.value))}
               className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
               {GRADES.map(g => <option key={g} value={g}>Grade {g}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs text-foreground-muted block mb-1.5">{td('difficulty')}</label>
+              </select>
+              <SubjectSelect />
+            </div>
+            <div>
+              <label className="text-xs text-foreground-muted block mb-1.5">{td('difficulty')}</label>
             <select value={difficulty} onChange={e => setDifficulty(e.target.value)}
               className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
               {DIFFICULTIES.map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}

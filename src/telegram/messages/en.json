@@ -24,6 +24,7 @@
   },
   "tutor": {
     "grade_prompt": "Grade {grade} selected. Send me your science question. I'll help you understand it!",
+    "subject_prompt": "Grade {grade} selected. Now choose a subject:",
     "grade_select": "Select your grade level:",
     "no_question": "No active question. Ask a question first with /ask or select Tutor from the menu.",
     "socratic_on": "Socratic Mode is now ON.\n\nIn Socratic mode, I'll guide you through questions rather than giving direct answers — helping you discover the answer yourself!",
@@ -44,6 +45,7 @@
   },
   "quiz": {
     "grade_prompt": "Select your grade level:",
+    "subject_prompt": "Grade {grade} selected. Now choose a subject for the quiz:",
     "topic_prompt": "Grade {grade} selected. What topic should the quiz cover?\n(e.g., Cell Biology, Genetics, Ecology)",
     "quiz_type_prompt": "Select quiz type:",
     "generating": "Generating your quiz...",
@@ -65,6 +67,7 @@
   },
   "diagram": {
     "grade_prompt": "Select your grade level for the diagram:",
+    "subject_prompt": "Grade {grade} selected. Now choose a subject for the diagram:",
     "topic_prompt": "Grade {grade} selected. Describe the science diagram you want:\n(e.g., Draw a plant cell, Show the heart structure, Compare mitosis and meiosis)",
     "generating": "Generating your diagram...",
     "grade_label": "Grade",
@@ -74,6 +77,7 @@
   },
   "lesson": {
     "grade_prompt": "Select grade level:",
+    "subject_prompt": "Grade {grade} selected. Now choose a subject for the lesson:",
     "generating": "Creating lesson plan...",
     "error": "Error creating lesson plan.",
     "topic_prompt": "Grade {grade} selected. What science topic?",

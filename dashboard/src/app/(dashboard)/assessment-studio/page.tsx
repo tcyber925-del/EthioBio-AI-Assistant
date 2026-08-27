@@ -12,6 +12,7 @@ import Link from 'next/link'
 import { ErrorAlert } from '@/components/ui/errors'
 import { normalizeException, type AppError } from '@/lib/errors'
 import { useSubjectGrade } from '@/context/SubjectGradeContext'
+import { SubjectSelect } from '@/components/SubjectSelect'
 
 interface Quiz {
   id: string
@@ -174,10 +175,11 @@ export default function AssessmentStudioPage() {
                     {[7, 8, 9, 10, 11, 12].map(g => (
                       <option key={g} value={g} className="bg-v2-surface">{t('grade_option', { g })}</option>
                     ))}
-                  </select>
-                </div>
-
-                {/* Assessment Type */}
+                   </select>
+                   <SubjectSelect />
+                 </div>
+ 
+                 {/* Assessment Type */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs text-v2-text-secondary uppercase font-semibold">{t('field_diagnostic')}</label>
                   <select

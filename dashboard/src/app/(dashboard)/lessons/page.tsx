@@ -12,6 +12,7 @@ import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserId, isAuthenticated } from '@/lib/auth'
 import { normalizeException, type AppError } from '@/lib/errors'
 import { useSubjectGrade } from '@/context/SubjectGradeContext'
+import { SubjectSelect } from '@/components/SubjectSelect'
 
 export const dynamic = 'force-dynamic'
 
@@ -259,10 +260,11 @@ export default function LessonsPage() {
                 <label className="text-sm text-foreground-muted block mb-1">{t('grade_level')}</label>
                 <select value={genGrade} onChange={e => setGenGrade(Number(e.target.value))} className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
                   {[7, 8, 9, 10, 11, 12].map(g => <option key={g} value={g}>{t('col_grade')} {g}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-sm text-foreground-muted block mb-1">{t('classroom_context')}</label>
+                 </select>
+                 <SubjectSelect />
+               </div>
+               <div>
+                 <label className="text-sm text-foreground-muted block mb-1">{t('classroom_context')}</label>
                 <select value={selectedClassroomId} onChange={e => setSelectedClassroomId(e.target.value)} className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
                   <option value="">{t('classroom_reference_only')}</option>
                   {classrooms.map(c => <option key={c.id} value={c.id}>{c.name} (Grade {c.grade_level})</option>)}

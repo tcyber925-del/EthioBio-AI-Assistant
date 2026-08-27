@@ -94,7 +94,11 @@ def _api_client(**kwargs):
     DIAGRAM_TOPIC,
     LINK_OTP,
     COPILOT,
-) = range(13)
+    TUTOR_SUBJECT,
+    QUIZ_SUBJECT,
+    LESSON_SUBJECT,
+    DIAGRAM_SUBJECT,
+) = range(17)
 
 
 async def _db_try(action, fallback=None):
@@ -638,7 +642,7 @@ async def reveal_command(update: Update, context):
                 user_message=question,
                 user_id=memory_user_id,
                 grade_level=context.user_data.get("grade_level"),
-                subject=context.user_data.get("subject"),
+                subject=context.user_data.get("tutor_subject") or context.user_data.get("subject"),
                 language=context.user_data.get("language", "en"),
                 socratic_mode=False,
                 hint_level=hint_level,
@@ -1016,7 +1020,22 @@ async def handle_tutor_grade(update: Update, context):
     grade = int(query.data.split("_")[-1])
     context.user_data["tutor_grade"] = grade
     await query.edit_message_text(
-        t("tutor.grade_prompt", _lang(context), grade=grade),
+        t("tutor.subject_prompt", _lang(context), grade=grade),
+        reply_markup=subject_keyboard("tutor_subject", language=_lang(context)),
+    )
+    return TUTOR_SUBJECT
+
+
+async def handle_tutor_subject(update: Update, context):
+    query = update.callback_query
+    try:
+        await query.answer()
+    except Exception:
+        logger.warning("tutor_subject_ans_fail", user_id=update.effective_user.id, exc_info=True)
+    code = query.data.split("_")[-1]
+    context.user_data["tutor_subject"] = code
+    await query.edit_message_text(
+        t("tutor.grade_prompt", _lang(context), grade=context.user_data.get("tutor_grade")),
         reply_markup=back_keyboard(language=_lang(context)),
     )
     return TUTOR
@@ -1127,7 +1146,8 @@ async def handle_question(update: Update, context):
                     user_id=memory_user_id,
                     grade_level=context.user_data.pop("tutor_grade", None)
                     or context.user_data.get("grade_level"),
-                    subject=context.user_data.get("subject"),
+                    subject=context.user_data.get("tutor_subject")
+                    or context.user_data.get("subject"),
                     language=context.user_data.get("language", "en"),
                     socratic_mode=socratic,
                     hint_level=hint_level,
@@ -1327,7 +1347,22 @@ async def handle_quiz_grade(update: Update, context):
     grade = int(query.data.split("_")[-1])
     context.user_data["quiz_grade"] = grade
     await query.edit_message_text(
-        t("quiz.topic_prompt", _lang(context), grade=grade),
+        t("quiz.subject_prompt", _lang(context), grade=grade),
+        reply_markup=subject_keyboard("quiz_subject", language=_lang(context)),
+    )
+    return QUIZ_SUBJECT
+
+
+async def handle_quiz_subject(update: Update, context):
+    query = update.callback_query
+    try:
+        await query.answer()
+    except Exception:
+        logger.warning("quiz_subject_ans_fail", user_id=update.effective_user.id, exc_info=True)
+    code = query.data.split("_")[-1]
+    context.user_data["quiz_subject"] = code
+    await query.edit_message_text(
+        t("quiz.topic_prompt", _lang(context), grade=context.user_data.get("quiz_grade")),
         reply_markup=back_keyboard(language=_lang(context)),
     )
     return QUIZ_TOPIC
@@ -1348,7 +1383,7 @@ async def handle_quiz_topic(update: Update, context):
             topic=topic,
             question_count=5,
             types=types,
-            subject=context.user_data.get("subject"),
+            subject=context.user_data.get("quiz_subject") or context.user_data.get("subject"),
         )
 
         if not result.get("questions"):
@@ -1881,6 +1916,21 @@ async def handle_lesson_grade(update: Update, context):
     await query.answer()
     grade = int(query.data.split("_")[-1])
     context.user_data["lesson_grade"] = grade
+    await query.edit_message_text(
+        t("lesson.subject_prompt", _lang(context), grade=grade),
+        reply_markup=subject_keyboard("lesson_subject", language=_lang(context)),
+    )
+    return LESSON_SUBJECT
+
+
+async def handle_lesson_subject(update: Update, context):
+    query = update.callback_query
+    try:
+        await query.answer()
+    except Exception:
+        logger.warning("lesson_subject_ans_fail", user_id=update.effective_user.id, exc_info=True)
+    code = query.data.split("_")[-1]
+    context.user_data["lesson_subject"] = code
     # Reset feature selections
     context.user_data["lesson_features"] = {
         "exit_ticket": False,
@@ -1889,7 +1939,7 @@ async def handle_lesson_grade(update: Update, context):
         "misconception_activities": False,
     }
     await query.edit_message_text(
-        t("lesson.features_prompt", _lang(context), grade=grade),
+        t("lesson.features_prompt", _lang(context), grade=context.user_data.get("lesson_grade")),
         reply_markup=lesson_features_keyboard(
             context.user_data["lesson_features"], language=_lang(context)
         ),
@@ -1937,7 +1987,7 @@ async def handle_lesson_topic(update: Update, context):
         result = await agent.generate(
             grade_level=grade,
             topic=topic,
-            subject=context.user_data.get("subject"),
+            subject=context.user_data.get("lesson_subject") or context.user_data.get("subject"),
             generate_exit_ticket=features.get("exit_ticket", False),
             generate_differentiation=features.get("differentiation", False),
             generate_diagram_suggestions=features.get("diagram_suggestions", False),
@@ -2007,7 +2057,22 @@ async def handle_diagram_grade(update: Update, context):
     grade = int(query.data.split("_")[-1])
     context.user_data["diagram_grade"] = grade
     await query.edit_message_text(
-        t("diagram.topic_prompt", _lang(context), grade=grade),
+        t("diagram.subject_prompt", _lang(context), grade=grade),
+        reply_markup=subject_keyboard("diagram_subject", language=_lang(context)),
+    )
+    return DIAGRAM_SUBJECT
+
+
+async def handle_diagram_subject(update: Update, context):
+    query = update.callback_query
+    try:
+        await query.answer()
+    except Exception:
+        logger.warning("diagram_subject_ans_fail", user_id=update.effective_user.id, exc_info=True)
+    code = query.data.split("_")[-1]
+    context.user_data["diagram_subject"] = code
+    await query.edit_message_text(
+        t("diagram.topic_prompt", _lang(context), grade=context.user_data.get("diagram_grade")),
         reply_markup=back_keyboard(language=_lang(context)),
     )
     return DIAGRAM_TOPIC
@@ -2024,7 +2089,13 @@ async def handle_diagram_topic(update: Update, context):
         await update.message.reply_text(t("diagram.generating", lang))
         router_llm = ModelRouter()
         agent = DiagramAgent(llm_router=router_llm)
-        result = await agent.generate(prompt=topic, topic=topic, difficulty="beginner", grade=grade)
+        result = await agent.generate(
+            prompt=topic,
+            topic=topic,
+            difficulty="beginner",
+            grade=grade,
+            subject=context.user_data.get("diagram_subject") or context.user_data.get("subject"),
+        )
 
         svg = result.get("diagram_svg", "")
         labels = result.get("labels", [])
@@ -2487,7 +2558,7 @@ async def handle_hint(update: Update, context):
                 user_message=question,
                 user_id=memory_user_id,
                 grade_level=context.user_data.get("grade_level"),
-                subject=context.user_data.get("subject"),
+                subject=context.user_data.get("tutor_subject") or context.user_data.get("subject"),
                 language=context.user_data.get("language", "en"),
                 socratic_mode=context.user_data.get("socratic_mode", False),
                 hint_level=hint_level,
@@ -2574,7 +2645,7 @@ async def handle_reveal_answer(update: Update, context):
                 user_message=question,
                 user_id=memory_user_id,
                 grade_level=context.user_data.get("grade_level"),
-                subject=context.user_data.get("subject"),
+                subject=context.user_data.get("tutor_subject") or context.user_data.get("subject"),
                 language=context.user_data.get("language", "en"),
                 socratic_mode=False,
                 hint_level=hint_level,
@@ -3545,6 +3616,10 @@ def build_app() -> Application:
                 CallbackQueryHandler(handle_quiz_grade, pattern="^quiz_grade_"),
                 CallbackQueryHandler(end_conversation, pattern="^menu$"),
             ],
+            QUIZ_SUBJECT: [
+                CallbackQueryHandler(handle_quiz_subject, pattern="^quiz_subject_"),
+                CallbackQueryHandler(end_conversation, pattern="^menu$"),
+            ],
             QUIZ_TOPIC: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_quiz_topic),
                 CallbackQueryHandler(end_conversation, pattern="^menu$"),
@@ -3575,6 +3650,10 @@ def build_app() -> Application:
                 CallbackQueryHandler(handle_lesson_grade, pattern="^lesson_grade_"),
                 CallbackQueryHandler(end_conversation, pattern="^menu$"),
             ],
+            LESSON_SUBJECT: [
+                CallbackQueryHandler(handle_lesson_subject, pattern="^lesson_subject_"),
+                CallbackQueryHandler(end_conversation, pattern="^menu$"),
+            ],
             LESSON_FEATURES: [
                 CallbackQueryHandler(handle_lesson_features, pattern="^lesson_feature_"),
                 CallbackQueryHandler(handle_lesson_features, pattern="^lesson_features_done$"),
@@ -3601,6 +3680,10 @@ def build_app() -> Application:
                 CallbackQueryHandler(handle_diagram_grade, pattern="^diagram_grade_"),
                 CallbackQueryHandler(end_conversation, pattern="^menu$"),
             ],
+            DIAGRAM_SUBJECT: [
+                CallbackQueryHandler(handle_diagram_subject, pattern="^diagram_subject_"),
+                CallbackQueryHandler(end_conversation, pattern="^menu$"),
+            ],
             DIAGRAM_TOPIC: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_diagram_topic),
                 CallbackQueryHandler(end_conversation, pattern="^menu$"),
@@ -3623,6 +3706,10 @@ def build_app() -> Application:
         states={
             TUTOR_GRADE: [
                 CallbackQueryHandler(handle_tutor_grade, pattern="^tutor_grade_"),
+                CallbackQueryHandler(end_conversation, pattern="^menu$"),
+            ],
+            TUTOR_SUBJECT: [
+                CallbackQueryHandler(handle_tutor_subject, pattern="^tutor_subject_"),
                 CallbackQueryHandler(end_conversation, pattern="^menu$"),
             ],
             TUTOR: [

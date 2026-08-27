@@ -21,6 +21,7 @@ import { getToken, getUserId, initAuth, isAuthenticated } from '@/lib/auth'
 import { streamFetch } from '@/lib/fetch'
 import { useVoiceTurn } from '@/hooks/useVoiceTurn'
 import { useSubjectGrade } from '@/context/SubjectGradeContext'
+import { SubjectSelect } from '@/components/SubjectSelect'
 import { isVoiceTurnEnabled } from '@/lib/voice-turn'
 import { normalizeException, type AppError } from '@/lib/errors'
 
@@ -228,7 +229,8 @@ export default function AskPage() {
             {[7, 8, 9, 10, 11, 12].map(g => (
               <option key={g} value={g}>{ta('grade_label')} {g}</option>
             ))}
-          </select>
+            </select>
+          <SubjectSelect />
           <div className="flex border border-v2-border rounded-lg shrink-0">
             <button
               onClick={() => setMode('graph')}

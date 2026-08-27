@@ -14,7 +14,7 @@ export function SubjectGradeSelector() {
 
   return (
     <div
-      className="flex items-center gap-2"
+      className="flex items-center gap-3"
       role="group"
       aria-label={t('subject_selector')}
     >
@@ -32,6 +32,8 @@ export function SubjectGradeSelector() {
           ))}
         </select>
       </label>
+
+      <span className="h-5 w-px bg-v2-border" aria-hidden="true" />
 
       <label className="flex items-center gap-1.5 text-xs text-v2-text-secondary">
         <span className="hidden sm:inline">{t('subject_label')}</span>
