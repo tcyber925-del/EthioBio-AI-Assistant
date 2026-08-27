@@ -39,6 +39,7 @@ class ParentSummaryAgent(BaseAgent):
         week_end: datetime,
         language: str = "en",
         session: Optional[AsyncSession] = None,
+        subject: Optional[str] = None,
         token_queue: asyncio.Queue[TokenChunk | None] | None = None,
     ) -> dict:
         total_attempts = len(records)
@@ -61,11 +62,12 @@ class ParentSummaryAgent(BaseAgent):
         else:
             lang_instruction = "Write the summary in English."
 
+        subject_line = f"Subject focus: {subject}\n" if subject else ""
         user_message = f"""Generate a weekly progress report (in {language}):
 
 Student: {student_name}
 Grade: {grade_level or "N/A"}
-Week: {week_start.date()} to {week_end.date()}
+{subject_line}Week: {week_start.date()} to {week_end.date()}
 Topics covered: {", ".join(topics) if topics else "None"}
 Total quiz attempts: {total_attempts}
 Average score: {avg_score:.1f}%

@@ -69,9 +69,9 @@ async def main():
 
                 lang = "en"
                 user_result = await session.execute(
-                    select(User.language_preference).where(User.id == prefs.user_id)
+                    select(User.language_preference, User.subject).where(User.id == prefs.user_id)
                 )
-                user_lang = user_result.scalar_one_or_none()
+                user_lang, user_subject = user_result.first() or (None, None)
                 if user_lang in ("am", "both"):
                     lang = "am"
 
@@ -83,9 +83,16 @@ async def main():
                     due_reviews=due_reviews,
                 )
 
-                subject_en = f"{prefs.digest_frequency.capitalize()} Biology Progress Digest"
+                subject_label = (user_subject or "biology").capitalize()
+                subject_am_label = {
+                    "biology": "ባዮሎጂ",
+                    "chemistry": "ኬሚስትሪ",
+                    "physics": "ፊዚክስ",
+                    "mathematics": "ሂሳብ",
+                }.get(user_subject or "biology", "ባዮሎጂ")
+                subject_en = f"{prefs.digest_frequency.capitalize()} {subject_label} Progress Digest"
                 freq_am = "ዕለታዊ" if prefs.digest_frequency == "daily" else "ሳምንታዊ"
-                subject_am = f"{freq_am} የባዮሎጂ እድገት ማጠቃለያ"
+                subject_am = f"{freq_am} የ{subject_am_label} እድገት ማጠቃለያ"
                 subject = subject_am if lang == "am" else subject_en
                 if not await send_email(prefs.email, subject, html):
                     logger.warning("digest_email_skipped", user_id=prefs.user_id, subject=subject)

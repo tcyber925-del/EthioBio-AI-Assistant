@@ -4,13 +4,14 @@ from uuid import UUID
 from pydantic import Field
 
 from src.schemas.base import SchemaModel
-from src.schemas.common import LanguageEnum
+from src.schemas.common import LanguageEnum, SubjectEnum
 
 
 class TutorRequest(SchemaModel):
     user_id: Optional[UUID] = None
     question: str
     grade_level: Optional[int] = None
+    subject: Optional[SubjectEnum] = None
     topic: Optional[str] = None
     language: LanguageEnum = LanguageEnum.EN
     use_rag: bool = True

@@ -4,6 +4,7 @@ from uuid import UUID
 from pydantic import Field
 
 from src.schemas.base import SchemaModel
+from src.schemas.common import SubjectEnum
 
 
 class DiagramLabel(SchemaModel):
@@ -33,6 +34,7 @@ class DiagramGenerateRequest(SchemaModel):
     difficulty: str = Field("beginner", pattern="^(beginner|intermediate|advanced)$")
     model: Optional[str] = Field(None, min_length=1)
     grade: int = Field(default=10, ge=7, le=12)
+    subject: Optional[SubjectEnum] = None
     stream: bool = False
 
 

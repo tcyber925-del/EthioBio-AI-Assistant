@@ -100,12 +100,14 @@ class DiagramAgent(BaseAgent):
         grade: int,
         session: Optional[AsyncSession] = None,
         preferred_model: str | None = None,
+        subject: Optional[str] = None,
         token_queue: asyncio.Queue[TokenChunk | None] | None = None,
     ) -> DiagramPanel:
         """Generate a single panel diagram. Returns a DiagramPanel instance."""
         caption = sub_prompt[:80] if len(sub_prompt) > 80 else sub_prompt
+        subject_label = f" ({subject})" if subject else ""
         user_message = (
-            f"Panel {panel_index + 1} for topic: {topic}.\n"
+            f"Panel {panel_index + 1} for topic: {topic}{subject_label}.\n"
             f"Focus on: {sub_prompt}\n"
             f"Difficulty: {difficulty}\n"
             f"Grade level: {grade}\n\n"
@@ -186,6 +188,7 @@ class DiagramAgent(BaseAgent):
         session: Optional[AsyncSession] = None,
         preferred_model: str | None = None,
         grade: int = 10,
+        subject: Optional[str] = None,
         token_queue: asyncio.Queue[TokenChunk | None] | None = None,
     ) -> dict:
         textbook_references = []
@@ -203,6 +206,7 @@ class DiagramAgent(BaseAgent):
                     topic=topic,
                     difficulty=difficulty,
                     grade=grade,
+                    subject=subject,
                     session=session,
                     preferred_model=preferred_model,
                     token_queue=token_queue,
@@ -225,7 +229,9 @@ class DiagramAgent(BaseAgent):
 
         system_prompt = DIAGRAM_SYSTEM_PROMPT
         try:
-            filter_obj = RetrievalFilter(grade_level=grade, source_type="textbook_diagram")
+            filter_obj = RetrievalFilter(
+                grade_level=grade, subject=subject, source_type="textbook_diagram"
+            )
             results = await self.adapter.search(query=topic, n_results=3, filter_obj=filter_obj)
             if results:
                 context = self.adapter.format_context(results)

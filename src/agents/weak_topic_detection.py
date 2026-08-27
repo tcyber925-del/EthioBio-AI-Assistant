@@ -80,13 +80,15 @@ async def analyze_quiz_attempt(attempt: QuizAttempt, session: AsyncSession) -> N
     quiz_obj = await session.get(Quiz, attempt.quiz_id)
     unit = quiz_obj.topic if quiz_obj else None
     grade_level = quiz_obj.grade_level if quiz_obj else 0
+    subject = quiz_obj.subject if quiz_obj else None
 
     for topic in topic_total:
         total_q = topic_total[topic]
         correct = topic_correct.get(topic, 0)
         pct = (correct / total_q * 100) if total_q > 0 else 0
         await _update_mastery(
-            attempt.user_id, topic, pct, total_q, correct, unit, grade_level, attempt, session
+            attempt.user_id, topic, pct, total_q, correct, unit, grade_level, attempt, session,
+            subject=subject,
         )
 
         if topic_wrong.get(topic):
@@ -105,6 +107,7 @@ async def _update_mastery(
     grade_level: int,
     attempt: QuizAttempt,
     session: AsyncSession,
+    subject: str | None = None,
 ) -> None:
     result = await session.execute(
         select(StudentMastery).where(
@@ -134,12 +137,15 @@ async def _update_mastery(
             mastery.unit = unit
         if grade_level and not mastery.grade_level:
             mastery.grade_level = grade_level
+        if subject and not mastery.subject:
+            mastery.subject = subject
     else:
         mastery = StudentMastery(
             user_id=user_id,
             topic=topic,
             unit=unit or "",
             grade_level=grade_level or 0,
+            subject=subject,
             average_score=round(pct, 1),
             attempt_count=1,
             total_questions_attempted=total_questions,

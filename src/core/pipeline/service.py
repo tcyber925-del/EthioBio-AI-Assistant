@@ -232,6 +232,7 @@ class PipelineOrchestrator:
                 "chunk_index": i,
                 "heading": c.get("heading", ""),
                 "topic": ko_meta.get("topic", c.get("topic", "")),
+                "subject": ko_meta.get("subject", c.get("subject", "")),
                 "grade_level": ko_meta.get("grade_level", c.get("grade_level", 0)),
                 "unit": ko_meta.get("unit", c.get("unit", "")),
                 "section": c.get("section", ""),

@@ -20,7 +20,7 @@
     "grade_label": "ክፍል {grade}"
   },
   "help": {
-    "text": "ኢትዮሳይ AI ረዳት — እገዛ\n\nትዕዛዞች፦\n/start — ሜኑ አሳይ\n/help — ይህ መልእክት\n/ask <ጥያቄ> — የሳይንስ ጥያቄ ጠይቅ\n/quiz [ክፍል] [ርዕስ] — ፈተና ውሰድ\n/grade <7-12> — የክፍል ደረጃ አዘጋጅ\n/language <en|am|both> — ቋንቋ አዘጋጅ\n/socratic — የሶክራቲክ ሁነታን ቀይር\n/hint — ቀጣዩን የፍንጭ ደረጃ አግኝ\n/cancel — ሂደቱን ሰርዝ\n\nማንኛውንም የሳይንስ ጥያቄ በመተየብ ይጀምሩ!"
+    "text": "ኢትዮሳይ AI ረዳት — እገዛ\n\nትዕዛዞች፦\n/start — ሜኑ አሳይ\n/help — ይህ መልእክት\n/ask <ጥያቄ> — የሳይንስ ጥያቄ ጠይቅ\n/quiz [ክፍል] [ርዕስ] — ፈተና ውሰድ\n/grade <7-12> — የክፍል ደረጃ አዘጋጅ\n/subject <biology|chemistry|physics|mathematics> — መርገጫዎን ይወስኑ\n/language <en|am|both> — ቋንቋ አዘጋጅ\n/socratic — የሶክራቲክ ሁነታን ቀይር\n/hint — ቀጣዩን የፍንጭ ደረጃ አግኝ\n/cancel — ሂደቱን ሰርዝ\n\nማንኛውንም የሳይንስ ጥያቄ በመተየብ ይጀምሩ!"
   },
   "tutor": {
     "grade_prompt": "{grade}ኛ ክፍል ተመርጧል። የሳይንስ ጥያቄዎን ይላኩ። እንዲረዱት እረዳዎታለሁ!",
@@ -99,6 +99,15 @@
   "grade": {
     "set": "ነባሪ ክፍል ወደ {grade}ኛ ክፍል ተቀይሯል።",
     "usage": "አጠቃቀም፦ /grade <7-12>"
+  },
+  "subject": {
+    "command": "የመርገጫ አይነት ይምረጡ:",
+    "set": "መርገጫ ወደ {subject} ተቀይሯል።",
+    "coming_soon_reply": "የ{subject} ይዘት እያዘጋጃል ነው — ለአሁኑ ጊዜ ባዮሎጂ በጣም ብዙ እቃዎች አሉት። በእንዳንድ ጊዜ ከ /subject ይቀይሩት።",
+    "biology": "ባዮሎጂ",
+    "chemistry": "ኬሚስትሪ",
+    "physics": "ፊዚክስ",
+    "mathematics": "ሂሳብ"
   },
   "model": {
     "no_models": "ሞዴሎችን ማምጣት አልተቻለም። የ API አገልጋይ እየሰራ ነው?",

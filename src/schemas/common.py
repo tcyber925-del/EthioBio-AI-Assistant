@@ -27,10 +27,46 @@ class LanguageEnum(str, enum.Enum):
         return self == self.EN
 
 
+class SubjectEnum(str, enum.Enum):
+    BIOLOGY = "biology"
+    CHEMISTRY = "chemistry"
+    PHYSICS = "physics"
+    MATHEMATICS = "mathematics"
+
+    @property
+    def label(self) -> str:
+        return SUBJECT_LABELS[self.value]
+
+    @property
+    def amharic_label(self) -> str:
+        return SUBJECT_LABELS_AM[self.value]
+
+
+#: Ordered list of all supported subjects (canonical values).
+SUBJECT_VALUES: list[str] = [s.value for s in SubjectEnum]
+
+#: English display labels for each subject.
+SUBJECT_LABELS: dict[str, str] = {
+    "biology": "Biology",
+    "chemistry": "Chemistry",
+    "physics": "Physics",
+    "mathematics": "Mathematics",
+}
+
+#: Amharic display labels for each subject.
+SUBJECT_LABELS_AM: dict[str, str] = {
+    "biology": "ባዮሎጂ",
+    "chemistry": "ኬሚስትሪ",
+    "physics": "ፊዚክስ",
+    "mathematics": "ሂሳብ",
+}
+
+
 class ChatRequest(SchemaModel):
     messages: list[Message]
     user_id: UUID
     grade_level: Optional[int] = None
+    subject: Optional[SubjectEnum] = None
     topic: Optional[str] = None
     language: LanguageEnum = LanguageEnum.EN
     stream: bool = False

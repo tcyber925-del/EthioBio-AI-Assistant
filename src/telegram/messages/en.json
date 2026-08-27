@@ -20,7 +20,7 @@
     "grade_label": "Grade {grade}"
   },
   "help": {
-    "text": "EthioSci AI Assistant — Help\n\nCommands:\n/start — Show menu\n/help — This message\n/ask <question> — Ask a science question\n/quiz [grade] [topic] — Generate a quiz\n/grade <7-12> — Set your default grade\n/language <en|am|both> — Set language\n/socratic — Toggle Socratic tutoring mode\n/hint — Get the next hint level (1-3) in Socratic mode\n/cancel — Cancel current operation\n\nOr just type any science question to get started!"
+    "text": "EthioSci AI Assistant — Help\n\nCommands:\n/start — Show menu\n/help — This message\n/ask <question> — Ask a science question\n/quiz [grade] [topic] — Generate a quiz\n/grade <7-12> — Set your default grade\n/subject <biology|chemistry|physics|mathematics> — Set your subject\n/language <en|am|both> — Set language\n/socratic — Toggle Socratic tutoring mode\n/hint — Get the next hint level (1-3) in Socratic mode\n/cancel — Cancel current operation\n\nOr just type any science question to get started!"
   },
   "tutor": {
     "grade_prompt": "Grade {grade} selected. Send me your science question. I'll help you understand it!",
@@ -99,6 +99,15 @@
   "grade": {
     "set": "Default grade set to Grade {grade}.",
     "usage": "Usage: /grade <7-12>"
+  },
+  "subject": {
+    "command": "Choose your subject:",
+    "set": "Subject set to {subject}.",
+    "coming_soon_reply": "{subject} content is coming soon — for now Biology has the most material. You can switch back anytime with /subject.",
+    "biology": "Biology",
+    "chemistry": "Chemistry",
+    "physics": "Physics",
+    "mathematics": "Mathematics"
   },
   "model": {
     "no_models": "Failed to fetch models. Is the API server running?",

@@ -51,6 +51,7 @@ class UnitPlannerAgent(BaseAgent):
         generate_diagram_suggestions: bool = False,
         generate_misconception_activities: bool = False,
         preferred_model: Optional[str] = None,
+        subject: Optional[str] = None,
     ) -> dict:
         outline = await self._generate_outline(
             unit_title=unit_title,
@@ -80,6 +81,7 @@ class UnitPlannerAgent(BaseAgent):
                 generate_differentiation=generate_differentiation,
                 generate_diagram_suggestions=generate_diagram_suggestions,
                 generate_misconception_activities=generate_misconception_activities,
+                subject=subject,
             )
 
             lessons.append(

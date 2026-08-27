@@ -32,6 +32,7 @@ export async function voiceTurnFetch(
   selectedModel: string,
   callbacks: VoiceTurnCallbacks,
   signal?: AbortSignal,
+  subject?: string,
 ) {
   const token = getToken()
   const form = new FormData()
@@ -39,6 +40,7 @@ export async function voiceTurnFetch(
   form.append('grade_level', String(gradeLevel))
   form.append('language', language)
   if (selectedModel) form.append('model', selectedModel)
+  if (subject) form.append('subject', subject)
 
   const headers: Record<string, string> = {}
   if (token) headers['Authorization'] = `Bearer ${token}`

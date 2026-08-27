@@ -11,6 +11,7 @@ import { Sparkles, RefreshCw, Eye, Check, Loader2, Layers, Award } from 'lucide-
 import Link from 'next/link'
 import { ErrorAlert } from '@/components/ui/errors'
 import { normalizeException, type AppError } from '@/lib/errors'
+import { useSubjectGrade } from '@/context/SubjectGradeContext'
 
 interface Quiz {
   id: string
@@ -40,7 +41,7 @@ export default function AssessmentStudioPage() {
   const [errorTitle, setErrorTitle] = useState<string | null>(null)
 
   // Generation States
-  const [grade, setGrade] = useState(10)
+  const { grade, subject, setGrade } = useSubjectGrade()
   const [topic, setTopic] = useState('')
   const [assessmentType, setAssessmentType] = useState('mastery')
   const [adaptive, setAdaptive] = useState(false)
@@ -93,6 +94,7 @@ export default function AssessmentStudioPage() {
       const payload = {
         grade_level: grade,
         topic: topic,
+        subject,
         question_count: count,
         assessment_type: assessmentType,
         types: selectedTypes.length > 0 ? selectedTypes : ['multiple_choice'],

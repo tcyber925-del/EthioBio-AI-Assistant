@@ -1435,5 +1435,15 @@
     "wrong_answer": "ተሳሳተ መልስ፡",
     "resolved": "ተፈትቷል",
     "resolve": "ፍታ"
+  },
+  "subjectgrade": {
+    "subject_label": "የመርገጫ አይነት",
+    "subject_selector": "ርገጫ አይነት እና ክዳኔ ይምረጡ",
+    "subject_biology": "ባዮሎጂ",
+    "subject_chemistry": "ኬሚስትሪ",
+    "subject_physics": "ፊዚክስ",
+    "subject_mathematics": "ሂሳብ",
+    "subject_coming_soon": "በቅርቡ ይመጣል",
+    "grade_label": "ክዳኔ"
   }
 }

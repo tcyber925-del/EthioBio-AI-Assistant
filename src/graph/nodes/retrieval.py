@@ -55,7 +55,7 @@ class RetrievalNode:
         search_rounds = []
 
         # Round 1: exact grade
-        filter_obj = RetrievalFilter(grade_level=state.grade_level)
+        filter_obj = RetrievalFilter(grade_level=state.grade_level, subject=state.subject)
         r1 = await self.adapter.search(query, n_results=N_RESULTS, filter_obj=filter_obj)
         search_rounds.append((r1, "exact"))
 
@@ -66,7 +66,7 @@ class RetrievalNode:
                 if adj_grade < 7 or adj_grade > 12:
                     continue
                 self._push_status(state, f"Checking Grade {adj_grade} materials...")
-                adj_filter = RetrievalFilter(grade_level=adj_grade)
+                adj_filter = RetrievalFilter(grade_level=adj_grade, subject=state.subject)
                 adj_results = await self.adapter.search(
                     query, n_results=N_RESULTS, filter_obj=adj_filter
                 )
@@ -81,7 +81,7 @@ class RetrievalNode:
         if len({r.content[:80] for r in all_raw}) < 6:
             self._push_status(state, "Searching broader curriculum...")
             fallback = await self.adapter.search(
-                query, n_results=N_RESULTS, filter_obj=RetrievalFilter()
+                query, n_results=N_RESULTS, filter_obj=RetrievalFilter(subject=state.subject)
             )
             all_raw.extend(fallback)
 
@@ -117,6 +117,14 @@ class RetrievalNode:
             for r in quality_results
         ]
         state.context = self.adapter.format_context(quality_results)
+
+        # Graceful degradation: a specific subject was requested but no curriculum
+        # content matched it (e.g. Chemistry/Physics/Mathematics are not yet
+        # ingested, or Grades 7-8 where biology PDFs don't exist). Signal the
+        # tutor to respond with a friendly "coming soon" message instead of
+        # hallucinating or falling back to another subject.
+        if state.subject and not quality_results:
+            state.no_content_for_subject = True
 
         return state
 

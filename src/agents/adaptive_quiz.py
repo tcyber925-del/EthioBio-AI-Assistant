@@ -74,6 +74,7 @@ async def update_ability(
     topic: str,
     correct_count: int,
     total_count: int,
+    subject: str | None = None,
 ) -> StudentAbility:
     result = await session.execute(
         select(StudentAbility).where(
@@ -94,6 +95,8 @@ async def update_ability(
         ability.ability_score = new_ability
         ability.uncertainty = new_uncertainty
         ability.attempt_count += total_count
+        if subject:
+            ability.subject = subject
     else:
         ability = StudentAbility(
             user_id=user_id,
@@ -101,6 +104,7 @@ async def update_ability(
             ability_score=new_ability,
             uncertainty=new_uncertainty,
             attempt_count=total_count,
+            subject=subject,
         )
         session.add(ability)
 
@@ -111,13 +115,17 @@ async def get_ability(
     session: AsyncSession,
     user_id,
     topic: str,
+    subject: str | None = None,
 ) -> tuple[float, float, int]:
-    result = await session.execute(
-        select(StudentAbility).where(
-            StudentAbility.user_id == user_id,
-            StudentAbility.topic == topic,
+    filters = [
+        StudentAbility.user_id == user_id,
+        StudentAbility.topic == topic,
+    ]
+    if subject:
+        filters.append(
+            (StudentAbility.subject == subject) | (StudentAbility.subject.is_(None))
         )
-    )
+    result = await session.execute(select(StudentAbility).where(*filters))
     ability = result.scalar_one_or_none()
     if ability:
         return ability.ability_score, ability.uncertainty, ability.attempt_count
@@ -143,8 +151,9 @@ async def select_adaptive_questions(
     topic: str,
     count: int = 5,
     exclude_ids: list | None = None,
+    subject: str | None = None,
 ) -> list[Question]:
-    ability, uncertainty, attempt_count = await get_ability(session, user_id, topic)
+    ability, uncertainty, attempt_count = await get_ability(session, user_id, topic, subject)
 
     query = select(Question).where(Question.topic == topic)
     if exclude_ids:

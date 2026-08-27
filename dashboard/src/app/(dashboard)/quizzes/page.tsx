@@ -11,6 +11,7 @@ import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserId, isAuthenticated } from '@/lib/auth'
 import { ErrorAlert, ErrorState } from '@/components/ui/errors'
 import { normalizeException, type AppError } from '@/lib/errors'
+import { useSubjectGrade } from '@/context/SubjectGradeContext'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,7 +27,7 @@ export default function QuizzesPage() {
   const [error, setError] = useState<AppError | null>(null)
   const [filter, setFilter] = useState('draft')
   const [showModal, setShowModal] = useState(false)
-  const [genGrade, setGenGrade] = useState(12)
+  const { grade: genGrade, subject, setGrade: setGenGrade } = useSubjectGrade()
   const [genTopic, setGenTopic] = useState('')
   const [genCount, setGenCount] = useState(5)
   const [genType, setGenType] = useState('multiple_choice')
@@ -67,7 +68,7 @@ export default function QuizzesPage() {
       const genResponse = await fetchWithAuth(`/quiz/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teacher_id: getUserId(), grade_level: genGrade, topic: genTopic, question_count: genCount, types, model: selectedModel }),
+        body: JSON.stringify({ teacher_id: getUserId(), grade_level: genGrade, topic: genTopic, subject, question_count: genCount, types, model: selectedModel }),
       })
       const { task_id } = await genResponse.json()
 

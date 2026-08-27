@@ -3,6 +3,7 @@ from typing import Optional
 from uuid import UUID
 
 from src.schemas.base import SchemaModel
+from src.schemas.common import SubjectEnum
 
 
 class MisconceptionInfo(SchemaModel):
@@ -103,6 +104,7 @@ class GenerateRecoveryPlanResponse(SchemaModel):
 
 class GenerateRecoveryPlanRequest(SchemaModel):
     topic_filter: Optional[str] = None
+    subject: Optional[SubjectEnum] = None
     stream: bool = False
 
 

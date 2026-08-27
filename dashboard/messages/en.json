@@ -1435,5 +1435,15 @@
     "wrong_answer": "Wrong Answer:",
     "resolved": "Resolved",
     "resolve": "Resolve"
+  },
+  "subjectgrade": {
+    "subject_label": "Subject",
+    "subject_selector": "Select subject and grade",
+    "subject_biology": "Biology",
+    "subject_chemistry": "Chemistry",
+    "subject_physics": "Physics",
+    "subject_mathematics": "Mathematics",
+    "subject_coming_soon": "Coming soon",
+    "grade_label": "Grade"
   }
 }

@@ -10,6 +10,7 @@ import { ErrorAlert } from '@/components/ui/errors'
 import { normalizeException, type AppError } from '@/lib/errors'
 import SvgEditor from '@/components/svg-editor/SvgEditor'
 import IconPalette from '@/components/icon-palette/IconPalette'
+import { useSubjectGrade } from '@/context/SubjectGradeContext'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,7 +54,7 @@ export default function DiagramsPage() {
   const td = useTranslations('diagrams')
   const tc = useTranslations('common')
   const [prompt, setPrompt] = useState('')
-  const [grade, setGrade] = useState(10)
+  const { grade, subject, setGrade } = useSubjectGrade()
   const [difficulty, setDifficulty] = useState('beginner')
 
   const [loading, setLoading] = useState(false)
@@ -89,7 +90,8 @@ export default function DiagramsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: prompt.trim(),
-          topic: 'science',
+          topic: subject,
+          subject,
           difficulty,
           grade,
         }),

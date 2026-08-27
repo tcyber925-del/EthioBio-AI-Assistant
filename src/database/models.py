@@ -52,6 +52,7 @@ class User(Base):
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.student)
     language_preference: Mapped[str] = mapped_column(String(10), default="en")
     grade_level: Mapped[int] = mapped_column(Integer, nullable=True)
+    subject: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
@@ -124,6 +125,7 @@ class StudentProfile(Base):
     school: Mapped[str] = mapped_column(String(200), nullable=True)
     region: Mapped[str] = mapped_column(String(100), nullable=True)
     topic_mastery: Mapped[dict] = mapped_column(JSON, default=dict)
+    subject: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     score_history: Mapped[list] = mapped_column(JSON, default=list)
     weak_areas: Mapped[list] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -279,6 +281,7 @@ class Quiz(Base):
     title: Mapped[str] = mapped_column(String(300))
     grade_level: Mapped[int] = mapped_column(Integer)
     topic: Mapped[str] = mapped_column(String(300))
+    subject: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     question_count: Mapped[int] = mapped_column(Integer)
     status: Mapped[str] = mapped_column(String(20), default="draft")
     model_used: Mapped[str] = mapped_column(String(100), nullable=True)
@@ -320,6 +323,7 @@ class ProgressRecord(Base):
     topic: Mapped[str] = mapped_column(String(300))
     score: Mapped[float] = mapped_column(Float)
     total: Mapped[int] = mapped_column(Integer)
+    subject: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     student: Mapped["StudentProfile"] = relationship(back_populates="progress_records")
@@ -503,6 +507,7 @@ class StudentMastery(Base):
     correct_answers: Mapped[int] = mapped_column(Integer, default=0)
     severity: Mapped[str] = mapped_column(String(20), default="good")
     confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    subject: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     last_assessed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
@@ -726,6 +731,7 @@ class StudentAbility(Base):
     ability_score: Mapped[float] = mapped_column(Float, default=0.0)
     uncertainty: Mapped[float] = mapped_column(Float, default=3.0)
     attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    subject: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )

@@ -4,12 +4,13 @@ from uuid import UUID
 from pydantic import Field
 
 from src.schemas.base import SchemaModel
-from src.schemas.common import LanguageEnum
+from src.schemas.common import LanguageEnum, SubjectEnum
 
 
 class LessonPlanRequest(SchemaModel):
     grade_level: int = Field(..., ge=7, le=12)
     topic: str
+    subject: Optional[SubjectEnum] = None
     duration_minutes: int = Field(40, ge=20, le=120)
     language: LanguageEnum = LanguageEnum.EN
     teacher_id: Optional[UUID] = None
@@ -106,6 +107,7 @@ class UnitPlanGenerateRequest(SchemaModel):
     unit_title: str
     grade_level: int = Field(..., ge=7, le=12)
     topic: str
+    subject: Optional[SubjectEnum] = None
     days: int = Field(5, ge=2, le=20)
     duration_minutes: int = Field(40, ge=20, le=120)
     language: LanguageEnum = LanguageEnum.EN

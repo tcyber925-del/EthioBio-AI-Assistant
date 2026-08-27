@@ -222,6 +222,7 @@ async def generate_parent_summary(
             week_end=week_end,
             language=request.language,
             session=session,
+            subject=request.subject or student.subject,
         )
 
         db_summary = ParentSummary(
@@ -307,6 +308,7 @@ async def _compute_parent_summary(
             week_end=week_end,
             language=request.language,
             session=session,
+            subject=request.subject or student.subject,
             token_queue=queue,
         )
 

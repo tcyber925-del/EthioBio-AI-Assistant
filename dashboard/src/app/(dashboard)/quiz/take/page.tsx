@@ -11,6 +11,7 @@ import { ErrorAlert, ErrorState } from '@/components/ui/errors'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserId, isAuthenticated } from '@/lib/auth'
 import { normalizeException, type AppError } from '@/lib/errors'
+import { useSubjectGrade } from '@/context/SubjectGradeContext'
 
 interface QuizItem {
   id: string
@@ -35,7 +36,7 @@ export default function QuizTakeListPage() {
   const [error, setError] = useState<AppError | null>(null)
 
   const [genTopic, setGenTopic] = useState('')
-  const [genGrade, setGenGrade] = useState(12)
+  const { grade: genGrade, subject, setGrade: setGenGrade } = useSubjectGrade()
   const [genCount, setGenCount] = useState(5)
   const [genTypes, setGenTypes] = useState<string[]>(['multiple_choice', 'true_false'])
   const [genModel, setGenModel] = useState('')
@@ -81,6 +82,7 @@ export default function QuizTakeListPage() {
         body: JSON.stringify({
           grade_level: genGrade,
           topic: genTopic.trim(),
+          subject,
           question_count: genCount,
           types,
           model: genModel || undefined,

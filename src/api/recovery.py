@@ -324,6 +324,7 @@ async def auto_generate_recovery_plan(
             user_id=user_id,
             session=session,
             topic_filter=request.topic_filter,
+            subject=request.subject,
         )
         return GenerateRecoveryPlanResponse(
             plan=result.get("plan"),
@@ -348,6 +349,7 @@ async def _handle_recovery_stream(
             user_id=user_id,
             session=session,
             topic_filter=request.topic_filter,
+            subject=request.subject,
             token_queue=queue,
         )
     )

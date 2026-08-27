@@ -235,6 +235,7 @@ async def get_weekly_summary(
         week_end=week_end,
         language=language,
         session=session,
+        subject=child.subject,
     )
 
     db_summary = ParentSummary(

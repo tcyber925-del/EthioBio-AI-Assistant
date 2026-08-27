@@ -26,8 +26,14 @@ class AgentState:
     user_message: str = ""
     user_id: Optional[UUID] = None
     grade_level: Optional[int] = None
+    subject: Optional[str] = None
     topic: Optional[str] = None
     language: str = "en"
+
+    # Set by the retrieval node when a specific subject was requested but no
+    # curriculum content matched (subject not yet ingested, or grade without
+    # material). The tutor node uses this to return a friendly message.
+    no_content_for_subject: bool = False
 
     retrieval_query: str = ""
     retrieved_chunks: list[dict] = field(default_factory=list)

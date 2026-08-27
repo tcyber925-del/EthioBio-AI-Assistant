@@ -60,6 +60,7 @@ from src.telegram.keyboards import (
     quiz_next_keyboard,
     quiz_result_keyboard,
     quiz_type_keyboard,
+    subject_keyboard,
     teacher_tools_keyboard,
     tf_keyboard,
 )
@@ -131,10 +132,24 @@ async def _try_register_user(telegram_id: int):
     await _db_try(_register)
 
 
+async def _set_user_subject(telegram_id: int, subject: str):
+    from sqlalchemy import select
+
+    async def _update():
+        factory = async_session_factory()
+        async with factory() as session:
+            result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+            user = result.scalar_one_or_none()
+            if user:
+                user.subject = subject
+                await session.commit()
+
+    await _db_try(_update)
+
+
 async def start(update: Update, context):
     await _try_register_user(update.effective_user.id)
     if "language" not in context.user_data:
-
         async def _load_lang():
             from sqlalchemy import select
 
@@ -152,6 +167,24 @@ async def start(update: Update, context):
                     context.user_data["language"] = row
 
         await _db_try(_load_lang)
+    if "subject" not in context.user_data:
+
+        async def _load_subject():
+            from sqlalchemy import select
+
+            factory = async_session_factory()
+            async with factory() as session:
+                result = await session.execute(
+                    select(User.subject).where(
+                        User.telegram_id == update.effective_user.id
+                    )
+                )
+                row = result.scalar_one_or_none()
+                if row:
+                    context.user_data["subject"] = row
+
+        await _db_try(_load_subject)
+        context.user_data.setdefault("subject", "biology")
     socratic = context.user_data.get("socratic_mode", False)
     await update.message.reply_text(
         t("start.welcome", _lang(context)),
@@ -535,6 +568,31 @@ async def grade_command(update: Update, context):
     )
 
 
+async def subject_command(update: Update, context):
+    await update.message.reply_text(
+        t("subject.command", _lang(context)),
+        reply_markup=subject_keyboard("subject", language=_lang(context)),
+    )
+
+
+async def handle_subject(update: Update, context):
+    query = update.callback_query
+    await query.answer()
+    code = query.data.split("_", 1)[1]
+    lang = _lang(context)
+    context.user_data["subject"] = code
+    await _set_user_subject(update.effective_user.id, code)
+    label = t(f"subject.{code}", lang)
+    if code == "biology":
+        await query.edit_message_text(t("subject.set", lang, subject=label))
+    else:
+        await query.edit_message_text(
+            t("subject.set", lang, subject=label)
+            + "\n\n"
+            + t("subject.coming_soon_reply", lang, subject=label)
+        )
+
+
 async def language_command(update: Update, context):
     args = context.args
     lang_map = {"en": "English", "am": "Amharic", "both": "Bilingual"}
@@ -580,6 +638,7 @@ async def reveal_command(update: Update, context):
                 user_message=question,
                 user_id=memory_user_id,
                 grade_level=context.user_data.get("grade_level"),
+                subject=context.user_data.get("subject"),
                 language=context.user_data.get("language", "en"),
                 socratic_mode=False,
                 hint_level=hint_level,
@@ -698,6 +757,7 @@ async def hint_command(update: Update, context):
                 user_message=question,
                 user_id=memory_user_id,
                 grade_level=context.user_data.get("grade_level"),
+                subject=context.user_data.get("subject"),
                 language=context.user_data.get("language", "en"),
                 socratic_mode=False,
                 hint_level=hint_level,
@@ -1067,6 +1127,7 @@ async def handle_question(update: Update, context):
                     user_id=memory_user_id,
                     grade_level=context.user_data.pop("tutor_grade", None)
                     or context.user_data.get("grade_level"),
+                    subject=context.user_data.get("subject"),
                     language=context.user_data.get("language", "en"),
                     socratic_mode=socratic,
                     hint_level=hint_level,
@@ -1282,7 +1343,13 @@ async def handle_quiz_topic(update: Update, context):
     try:
         router_llm = ModelRouter()
         agent = QuizAgent(llm_router=router_llm)
-        result = await agent.generate(grade_level=grade, topic=topic, question_count=5, types=types)
+        result = await agent.generate(
+            grade_level=grade,
+            topic=topic,
+            question_count=5,
+            types=types,
+            subject=context.user_data.get("subject"),
+        )
 
         if not result.get("questions"):
             await msg.edit_text(t("quiz.generate_failed", _lang(context)))
@@ -1870,6 +1937,7 @@ async def handle_lesson_topic(update: Update, context):
         result = await agent.generate(
             grade_level=grade,
             topic=topic,
+            subject=context.user_data.get("subject"),
             generate_exit_ticket=features.get("exit_ticket", False),
             generate_differentiation=features.get("differentiation", False),
             generate_diagram_suggestions=features.get("diagram_suggestions", False),
@@ -2419,6 +2487,7 @@ async def handle_hint(update: Update, context):
                 user_message=question,
                 user_id=memory_user_id,
                 grade_level=context.user_data.get("grade_level"),
+                subject=context.user_data.get("subject"),
                 language=context.user_data.get("language", "en"),
                 socratic_mode=context.user_data.get("socratic_mode", False),
                 hint_level=hint_level,
@@ -2505,6 +2574,7 @@ async def handle_reveal_answer(update: Update, context):
                 user_message=question,
                 user_id=memory_user_id,
                 grade_level=context.user_data.get("grade_level"),
+                subject=context.user_data.get("subject"),
                 language=context.user_data.get("language", "en"),
                 socratic_mode=False,
                 hint_level=hint_level,
@@ -3408,6 +3478,7 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("menu", menu))
     app.add_handler(CommandHandler("ask", ask_command))
     app.add_handler(CommandHandler("grade", grade_command))
+    app.add_handler(CommandHandler("subject", subject_command))
     app.add_handler(CommandHandler("language", language_command))
     app.add_handler(CommandHandler("model", model_command))
     app.add_handler(CommandHandler("socratic", socratic_command))
@@ -3581,6 +3652,7 @@ def build_app() -> Application:
     app.add_handler(CallbackQueryHandler(handle_progress, pattern="^progress$"))
     app.add_handler(CallbackQueryHandler(handle_language, pattern="^language$"))
     app.add_handler(CallbackQueryHandler(handle_language_select, pattern="^lang_"))
+    app.add_handler(CallbackQueryHandler(handle_subject, pattern="^subject_"))
     app.add_handler(CallbackQueryHandler(help_command, pattern="^help$"))
     app.add_handler(CallbackQueryHandler(menu, pattern="^menu$"))
     app.add_handler(
@@ -3608,6 +3680,7 @@ async def main():
         BotCommand("ask", "Ask a science question"),
         BotCommand("quiz", "Generate a quiz"),
         BotCommand("grade", "Set your grade (7-12)"),
+        BotCommand("subject", "Set your subject (biology/chemistry/physics/mathematics)"),
         BotCommand("language", "Set language (en/am/both)"),
         BotCommand("socratic", "Toggle Socratic mode"),
         BotCommand("hint", "Get a hint"),

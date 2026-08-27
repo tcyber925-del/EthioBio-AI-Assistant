@@ -56,6 +56,7 @@ async def run_diagnostic(request: DiagnosticRequest, session: AsyncSession = Dep
             questions_per_topic=request.questions_per_topic,
             language=request.language,
             session=session,
+            subject=request.subject,
         )
 
         topic_baselines: list[TopicBaseline] = []
@@ -159,6 +160,7 @@ async def _handle_diagnostic_stream(
             topics=request.topics,
             questions_per_topic=request.questions_per_topic,
             language=request.language,
+            subject=request.subject,
             token_queue=queue,
         )
     )

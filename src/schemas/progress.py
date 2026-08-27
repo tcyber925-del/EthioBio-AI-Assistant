@@ -5,7 +5,7 @@ from uuid import UUID
 from pydantic import Field
 
 from src.schemas.base import SchemaModel
-from src.schemas.common import LanguageEnum
+from src.schemas.common import LanguageEnum, SubjectEnum
 
 
 class ProgressRequest(SchemaModel):
@@ -25,6 +25,7 @@ class ProgressResponse(SchemaModel):
 class ParentSummaryRequest(SchemaModel):
     parent_id: UUID
     student_id: UUID
+    subject: Optional[SubjectEnum] = None
     language: LanguageEnum = LanguageEnum.EN
     stream: bool = False
 

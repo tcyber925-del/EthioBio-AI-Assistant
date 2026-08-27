@@ -5,13 +5,14 @@ from uuid import UUID
 from pydantic import Field
 
 from src.schemas.base import SchemaModel
-from src.schemas.common import LanguageEnum
+from src.schemas.common import LanguageEnum, SubjectEnum
 from src.schemas.quiz import QuestionSchema
 
 
 class DiagnosticRequest(SchemaModel):
     user_id: UUID
     grade_level: int = Field(..., ge=7, le=12)
+    subject: Optional[SubjectEnum] = None
     topics: list[str] = Field(..., min_length=1, max_length=10)
     questions_per_topic: int = Field(3, ge=1, le=10)
     language: LanguageEnum = LanguageEnum.EN

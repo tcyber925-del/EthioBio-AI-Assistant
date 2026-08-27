@@ -153,6 +153,7 @@ async def upload_knowledge_object(
     content_hash: str | None = Query(None),
     grade_level: int | None = Query(None, ge=1, le=12),
     topic: str | None = Query(None),
+    subject: str | None = Query(None),
     unit: str | None = Query(None),
     storage: StorageAdapter = Depends(_get_storage),
 ):
@@ -164,6 +165,8 @@ async def upload_knowledge_object(
         meta["grade_level"] = grade_level
     if topic is not None:
         meta["topic"] = topic
+    if subject is not None:
+        meta["subject"] = subject
     if unit is not None:
         meta["unit"] = unit
 

@@ -57,6 +57,7 @@ class QuizAgent(BaseAgent):
         session: Optional[AsyncSession] = None,
         weak_topics: Optional[list[dict]] = None,
         target_difficulty: Optional[str] = None,
+        subject: Optional[str] = None,
         token_queue: asyncio.Queue[TokenChunk | None] | None = None,
     ) -> dict:
         types_str = ", ".join(types or ["multiple_choice", "true_false"])
@@ -68,7 +69,7 @@ class QuizAgent(BaseAgent):
             lang_instruction = "Generate all content in English."
 
         # Retrieve curriculum context to ground questions
-        filter_obj = RetrievalFilter(grade_level=grade_level)
+        filter_obj = RetrievalFilter(grade_level=grade_level, subject=subject)
         results = await self.adapter.search(query=topic, n_results=5, filter_obj=filter_obj)
         context = (
             self.adapter.format_context(results)

@@ -11,6 +11,7 @@ interface UseVoiceTurnOptions {
   gradeLevel: number
   language: string
   selectedModel?: string
+  subject?: string
   onTranscript?: (text: string) => void
   onToken?: (text: string) => void
   onError?: (error: AppError) => void
@@ -31,6 +32,7 @@ export function useVoiceTurn({
   gradeLevel,
   language,
   selectedModel,
+  subject,
   onTranscript,
   onToken,
   onError,
@@ -136,6 +138,7 @@ export function useVoiceTurn({
               },
             },
             ctrl.signal,
+            subject,
           )
         } catch (err: unknown) {
           if (err instanceof DOMException && err.name === 'AbortError') return

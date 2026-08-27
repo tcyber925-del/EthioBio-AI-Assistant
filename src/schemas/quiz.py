@@ -4,7 +4,7 @@ from uuid import UUID
 from pydantic import Field
 
 from src.schemas.base import SchemaModel
-from src.schemas.common import LanguageEnum
+from src.schemas.common import LanguageEnum, SubjectEnum
 
 
 class QuestionSchema(SchemaModel):
@@ -22,6 +22,7 @@ class QuestionSchema(SchemaModel):
 class QuizGenerateRequest(SchemaModel):
     grade_level: int = Field(..., ge=7, le=12)
     topic: str
+    subject: Optional[SubjectEnum] = None
     question_count: int = Field(5, ge=1, le=30)
     types: list[str] = Field(default_factory=lambda: ["multiple_choice", "true_false"])
     language: LanguageEnum = LanguageEnum.EN
@@ -44,6 +45,7 @@ class QuizGenerateResponse(SchemaModel):
 class QuizSubmitRequest(SchemaModel):
     quiz_id: UUID
     user_id: UUID
+    subject: Optional[SubjectEnum] = None
     answers: list[dict]
 
 

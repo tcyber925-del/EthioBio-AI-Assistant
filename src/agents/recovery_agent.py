@@ -59,6 +59,7 @@ class RecoveryAgent(BaseAgent):
         user_id: Any,
         session: AsyncSession,
         topic_filter: Optional[str] = None,
+        subject: Optional[str] = None,
         token_queue: asyncio.Queue[TokenChunk | None] | None = None,
     ) -> dict:
         weak_topics = await get_weak_topics(user_id, session)
@@ -70,6 +71,10 @@ class RecoveryAgent(BaseAgent):
             filtered = [t for t in weak_topics if topic_filter.lower() in t["topic"].lower()]
             if not filtered:
                 return {"plan": None, "error": f"No weak topics match filter: {topic_filter}"}
+        if subject:
+            subject_filtered = [t for t in filtered if t.get("subject") == subject]
+            if subject_filtered:
+                filtered = subject_filtered
 
         topics_summary = self._format_weak_topics(filtered)
         severity_summary = self._get_severity_summary(filtered)

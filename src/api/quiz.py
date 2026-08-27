@@ -19,7 +19,7 @@ from src.database.models import MisconceptionPattern, Question, Quiz, QuizAttemp
 from src.database.session import async_session_factory, get_session
 from src.llm.router import ModelRouter
 from src.schemas.base import SchemaModel
-from src.schemas.common import LanguageEnum
+from src.schemas.common import LanguageEnum, SubjectEnum
 from src.schemas.quiz import (
     QuizGenerateRequest,
     QuizRecommendation,
@@ -140,6 +140,7 @@ async def generate_quiz_status(task_id: str):
 class QuizTakeGenerateRequest(SchemaModel):
     grade_level: int = Field(..., ge=7, le=12)
     topic: str
+    subject: Optional[SubjectEnum] = None
     question_count: int = Field(5, ge=1, le=30)
     types: list[str] = Field(default_factory=lambda: ["multiple_choice", "true_false"])
     model: Optional[str] = None
@@ -172,6 +173,7 @@ async def _run_quiz_take_generation(
     gen_request = QuizGenerateRequest(
         grade_level=request.grade_level,
         topic=request.topic,
+        subject=request.subject,
         question_count=request.question_count,
         types=request.types,
         language=LanguageEnum.AM,
@@ -191,6 +193,7 @@ async def _run_quiz_take_generation(
                 types=gen_request.types,
                 language=gen_request.language,
                 session=session,
+                subject=gen_request.subject,
             )
 
             db_quiz = Quiz(
@@ -198,6 +201,7 @@ async def _run_quiz_take_generation(
                 title=f"Grade {request.grade_level} - {request.topic}",
                 grade_level=request.grade_level,
                 topic=request.topic,
+                subject=request.subject,
                 question_count=request.question_count,
                 model_used=result.get("model_used", ""),
                 status="published",
@@ -271,6 +275,7 @@ async def _handle_quiz_stream(
             question_count=request.question_count,
             types=request.types,
             language=request.language,
+            subject=request.subject,
             token_queue=queue,
         )
     )
@@ -318,6 +323,7 @@ async def _run_quiz_generation(task_id: str, request: QuizGenerateRequest, teach
                     user_id=request.user_id,
                     topic=request.topic,
                     count=request.question_count,
+                    subject=request.subject,
                 )
                 if selected:
                     avg_difficulty = sum(q.difficulty_score for q in selected) / len(selected)
@@ -337,6 +343,7 @@ async def _run_quiz_generation(task_id: str, request: QuizGenerateRequest, teach
                 session=session,
                 weak_topics=weak_topics,
                 target_difficulty=target_difficulty,
+                subject=request.subject,
             )
 
             db_quiz = Quiz(
@@ -344,6 +351,7 @@ async def _run_quiz_generation(task_id: str, request: QuizGenerateRequest, teach
                 title=f"Grade {request.grade_level} - {request.topic}",
                 grade_level=request.grade_level,
                 topic=request.topic,
+                subject=request.subject,
                 question_count=request.question_count,
                 model_used=result.get("model_used", ""),
             )
@@ -511,6 +519,7 @@ async def submit_quiz(request: QuizSubmitRequest, session: AsyncSession = Depend
                 topic=quiz.topic,
                 correct_count=correct_count,
                 total_count=total,
+                subject=quiz.subject or request.subject,
             )
 
         attempt = QuizAttempt(

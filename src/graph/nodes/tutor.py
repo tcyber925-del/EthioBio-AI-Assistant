@@ -8,7 +8,48 @@ from src.agents.tutor.tutor import TutorSynthesisAgent
 from src.core.memory.truncation import truncate_messages
 from src.graph.state import AgentState
 from src.llm.router import ModelRouter
+from src.schemas.common import SUBJECT_LABELS, SUBJECT_LABELS_AM
 from src.schemas.streaming import TokenChunk
+
+
+def _graceful_no_content_message(state: AgentState) -> str:
+    """Friendly message shown when a subject has no curriculum content yet.
+
+    Used for Chemistry/Physics/Mathematics (not yet ingested) and for Grades
+    7-8 where the biology PDFs don't exist, so the tutor never silently
+    falls back to another subject or hallucinates.
+    """
+    subject = state.subject or ""
+    if subject:
+        if state.language == "am":
+            subject_label = SUBJECT_LABELS_AM.get(subject, subject.capitalize())
+        else:
+            subject_label = SUBJECT_LABELS.get(subject, subject.capitalize())
+    else:
+        subject_label = "ይህ ምድብ" if state.language == "am" else "this subject"
+    grade = state.grade_level or ""
+    grade_label = f" Grade {grade}" if grade else ""
+
+    if state.language == "am":
+        return (
+            f"የ{subject_label}{grade_label} ይዘት አሁን እያዘጋጃለን ነው። ለአሁኑ ጊዜ ባዮሎጂን ይሞክሩ — ከሁሉም የበለጠ እቃዎች ያሉት ነው። "
+            "ከጥያቄዎ ላይ በመስራት የመርገጫ አይነት ከኋላ ማለያው ላይ በመቀየር ሌላ አማራጭ መምረጥ ይችላሉ።"
+        )
+    if state.language == "both":
+        subject_label_am = (
+            SUBJECT_LABELS_AM.get(subject, subject.capitalize()) if subject else "ይህ ምድብ"
+        )
+        return (
+            f"We're still adding {subject_label}{grade_label} content. የ{subject_label_am} ይዘት "
+            "አሁን እያዘጋጃለን ነው። In the meantime, try Biology — it has the most material available. "
+            "You can switch subjects using the subject selector above."
+        )
+    return (
+        f"We're still adding {subject_label}{grade_label} content. In the meantime, try "
+        "Biology — it has the most material available. You can switch subjects using the "
+        "subject selector above."
+    )
+
 
 MISCONCEPTION_INDICATORS = [
     "that's not quite right",
@@ -117,6 +158,10 @@ class TutorNode:
         self.agent = TutorSynthesisAgent(router)
 
     async def __call__(self, state: AgentState) -> AgentState:
+        if state.no_content_for_subject:
+            state.draft = _graceful_no_content_message(state)
+            state.confidence = 1.0
+            return state
         if state.evidence_items and state.token_queue is None:
             return await self._agentic_call(state)
         return await self._legacy_call(state)

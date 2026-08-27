@@ -11,6 +11,7 @@ import { ErrorAlert, ErrorState } from '@/components/ui/errors'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
 import { normalizeException, type AppError } from '@/lib/errors'
+import { useSubjectGrade } from '@/context/SubjectGradeContext'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,7 +33,7 @@ export default function UnitPlansPage() {
   const [error, setError] = useState<AppError | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [genTitle, setGenTitle] = useState('')
-  const [genGrade, setGenGrade] = useState(10)
+  const { grade: genGrade, subject, setGrade: setGenGrade } = useSubjectGrade()
   const [genTopic, setGenTopic] = useState('')
   const [genDays, setGenDays] = useState(5)
   const [genDuration, setGenDuration] = useState(40)
@@ -93,6 +94,7 @@ export default function UnitPlansPage() {
           unit_title: genTitle,
           grade_level: genGrade,
           topic: genTopic,
+          subject,
           days: genDays,
           duration_minutes: genDuration,
           model: selectedModel,

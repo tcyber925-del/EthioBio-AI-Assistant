@@ -52,6 +52,7 @@ class DiagnosticAgent(BaseAgent):
         questions_per_topic: int = 3,
         language: str = "en",
         session: Optional[AsyncSession] = None,
+        subject: Optional[str] = None,
         token_queue: asyncio.Queue[TokenChunk | None] | None = None,
     ) -> dict:
         if language == "am":
@@ -65,8 +66,9 @@ class DiagnosticAgent(BaseAgent):
             "{questions_per_topic}", str(questions_per_topic)
         )
 
+        subject_label = f" ({subject})" if subject else ""
         user_message = (
-            f"Generate a baseline diagnostic assessment for Grade {grade_level} science.\n"
+            f"Generate a baseline diagnostic assessment for Grade {grade_level}{subject_label} science.\n"
             f"Topics to assess: {', '.join(topics)}\n"
             f"Questions per topic: {questions_per_topic}\n"
             f"All questions at EASY difficulty.\n"

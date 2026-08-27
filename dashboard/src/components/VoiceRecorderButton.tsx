@@ -15,6 +15,7 @@ interface VoiceRecorderButtonProps {
   disabled?: boolean
   gradeLevel?: number
   topic?: string
+  subject?: string
   language?: string
   streaming?: boolean
 }
@@ -26,6 +27,7 @@ export function VoiceRecorderButton({
   disabled,
   gradeLevel,
   topic,
+  subject,
   language = 'am',
   streaming,
 }: VoiceRecorderButtonProps) {
@@ -71,6 +73,7 @@ export function VoiceRecorderButton({
     formData.append('final', String(isFinal))
     if (topic) formData.append('topic', topic)
     if (gradeLevel) formData.append('grade_level', String(gradeLevel))
+    if (subject) formData.append('subject', subject)
     if (userId) formData.append('user_id', userId)
 
     try {
@@ -107,6 +110,7 @@ export function VoiceRecorderButton({
     formData.append('grade_level', String(gradeLevel ?? ''))
     formData.append('language', language)
     if (topic) formData.append('topic', topic)
+    if (subject) formData.append('subject', subject)
     if (userId) formData.append('user_id', userId)
 
     try {

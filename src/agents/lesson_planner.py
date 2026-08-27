@@ -147,6 +147,7 @@ class LessonPlannerAgent(BaseAgent):
         generate_diagram_suggestions: bool = False,
         generate_misconception_activities: bool = False,
         classroom_context: Optional[dict] = None,
+        subject: Optional[str] = None,
         token_queue: asyncio.Queue[TokenChunk | None] | None = None,
     ) -> dict:
         if language == "am":
@@ -201,7 +202,8 @@ class LessonPlannerAgent(BaseAgent):
                 "Use recommended teaching strategies."
             )
 
-        user_message = f"""Create a science lesson plan for Grade {grade_level} on topic: {topic}.
+        subject_label = f" ({subject})" if subject else ""
+        user_message = f"""Create a science lesson plan for Grade {grade_level}{subject_label} on topic: {topic}.
 Lesson duration: {duration_minutes} minutes.
 {lang_instruction}
 {context_block}

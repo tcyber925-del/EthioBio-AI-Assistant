@@ -98,6 +98,7 @@ async def _handle_lesson_blocking(
             generate_diagram_suggestions=request.generate_diagram_suggestions,
             generate_misconception_activities=request.generate_misconception_activities,
             classroom_context=classroom_context,
+            subject=request.subject,
         )
 
         exit_ticket_data = result.get("exit_ticket")
@@ -204,6 +205,7 @@ async def _handle_lesson_stream(
             generate_diagram_suggestions=request.generate_diagram_suggestions,
             generate_misconception_activities=request.generate_misconception_activities,
             classroom_context=classroom_context,
+            subject=request.subject,
             token_queue=queue,
         )
     )
@@ -428,6 +430,7 @@ async def generate_unit_plan(
             generate_diagram_suggestions=request.generate_diagram_suggestions,
             generate_misconception_activities=request.generate_misconception_activities,
             preferred_model=request.model,
+            subject=request.subject,
         )
 
         db_unit = UnitPlan(

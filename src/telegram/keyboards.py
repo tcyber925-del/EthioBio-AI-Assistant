@@ -108,6 +108,25 @@ def grade_keyboard(callback_prefix: str = "grade", language: str = "en"):
     return InlineKeyboardMarkup(buttons)
 
 
+def subject_keyboard(callback_prefix: str = "subject", language: str = "en"):
+    subjects = [
+        ("biology", "subject.biology"),
+        ("chemistry", "subject.chemistry"),
+        ("physics", "subject.physics"),
+        ("mathematics", "subject.mathematics"),
+    ]
+    buttons = []
+    for code, label_key in subjects:
+        label = t(label_key, language)
+        if code != "biology":
+            label = f"{label} (coming soon)"
+        buttons.append(
+            [InlineKeyboardButton(label, callback_data=f"{callback_prefix}_{code}")]
+        )
+    buttons.append([InlineKeyboardButton(t("back", language), callback_data="menu")])
+    return InlineKeyboardMarkup(buttons)
+
+
 def answer_options_keyboard(options: list[str], language: str = "en") -> InlineKeyboardMarkup:
     """Create inline buttons from multiple choice options (single-letter buttons)."""
     letters = ["A", "B", "C", "D", "E", "F"]

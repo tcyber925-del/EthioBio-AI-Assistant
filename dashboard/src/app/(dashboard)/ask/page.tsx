@@ -20,6 +20,7 @@ import { ErrorAlert } from '@/components/ui/errors'
 import { getToken, getUserId, initAuth, isAuthenticated } from '@/lib/auth'
 import { streamFetch } from '@/lib/fetch'
 import { useVoiceTurn } from '@/hooks/useVoiceTurn'
+import { useSubjectGrade } from '@/context/SubjectGradeContext'
 import { isVoiceTurnEnabled } from '@/lib/voice-turn'
 import { normalizeException, type AppError } from '@/lib/errors'
 
@@ -53,7 +54,7 @@ export default function AskPage() {
   const [error, setError] = useState<AppError | null>(null)
   const voiceTriggeredRef = useRef(false)
   const lastAnswerRef = useRef('')
-  const [grade, setGrade] = useState(12)
+  const { grade, subject, setGrade } = useSubjectGrade()
   const [mode, setMode] = useState<'graph' | 'chat'>('graph')
   const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null)
   const [voiceTurnEnabled, setVoiceTurnEnabled] = useState(false)
@@ -64,6 +65,7 @@ export default function AskPage() {
     gradeLevel: grade,
     language: locale,
     selectedModel,
+    subject,
     onTranscript: (text) => {
       setQuestion(text)
     },
@@ -106,6 +108,7 @@ export default function AskPage() {
       question: question.trim(),
       grade_level: grade,
       model: selectedModel,
+      metadata: { grade_level: grade, subject },
       ...(mode !== 'graph' && { use_rag: true }),
     }
 
@@ -315,6 +318,7 @@ export default function AskPage() {
               onError={setError}
               disabled={loading}
               gradeLevel={grade}
+              subject={subject}
               language="am"
               streaming
             />

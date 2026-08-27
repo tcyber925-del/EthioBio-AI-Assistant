@@ -51,6 +51,7 @@ class ConversationService:
         metadata = request.metadata or {}
         topic = metadata.get("topic")
         grade_level = metadata.get("grade_level")
+        subject = metadata.get("subject")
         model = metadata.get("model")
         socratic_mode = metadata.get("socratic_mode", False)
         hint_level = metadata.get("hint_level", 0)
@@ -77,6 +78,7 @@ class ConversationService:
                 user_message=request.transcript,
                 user_id=request.user_id,
                 grade_level=grade_level,
+                subject=subject,
                 topic=topic,
                 language=effective_language,
                 preferred_model=model,
@@ -178,6 +180,7 @@ class ConversationService:
         metadata = request.metadata or {}
         topic = metadata.get("topic")
         grade_level = metadata.get("grade_level")
+        subject = metadata.get("subject")
         model = metadata.get("model")
         socratic_mode = metadata.get("socratic_mode", False)
         hint_level = metadata.get("hint_level", 0)
@@ -208,6 +211,7 @@ class ConversationService:
                 user_message=request.transcript,
                 user_id=request.user_id,
                 grade_level=grade_level,
+                subject=subject,
                 topic=topic,
                 language=effective_language,
                 preferred_model=model,
@@ -289,6 +293,7 @@ class ConversationService:
         metadata = request.metadata or {}
         topic = metadata.get("topic")
         grade_level = metadata.get("grade_level")
+        subject = metadata.get("subject")
         model = metadata.get("model")
         socratic_mode = metadata.get("socratic_mode", False)
         hint_level = metadata.get("hint_level", 0)
@@ -319,6 +324,7 @@ class ConversationService:
                 user_message=request.transcript,
                 user_id=request.user_id,
                 grade_level=grade_level,
+                subject=subject,
                 topic=topic,
                 language=effective_language,
                 preferred_model=model,

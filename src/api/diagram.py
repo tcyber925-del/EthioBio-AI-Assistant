@@ -100,6 +100,7 @@ async def _handle_diagram_blocking(
             session=session,
             preferred_model=request.model,
             grade=request.grade,
+            subject=request.subject,
         )
 
         return DiagramGenerateResponse(
@@ -134,6 +135,7 @@ async def _handle_diagram_stream(
             session=session,
             preferred_model=request.model,
             grade=request.grade,
+            subject=request.subject,
             token_queue=queue,
         )
     )

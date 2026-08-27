@@ -101,19 +101,24 @@ class PGVectorStore:
         wheres = ["1=1"]
         params = {"query_vec": emb_str, "limit": n_results}
         if where:
-            for key, condition in where.items():
-                if isinstance(condition, dict) and "$eq" in condition:
-                    if key == "subject":
-                        # Legacy chunks lack the subject field — they are all biology
-                        wheres.append(
-                            "COALESCE(NULLIF(knowledge_embeddings.metadata->>'subject', ''), "
-                            "'biology') = :subject"
-                        )
-                    else:
-                        wheres.append(
-                            f"COALESCE(knowledge_embeddings.metadata->>'{key}', '') = :{key}"
-                        )
-                    params[key] = str(condition["$eq"])
+            # to_chroma_where() returns either a single filter dict or
+            # {"$and": [filter, ...]} when multiple filters are combined.
+            conditions = where.get("$and") if set(where.keys()) == {"$and"} else [where]
+            for cond in conditions:
+                for key, condition in cond.items():
+                    if isinstance(condition, dict) and "$eq" in condition:
+                        value = condition["$eq"]
+                        if key == "subject":
+                            # Legacy chunks lack the subject field — they are all biology
+                            wheres.append(
+                                "COALESCE(NULLIF(knowledge_embeddings.metadata->>'subject', ''), "
+                                "'biology') = :subject"
+                            )
+                        else:
+                            wheres.append(
+                                f"COALESCE(knowledge_embeddings.metadata->>'{key}', '') = :{key}"
+                            )
+                        params[key] = str(value)
 
         sql = sa_text(
             f"""
