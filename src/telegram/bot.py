@@ -3756,7 +3756,7 @@ def build_app() -> Application:
     return app
 
 
-async def _set_bot_profile(app):
+async def set_bot_profile(app):
     profile = [
         ("name", "EthioSci AI Assistant", None),
         (
@@ -3830,7 +3830,7 @@ async def main():
     ]
     await app.bot.set_my_commands(commands)
 
-    await _set_bot_profile(app)
+    await set_bot_profile(app)
 
     if settings.telegram_webhook_url:
         await app.bot.set_webhook(

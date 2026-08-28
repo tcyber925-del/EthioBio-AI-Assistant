@@ -245,6 +245,10 @@ async def lifespan(app: FastAPI):
             tg_app = build_app()
             await tg_app.initialize()
 
+            from src.telegram.bot import set_bot_profile
+
+            await set_bot_profile(tg_app)
+
             webhook_url = settings.telegram_webhook_url
             webhook_secret = settings.telegram_webhook_secret
             if webhook_url:
