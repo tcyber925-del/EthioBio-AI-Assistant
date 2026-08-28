@@ -3756,6 +3756,49 @@ def build_app() -> Application:
     return app
 
 
+async def _set_bot_profile(app):
+    profile = [
+        ("name", "EthioSci AI Assistant", None),
+        (
+            "description",
+            "EthioSci AI Assistant — your science learning assistant for Ethiopian Grades 7–12. "
+            "Covers biology, chemistry, physics, and mathematics: ask questions, take quizzes, "
+            "get lesson plans and diagrams, and track your progress.",
+            None,
+        ),
+        (
+            "description",
+            "EthioSci AI Assistant — ለኢትዮጵያ 7–12ኛ ክፍል ተማሪዎች የሳይንስ ትምህርት ረዳት። "
+            "ባዮሎጂ፣ ኬሚስትሪ፣ ፊዚክስ እና ሂሳብን ይሸፍናል።",
+            "am",
+        ),
+        (
+            "short_description",
+            "Science learning assistant for Ethiopian Grades 7–12 "
+            "(biology, chemistry, physics, math).",
+            None,
+        ),
+        (
+            "short_description",
+            "ለኢትዮጵያ 7–12ኛ ክፍል የሳይንስ ትምህርት ረዳት "
+            "(ባዮሎጂ፣ ኬሚስትሪ፣ ፊዚክስ፣ ሂሳብ)።",
+            "am",
+        ),
+    ]
+    for kind, text, language_code in profile:
+        try:
+            if kind == "name":
+                await app.bot.set_my_name(text)
+            elif kind == "description":
+                await app.bot.set_my_description(text, language_code=language_code)
+            else:
+                await app.bot.set_my_short_description(text, language_code=language_code)
+        except Exception:
+            logger.warning(
+                "bot_profile_set_failed", kind=kind, language=language_code, exc_info=True
+            )
+
+
 async def main():
     app = build_app()
     await app.initialize()
@@ -3786,6 +3829,8 @@ async def main():
         BotCommand("submit", "Submit answer to an assignment"),
     ]
     await app.bot.set_my_commands(commands)
+
+    await _set_bot_profile(app)
 
     if settings.telegram_webhook_url:
         await app.bot.set_webhook(
