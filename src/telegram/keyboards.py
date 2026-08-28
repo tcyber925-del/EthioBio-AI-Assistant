@@ -119,7 +119,7 @@ def subject_keyboard(callback_prefix: str = "subject", language: str = "en"):
     for code, label_key in subjects:
         label = t(label_key, language)
         if code != "biology":
-            label = f"{label} (coming soon)"
+            label = f"{label}{t('subject.coming_soon_tag', language)}"
         buttons.append(
             [InlineKeyboardButton(label, callback_data=f"{callback_prefix}_{code}")]
         )

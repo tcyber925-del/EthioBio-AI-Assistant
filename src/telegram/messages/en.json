@@ -108,6 +108,7 @@
     "command": "Choose your subject:",
     "set": "Subject set to {subject}.",
     "coming_soon_reply": "{subject} content is coming soon — for now Biology has the most material. You can switch back anytime with /subject.",
+    "coming_soon_tag": " (coming soon)",
     "biology": "Biology",
     "chemistry": "Chemistry",
     "physics": "Physics",

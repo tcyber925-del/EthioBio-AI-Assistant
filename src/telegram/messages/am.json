@@ -108,6 +108,7 @@
     "command": "የመርገጫ አይነት ይምረጡ:",
     "set": "መርገጫ ወደ {subject} ተቀይሯል።",
     "coming_soon_reply": "የ{subject} ይዘት እያዘጋጃል ነው — ለአሁኑ ጊዜ ባዮሎጂ በጣም ብዙ እቃዎች አሉት። በእንዳንድ ጊዜ ከ /subject ይቀይሩት።",
+    "coming_soon_tag": " (በቅርብ ጊዜ)",
     "biology": "ባዮሎጂ",
     "chemistry": "ኬሚስትሪ",
     "physics": "ፊዚክስ",

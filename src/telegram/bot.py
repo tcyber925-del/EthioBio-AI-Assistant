@@ -978,7 +978,7 @@ async def handle_open_quizzes(update: Update, context):
     query = update.callback_query
     await query.answer()
     await query.message.reply_text(
-        t("quiz.teacher_list", _lang(context), dashboard_url="http://localhost:3000"),
+        t("quiz.teacher_list", _lang(context), dashboard_url=settings.dashboard_url),
         reply_markup=teacher_tools_keyboard(language=_lang(context)),
     )
 
@@ -987,7 +987,7 @@ async def handle_open_dashboard(update: Update, context):
     query = update.callback_query
     await query.answer()
     await query.message.reply_text(
-        t("quiz.teacher_dashboard", _lang(context), dashboard_url="http://localhost:3000"),
+        t("quiz.teacher_dashboard", _lang(context), dashboard_url=settings.dashboard_url),
         reply_markup=teacher_tools_keyboard(language=_lang(context)),
     )
 
@@ -1305,7 +1305,8 @@ async def handle_question(update: Update, context):
                             {"role": "user", "content": question},
                             {"role": "assistant", "content": result.answer},
                         ],
-                        topic="biology_question",
+                        topic=context.user_data.get("tutor_subject")
+                        or context.user_data.get("subject", "biology"),
                     )
                 )
                 await session.commit()
