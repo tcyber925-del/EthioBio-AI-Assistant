@@ -30,3 +30,4 @@ opentelemetry-api>=1.30.0
 opentelemetry-sdk>=1.30.0
 opentelemetry-exporter-otlp-proto-grpc>=1.30.0
 langsmith>=0.8.0
+fastembed>=0.4.1
