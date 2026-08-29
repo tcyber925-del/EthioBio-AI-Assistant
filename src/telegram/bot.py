@@ -3788,11 +3788,23 @@ async def set_bot_profile(app):
     for kind, text, language_code in profile:
         try:
             if kind == "name":
-                await app.bot.set_my_name(text)
+                current = (await app.bot.get_my_name()).name
+                if current != text:
+                    await app.bot.set_my_name(text)
             elif kind == "description":
-                await app.bot.set_my_description(text, language_code=language_code)
+                current = (
+                    await app.bot.get_my_description(language_code=language_code)
+                ).description
+                if current != text:
+                    await app.bot.set_my_description(text, language_code=language_code)
             else:
-                await app.bot.set_my_short_description(text, language_code=language_code)
+                current = (
+                    await app.bot.get_my_short_description(language_code=language_code)
+                ).short_description
+                if current != text:
+                    await app.bot.set_my_short_description(
+                        text, language_code=language_code
+                    )
         except Exception:
             logger.warning(
                 "bot_profile_set_failed", kind=kind, language=language_code, exc_info=True
