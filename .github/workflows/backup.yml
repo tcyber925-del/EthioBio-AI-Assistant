@@ -49,3 +49,17 @@ jobs:
           b2 upload-file "$B2_BUCKET" "/tmp/ethiobio_prod_$TS.sql.gz" "ethiobio_prod_latest.sql.gz"
           rm -f "/tmp/ethiobio_prod_$TS.sql.gz"
           echo "Backup complete: ethiobio_prod_$TS.sql.gz"
+
+      - name: Upload failed dump for inspection
+        if: failure()
+        env:
+          B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+          B2_APP_KEY: ${{ secrets.B2_APP_KEY }}
+          B2_BUCKET: ${{ secrets.B2_BUCKET }}
+        run: |
+          b2 authorize-account "$B2_KEY_ID" "$B2_APP_KEY"
+          TS=$(date -u +%F)
+          if [ -s "/tmp/ethiobio_prod_$TS.sql.gz" ]; then
+            b2 upload-file "$B2_BUCKET" "/tmp/ethiobio_prod_$TS.sql.gz" "ethiobio_prod_${TS}_FAILED.sql.gz" || true
+            echo "Uploaded failed dump for inspection: ethiobio_prod_${TS}_FAILED.sql.gz"
+          fi
