@@ -1,5 +1,5 @@
 """
-EthioSci AI Assistant — LangGraph orchestration graph.
+EthioSci — LangGraph orchestration graph.
 
 Builds the graph with dependency-injected nodes (router, adapter).
 Supports both the legacy pipeline and the new Agentic RAG pipeline.

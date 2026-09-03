@@ -3758,17 +3758,17 @@ def build_app() -> Application:
 
 async def set_bot_profile(app):
     profile = [
-        ("name", "EthioSci AI Assistant", None),
+        ("name", "EthioSci", None),
         (
             "description",
-            "EthioSci AI Assistant — your science learning assistant for Ethiopian Grades 7–12. "
+            "EthioSci — your science learning assistant for Ethiopian Grades 7–12. "
             "Covers biology, chemistry, physics, and mathematics: ask questions, take quizzes, "
             "get lesson plans and diagrams, and track your progress.",
             None,
         ),
         (
             "description",
-            "EthioSci AI Assistant — ለኢትዮጵያ 7–12ኛ ክፍል ተማሪዎች የሳይንስ ትምህርት ረዳት። "
+            "EthioSci — ለኢትዮጵያ 7–12ኛ ክፍል ተማሪዎች የሳይንስ ትምህርት ረዳት። "
             "ባዮሎጂ፣ ኬሚስትሪ፣ ፊዚክስ እና ሂሳብን ይሸፍናል።",
             "am",
         ),

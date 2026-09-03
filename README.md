@@ -1,4 +1,4 @@
-# EthioSci AI Assistant
+# EthioSci
 
 AI-powered science learning and teaching assistant for Ethiopian middle and high school education (Grades 7-12), covering biology, chemistry, physics, and mathematics. Uses LangGraph orchestration (unified graph with 12+ nodes), hybrid RAG (Dense + BM25 + Cross-encoder reranker), pgvector, and dynamic multi-provider AI system (Ollama, OpenRouter, OpenAI, Anthropic, OpenAI-compatible).
 

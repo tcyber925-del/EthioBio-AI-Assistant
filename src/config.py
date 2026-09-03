@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    app_name: str = "EthioSci AI Assistant"
+    app_name: str = "EthioSci"
     debug: bool = False
     log_level: str = "INFO"
     secret_key: str = "change-me"

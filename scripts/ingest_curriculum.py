@@ -1,5 +1,5 @@
 """
-EthioSci AI Assistant — Curriculum Ingestion Script (PyMuPDF + OCR)
+EthioSci — Curriculum Ingestion Script (PyMuPDF + OCR)
 
 Scans data/textbooks/ for PDF files organized by grade,
 extracts text with PyMuPDF (best quality for Ethiopian curriculum PDFs),

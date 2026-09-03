@@ -63,7 +63,7 @@ def export_diagram_to_docx(
 class DiagramPDF(FPDF):
     def header(self):
         self.set_font("Helvetica", "B", 10)
-        self.cell(0, 8, "EthioSci AI Assistant", align="C", new_x="LMARGIN", new_y="NEXT")
+        self.cell(0, 8, "EthioSci", align="C", new_x="LMARGIN", new_y="NEXT")
         self.ln(2)
 
     def footer(self):

@@ -1,16 +1,17 @@
-# EthioSci AI Assistant — Agent Instructions
+# EthioSci — Agent Instructions
 
 Obsidian PARA vault. Codebase at `1-Projects/p000-Active/EthioBio AI Assistant/`. `.env`, `.venv`, and all source files live there — NOT at root.
 
 ## Naming & Brand
 
-The product is **EthioSci AI Assistant** ("EthioSci" for short) — a multi-subject
+The product is **EthioSci** — a multi-subject
 science learning and teaching assistant covering **biology, chemistry, physics, and
 mathematics** for Ethiopian Grades 7–12. It was renamed from "EthioBio" (biology-only)
 to "EthioSci" (multi-subject); the rename kept several infrastructure identifiers as
 `ethiobio_*` for backward compatibility.
 
-- **Product / brand name:** `EthioSci` / `EthioSci AI Assistant`. Use "science" as the
+- **Product / brand name:** `EthioSci` (use "science learning assistant" only in
+  descriptive copy, not in the name). Use "science" as the
   generic subject term ("science Q&A", "science tutor"). Subjects are biology, chemistry,
   physics, mathematics.
 - **Retained `ethiobio_*` infrastructure identifiers (do NOT rename):** Render service &

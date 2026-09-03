@@ -1,5 +1,5 @@
 """
-LangGraph state definitions for EthioSci AI Assistant.
+LangGraph state definitions for EthioSci.
 
 The graph follows this sequence:
 1. Classify user request

@@ -6,7 +6,7 @@ from fpdf import FPDF
 class QuizPDF(FPDF):
     def header(self):
         self.set_font("Helvetica", "B", 10)
-        self.cell(0, 8, "EthioSci AI Assistant", align="C", new_x="LMARGIN", new_y="NEXT")
+        self.cell(0, 8, "EthioSci", align="C", new_x="LMARGIN", new_y="NEXT")
         self.ln(2)
 
     def footer(self):
@@ -18,7 +18,7 @@ class QuizPDF(FPDF):
 class LessonPDF(FPDF):
     def header(self):
         self.set_font("Helvetica", "B", 10)
-        self.cell(0, 8, "EthioSci AI Assistant", align="C", new_x="LMARGIN", new_y="NEXT")
+        self.cell(0, 8, "EthioSci", align="C", new_x="LMARGIN", new_y="NEXT")
         self.ln(2)
 
     def footer(self):

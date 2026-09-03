@@ -1,7 +1,7 @@
 {
   "start": {
     "dashboard_login": "Your dashboard login code: <b>{code}</b>\n\nThis code expires in 5 minutes. Enter it on the login page.",
-    "welcome": "Welcome to EthioSci AI Assistant!\n\nI'm your science learning assistant (biology, chemistry, physics, math) for Ethiopian Grades 7-12.\n\nSend me any science question, or use the menu below:"
+    "welcome": "Welcome to EthioSci!\n\nI'm your science learning assistant (biology, chemistry, physics, math) for Ethiopian Grades 7-12.\n\nSend me any science question, or use the menu below:"
   },
   "common": {
     "error": "Sorry, I encountered an error. Please try again.",
@@ -20,7 +20,7 @@
     "grade_label": "Grade {grade}"
   },
   "help": {
-    "text": "EthioSci AI Assistant — Help\n\nCommands:\n/start — Show menu\n/help — This message\n/ask <question> — Ask a science question\n/quiz [grade] [topic] — Generate a quiz\n/grade <7-12> — Set your default grade\n/subject <biology|chemistry|physics|mathematics> — Set your subject\n/language <en|am|both> — Set language\n/socratic — Toggle Socratic tutoring mode\n/hint — Get the next hint level (1-3) in Socratic mode\n/cancel — Cancel current operation\n\nOr just type any science question to get started!"
+    "text": "EthioSci — Help\n\nCommands:\n/start — Show menu\n/help — This message\n/ask <question> — Ask a science question\n/quiz [grade] [topic] — Generate a quiz\n/grade <7-12> — Set your default grade\n/subject <biology|chemistry|physics|mathematics> — Set your subject\n/language <en|am|both> — Set language\n/socratic — Toggle Socratic tutoring mode\n/hint — Get the next hint level (1-3) in Socratic mode\n/cancel — Cancel current operation\n\nOr just type any science question to get started!"
   },
   "tutor": {
     "grade_prompt": "Grade {grade} selected. Send me your science question. I'll help you understand it!",
@@ -201,7 +201,7 @@
   "choose_grade": "Choose your grade:",
   "choose_topic": "Choose a topic:",
   "choose_quiz_type": "Choose quiz type:",
-  "welcome": "Welcome to EthioSci AI Assistant!\n\nI'm your science learning assistant (biology, chemistry, physics, math) for Ethiopian Grades 7-12.\n\nSend me any science question, or use the menu below:",
+  "welcome": "Welcome to EthioSci!\n\nI'm your science learning assistant (biology, chemistry, physics, math) for Ethiopian Grades 7-12.\n\nSend me any science question, or use the menu below:",
   "copilot": {
     "title": "🤖 Teacher Copilot",
     "prompt": "Ask me anything about your classroom.\n\nExamples:\n• Who needs attention today?\n• Why is a student struggling?\n• Create a 5-question quiz on genetics\n• Summarize classroom readiness\n• What interventions work for cell division?",
