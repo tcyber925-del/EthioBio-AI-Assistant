@@ -4,27 +4,31 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { GraduationCap, Eye, EyeOff } from 'lucide-react'
+import { useSignIn, useSignUp } from '@clerk/nextjs'
+import { isClerkAPIResponseError } from '@clerk/nextjs/errors'
 import { ErrorAlert } from '@/components/ui/errors'
-import { setToken } from '@/lib/auth'
-import { setCookie } from '@/lib/cookies'
 import { normalizeException, type AppError } from '@/lib/errors'
-import { fetchWithTimeout } from '@/lib/fetch'
 import { safeNextPath } from '@/lib/safeNextPath'
 
 export default function LoginPage() {
   const router = useRouter()
+  const { signIn, isLoaded: signInLoaded, setActive: setActiveSignIn } = useSignIn()
+  const { signUp, isLoaded: signUpLoaded, setActive: setActiveSignUp } = useSignUp()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [code, setCode] = useState('')
   const [isRegister, setIsRegister] = useState(false)
+  const [verifyStep, setVerifyStep] = useState(false)
   const [error, setError] = useState<AppError | null>(null)
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [loginMode, setLoginMode] = useState<'email' | 'telegram'>('email')
-  const [telegramId, setTelegramId] = useState('')
-  const [otpCode, setOtpCode] = useState('')
-  const [otpSent, setOtpSent] = useState(false)
-  const [selectedRole, setSelectedRole] = useState('teacher')
   const t = useTranslations('login')
+
+  const finish = () => {
+    const params = new URLSearchParams(window.location.search)
+    const target = params.get('next') ?? params.get('redirect_url')
+    router.push(target ? safeNextPath(`?next=${encodeURIComponent(target)}`, window.location.origin) ?? '/v2/overview' : '/v2/overview')
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -33,67 +37,66 @@ export default function LoginPage() {
 
     try {
       if (isRegister) {
-        await fetchWithTimeout('/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password, role: selectedRole }),
-        })
+        const result = await signUp?.create({ emailAddress: email, password })
+        if (result?.status === 'complete' && result.createdSessionId) {
+          await setActiveSignUp?.({ session: result.createdSessionId })
+          finish()
+          return
+        }
+        await signUp?.prepareVerification({ strategy: 'email_code' })
+        setVerifyStep(true)
+        return
       }
 
-      const data = await fetchWithTimeout('/auth/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      })
-
-      setToken(data.access_token)
-      if (data.language_preference) {
-        setCookie('NEXT_LOCALE', data.language_preference, 365)
+      const result = await signIn?.create({ identifier: email, password })
+      if (result?.status === 'complete' && result.createdSessionId) {
+        await setActiveSignIn?.({ session: result.createdSessionId })
+        finish()
       }
-      router.push(safeNextPath(window.location.search, window.location.origin) ?? '/classroom')
     } catch (err) {
-      setError(normalizeException(err))
+      if (isClerkAPIResponseError(err)) {
+        const message = err.errors[0]?.longMessage ?? err.errors[0]?.message ?? t('error')
+        setError({ category: 'authentication', code: err.errors[0]?.code ?? 'clerk_error', message, retryable: true })
+      } else {
+        setError(normalizeException(err))
+      }
     } finally {
       setLoading(false)
     }
   }
 
-  const sendOtp = async () => {
-    if (!telegramId.trim()) return
-    setLoading(true)
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault()
     setError(null)
+    setLoading(true)
     try {
-      await fetchWithTimeout('/auth/request-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ telegram_id: Number(telegramId) }),
-      })
-      setOtpSent(true)
+      const result = await signUp?.attemptVerification({ strategy: 'email_code', code })
+      if (result?.status === 'complete' && result.createdSessionId) {
+        await setActiveSignUp?.({ session: result.createdSessionId })
+        finish()
+      }
     } catch (err) {
-      setError(normalizeException(err))
+      if (isClerkAPIResponseError(err)) {
+        const message = err.errors[0]?.longMessage ?? err.errors[0]?.message ?? t('error')
+        setError({ category: 'authentication', code: err.errors[0]?.code ?? 'clerk_error', message, retryable: true })
+      } else {
+        setError(normalizeException(err))
+      }
     } finally {
       setLoading(false)
     }
   }
 
-  const verifyOtp = async () => {
-    if (!otpCode.trim()) return
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await fetchWithTimeout('/auth/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ telegram_id: Number(telegramId), otp: otpCode }),
-      })
-      setToken(data.access_token)
-      router.push(safeNextPath(window.location.search, window.location.origin) ?? '/v2/overview')
-    } catch (err) {
-      setError(normalizeException(err))
-    } finally {
-      setLoading(false)
-    }
+  const handleGoogle = () => {
+    const method = isRegister ? signUp : signIn
+    method?.authenticateWithRedirect({
+      strategy: 'oauth_google',
+      redirectUrl: '/sso-callback',
+      redirectUrlComplete: '/v2/overview',
+    })
   }
+
+  const loaded = isRegister ? signUpLoaded : signInLoaded
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -108,7 +111,32 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {loginMode === 'email' ? (
+        {verifyStep ? (
+          <form onSubmit={handleVerifyCode} className="bg-card rounded-xl border border-border p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-foreground text-center">{t('verify_email_title')}</h2>
+            <p className="text-xs text-foreground-muted text-center">{t('check_email')}</p>
+            {error && <ErrorAlert error={error} title={t('error')} />}
+            <div>
+              <label className="block text-sm font-medium text-foreground-muted mb-1">{t('verify_code')}</label>
+              <input
+                type="text"
+                required
+                maxLength={6}
+                value={code}
+                onChange={e => setCode(e.target.value)}
+                className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary transition-colors"
+                placeholder={t('verify_code_placeholder')}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading || code.length !== 6}
+              className="w-full bg-primary text-white rounded-lg py-2.5 text-sm font-medium hover:bg-primary-hover transition-colors disabled:opacity-50"
+            >
+              {loading ? t('please_wait') : t('verify_button')}
+            </button>
+          </form>
+        ) : (
           <form onSubmit={handleSubmit} className="bg-card rounded-xl border border-border p-6 space-y-4">
             <h2 className="text-lg font-semibold text-foreground text-center">
               {isRegister ? t('create_account') : t('sign_in')}
@@ -150,35 +178,9 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {isRegister && (
-              <div>
-                <label className="block text-sm font-medium text-foreground-muted mb-2">{t('register_as')}</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { value: 'teacher', label: t('teacher') },
-                    { value: 'student', label: t('student') },
-                    { value: 'parent', label: t('parent') },
-                  ].map(r => (
-                    <button
-                      key={r.value}
-                      type="button"
-                      onClick={() => setSelectedRole(r.value)}
-                      className={`px-3 py-2 text-sm rounded-lg border transition-colors ${
-                        selectedRole === r.value
-                          ? 'bg-primary/10 border-primary text-primary'
-                          : 'bg-background border-border text-foreground-muted hover:border-foreground-muted'
-                      }`}
-                    >
-                      {r.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !loaded}
               className="w-full bg-primary text-white rounded-lg py-2.5 text-sm font-medium hover:bg-primary-hover transition-colors disabled:opacity-50"
             >
               {loading ? t('please_wait') : isRegister ? t('create_and_sign_in') : t('sign_in')}
@@ -186,16 +188,18 @@ export default function LoginPage() {
 
             <p className="text-xs text-center text-foreground-muted">
               {isRegister ? (
-                <>{t('already_have_account')}{' '}<button type="button" onClick={() => setIsRegister(false)} className="text-primary hover:underline">{t('sign_in')}</button></>
+                <>{t('already_have_account')}{' '}<button type="button" onClick={() => { setIsRegister(false); setError(null) }} className="text-primary hover:underline">{t('sign_in')}</button></>
               ) : (
-                <>{t('new_teacher')}{' '}<button type="button" onClick={() => setIsRegister(true)} className="text-primary hover:underline">{t('create_account')}</button></>
+                <>{t('new_teacher')}{' '}<button type="button" onClick={() => { setIsRegister(true); setError(null) }} className="text-primary hover:underline">{t('create_account')}</button></>
               )}
             </p>
 
-            <div className="border-t border-border pt-4 mt-4 space-y-2">
-              <a
-                href="/auth/oauth/google/login?redirect=/classroom"
-                className="w-full flex items-center justify-center gap-2 py-2 bg-card border border-border text-foreground rounded-lg text-sm hover:bg-border transition-colors"
+            <div className="border-t border-border pt-4 mt-4">
+              <button
+                type="button"
+                onClick={handleGoogle}
+                disabled={!loaded}
+                className="w-full flex items-center justify-center gap-2 py-2 bg-card border border-border text-foreground rounded-lg text-sm hover:bg-border transition-colors disabled:opacity-50"
               >
                 <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true">
                   <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
@@ -204,55 +208,9 @@ export default function LoginPage() {
                   <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
                 </svg>
                 {t('continue_with_google')}
-              </a>
-              <button type="button" onClick={() => { setLoginMode('telegram'); setError(null) }}
-                className="w-full py-2 bg-card border border-border text-foreground rounded-lg text-sm hover:bg-border transition-colors">
-                {t('login_telegram')}
               </button>
             </div>
           </form>
-        ) : (
-          <div className="bg-card rounded-xl border border-border p-6">
-            <h2 className="text-lg font-semibold text-foreground text-center mb-4">{t('telegram_otp')}</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground-muted mb-1">{t('telegram_id')}</label>
-                <input
-                  type="number" value={telegramId} onChange={e => setTelegramId(e.target.value)}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary transition-colors"
-                  placeholder={t('telegram_id_hint')} disabled={otpSent}
-                />
-              </div>
-              {!otpSent ? (
-                <button onClick={sendOtp} disabled={loading || !telegramId.trim()}
-                  className="w-full bg-primary text-white rounded-lg py-2.5 text-sm font-medium hover:bg-primary-hover transition-colors disabled:opacity-50">
-                  {loading ? t('sending') : t('send_otp')}
-                </button>
-              ) : (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-foreground-muted mb-1">{t('otp_code')}</label>
-                    <input
-                      type="text" value={otpCode} onChange={e => setOtpCode(e.target.value)}
-                      className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary transition-colors"
-                      placeholder={t('otp_placeholder')} maxLength={6}
-                    />
-                  </div>
-                  <button onClick={verifyOtp} disabled={loading || otpCode.length !== 6}
-                    className="w-full bg-primary text-white rounded-lg py-2.5 text-sm font-medium hover:bg-primary-hover transition-colors disabled:opacity-50">
-                    {loading ? t('verifying') : t('verify_login')}
-                  </button>
-                </>
-              )}
-              {error && <ErrorAlert error={error} title={t('telegram_error')} />}
-              <div className="border-t border-border pt-4 mt-4">
-                <button type="button" onClick={() => { setLoginMode('email'); setOtpSent(false); setOtpCode(''); setTelegramId(''); setError(null) }}
-                  className="w-full py-2 bg-card border border-border text-foreground rounded-lg text-sm hover:bg-border transition-colors">
-                  {t('back_to_email')}
-                </button>
-              </div>
-            </div>
-          </div>
         )}
       </div>
     </div>

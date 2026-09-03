@@ -1,54 +1,31 @@
+import { getToken } from "./auth";
 import { normalizeHttpError } from "./errors";
 
-const REFRESH_URL = "/auth/refresh";
-const NO_REDIRECT_PREFIXES = [
-  "/login",
-  "/auth/refresh",
-  "/auth/token",
-  "/auth/request-otp",
-  "/auth/verify-otp",
-  "/auth/register",
-  "/auth/logout",
-  "/auth/oauth",
-];
+const NO_REDIRECT_PREFIXES = ["/login", "/sign-in", "/sign-up", "/sso-callback"];
 
-let refreshPromise: Promise<boolean> | null = null;
-
-function singleFlightRefresh(): Promise<boolean> {
-  if (!refreshPromise) {
-    refreshPromise = fetch(REFRESH_URL, { method: "POST", credentials: "include" })
-      .then((r) => r.ok)
-      .catch(() => false)
-      .finally(() => {
-        refreshPromise = null;
-      });
-  }
-  return refreshPromise;
-}
-
-function redirectToLogin(): void {
+function redirectToSignIn(): void {
   if (typeof window === "undefined") return;
   const current = window.location.pathname + window.location.search;
-  if (current.startsWith("/login")) return;
-  window.location.href = `/login?next=${encodeURIComponent(current)}`;
+  if (current.startsWith("/login") || current.startsWith("/sign-in")) return;
+  window.location.href = `/sign-in?next=${encodeURIComponent(current)}`;
 }
 
 function authorized(url: string, options: RequestInit = {}): [string, RequestInit] {
-  const headers = { "Content-Type": "application/json", ...(options.headers ?? {}) };
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers ?? {}),
+  } as Record<string, string>;
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
   return [url, { ...options, credentials: "include", headers }];
 }
 
 export async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
   const [authUrl, authOpts] = authorized(url, options);
-  let res = await fetch(authUrl, authOpts);
-  if (res.status !== 401) return res;
-  if (NO_REDIRECT_PREFIXES.some((p) => url.startsWith(p))) return res;
-  const refreshed = await singleFlightRefresh();
-  if (refreshed) {
-    res = await fetch(authUrl, authOpts);
-    if (res.status !== 401) return res;
+  const res = await fetch(authUrl, authOpts);
+  if (res.status === 401 && !NO_REDIRECT_PREFIXES.some((p) => url.startsWith(p))) {
+    redirectToSignIn();
   }
-  redirectToLogin();
   return res;
 }
 

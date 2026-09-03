@@ -17,6 +17,7 @@ export interface AppError {
   status?: number;
   retryable: boolean;
   retryAfter?: number;
+  message?: string;
   fieldErrors?: Record<string, string[]>;
   params?: Record<string, unknown>;
   requestId?: string;

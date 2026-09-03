@@ -1,3 +1,4 @@
+import { ClerkProvider } from '@clerk/nextjs';
 import type { Metadata } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
@@ -21,9 +22,11 @@ export default async function RootLayout({
   return (
     <html lang={locale}>
       <body className="bg-v2-bg text-v2-text-primary font-sans">
-        <NextIntlClientProvider locale={locale} messages={messages}>
+        <ClerkProvider>
+          <NextIntlClientProvider locale={locale} messages={messages}>
           {children}
-        </NextIntlClientProvider>
+          </NextIntlClientProvider>
+        </ClerkProvider>
       </body>
     </html>
   );

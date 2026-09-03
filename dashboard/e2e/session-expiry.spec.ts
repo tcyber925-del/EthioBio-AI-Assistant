@@ -3,12 +3,10 @@ import { test, expect } from '@playwright/test'
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000'
 
 test.describe('Session expiry', () => {
-  test('expired session redirects to /login with next param', async ({ page }) => {
-    await page.context().addCookies([
-      { name: 'access_token', value: 'expired', url: BASE_URL },
-      // isAuthenticated() checks the auth_ready cookie, not access_token
-      { name: 'auth_ready', value: '1', url: BASE_URL },
-    ])
+  test('expired session redirects to /sign-in with next param', async ({ page }) => {
+    // A stale Clerk session cookie lets the middleware through; the backend
+    // then rejects the API call with 401, which should route to /sign-in.
+    await page.context().addCookies([{ name: '__session', value: 'expired-clerk-jwt', url: BASE_URL }])
     await page.route('**/api/teacher/students', route =>
       route.fulfill({
         status: 401,
@@ -16,32 +14,13 @@ test.describe('Session expiry', () => {
         body: JSON.stringify({ error: { code: 'auth_token_expired', detail: 'x', context: {} } }),
       }),
     )
-    await page.route('**/auth/refresh', route =>
-      route.fulfill({
-        status: 401,
-        contentType: 'application/json',
-        body: JSON.stringify({ error: { code: 'auth_refresh_expired', detail: 'x', context: {} } }),
-      }),
-    )
     await page.goto(`${BASE_URL}/students`)
-    await expect(page).toHaveURL(/\/login\?next=%2Fstudents/, { timeout: 15000 })
+    await expect(page).toHaveURL(/\/sign-in\?next=%2Fstudents/, { timeout: 15000 })
   })
 
-  test('no redirect loop when already on /login', async ({ page }) => {
-    await page.context().addCookies([{ name: 'access_token', value: 'expired', url: BASE_URL }])
-    await page.route('**/auth/token*', route =>
-      route.fulfill({
-        status: 401,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          error: { code: 'auth_invalid_credentials', detail: 'x', context: {} },
-        }),
-      }),
-    )
+  test('login page stays put (public route, no redirect loop)', async ({ page }) => {
     await page.goto(`${BASE_URL}/login`)
-    await page.fill('input[type="email"]', 'a@b.c')
-    await page.fill('input[type="password"]', 'wrong-pass')
-    await page.click('button[type="submit"]')
     await expect(page).toHaveURL(/\/login$/)
+    await expect(page.getByRole('heading', { name: /sign in/i })).toBeVisible()
   })
 })

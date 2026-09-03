@@ -39,6 +39,7 @@ export function errorMessageKeys(error: AppError): MessageKey {
 export function useErrorMessage(error: AppError | null | undefined): string {
   const t = useTranslations();
   if (!error) return "";
+  if (error.message) return error.message;
   const { key, params } = errorMessageKeys(error);
   return t(key, params);
 }
