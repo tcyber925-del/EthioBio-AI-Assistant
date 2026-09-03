@@ -10,8 +10,8 @@ from src.guardrails.input.rate_limiter import TieredRateLimiter
 async def test_tier_resolution():
     limiter = TieredRateLimiter()
     assert limiter.resolve_tier("/auth/login", "POST") == "auth"
-    assert limiter.resolve_tier("/auth/request-otp", "POST") == "otp"
-    assert limiter.resolve_tier("/auth/verify-otp", "POST") == "otp"
+    assert limiter.resolve_tier("/auth/request-otp", "POST") == "auth"
+    assert limiter.resolve_tier("/auth/verify-otp", "POST") == "auth"
     assert limiter.resolve_tier("/chat/stream", "POST") == "chat"
     assert limiter.resolve_tier("/internal/health", "GET") == "internal"
     assert limiter.resolve_tier("/quiz/generate", "POST") == "write"

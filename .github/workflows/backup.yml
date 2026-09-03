@@ -18,8 +18,7 @@ jobs:
       - name: Dump database to B2
         env:
           API_BASE: https://ethiobio-api.onrender.com
-          BACKUP_ADMIN_EMAIL: ${{ secrets.BACKUP_ADMIN_EMAIL }}
-          BACKUP_ADMIN_PASSWORD: ${{ secrets.BACKUP_ADMIN_PASSWORD }}
+          INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
           B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
           B2_APP_KEY: ${{ secrets.B2_APP_KEY }}
           B2_BUCKET: ${{ secrets.B2_BUCKET }}
@@ -27,14 +26,9 @@ jobs:
           set -eo pipefail
           b2 authorize-account "$B2_KEY_ID" "$B2_APP_KEY"
           TS=$(date -u +%F)
-          # Render blocks external DB access for this instance; dump through the
-          # app's internal connection (GET /admin/db-backup streams pg_dump).
-          TOKEN=$(curl -fsS -X POST "$API_BASE/auth/token" \
-            -H 'Content-Type: application/json' \
-            -d "{\"email\":\"$BACKUP_ADMIN_EMAIL\",\"password\":\"$BACKUP_ADMIN_PASSWORD\"}" \
-            | python3 -c 'import json,sys; print(json.load(sys.stdin)["access_token"])')
+          # Dump through the app's admin endpoint using the internal API key.
           echo "Dumping database..."
-          curl -fsS -H "Authorization: Bearer $TOKEN" "$API_BASE/admin/db-backup" \
+          curl -fsS -H "X-API-Key: $INTERNAL_API_KEY" "$API_BASE/admin/db-backup" \
             | gzip -c > "/tmp/ethiobio_prod_$TS.sql.gz"
           test -s "/tmp/ethiobio_prod_$TS.sql.gz"
           gzip -t "/tmp/ethiobio_prod_$TS.sql.gz"

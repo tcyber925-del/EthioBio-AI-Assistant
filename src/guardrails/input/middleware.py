@@ -20,20 +20,12 @@ def add_rate_limit_middleware(app: FastAPI, redis_url: str):
             return await call_next(request)
 
         user_id = None
-        access_cookie = request.cookies.get("access_token")
-        if access_cookie:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
             try:
-                from jose import jwt as jose_jwt
+                from src.auth.clerk import extract_user_id_unverified
 
-                from src.config import settings as app_settings
-
-                payload = jose_jwt.decode(
-                    access_cookie,
-                    app_settings.jwt_secret,
-                    algorithms=[app_settings.jwt_algorithm],
-                    options={"verify_exp": False},
-                )
-                user_id = payload.get("sub")
+                user_id = await extract_user_id_unverified(auth_header[7:])
             except Exception:
                 pass
 

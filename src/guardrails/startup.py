@@ -12,12 +12,6 @@ logger = structlog.get_logger()
 async def run_startup_checks() -> list[str]:
     warnings: list[str] = []
 
-    if settings.jwt_secret in ("change-me-jwt-secret", "dev-jwt-secret"):
-        raise SystemExit(
-            "FATAL: JWT_SECRET is set to a default value. "
-            "Generate a strong secret: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
-        )
-
     if settings.secret_key in ("change-me", "dev-secret-key-change-in-production"):
         raise SystemExit(
             "FATAL: SECRET_KEY is set to a default value. "

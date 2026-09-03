@@ -39,8 +39,6 @@ class TieredRateLimiter:
     def resolve_tier(self, path: str, method: str) -> str:
         if path.startswith("/internal/"):
             return "internal"
-        if path in ("/auth/request-otp", "/auth/verify-otp"):
-            return "otp"
         if path.startswith("/auth/"):
             return "auth"
         if path.startswith("/chat/"):

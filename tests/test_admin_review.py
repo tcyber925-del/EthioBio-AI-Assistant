@@ -4,7 +4,6 @@ from uuid import uuid4
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from src.api.auth import _create_access_token
 from src.database.models import UserRole
 from src.database.session import get_session
 from src.main import app
@@ -56,6 +55,15 @@ def mock_session():
     return mock
 
 
+
+@pytest.fixture(autouse=True)
+def _mock_clerk(monkeypatch):
+    async def fake_verify(token: str) -> dict:
+        return {"sub": "user_test_admin", "email": "admin@test.com"}
+
+    monkeypatch.setattr("src.api.auth.verify_clerk_token", fake_verify)
+
+
 @pytest.fixture
 def client(mock_session):
     app.dependency_overrides[get_session] = lambda: mock_session
@@ -67,7 +75,7 @@ def client(mock_session):
 
 @pytest.mark.asyncio
 async def test_list_pending_reviews_returns_200(client, mock_session):
-    token = _create_access_token(str(uuid4()), "admin")
+    token = "test-clerk-token"
     resp = await client.get(
         "/admin/review",
         headers={"Authorization": f"Bearer {token}"},
@@ -80,7 +88,7 @@ async def test_list_pending_reviews_returns_200(client, mock_session):
 
 @pytest.mark.asyncio
 async def test_list_resolved_reviews_returns_200(client, mock_session):
-    token = _create_access_token(str(uuid4()), "admin")
+    token = "test-clerk-token"
     resp = await client.get(
         "/admin/review?status=resolved",
         headers={"Authorization": f"Bearer {token}"},
@@ -114,7 +122,7 @@ async def test_resolve_trace_returns_200(client, mock_session):
 
     mock_session.execute = AsyncMock(side_effect=execute_side)
 
-    token = _create_access_token(str(uuid4()), "admin")
+    token = "test-clerk-token"
     resp = await client.patch(
         "/admin/review/test_trace_123",
         json={"action": "resolve", "review_notes": "Approved"},
@@ -147,7 +155,7 @@ async def test_resolve_nonexistent_trace_returns_404(client, mock_session):
 
     mock_session.execute = AsyncMock(side_effect=execute_side)
 
-    token = _create_access_token(str(uuid4()), "admin")
+    token = "test-clerk-token"
     resp = await client.patch(
         "/admin/review/nonexistent",
         json={"action": "resolve"},
@@ -181,7 +189,7 @@ async def test_resolve_wrong_trace_returns_400(client, mock_session):
 
     mock_session.execute = AsyncMock(side_effect=execute_side)
 
-    token = _create_access_token(str(uuid4()), "admin")
+    token = "test-clerk-token"
     resp = await client.patch(
         "/admin/review/test_trace_456",
         json={"action": "resolve"},
@@ -193,7 +201,7 @@ async def test_resolve_wrong_trace_returns_400(client, mock_session):
 @pytest.mark.asyncio
 async def test_review_rejects_non_admin(client, mock_session):
     mock_session._mock_user.role = UserRole.teacher
-    token = _create_access_token(str(uuid4()), "teacher")
+    token = "test-clerk-token"
     resp = await client.get(
         "/admin/review",
         headers={"Authorization": f"Bearer {token}"},

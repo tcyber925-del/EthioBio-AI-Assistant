@@ -69,12 +69,9 @@ class Settings(BaseSettings):
     dashboard_url: str = "http://localhost:3000"
     api_base_url: str = "http://localhost:8000"
 
-    # OAuth (Google) sign-in. Client id/secret from the Google Cloud console.
-    oauth_google_client_id: str = ""
-    oauth_google_client_secret: str = ""
-    # Public base URL where the OAuth callback can be reached (e.g. https://api.example.com).
-    # Defaults to api_base_url when left empty.
-    oauth_callback_base_url: str = ""
+    # Clerk auth — frontend API base (e.g. https://my-app.clerk.accounts.dev).
+    # Used to fetch the JWKS and to verify the token issuer.
+    clerk_frontend_api: str = ""
 
     cloudflare_account_id: str = ""
     cloudflare_api_token: str = ""
@@ -86,10 +83,6 @@ class Settings(BaseSettings):
     email_password: str = ""
     email_from: str = "noreply@ethiobio.com"
     email_use_tls: bool = True
-    jwt_secret: str = "change-me-jwt-secret"
-    jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 15
-    refresh_token_expire_days: int = 7
     internal_api_key: str = ""
 
     # Guardrail settings

@@ -1,6 +1,6 @@
 {
   "start": {
-    "dashboard_login": "Your dashboard login code: <b>{code}</b>\n\nThis code expires in 5 minutes. Enter it on the login page.",
+    "dashboard_login_clerk": "🔐 Sign in to the EthioSci dashboard in your browser: <a href=\"{dashboard_url}\">{dashboard_url}</a>\n\nUse your email or Google account — the Telegram OTP login is no longer available.",
     "welcome": "Welcome to EthioSci!\n\nI'm your science learning assistant (biology, chemistry, physics, math) for Ethiopian Grades 7-12.\n\nSend me any science question, or use the menu below:"
   },
   "common": {

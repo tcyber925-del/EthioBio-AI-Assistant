@@ -4,7 +4,6 @@ from uuid import uuid4
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from src.api.auth import _create_access_token
 from src.database.models import UserRole
 from src.database.session import get_session
 from src.main import app
@@ -35,6 +34,15 @@ def mock_session():
     return mock
 
 
+
+@pytest.fixture(autouse=True)
+def _mock_clerk(monkeypatch):
+    async def fake_verify(token: str) -> dict:
+        return {"sub": "user_test_admin", "email": "admin@test.com"}
+
+    monkeypatch.setattr("src.api.auth.verify_clerk_token", fake_verify)
+
+
 @pytest.fixture
 def client(mock_session):
     app.dependency_overrides[get_session] = lambda: mock_session
@@ -52,7 +60,7 @@ async def test_admin_dashboard_returns_401_without_token(client):
 
 @pytest.mark.asyncio
 async def test_admin_dashboard_returns_200_with_admin_token(client, mock_session):
-    token = _create_access_token(str(uuid4()), "admin")
+    token = "test-clerk-token"
     resp = await client.get(
         "/admin/dashboard",
         headers={"Authorization": f"Bearer {token}"},
@@ -63,7 +71,7 @@ async def test_admin_dashboard_returns_200_with_admin_token(client, mock_session
 @pytest.mark.asyncio
 async def test_admin_dashboard_returns_403_with_teacher_token(client, mock_session):
     mock_session._mock_user.role = UserRole.teacher
-    token = _create_access_token(str(uuid4()), "teacher")
+    token = "test-clerk-token"
     resp = await client.get(
         "/admin/dashboard",
         headers={"Authorization": f"Bearer {token}"},
@@ -73,7 +81,7 @@ async def test_admin_dashboard_returns_403_with_teacher_token(client, mock_sessi
 
 @pytest.mark.asyncio
 async def test_admin_users_lists_users(client, mock_session):
-    token = _create_access_token(str(uuid4()), "admin")
+    token = "test-clerk-token"
     resp = await client.get(
         "/admin/users",
         headers={"Authorization": f"Bearer {token}"},
@@ -86,7 +94,7 @@ async def test_admin_users_lists_users(client, mock_session):
 
 @pytest.mark.asyncio
 async def test_admin_users_status_toggle(client, mock_session):
-    token = _create_access_token(str(uuid4()), "admin")
+    token = "test-clerk-token"
     user_id = str(uuid4())
     mock_user_obj = AsyncMock()
     mock_user_obj.is_active = True
@@ -104,7 +112,7 @@ async def test_admin_users_status_toggle(client, mock_session):
 
 @pytest.mark.asyncio
 async def test_admin_schools_returns_list(client, mock_session):
-    token = _create_access_token(str(uuid4()), "admin")
+    token = "test-clerk-token"
     resp = await client.get(
         "/admin/schools",
         headers={"Authorization": f"Bearer {token}"},
@@ -115,7 +123,7 @@ async def test_admin_schools_returns_list(client, mock_session):
 @pytest.mark.asyncio
 async def test_admin_endpoints_reject_teacher_token(client, mock_session):
     mock_session._mock_user.role = UserRole.teacher
-    token = _create_access_token(str(uuid4()), "teacher")
+    token = "test-clerk-token"
     for path in ["/admin/dashboard", "/admin/users", "/admin/schools", "/admin/monitoring"]:
         resp = await client.get(path, headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 403, f"{path} should return 403 for teacher"
@@ -123,7 +131,7 @@ async def test_admin_endpoints_reject_teacher_token(client, mock_session):
 
 @pytest.mark.asyncio
 async def test_admin_content_review_returns_200(client, mock_session):
-    token = _create_access_token(str(uuid4()), "admin")
+    token = "test-clerk-token"
     resp = await client.get(
         "/admin/content/review?content_type=quiz&status=published",
         headers={"Authorization": f"Bearer {token}"},
@@ -135,7 +143,7 @@ async def test_admin_content_review_returns_200(client, mock_session):
 
 @pytest.mark.asyncio
 async def test_admin_monitoring_returns_200(client, mock_session):
-    token = _create_access_token(str(uuid4()), "admin")
+    token = "test-clerk-token"
     resp = await client.get(
         "/admin/monitoring",
         headers={"Authorization": f"Bearer {token}"},
@@ -147,7 +155,7 @@ async def test_admin_monitoring_returns_200(client, mock_session):
 
 @pytest.mark.asyncio
 async def test_user_status_update_returns_404_for_missing_user(client, mock_session):
-    token = _create_access_token(str(uuid4()), "admin")
+    token = "test-clerk-token"
     mock_session.get = AsyncMock(return_value=None)
     resp = await client.patch(
         f"/admin/users/{uuid4()}/status",
@@ -159,7 +167,7 @@ async def test_user_status_update_returns_404_for_missing_user(client, mock_sess
 
 @pytest.mark.asyncio
 async def test_user_status_update_returns_400_for_invalid_uuid(client, mock_session):
-    token = _create_access_token(str(uuid4()), "admin")
+    token = "test-clerk-token"
     resp = await client.patch(
         "/admin/users/not-a-uuid/status",
         json={"is_active": False},

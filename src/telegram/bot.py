@@ -197,13 +197,8 @@ async def start(update: Update, context):
 
 
 async def dashboard_login_command(update: Update, context):
-    await _try_register_user(update.effective_user.id)
-    user_id = str(update.effective_user.id)
-    code = f"{random.randint(100000, 999999)}"
-    redis_conn = await get_redis()
-    await redis_conn.setex(f"otp:{user_id}", 300, code)
     await update.message.reply_text(
-        t("start.dashboard_login", _lang(context), code=code),
+        t("start.dashboard_login_clerk", _lang(context)),
         parse_mode="HTML",
     )
 

@@ -1,4 +1,5 @@
 import asyncio
+import hmac
 import os
 import tempfile
 from datetime import datetime, timezone
@@ -6,7 +7,7 @@ from urllib.parse import urlparse
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import String, func, or_, select
@@ -40,8 +41,23 @@ async def require_admin(current_user: User = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Admin access required")
 
 
+async def require_admin_or_internal_key(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    x_api_key: str | None = Header(default=None),
+) -> User | None:
+    if x_api_key and settings.internal_api_key and hmac.compare_digest(
+        x_api_key, settings.internal_api_key
+    ):
+        return None
+    user = await get_current_user(request, session)
+    if user.role != UserRole.admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user
+
+
 @router.get("/db-backup")
-async def db_backup(_: User = Depends(require_admin)):
+async def db_backup(_: User | None = Depends(require_admin_or_internal_key)):
     async_url = settings.database_url
     dsn = os.environ.get("DATABASE_SYNC_URL") or async_url.replace(
         "postgresql+asyncpg://", "postgresql://", 1
@@ -102,7 +118,7 @@ class LangSmithEvalRequest(BaseModel):
 @router.post("/langsmith-eval")
 async def run_langsmith_eval(
     body: LangSmithEvalRequest,
-    _: User = Depends(require_admin),
+    _: User | None = Depends(require_admin_or_internal_key),
 ):
     """Run the offline LangSmith evaluation in-process (needs DB + LLM access)."""
     from src.evaluation.langsmith.run import run_evaluation
