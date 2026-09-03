@@ -37,6 +37,11 @@ jobs:
           curl -fsS -H "Authorization: Bearer $TOKEN" "$API_BASE/admin/db-backup" \
             | gzip -c > "/tmp/ethiobio_prod_$TS.sql.gz"
           test -s "/tmp/ethiobio_prod_$TS.sql.gz"
+          gzip -t "/tmp/ethiobio_prod_$TS.sql.gz"
+          test "$(stat -c%s "/tmp/ethiobio_prod_$TS.sql.gz")" -gt 1048576 \
+            || { echo "ERROR: backup too small (likely empty dump)"; exit 1; }
+          zgrep -q "CREATE TABLE public.users" "/tmp/ethiobio_prod_$TS.sql.gz" \
+            || { echo "ERROR: dump missing expected tables"; exit 1; }
           echo "backup bytes: $(stat -c%s "/tmp/ethiobio_prod_$TS.sql.gz")"
           echo "Uploading backup..."
           b2 upload-file "$B2_BUCKET" "/tmp/ethiobio_prod_$TS.sql.gz" "ethiobio_prod_$TS.sql.gz"
