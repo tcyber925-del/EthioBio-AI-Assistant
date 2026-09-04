@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.auth.clerk import verify_clerk_token
-from src.core.errors import AuthError
+from src.core.errors import AppError, AuthError
 from src.database.models import KnowledgeObject, LessonPlan, QuizAttempt, User, UserRole
 from src.database.session import get_session
 from src.redis_client import get_redis
@@ -17,6 +17,11 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 class UserInfo(BaseModel):
     user_id: str
     email: str
+    role: str
+    role_claimed: bool = False
+
+
+class RoleClaimRequest(BaseModel):
     role: str
 
 
@@ -82,6 +87,37 @@ async def get_me(current_user: User = Depends(get_current_user)):
         user_id=str(current_user.id),
         email=current_user.email or "",
         role=current_user.role.value,
+        role_claimed=current_user.role_claimed,
+    )
+
+
+@router.post("/claim-role")
+async def claim_role(
+    body: RoleClaimRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """One-time self-declared role for Clerk-created accounts (teacher/parent/student).
+
+    Only allowed while `role_claimed` is false, so the choice cannot be abused
+    for later privilege escalation; admins are never self-assignable.
+    """
+    if body.role not in ("teacher", "parent", "student"):
+        raise AppError("invalid_role", "Role must be teacher, parent or student", status=400)
+    user = await session.get(User, current_user.id)
+    if user is None:
+        raise AppError("user_not_found", "User not found", status=404)
+    if user.role_claimed:
+        raise AppError("role_already_claimed", "Role has already been claimed", status=409)
+    user.role = UserRole(body.role)
+    user.role_claimed = True
+    await session.commit()
+    await session.refresh(user)
+    return UserInfo(
+        user_id=str(user.id),
+        email=user.email or "",
+        role=user.role.value,
+        role_claimed=True,
     )
 
 

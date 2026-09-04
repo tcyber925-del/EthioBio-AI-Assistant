@@ -1,14 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { GraduationCap, Eye, EyeOff } from 'lucide-react'
 import { useSignIn, useSignUp } from '@clerk/nextjs'
 import { isClerkAPIResponseError } from '@clerk/nextjs/errors'
 import { ErrorAlert } from '@/components/ui/errors'
+import { initAuth } from '@/lib/auth'
+import { fetchWithAuthJson } from '@/lib/fetchWithAuth'
 import { normalizeException, type AppError } from '@/lib/errors'
 import { safeNextPath } from '@/lib/safeNextPath'
+
+const CLAIM_ROLES = ['student', 'teacher', 'parent'] as const
+type ClaimRole = (typeof CLAIM_ROLES)[number]
 
 export default function LoginPage() {
   const router = useRouter()
@@ -19,15 +24,37 @@ export default function LoginPage() {
   const [code, setCode] = useState('')
   const [isRegister, setIsRegister] = useState(false)
   const [verifyStep, setVerifyStep] = useState(false)
+  const [claimStep, setClaimStep] = useState(false)
+  const [role, setRole] = useState<ClaimRole>('student')
   const [error, setError] = useState<AppError | null>(null)
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const t = useTranslations('login')
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('role_claim') !== '1') return
+    initAuth().then(async () => {
+      const me = await fetchWithAuthJson<{ role_claimed?: boolean }>('/auth/me').catch(() => null)
+      if (me && !me.role_claimed) setClaimStep(true)
+    })
+  }, [])
+
   const finish = () => {
     const params = new URLSearchParams(window.location.search)
     const target = params.get('next') ?? params.get('redirect_url')
     router.push(target ? safeNextPath(`?next=${encodeURIComponent(target)}`, window.location.origin) ?? '/v2/overview' : '/v2/overview')
+  }
+
+  const claimRoleIfNeeded = async (roleToClaim: ClaimRole) => {
+    const me = await fetchWithAuthJson<{ role_claimed?: boolean }>('/auth/me').catch(() => null)
+    if (me && !me.role_claimed) {
+      await fetchWithAuthJson('/auth/claim-role', {
+        method: 'POST',
+        body: JSON.stringify({ role: roleToClaim }),
+      }).catch(() => null)
+    }
+    finish()
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -40,7 +67,7 @@ export default function LoginPage() {
         const result = await signUp?.create({ emailAddress: email, password })
         if (result?.status === 'complete' && result.createdSessionId) {
           await setActiveSignUp?.({ session: result.createdSessionId })
-          finish()
+          await claimRoleIfNeeded(role)
           return
         }
         await signUp?.prepareVerification({ strategy: 'email_code' })
@@ -51,7 +78,7 @@ export default function LoginPage() {
       const result = await signIn?.create({ identifier: email, password })
       if (result?.status === 'complete' && result.createdSessionId) {
         await setActiveSignIn?.({ session: result.createdSessionId })
-        finish()
+        await claimRoleIfNeeded(role)
       }
     } catch (err) {
       if (isClerkAPIResponseError(err)) {
@@ -73,7 +100,7 @@ export default function LoginPage() {
       const result = await signUp?.attemptVerification({ strategy: 'email_code', code })
       if (result?.status === 'complete' && result.createdSessionId) {
         await setActiveSignUp?.({ session: result.createdSessionId })
-        finish()
+        await claimRoleIfNeeded(role)
       }
     } catch (err) {
       if (isClerkAPIResponseError(err)) {
@@ -82,6 +109,23 @@ export default function LoginPage() {
       } else {
         setError(normalizeException(err))
       }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleClaim = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
+    try {
+      await fetchWithAuthJson('/auth/claim-role', {
+        method: 'POST',
+        body: JSON.stringify({ role }),
+      })
+      finish()
+    } catch (err) {
+      setError(normalizeException(err))
     } finally {
       setLoading(false)
     }
@@ -98,6 +142,28 @@ export default function LoginPage() {
 
   const loaded = isRegister ? signUpLoaded : signInLoaded
 
+  const rolePicker = (
+    <div>
+      <label className="block text-sm font-medium text-foreground-muted mb-2">{t('register_as')}</label>
+      <div className="grid grid-cols-3 gap-2">
+        {CLAIM_ROLES.map(r => (
+          <button
+            key={r}
+            type="button"
+            onClick={() => setRole(r)}
+            className={`px-3 py-2 text-sm rounded-lg border transition-colors ${
+              role === r
+                ? 'bg-primary/10 border-primary text-primary'
+                : 'bg-background border-border text-foreground-muted hover:border-foreground-muted'
+            }`}
+          >
+            {t(r)}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
@@ -111,7 +177,21 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {verifyStep ? (
+        {claimStep ? (
+          <form onSubmit={handleClaim} className="bg-card rounded-xl border border-border p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-foreground text-center">{t('claim_title')}</h2>
+            <p className="text-xs text-foreground-muted text-center">{t('claim_hint')}</p>
+            {error && <ErrorAlert error={error} title={t('error')} />}
+            {rolePicker}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-primary text-white rounded-lg py-2.5 text-sm font-medium hover:bg-primary-hover transition-colors disabled:opacity-50"
+            >
+              {loading ? t('please_wait') : t('claim_button')}
+            </button>
+          </form>
+        ) : verifyStep ? (
           <form onSubmit={handleVerifyCode} className="bg-card rounded-xl border border-border p-6 space-y-4">
             <h2 className="text-lg font-semibold text-foreground text-center">{t('verify_email_title')}</h2>
             <p className="text-xs text-foreground-muted text-center">{t('check_email')}</p>
@@ -177,6 +257,8 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
+
+            {isRegister && rolePicker}
 
             <button
               type="submit"

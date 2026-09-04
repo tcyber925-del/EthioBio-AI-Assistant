@@ -162,3 +162,58 @@ async def test_me_matches_existing_user_by_email(db_session):
         assert user.clerk_id == "user_clerk_99"
 
     app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_new_user_can_claim_role_once(db_session):
+    app.dependency_overrides[get_session] = lambda: db_session
+    transport = ASGITransport(app=app)
+
+    async def fake_verify(token: str) -> dict:
+        return {"sub": "user_claim_1", "email": "claim@example.com"}
+
+    with patch("src.api.auth.verify_clerk_token", side_effect=fake_verify):
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            headers = {"Authorization": "Bearer clerk-session-token"}
+
+            me = await client.get("/auth/me", headers=headers)
+            assert me.status_code == 200
+            assert me.json()["role"] == "student"
+            assert me.json()["role_claimed"] is False
+
+            claimed = await client.post(
+                "/auth/claim-role", json={"role": "teacher"}, headers=headers
+            )
+            assert claimed.status_code == 200
+            assert claimed.json()["role"] == "teacher"
+            assert claimed.json()["role_claimed"] is True
+
+            me2 = await client.get("/auth/me", headers=headers)
+            assert me2.json()["role"] == "teacher"
+
+            again = await client.post(
+                "/auth/claim-role", json={"role": "parent"}, headers=headers
+            )
+            assert again.status_code == 409
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_claim_role_rejects_admin(db_session):
+    app.dependency_overrides[get_session] = lambda: db_session
+    transport = ASGITransport(app=app)
+
+    async def fake_verify(token: str) -> dict:
+        return {"sub": "user_claim_2", "email": "claim2@example.com"}
+
+    with patch("src.api.auth.verify_clerk_token", side_effect=fake_verify):
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.post(
+                "/auth/claim-role",
+                json={"role": "admin"},
+                headers={"Authorization": "Bearer clerk-session-token"},
+            )
+            assert resp.status_code == 400
+
+    app.dependency_overrides.clear()

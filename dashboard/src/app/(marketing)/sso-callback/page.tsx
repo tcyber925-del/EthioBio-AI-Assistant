@@ -14,7 +14,11 @@ export default function SSOCallbackPage() {
     const timeout = setTimeout(() => router.push(fallback), 12000)
     clerk
       .handleRedirectCallback({}, async (url) => {
-        router.push(url || fallback)
+        const me = await fetch('/auth/me', { credentials: 'include' })
+          .then(r => (r.ok ? r.json() : null))
+          .catch(() => null)
+        const target = me && me.role_claimed === false ? '/login?role_claim=1' : (url || fallback)
+        router.push(target)
       })
       .catch(() => router.push('/sign-in'))
     return () => clearTimeout(timeout)

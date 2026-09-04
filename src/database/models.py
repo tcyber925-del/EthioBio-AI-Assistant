@@ -51,6 +51,7 @@ class User(Base):
     telegram_id: Mapped[int] = mapped_column(BigInteger, unique=True, nullable=True)
     phone: Mapped[str] = mapped_column(String(20), unique=True, nullable=True)
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.student)
+    role_claimed: Mapped[bool] = mapped_column(Boolean, default=False)
     language_preference: Mapped[str] = mapped_column(String(10), default="en")
     grade_level: Mapped[int] = mapped_column(Integer, nullable=True)
     subject: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
