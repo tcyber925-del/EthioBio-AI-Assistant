@@ -181,7 +181,7 @@
       "total_students": "Students",
       "recent_activity": "Recent Activity",
       "dashboard": "Dashboard",
-      "subtitle": "EthioSci AI Assistant overview",
+      "subtitle": "EthioSci overview",
       "quizzes": "Quizzes",
       "lesson_plans": "Lesson Plans",
       "quiz_attempts": "Quiz Attempts",
@@ -795,7 +795,7 @@
     "role_student_title": "For Students",
     "role_student_desc": "Personalized tutoring, adaptive quizzes, and gamified progress tracking aligned to your grade level.",
     "role_teacher_title": "For Teachers",
-    "role_teacher_desc": "AI-powered lesson planning, classroom intelligence, and recovery interventions — all grounded in the official curriculum.",
+    "role_teacher_desc": "Smart lesson planning, classroom intelligence, and recovery interventions — all grounded in the official curriculum.",
     "role_parent_title": "For Parents",
     "role_parent_desc": "Track your child's science learning progress, quiz performance, and weekly summaries.",
     "teacher_preview_title": "Teacher Copilot Preview",
@@ -851,7 +851,7 @@
       "agents": "Agents"
     },
     "sidebar": {
-      "brand_sub": "AI Assistant",
+      "brand_sub": "Science Learning Assistant",
       "search": "Search",
       "open_search_aria": "Open page search",
       "search_pages_aria": "Search pages",

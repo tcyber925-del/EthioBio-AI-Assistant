@@ -204,7 +204,7 @@
       "quizzes": "ፈተናዎች",
       "request_latency": "የጥያቄ መዘግየት",
       "request_status": "የጥያቄ ሁኔታ",
-      "subtitle": "የEthioSci AI ረዳት አጠቃላይ እይታ",
+      "subtitle": "የEthioSci አጠቃላይ እይታ",
       "success": "ስኬት",
       "success_rate": "የስኬት መጠን"
     },
@@ -795,7 +795,7 @@
     "role_student_title": "ለተማሪዎች",
     "role_student_desc": "ከክፍል ደረጃዎ ጋር የተጣጣመ የግል ትምህርት፣ መላመድ ፈተናዎች እና የጨዋታ አደረጃጀት ክትትል።",
     "role_teacher_title": "ለመምህራን",
-    "role_teacher_desc": "በAI የታገዘ የትምህርት እቅድ ማውጣት፣ የክፍል እውቀት እና የማገገሚያ ጣልቃገብነቶች — ሁሉም በይፋዊ ሥርዓተ ትምህርት ላይ የተመሠረተ።",
+    "role_teacher_desc": "ብልህ የትምህርት እቅድ ማውጣት፣ የክፍል እውቀት እና የማገገሚያ ጣልቃገብነቶች — ሁሉም በይፋዊ ሥርዓተ ትምህርት ላይ የተመሠረተ።",
     "role_parent_title": "ለወላጆች",
     "role_parent_desc": "የልጅዎን የሳይንስ ትምህርት እድገት፣ የፈተና አፈጻጸም እና ሳምንታዊ ማጠቃለያ ይከታተሉ።",
     "teacher_preview_title": "የመምህር ረዳት ቅድመ እይታ",
@@ -851,7 +851,7 @@
       "agents": "ወኪሎች"
     },
     "sidebar": {
-      "brand_sub": "AI ረዳት",
+      "brand_sub": "የሳይንስ ትምህርት ረዳት",
       "search": "ፈልግ",
       "open_search_aria": "የገጽ ፍለጋ ክፈት",
       "search_pages_aria": "ገጾችን ፈልግ",
