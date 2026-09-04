@@ -9,11 +9,15 @@ export default function SSOCallbackPage() {
   const router = useRouter()
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const fallback = params.get('redirect_url') || '/v2/overview'
+    const timeout = setTimeout(() => router.push(fallback), 12000)
     clerk
       .handleRedirectCallback({}, async (url) => {
-        router.push(url);
+        router.push(url || fallback)
       })
       .catch(() => router.push('/sign-in'))
+    return () => clearTimeout(timeout)
   }, [clerk, router])
 
   return (
