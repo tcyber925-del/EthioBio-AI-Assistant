@@ -42,6 +42,7 @@ from src.api import (
     student,
     teacher,
     teacher_copilot,
+    test_endpoint,
     tracing,
     users,
     workspace,
@@ -442,6 +443,7 @@ app.include_router(teacher_copilot.router)
 
 app.include_router(student.router)
 app.include_router(tracing.router)
+app.include_router(test_endpoint.router)
 app.include_router(users.router)
 diagram_static_dir = Path("data/diagrams")
 diagram_static_dir.mkdir(parents=True, exist_ok=True)
