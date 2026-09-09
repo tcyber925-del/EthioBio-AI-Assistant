@@ -73,6 +73,12 @@ class Settings(BaseSettings):
     # Used to fetch the JWKS and to verify the token issuer.
     clerk_frontend_api: str = ""
 
+    # Role-first signup (ADR-0013): learners younger than this need a parent
+    # email for consent; their account stays inactive until consent is granted.
+    min_self_consent_age: int = 13
+    # TTL of the signed pre-auth signup-intent cookie (role/DOB/ToS), seconds.
+    signup_intent_ttl_seconds: int = 1800
+
     cloudflare_account_id: str = ""
     cloudflare_api_token: str = ""
     cloudflare_image_model: str = "@cf/black-forest-labs/flux-1-schnell"

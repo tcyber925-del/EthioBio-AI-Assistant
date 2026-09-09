@@ -1,4 +1,5 @@
 import base64
+from datetime import date
 from unittest.mock import patch
 
 import pytest
@@ -215,5 +216,218 @@ async def test_claim_role_rejects_admin(db_session):
                 headers={"Authorization": "Bearer clerk-session-token"},
             )
             assert resp.status_code == 400
+
+    app.dependency_overrides.clear()
+
+
+# --- Role-first signup wizard (ADR-0013) ---
+
+_HEADERS = {"Authorization": "Bearer clerk-session-token"}
+
+
+def _dob_for_age(age: int) -> str:
+    today = date.today()
+    return date(today.year - age, today.month, today.day).isoformat()
+
+
+@pytest.mark.asyncio
+async def test_signup_intent_teacher_sets_cookie(db_session):
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(
+            "/auth/signup-intent", json={"role": "teacher", "tos_accepted": True}
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body == {"ok": True, "role": "teacher", "requires_parental_consent": False}
+        cookie = resp.cookies.get("pending_signup")
+        assert cookie is not None
+        assert "." in cookie
+
+
+@pytest.mark.asyncio
+async def test_signup_intent_requires_tos(db_session):
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post("/auth/signup-intent", json={"role": "teacher"})
+        assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_signup_intent_learner_requires_dob(db_session):
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(
+            "/auth/signup-intent", json={"role": "student", "tos_accepted": True}
+        )
+        assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_signup_intent_under13_requires_parent_email(db_session):
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        missing = await client.post(
+            "/auth/signup-intent",
+            json={"role": "student", "tos_accepted": True, "dob": _dob_for_age(10)},
+        )
+        assert missing.status_code == 400
+
+        ok = await client.post(
+            "/auth/signup-intent",
+            json={
+                "role": "student",
+                "tos_accepted": True,
+                "dob": _dob_for_age(10),
+                "parent_email": "parent@example.com",
+            },
+        )
+        assert ok.status_code == 200
+        assert ok.json()["requires_parental_consent"] is True
+
+
+@pytest.mark.asyncio
+async def test_complete_signup_consumes_intent(db_session):
+    app.dependency_overrides[get_session] = lambda: db_session
+    transport = ASGITransport(app=app)
+
+    async def fake_verify(token: str) -> dict:
+        return {"sub": "user_wizard_1", "email": "wizard@example.com"}
+
+    with patch("src.api.auth.verify_clerk_token", side_effect=fake_verify):
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            await client.get("/auth/me", headers=_HEADERS)
+
+            intent = await client.post(
+                "/auth/signup-intent",
+                json={"role": "student", "tos_accepted": True, "dob": _dob_for_age(15)},
+            )
+            cookie = intent.cookies.get("pending_signup")
+
+            done = await client.post(
+                "/auth/complete-signup", headers=_HEADERS, cookies={"pending_signup": cookie}
+            )
+            assert done.status_code == 200
+            body = done.json()
+            assert body["role"] == "student"
+            assert body["role_claimed"] is True
+            assert body["date_of_birth"] == _dob_for_age(15)
+            # cookie is single-use: response clears it
+            assert "pending_signup" in done.headers.get("set-cookie", "")
+
+            # replaying the consumed flow without a fresh intent fails
+            again = await client.post("/auth/complete-signup", headers=_HEADERS)
+            assert again.status_code == 400  # intent cookie is gone (single-use)
+
+            from sqlalchemy import select
+
+            result = await db_session.execute(
+                select(User).where(User.email == "wizard@example.com")
+            )
+            user = result.scalar_one()
+            assert user.tos_accepted_at is not None
+            assert user.role_claimed is True
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_complete_signup_missing_or_tampered_intent(db_session):
+    app.dependency_overrides[get_session] = lambda: db_session
+    transport = ASGITransport(app=app)
+
+    async def fake_verify(token: str) -> dict:
+        return {"sub": "user_wizard_2", "email": "wizard2@example.com"}
+
+    with patch("src.api.auth.verify_clerk_token", side_effect=fake_verify):
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            missing = await client.post("/auth/complete-signup", headers=_HEADERS)
+            assert missing.status_code == 400
+
+            intent = await client.post(
+                "/auth/signup-intent", json={"role": "parent", "tos_accepted": True}
+            )
+            cookie = intent.cookies.get("pending_signup")
+            tampered = cookie[:-4] + ("AAAA" if not cookie.endswith("AAAA") else "BBBB")
+            resp = await client.post(
+                "/auth/complete-signup", headers=_HEADERS, cookies={"pending_signup": tampered}
+            )
+            assert resp.status_code == 400
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_complete_signup_under13_inactive(db_session):
+    app.dependency_overrides[get_session] = lambda: db_session
+    transport = ASGITransport(app=app)
+
+    async def fake_verify(token: str) -> dict:
+        return {"sub": "user_wizard_3", "email": "kid@example.com"}
+
+    with patch("src.api.auth.verify_clerk_token", side_effect=fake_verify):
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            await client.get("/auth/me", headers=_HEADERS)
+            intent = await client.post(
+                "/auth/signup-intent",
+                json={
+                    "role": "student",
+                    "tos_accepted": True,
+                    "dob": _dob_for_age(11),
+                    "parent_email": "parent@example.com",
+                },
+            )
+            done = await client.post(
+                "/auth/complete-signup",
+                headers=_HEADERS,
+                cookies={"pending_signup": intent.cookies.get("pending_signup")},
+            )
+            assert done.status_code == 200
+
+            from sqlalchemy import select
+
+            result = await db_session.execute(
+                select(User).where(User.email == "kid@example.com")
+            )
+            user = result.scalar_one()
+            assert user.is_active is False
+            assert user.parent_email == "parent@example.com"
+
+            # account locked until consent: subsequent calls are rejected
+            locked = await client.get("/auth/me", headers=_HEADERS)
+            assert locked.status_code == 401
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_onboarding_student_sets_grade_and_completion(db_session):
+    app.dependency_overrides[get_session] = lambda: db_session
+    transport = ASGITransport(app=app)
+
+    async def fake_verify(token: str) -> dict:
+        return {"sub": "user_onb_1", "email": "onb@example.com"}
+
+    with patch("src.api.auth.verify_clerk_token", side_effect=fake_verify):
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            await client.get("/auth/me", headers=_HEADERS)
+
+            bad = await client.post("/auth/onboarding", json={"grade_level": 6}, headers=_HEADERS)
+            assert bad.status_code == 400
+
+            ok = await client.post(
+                "/auth/onboarding",
+                json={"grade_level": 9, "subject": "biology"},
+                headers=_HEADERS,
+            )
+            assert ok.status_code == 200
+            body = ok.json()
+            assert body["grade_level"] == 9
+            assert body["subject"] == "biology"
+            assert body["onboarding_completed"] is True
+
+            me = await client.get("/auth/me", headers=_HEADERS)
+            assert me.json()["grade_level"] == 9
+            assert me.json()["onboarding_completed"] is True
 
     app.dependency_overrides.clear()
