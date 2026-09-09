@@ -50,8 +50,21 @@ module.exports = {
         'v2-inverted': 'color-mix(in srgb, var(--v2-inverted) calc(100% * <alpha-value>), transparent)',
       },
       fontFamily: {
-        display: ['Spectral', 'Georgia', 'serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        sans: [
+          'var(--font-inter)',
+          'system-ui',
+          'var(--font-ethiopic)',
+          'Noto Sans Ethiopic',
+          'sans-serif',
+        ],
+        display: [
+          'var(--font-spectral)',
+          'Georgia',
+          'var(--font-ethiopic)',
+          'Noto Sans Ethiopic',
+          'serif',
+        ],
+        mono: ['var(--font-jbmono)', 'monospace'],
       },
     },
   },

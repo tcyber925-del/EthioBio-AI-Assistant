@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { getToken } from '@/lib/auth'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
+import TeacherBanner from '@/components/landing/TeacherBanner'
 
 export default function MarketingLayout({
   children,
@@ -20,6 +21,8 @@ export default function MarketingLayout({
 
   return (
     <div className="bg-[#131313] text-white min-h-screen flex flex-col font-sans selection:bg-[#3cffd0] selection:text-black">
+      <TeacherBanner />
+
       {/* Navigation Header */}
       <header className="border-b border-[#2d2d2d] sticky top-0 bg-[#131313]/90 backdrop-blur-md z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -33,6 +36,7 @@ export default function MarketingLayout({
               <a href="#features" className="verge-label text-gray-400 hover:text-white transition-colors">{t('nav_features')}</a>
               <a href="#console" className="verge-label text-gray-400 hover:text-white transition-colors">{t('nav_demo')}</a>
               <a href="#stats" className="verge-label text-gray-400 hover:text-white transition-colors">{t('nav_numbers')}</a>
+              <a href="#faq" className="verge-label text-gray-400 hover:text-white transition-colors">{t('faq_nav')}</a>
             </nav>
           </div>
 
@@ -44,8 +48,8 @@ export default function MarketingLayout({
             />
 
             {/* Launch App / Dashboard button */}
-            <Link 
-              href={isLoggedIn ? '/v2/overview' : '/login'} 
+            <Link
+              href={isLoggedIn ? '/v2/overview' : '/login'}
               className="bg-[#3cffd0] hover:bg-[#2be0b5] text-black font-mono font-bold text-xs uppercase tracking-wider px-4 py-2 rounded-none border border-black hover:translate-x-[-2px] hover:translate-y-[-2px] transition-all hover:shadow-[2px_2px_0px_0px_#5200ff]"
             >
               {t('cta_app')}
@@ -74,13 +78,14 @@ export default function MarketingLayout({
               <ul className="space-y-2 text-sm text-gray-400 font-mono">
                 <li><a href="#features" className="hover:text-[#3cffd0]">{t('section_features')}</a></li>
                 <li><a href="#console" className="hover:text-[#3cffd0]">{t('console_title')}</a></li>
+                <li><a href="#faq" className="hover:text-[#3cffd0]">{t('faq_nav')}</a></li>
                 <li><a href="https://t.me/ethiobio_bot" target="_blank" rel="noopener noreferrer" className="hover:text-[#3cffd0]">Telegram Bot</a></li>
               </ul>
             </div>
             <div>
               <h4 className="verge-label text-sm text-white mb-4">{t('footer_portal')}</h4>
               <ul className="space-y-2 text-sm text-gray-400 font-mono">
-                <li><Link href="/login" className="hover:text-[#3cffd0]">Login / Verify OTP</Link></li>
+                <li><Link href="/login" className="hover:text-[#3cffd0]">{t('footer_login')}</Link></li>
                 <li><Link href="/v2/overview" className="hover:text-[#3cffd0]">Teacher Workspace</Link></li>
                 <li><Link href="/student" className="hover:text-[#3cffd0]">Student Center</Link></li>
               </ul>

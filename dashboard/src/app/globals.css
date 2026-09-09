@@ -41,7 +41,7 @@ body {
   /* Ethiopic fallbacks: Inter/Spectral have no Amharic glyphs; system-ui on
      Windows/macOS/Android resolves Ebrima/Kefa/Noto automatically, the named
      fallbacks cover Linux and older platforms. */
-  font-family: var(--font-inter), system-ui, 'Noto Sans Ethiopic', 'Ebrima', 'Abyssinica SIL', sans-serif;
+  font-family: var(--font-inter), system-ui, var(--font-ethiopic), 'Noto Sans Ethiopic', 'Ebrima', 'Abyssinica SIL', sans-serif;
 }
 
 /* Amharic (Ethiopic script) is taller than Latin — give it extra leading. */
@@ -51,14 +51,14 @@ html[lang='am'] body {
 
 /* --- Typography scale --- */
 .text-display {
-  font-family: Spectral, Georgia, 'Noto Sans Ethiopic', 'Ebrima', 'Abyssinica SIL', serif;
+  font-family: var(--font-spectral), Georgia, var(--font-ethiopic), 'Noto Sans Ethiopic', 'Ebrima', 'Abyssinica SIL', serif;
   font-size: 2rem;
   line-height: 2.5rem;
   font-weight: 700;
 }
 
 .text-heading {
-  font-family: 'Spectral', Georgia, 'Noto Sans Ethiopic', 'Ebrima', 'Abyssinica SIL', serif;
+  font-family: var(--font-spectral), Georgia, var(--font-ethiopic), 'Noto Sans Ethiopic', 'Ebrima', 'Abyssinica SIL', serif;
   font-size: 1.25rem;
   line-height: 1.75rem;
   font-weight: 700;
@@ -91,7 +91,7 @@ html[lang='am'] .text-heading {
 }
 
 .text-mono {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-jbmono), monospace;
   font-size: 0.75rem;
   line-height: 1.125rem;
 }
@@ -256,13 +256,13 @@ html[lang='am'] .text-heading {
     text-transform: uppercase;
   }
   .verge-label {
-    font-family: 'JetBrains Mono', 'Space Mono', 'Courier New', monospace;
+    font-family: var(--font-jbmono), 'Space Mono', 'Courier New', monospace;
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 1.4px;
     text-transform: uppercase;
   }
   .verge-body {
-    font-family: Inter, system-ui, -apple-system, sans-serif;
+    font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
   }
 }

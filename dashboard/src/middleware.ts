@@ -6,7 +6,10 @@ const isPublicRoute = createRouteMatcher([
   "/login(.*)",
   "/sign-in(.*)",
   "/sign-up(.*)",
+  "/forgot-password(.*)",
   "/sso-callback(.*)",
+  "/terms(.*)",
+  "/privacy(.*)",
   "/auth(.*)",
   "/api(.*)",
 ]);
@@ -15,7 +18,7 @@ export default clerkMiddleware(async (auth, request) => {
   if (!isPublicRoute(request)) {
     const { userId } = await auth()
     if (!userId) {
-      const url = new URL('/sign-in', request.url)
+      const url = new URL('/login', request.url)
       url.searchParams.set('redirect_url', request.nextUrl.pathname + request.nextUrl.search)
       return NextResponse.redirect(url)
     }

@@ -1,13 +1,13 @@
 import { getToken } from "./auth";
 import { normalizeHttpError } from "./errors";
 
-const NO_REDIRECT_PREFIXES = ["/login", "/sign-in", "/sign-up", "/sso-callback"];
+const NO_REDIRECT_PREFIXES = ["/login", "/sign-in", "/sign-up", "/forgot-password", "/sso-callback"];
 
 function redirectToSignIn(): void {
   if (typeof window === "undefined") return;
   const current = window.location.pathname + window.location.search;
   if (current.startsWith("/login") || current.startsWith("/sign-in")) return;
-  window.location.href = `/sign-in?next=${encodeURIComponent(current)}`;
+  window.location.href = `/login?redirect_url=${encodeURIComponent(current)}`;
 }
 
 function authorized(url: string, options: RequestInit = {}): [string, RequestInit] {

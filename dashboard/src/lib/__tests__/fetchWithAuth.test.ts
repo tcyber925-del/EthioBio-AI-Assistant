@@ -42,12 +42,12 @@ describe("fetchWithAuth", () => {
     expect((init.headers as Record<string, string>).Authorization).toBe("Bearer clerk-jwt-token");
   });
 
-  it("redirects to /sign-in?next=... on 401", async () => {
+  it("redirects to /login?redirect_url=... on 401", async () => {
     stubLocation({ pathname: "/classroom", search: "", href: "http://x/classroom", assign: vi.fn() });
     vi.mocked(fetch).mockResolvedValueOnce({ status: 401, ok: false, text: () => Promise.resolve("x") } as any);
     const res = await fetchWithAuth("/api/students");
     expect(res.status).toBe(401);
-    expect(window.location.href).toBe("/sign-in?next=%2Fclassroom");
+    expect(window.location.href).toBe("/login?redirect_url=%2Fclassroom");
   });
 
   it("does not refresh on 401 (Clerk manages sessions)", async () => {
