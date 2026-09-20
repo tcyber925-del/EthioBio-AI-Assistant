@@ -1226,7 +1226,9 @@
     "active_workspace": "Active Workspace",
     "no_active_workspace": "No active workspace",
     "no_workspaces": "No workspaces found",
-    "seed_create": "Seed / Create"
+    "seed_create": "Seed / Create",
+    "no_workspace_upload_hint": "You need an active workspace to upload files. Create one from your classroom first.",
+    "go_to_classroom": "Go to classroom"
   },
   "assignments": {
     "crumb": "Assignments",

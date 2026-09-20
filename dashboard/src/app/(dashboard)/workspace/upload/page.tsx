@@ -34,6 +34,8 @@ export default function UploadPage() {
   const [error, setError] = useState<AppError | null>(null)
   const [success, setSuccess] = useState<boolean>(false)
 
+  const noWorkspace = !activeWorkspace
+
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -66,7 +68,8 @@ export default function UploadPage() {
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault()
-    if (!file || !activeWorkspace) return
+    if (!file) return
+    if (!activeWorkspace) return
 
     setUploading(true)
     setError(null)
@@ -144,6 +147,19 @@ export default function UploadPage() {
           </div>
         )}
 
+        {noWorkspace && (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl bg-v2-warning/10 border border-v2-warning/30 text-sm">
+            <p className="text-v2-text-primary">{t('no_workspace_upload_hint')}</p>
+            <button
+              type="button"
+              onClick={() => router.push('/classroom')}
+              className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-v2-accent text-v2-inverted text-xs font-semibold hover:bg-white transition-colors"
+            >
+              {t('go_to_classroom')} <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Upload Form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           {/* File Drag Box */}
@@ -200,7 +216,7 @@ export default function UploadPage() {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={uploading || success || !file}
+            disabled={uploading || success || !file || noWorkspace}
             className="w-full h-12 rounded-xl bg-v2-accent text-v2-inverted text-sm font-bold hover:bg-white transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:hover:bg-v2-accent"
           >
             {uploading ? (

@@ -1226,7 +1226,9 @@
     "active_workspace": "ንቁ የስራ ቦታ",
     "no_active_workspace": "ምንም ንቁ የስራ ቦታ የለም",
     "no_workspaces": "ምንም የስራ ቦታዎች አልተገኙም",
-    "seed_create": "ዘር / ፍጠር"
+    "seed_create": "ዘር / ፍጠር",
+    "no_workspace_upload_hint": "ፋይሎችን ለመስቀል ንቁ የስራ ቦታ ያስፈልግዎታል። መጀመሪያ ከክፍል ቤትዎ ይፍጠሩ።",
+    "go_to_classroom": "ወደ ክፍል ቤት ይሂዱ"
   },
   "assignments": {
     "crumb": "ስራዎች",
