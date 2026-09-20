@@ -21,10 +21,26 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
       await initAuth()
       const userId = getUserId()
       if (!userId) return
-      const response = await fetchWithAuth(`/api/v1/workspaces?user_id=${userId}`)
-      const list = await response.json()
+      let list = await (await fetchWithAuth(`/api/v1/workspaces?user_id=${userId}`)).json()
+
+      // Self-heal: if the teacher has classrooms but no seeded workspaces,
+      // seed one per classroom, then re-fetch.
+      if (!Array.isArray(list) || list.length === 0) {
+        const classesRes = await fetchWithAuth('/teacher/classrooms')
+        if (classesRes.ok) {
+          const classes = await classesRes.json()
+          const seeds = (Array.isArray(classes) ? classes : []).map((c: { id: string }) =>
+            fetchWithAuth(`/api/v1/workspaces/seed/${c.id}`, { method: 'POST' }).catch(() => null),
+          )
+          await Promise.all(seeds)
+          if (classes.length > 0) {
+            list = await (await fetchWithAuth(`/api/v1/workspaces?user_id=${userId}`)).json()
+          }
+        }
+      }
+
       setWorkspaces(list)
-      
+
       const savedId = localStorage.getItem('ethiobio_active_workspace_id')
       const active = list.find((w: Workspace) => w.id === savedId) || list[0] || null
       if (active) {

@@ -73,4 +73,26 @@ describe("WorkspaceLayout", () => {
 
     expect(await screen.findByText("No active workspace")).toBeTruthy();
   });
+
+  it("self-heals by seeding workspaces from classrooms when the list is empty", async () => {
+    fetchWithAuthMock
+      .mockResolvedValueOnce({ json: async () => [] })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [{ id: "c1", name: "Grade 10 Bio", grade_level: 10, student_count: 0 }],
+      })
+      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce({
+        json: async () => [{ id: "ws-1", name: "Grade 10 Bio", description: "" }],
+      });
+
+    renderLayout();
+
+    const matches = await screen.findAllByText("Grade 10 Bio");
+    expect(matches.length).toBeGreaterThan(0);
+    expect(fetchWithAuthMock).toHaveBeenCalledWith("/teacher/classrooms");
+    expect(fetchWithAuthMock).toHaveBeenCalledWith("/api/v1/workspaces/seed/c1", {
+      method: "POST",
+    });
+  });
 });
