@@ -48,6 +48,15 @@ class Settings(BaseSettings):
     store_backend: str = "pgvector"  # always pgvector
     enable_reranker: bool = True  # cross-encoder reranker; disable on memory-limited hosts
 
+    # File storage for workspace uploads (LocalFileStorage on disk by default).
+    # "s3" uses the S3-compatible adapter (MinIO/AWS) via httpx + SigV4.
+    storage_backend: str = "local"
+    s3_endpoint_url: str = ""
+    s3_bucket: str = ""
+    s3_access_key: str = ""
+    s3_secret_key: str = ""
+    s3_region: str = "us-east-1"
+
     gemini_api_key: str = ""
     groq_api_key: str = ""
     azure_speech_key: str = ""

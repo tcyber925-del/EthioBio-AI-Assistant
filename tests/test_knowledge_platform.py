@@ -259,6 +259,57 @@ class TestLocalFileStorage:
         with pytest.raises(FileNotFoundError):
             await storage.store(Path("/nonexistent/file.txt"), "ws", "ko", "f.txt")
 
+    async def test_store_sanitizes_traversal_filename(self, tmp_path):
+        base = Path(mkdtemp())
+        storage = LocalFileStorage(base)
+        src = tmp_path / "test.txt"
+        src.write_text("hello")
+
+        key = await storage.store(src, "ws-1", "ko-1", "../../evil.txt")
+        assert key == "ws-1/ko-1/evil.txt"
+        assert (base / key).read_text() == "hello"
+        assert not (base.parent / "evil.txt").exists()
+
+    async def test_store_rejects_traversal_workspace_id(self, tmp_path):
+        base = Path(mkdtemp())
+        storage = LocalFileStorage(base)
+        src = tmp_path / "test.txt"
+        src.write_text("hello")
+        with pytest.raises(ValueError, match="workspace_id"):
+            await storage.store(src, "../ws", "ko-1", "f.txt")
+
+    async def test_store_rejects_traversal_ko_id(self, tmp_path):
+        base = Path(mkdtemp())
+        storage = LocalFileStorage(base)
+        src = tmp_path / "test.txt"
+        src.write_text("hello")
+        with pytest.raises(ValueError, match="ko_id"):
+            await storage.store(src, "ws-1", "../ko", "f.txt")
+
+    async def test_retrieve_rejects_traversal_key(self):
+        base = Path(mkdtemp())
+        storage = LocalFileStorage(base)
+        with pytest.raises(ValueError, match="storage key"):
+            await storage.retrieve("../../etc/passwd")
+
+    async def test_retrieve_rejects_absolute_key(self):
+        base = Path(mkdtemp())
+        storage = LocalFileStorage(base)
+        with pytest.raises(ValueError, match="storage key"):
+            await storage.retrieve("/etc/passwd")
+
+    async def test_delete_rejects_traversal_key(self):
+        base = Path(mkdtemp())
+        storage = LocalFileStorage(base)
+        with pytest.raises(ValueError, match="storage key"):
+            await storage.delete("../../etc/passwd")
+
+    async def test_exists_rejects_traversal_key(self):
+        base = Path(mkdtemp())
+        storage = LocalFileStorage(base)
+        with pytest.raises(ValueError, match="storage key"):
+            await storage.exists("../../etc/passwd")
+
 
 class TestWorkspaceService:
     async def test_create_and_get(self, workspace_service):
@@ -504,6 +555,72 @@ class TestKnowledgeAPI:
 
             get_resp = await client.get(f"/api/v1/knowledge/{ko_id}")
             assert get_resp.status_code == 404
+
+    async def test_upload_sanitizes_traversal_filename(self, test_app_and_client):
+        app, sf, storage = test_app_and_client
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            ws_id = "00000000-0000-0000-0000-000000000001"
+            owner_id = "00000000-0000-0000-0000-000000000002"
+
+            upload_resp = await client.post(
+                "/api/v1/knowledge/upload",
+                files={"file": ("../../evil.pdf", b"pdf bytes", "application/pdf")},
+                params={"workspace_id": ws_id, "owner_id": owner_id},
+            )
+            assert upload_resp.status_code == 201
+            data = upload_resp.json()
+            assert data["storage_key"].endswith("evil.pdf")
+            assert ".." not in data["storage_key"]
+
+            stored = Path(storage.base_path) / data["storage_key"]
+            assert stored.read_bytes() == b"pdf bytes"
+            assert not (storage.base_path.parent / "evil.pdf").exists()
+
+    async def test_patch_metadata_rejects_storage_key(self, test_app_and_client):
+        app, sf, storage = test_app_and_client
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            ws_id = "00000000-0000-0000-0000-000000000001"
+            owner_id = "00000000-0000-0000-0000-000000000002"
+
+            upload_resp = await client.post(
+                "/api/v1/knowledge/upload",
+                files={"file": ("meta.txt", b"meta", "text/plain")},
+                params={"workspace_id": ws_id, "owner_id": owner_id},
+            )
+            ko_id = upload_resp.json()["id"]
+
+            meta_resp = await client.patch(
+                f"/api/v1/knowledge/{ko_id}/metadata",
+                json={"storage_key": "../../etc/passwd"},
+            )
+            assert meta_resp.status_code == 400
+
+    async def test_soft_delete_removes_stored_file(self, test_app_and_client):
+        app, sf, storage = test_app_and_client
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            ws_id = "00000000-0000-0000-0000-000000000001"
+            owner_id = "00000000-0000-0000-0000-000000000002"
+
+            upload_resp = await client.post(
+                "/api/v1/knowledge/upload",
+                files={"file": ("delete.txt", b"delete me", "text/plain")},
+                params={"workspace_id": ws_id, "owner_id": owner_id},
+            )
+            assert upload_resp.status_code == 201
+            ko_id = upload_resp.json()["id"]
+            storage_key = upload_resp.json()["storage_key"]
+            assert await storage.exists(storage_key)
+
+            del_resp = await client.delete(f"/api/v1/knowledge/{ko_id}")
+            assert del_resp.status_code == 204
+
+            assert not await storage.exists(storage_key)
 
     async def test_update_metadata_via_api(self, test_app_and_client):
         app, sf, storage = test_app_and_client

@@ -39,6 +39,8 @@ router = APIRouter(prefix="/api/v1/knowledge", tags=["Knowledge Registry"])
 _registry: KnowledgeRegistry | None = None
 _producer: RedisStreamProducer | None = None
 
+_RESERVED_METADATA_KEYS = frozenset({"storage_key"})
+
 
 def _get_registry() -> KnowledgeRegistry:
     global _registry
@@ -61,9 +63,9 @@ def _get_producer() -> RedisStreamProducer | None:
 
 
 def _get_storage() -> StorageAdapter:
-    from src.core.storage import LocalFileStorage
+    from src.core.storage import get_storage
 
-    return LocalFileStorage()
+    return get_storage()
 
 
 def _get_pipeline() -> PipelineOrchestrator:
@@ -341,6 +343,10 @@ async def update_lifecycle(ko_id: str, transition: LifecycleTransition):
 
 @router.patch("/{ko_id}/metadata", response_model=KnowledgeObject)
 async def update_metadata(ko_id: str, metadata: dict):
+    if _RESERVED_METADATA_KEYS.intersection(metadata):
+        raise HTTPException(
+            status_code=400, detail="storage_key is managed by the system and cannot be set"
+        )
     try:
         ko, _ = await _get_registry().update_metadata(ko_id, metadata)
         return ko
@@ -349,11 +355,23 @@ async def update_metadata(ko_id: str, metadata: dict):
 
 
 @router.delete("/{ko_id}", status_code=204)
-async def soft_delete_knowledge_object(ko_id: str):
+async def soft_delete_knowledge_object(
+    ko_id: str, storage: StorageAdapter = Depends(_get_storage)
+):
     try:
+        ko = await _get_registry().get(ko_id)
+        if ko is None:
+            raise ValueError(f"KnowledgeObject {ko_id} not found")
+        storage_key = (ko.metadata or {}).get("storage_key")
         await _get_registry().soft_delete(ko_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+    if storage_key:
+        try:
+            await storage.delete(storage_key)
+        except Exception:
+            logger.warning("storage_delete_failed", ko_id=ko_id, storage_key=storage_key)
 
 
 @router.get("/{ko_id}/versions")

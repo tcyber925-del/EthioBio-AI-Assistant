@@ -286,14 +286,14 @@ async def lifespan(app: FastAPI):
         from src.core.knowledge_registry import KnowledgeRegistry
         from src.core.pipeline.consumer import PipelineStreamConsumer
         from src.core.pipeline.service import PipelineOrchestrator
-        from src.core.storage import LocalFileStorage
+        from src.core.storage import get_storage
         from src.rag.embedder import Embedder
         from src.rag.vector_store import VectorStore
 
         _pipeline_consumer = PipelineStreamConsumer(
             pipeline=PipelineOrchestrator(
                 registry=KnowledgeRegistry(async_session_factory()),
-                storage=LocalFileStorage(),
+                storage=get_storage(),
                 embedder=Embedder(),
                 vector_store=VectorStore(
                     persist_directory=settings.vector_store_path,
@@ -301,7 +301,7 @@ async def lifespan(app: FastAPI):
                 ),
                 session_factory=async_session_factory(),
             ),
-            storage=LocalFileStorage(),
+            storage=get_storage(),
             redis_url=settings.redis_url,
         )
         await _pipeline_consumer.start()

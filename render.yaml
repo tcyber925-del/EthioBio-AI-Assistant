@@ -23,6 +23,14 @@ services:
     image:
       url: ghcr.io/tcyber925-del/ethiobio-ai-assistant:latest
     healthCheckPath: /liveness
+    # Persistent disk for /app/data (uploads, vectors, audio). NOTE: Render
+    # free plan does NOT support disks — requires a paid plan. Without this,
+    # uploaded workspace materials are lost on every redeploy; prefer
+    # STORAGE_BACKEND=s3 for durable object storage regardless.
+    disk:
+      name: ethiobio-data
+      mountPath: /app/data
+      sizeGB: 1
     envVars:
       - fromGroup: ethiobio-app
       - key: DATABASE_URL
