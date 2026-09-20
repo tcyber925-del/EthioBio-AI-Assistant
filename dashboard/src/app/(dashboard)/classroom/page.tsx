@@ -6,10 +6,10 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { Plus, School, Users } from 'lucide-react'
 import { CardSkeleton } from '@/components/Skeleton'
-import { fetchWithAuth } from '@/lib/fetchWithAuth'
+import { fetchWithAuth, fetchWithAuthJson } from '@/lib/fetchWithAuth'
 import { isAuthenticated } from '@/lib/auth'
 import { ErrorState } from '@/components/ui/errors'
-import { normalizeException, type AppError } from '@/lib/errors'
+import { normalizeException, normalizeHttpError, type AppError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,7 +44,7 @@ export default function ClassroomListPage() {
   const loadClasses = () => {
     setLoading(true)
     setError(null)
-    fetchWithAuth('/teacher/classrooms')
+    fetchWithAuthJson<Classroom[]>('/teacher/classrooms')
       .then(d => setClasses(Array.isArray(d) ? d : []))
       .catch(err => setError(normalizeException(err)))
       .finally(() => setLoading(false))
@@ -53,15 +53,24 @@ export default function ClassroomListPage() {
   const handleCreate = async () => {
     if (!newName) return
     try {
-      await fetchWithAuth('/teacher/classrooms', {
+      const res = await fetchWithAuth('/teacher/classrooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newName, grade_level: newGrade, student_ids: [] }),
       })
+      if (!res.ok) {
+        throw normalizeHttpError(res.status, await res.text())
+      }
+      const created = await res.json()
+      try {
+        await fetchWithAuth(`/api/v1/workspaces/seed/${created.id}`, { method: 'POST' })
+      } catch (err) {
+        console.warn('workspace seeding failed', err)
+      }
       setShowCreate(false)
       setNewName('')
       loadClasses()
-    } catch (err: any) {
+    } catch (err) {
       setError(normalizeException(err))
     }
   }
