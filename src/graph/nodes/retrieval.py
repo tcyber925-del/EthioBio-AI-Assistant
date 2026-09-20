@@ -3,10 +3,26 @@
 import re
 
 from src.graph.state import AgentState
-from src.retrieval.adapter import RetrievalFilter, VectorStoreAdapter
+from src.retrieval.adapter import RetrievalFilter, RetrievalResult, VectorStoreAdapter
 from src.schemas.streaming import TokenChunk
 
 N_RESULTS = 8
+
+
+def kml_result_to_adapter(r) -> RetrievalResult:
+    """Convert a KML gateway RetrievalResult into the graph adapter's shape."""
+    best = max(r.matches, key=lambda m: m.score, default=None)
+    return RetrievalResult(
+        content=best.text if best else r.title,
+        metadata={
+            "knowledge_object_id": r.ko_id,
+            "title": r.title,
+            "content_type": r.content_type,
+            "workspace_id": r.workspace_id or "",
+        },
+        score=r.score,
+        source_id=r.ko_id,
+    )
 
 
 def _is_quality_content(text: str) -> bool:
@@ -37,17 +53,50 @@ def _is_quality_content(text: str) -> bool:
 
 
 class RetrievalNode:
-    def __init__(self, adapter: VectorStoreAdapter):
+    def __init__(self, adapter: VectorStoreAdapter, retrieval_router=None):
         self.adapter = adapter
+        self.retrieval_router = retrieval_router
 
     def _push_status(self, state: AgentState, message: str):
         if state.token_queue:
             state.token_queue.put_nowait(TokenChunk(delta=message, node="retrieve", status=True))
 
+    def _set_chunks(self, state: AgentState, results) -> None:
+        state.retrieved_chunks = [
+            {
+                "content": r.content,
+                "metadata": r.metadata,
+                "score": r.score,
+                "source_id": r.source_id,
+            }
+            for r in results
+        ]
+        state.context = self.adapter.format_context(results)
+
+    async def _workspace_search(self, state: AgentState, query: str) -> bool:
+        """Search the workspace's own knowledge pool (KML gateway)."""
+        if not state.workspace_id or not self.retrieval_router:
+            return False
+        self._push_status(state, "Searching your workspace materials...")
+        results = await self.retrieval_router.route_and_search(
+            query,
+            workspace_id=state.workspace_id,
+            limit=N_RESULTS,
+        )
+        if not results:
+            return False
+        converted = [kml_result_to_adapter(r) for r in results]
+        self._set_chunks(state, converted)
+        state.no_content_for_subject = False
+        return True
+
     async def __call__(self, state: AgentState) -> AgentState:
         query = state.user_message
         if state.retrieval_query:
             query = state.retrieval_query
+
+        if await self._workspace_search(state, query):
+            return state
 
         self._push_status(state, "Searching your grade level...")
 

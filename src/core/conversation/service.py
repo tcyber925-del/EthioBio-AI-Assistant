@@ -96,8 +96,9 @@ class ConversationService:
                 socratic_next_question=(
                     socratic_state_rec.next_question if socratic_state_rec else ""
                 ),
-                messages=conversation_messages,
+messages=conversation_messages,
                 db_session_factory=async_session_factory,
+                workspace_id=metadata.get("workspace_id"),
             )
 
             output_check = output_guardrails.check(result.answer or "", topic=topic)
@@ -232,6 +233,7 @@ class ConversationService:
                 messages=conversation_messages,
                 db_session_factory=async_session_factory,
                 token_queue=queue,
+                workspace_id=metadata.get("workspace_id"),
             )
         )
 
@@ -345,6 +347,7 @@ class ConversationService:
                 messages=conversation_messages,
                 db_session_factory=async_session_factory,
                 token_queue=queue,
+                workspace_id=metadata.get("workspace_id"),
             )
         )
 

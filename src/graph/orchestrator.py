@@ -131,6 +131,7 @@ def build_agentic_graph(
 async def run_graph(
     user_message: str,
     user_id: Optional[Any] = None,
+    workspace_id: Optional[str] = None,
     grade_level: Optional[int] = None,
     subject: Optional[str] = None,
     topic: Optional[str] = None,
@@ -182,9 +183,30 @@ async def run_graph(
     # expected signature.
     session_maker = db_session_factory() if db_session_factory else None
 
+    retrieval_router = None
+    if workspace_id:
+        from src.config import settings
+        from src.core.knowledge_registry import KnowledgeRegistry
+        from src.core.retrieval.gateway import RetrievalGateway
+        from src.core.retrieval.router import KnowledgeRouter
+        from src.database.session import async_session_factory
+        from src.rag.embedder import Embedder
+        from src.rag.vector_store import VectorStore
+
+        gateway = RetrievalGateway(
+            embedder=Embedder(),
+            vector_store=VectorStore(
+                persist_directory=settings.vector_store_path,
+                collection_name=settings.collection_name,
+            ),
+            registry=KnowledgeRegistry(async_session_factory()),
+        )
+        retrieval_router = KnowledgeRouter(gateway)
+
     initial_state = AgentState(
         user_message=user_message,
         user_id=user_id,
+        workspace_id=workspace_id,
         grade_level=grade_level,
         subject=subject,
         topic=topic,
@@ -205,7 +227,12 @@ async def run_graph(
         token_queue=token_queue,
     )
 
-    graph = build_unified_graph(router, adapter, db_session_factory=session_maker)
+    graph = build_unified_graph(
+        router,
+        adapter,
+        db_session_factory=session_maker,
+        retrieval_router=retrieval_router,
+    )
     config = {
         "configurable": {"thread_id": f"ethiosci-{session_id or 'default'}"},
         "tags": ["ethiosci", "agentic-rag"],
@@ -309,6 +336,7 @@ def build_unified_graph(
     router: ModelRouter,
     adapter: VectorStoreAdapter,
     db_session_factory: Optional[Callable[[], AsyncSession]] = None,
+    retrieval_router=None,
 ) -> StateGraph:
     """Build a unified graph that handles both legacy and agentic pipelines.
 
@@ -324,7 +352,7 @@ def build_unified_graph(
     workflow.add_node("safety", SafetyNode(router))
 
     # Legacy pipeline nodes
-    workflow.add_node("retrieve", RetrievalNode(adapter))
+    workflow.add_node("retrieve", RetrievalNode(adapter, retrieval_router=retrieval_router))
     workflow.add_node("skip_retrieval", SkipRetrievalNode(adapter))
 
     # Agentic pipeline nodes

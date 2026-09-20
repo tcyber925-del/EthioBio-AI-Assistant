@@ -25,6 +25,7 @@ class AgentState:
     intent_confidence: float = 0.0
     user_message: str = ""
     user_id: Optional[UUID] = None
+    workspace_id: Optional[str] = None
     grade_level: Optional[int] = None
     subject: Optional[str] = None
     topic: Optional[str] = None

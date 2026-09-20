@@ -17,6 +17,12 @@ function authorized(url: string, options: RequestInit = {}): [string, RequestIni
   } as Record<string, string>;
   const token = getToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;
+  // Scope AI/API calls to the active workspace when one is selected.
+  const workspaceId =
+    typeof window !== "undefined"
+      ? window.localStorage.getItem("ethiobio_active_workspace_id")
+      : null;
+  if (workspaceId) headers["X-Workspace-Id"] = workspaceId;
   return [url, { ...options, credentials: "include", headers }];
 }
 

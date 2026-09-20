@@ -42,6 +42,21 @@ describe("fetchWithAuth", () => {
     expect((init.headers as Record<string, string>).Authorization).toBe("Bearer clerk-jwt-token");
   });
 
+  it("attaches the active workspace id as X-Workspace-Id", async () => {
+    localStorage.setItem("ethiobio_active_workspace_id", "ws-123");
+    vi.mocked(fetch).mockResolvedValueOnce(ok() as any);
+    await fetchWithAuth("/api/students");
+    const init = vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit;
+    expect((init.headers as Record<string, string>)["X-Workspace-Id"]).toBe("ws-123");
+  });
+
+  it("omits X-Workspace-Id when no workspace is active", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(ok() as any);
+    await fetchWithAuth("/api/students");
+    const init = vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit;
+    expect((init.headers as Record<string, string>)["X-Workspace-Id"]).toBeUndefined();
+  });
+
   it("redirects to /login?redirect_url=... on 401", async () => {
     stubLocation({ pathname: "/classroom", search: "", href: "http://x/classroom", assign: vi.fn() });
     vi.mocked(fetch).mockResolvedValueOnce({ status: 401, ok: false, text: () => Promise.resolve("x") } as any);

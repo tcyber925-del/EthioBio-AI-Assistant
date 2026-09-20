@@ -1,17 +1,19 @@
 import json
 from datetime import datetime, timezone
 from typing import AsyncGenerator, Optional, Union
+from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, UploadFile
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.auth import get_current_user
 from src.config import settings
 from src.core.conversation.service import ConversationService
-from src.database.models import User
+from src.database.models import User, UserRole, WorkspaceMember
 from src.database.session import get_session
 from src.guardrails.input.conversation_context import ConversationTracker
 from src.guardrails.input.prompt_injection import PromptInjectionDetector
@@ -36,13 +38,40 @@ _web_adapter = WebVoiceAdapter()
 _stream_manager = VoiceStreamManager()
 
 
+async def _resolve_workspace(
+    x_workspace_id: Optional[str], current_user: User, session: AsyncSession
+) -> Optional[str]:
+    """Validate the X-Workspace-Id header and the caller's membership."""
+    if not x_workspace_id:
+        return None
+    try:
+        workspace_uuid = UUID(x_workspace_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid X-Workspace-Id format")
+    if current_user.role == UserRole.admin:
+        return x_workspace_id
+    row = (
+        await session.execute(
+            select(WorkspaceMember).where(
+                WorkspaceMember.workspace_id == workspace_uuid,
+                WorkspaceMember.user_id == current_user.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status_code=403, detail="Not a member of this workspace")
+    return x_workspace_id
+
+
 @router.post("")
 async def chat_tutor(
     request: TutorRequest,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
+    x_workspace_id: Optional[str] = Header(default=None),
 ):
-    return await handle_chat_request(request, session, current_user)
+    workspace_id = await _resolve_workspace(x_workspace_id, current_user, session)
+    return await handle_chat_request(request, session, current_user, workspace_id=workspace_id)
 
 
 @router.post("/voice")
@@ -55,7 +84,9 @@ async def chat_voice(
     stream: bool = Form(False),
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
+    x_workspace_id: Optional[str] = Header(default=None),
 ):
+    workspace_id = await _resolve_workspace(x_workspace_id, current_user, session)
     audio_bytes = await audio.read()
     err = validate_audio_size(audio_bytes)
     if err:
@@ -79,6 +110,7 @@ async def chat_voice(
             "topic": topic or "",
             "grade_level": grade_level or "",
             "model": model or "",
+            "workspace_id": workspace_id or "",
         },
     )
 
@@ -270,6 +302,7 @@ async def handle_chat_request(
     request: TutorRequest,
     session: AsyncSession,
     current_user: Optional[User] = None,
+    workspace_id: Optional[str] = None,
 ) -> Union[TutorResponse, StreamingResponse]:
     uid = request.user_id or (current_user.id if current_user else None)
     user_id = str(uid) if uid else ""
@@ -280,6 +313,8 @@ async def handle_chat_request(
 
     request.question = sanitized
     conv_request = _web_adapter.build_request(request)
+    if workspace_id:
+        conv_request.metadata["workspace_id"] = workspace_id
 
     if request.stream:
         return StreamingResponse(
