@@ -12,6 +12,7 @@ class TeacherCopilotState:
     user_id: UUID | None = None
     teacher_id: UUID | None = None
     classroom_id: UUID | None = None
+    workspace_id: UUID | None = None
 
     intent: str = ""
     intent_confidence: float = 0.0

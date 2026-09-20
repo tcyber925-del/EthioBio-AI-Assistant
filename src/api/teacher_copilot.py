@@ -28,6 +28,7 @@ class CopilotQuery(BaseModel):
     message: str
     classroom_id: UUID | None = None
     student_id: UUID | None = None
+    workspace_id: UUID | None = None
     stream: bool = False
 
 
@@ -67,8 +68,16 @@ async def copilot_query(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
+    from src.core.workspace.dependencies import resolve_workspace_access
+
+    workspace_id = await resolve_workspace_access(
+        str(body.workspace_id) if body.workspace_id else None,
+        current_user,
+        session,
+    )
+
     if body.stream:
-        return await _handle_copilot_stream(body, current_user, session)
+        return await _handle_copilot_stream(body, current_user, session, workspace_id)
 
     router = ModelRouter()
 
@@ -77,6 +86,7 @@ async def copilot_query(
         user_id=body.student_id,
         teacher_id=current_user.id,
         classroom_id=body.classroom_id,
+        workspace_id=UUID(workspace_id) if workspace_id else None,
     )
 
     pipeline = build_teacher_pipeline(router=router, session=session)
@@ -102,6 +112,7 @@ async def _handle_copilot_stream(
     body: CopilotQuery,
     current_user: User,
     session: AsyncSession,
+    workspace_id: str | None = None,
 ) -> StreamingResponse:
     router = ModelRouter()
     queue: asyncio.Queue[TokenChunk | None] = asyncio.Queue()
@@ -111,6 +122,7 @@ async def _handle_copilot_stream(
         user_id=body.student_id,
         teacher_id=current_user.id,
         classroom_id=body.classroom_id,
+        workspace_id=UUID(workspace_id) if workspace_id else None,
         token_queue=queue,
     )
 
@@ -144,6 +156,14 @@ async def reason(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
+    from src.core.workspace.dependencies import resolve_workspace_access
+
+    workspace_id = await resolve_workspace_access(
+        str(body.workspace_id) if body.workspace_id else None,
+        current_user,
+        session,
+    )
+
     intent_router = IntentRouter()
     intent, _, _ = await intent_router.classify(body.message)
 
@@ -152,6 +172,7 @@ async def reason(
         intent=intent,
         user_id=body.student_id,
         session=session,
+        workspace_id=UUID(workspace_id) if workspace_id else None,
     )
     citations = EvidenceEngine.format_citations(evidence)
 

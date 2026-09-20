@@ -59,6 +59,7 @@ class QuizAgent(BaseAgent):
         target_difficulty: Optional[str] = None,
         subject: Optional[str] = None,
         token_queue: asyncio.Queue[TokenChunk | None] | None = None,
+        context_override: Optional[str] = None,
     ) -> dict:
         types_str = ", ".join(types or ["multiple_choice", "true_false"])
         if language == "am":
@@ -68,14 +69,18 @@ class QuizAgent(BaseAgent):
         else:
             lang_instruction = "Generate all content in English."
 
-        # Retrieve curriculum context to ground questions
-        filter_obj = RetrievalFilter(grade_level=grade_level, subject=subject)
-        results = await self.adapter.search(query=topic, n_results=5, filter_obj=filter_obj)
-        context = (
-            self.adapter.format_context(results)
-            if results
-            else f"Grade {grade_level} science curriculum - {topic}"
-        )
+        # Retrieve curriculum context to ground questions (unless the caller
+        # supplied workspace-grounded context, e.g. Teacher Copilot).
+        if context_override:
+            context = context_override
+        else:
+            filter_obj = RetrievalFilter(grade_level=grade_level, subject=subject)
+            results = await self.adapter.search(query=topic, n_results=5, filter_obj=filter_obj)
+            context = (
+                self.adapter.format_context(results)
+                if results
+                else f"Grade {grade_level} science curriculum - {topic}"
+            )
         system_prompt = QUIZ_SYSTEM_PROMPT.replace("{context}", context)
 
         weak_topic_block = ""

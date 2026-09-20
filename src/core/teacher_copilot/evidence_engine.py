@@ -4,7 +4,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database.models import MemoryEvent, QuizAttempt, StudentMastery
+from src.database.models import KnowledgeObject, MemoryEvent, QuizAttempt, StudentMastery
 
 logger = structlog.get_logger()
 
@@ -14,6 +14,7 @@ class EvidenceEngine:
         "quiz_attempt": 0.8,
         "mastery_record": 0.7,
         "memory_event": 0.6,
+        "workspace_knowledge": 0.7,
         "classroom_trend": 0.5,
     }
 
@@ -22,8 +23,12 @@ class EvidenceEngine:
         intent: str,
         user_id: UUID | None,
         session: AsyncSession,
+        workspace_id: UUID | None = None,
     ) -> list[dict]:
         evidence = []
+
+        if workspace_id:
+            evidence.extend(await self._get_workspace_evidence(workspace_id, session))
 
         if intent == "student_analysis" and user_id:
             evidence.extend(await self._get_mastery_evidence(user_id, session))
@@ -35,6 +40,33 @@ class EvidenceEngine:
 
         evidence.sort(key=lambda e: e.get("confidence", 0), reverse=True)
         return evidence[:10]
+
+    async def _get_workspace_evidence(
+        self, workspace_id: UUID, session: AsyncSession
+    ) -> list[dict]:
+        result = await session.execute(
+            select(KnowledgeObject)
+            .where(
+                KnowledgeObject.workspace_id == workspace_id,
+                KnowledgeObject.deleted_at.is_(None),
+            )
+            .order_by(KnowledgeObject.created_at.desc())
+            .limit(5)
+        )
+        records = result.scalars().all()
+        return [
+            {
+                "source": "workspace_knowledge",
+                "confidence": self.SOURCE_PRIORITY["workspace_knowledge"],
+                "content": {
+                    "ko_id": str(r.id),
+                    "title": r.title,
+                    "content_type": r.content_type,
+                    "chunk_count": (r.ko_metadata or {}).get("chunk_count"),
+                },
+            }
+            for r in records
+        ]
 
     async def _get_mastery_evidence(self, user_id: UUID, session: AsyncSession) -> list[dict]:
         result = await session.execute(
@@ -120,6 +152,12 @@ class EvidenceEngine:
                 meta = content.get("metadata", {})
                 summary = meta if isinstance(meta, str) else str(meta)[:80]
                 lines.append(f"{label} Event: {content.get('event_type')} - {summary}")
+            elif source == "workspace_knowledge":
+                chunk_count = content.get("chunk_count") or "?"
+                lines.append(
+                    f"{label} Workspace asset: '{content.get('title')}' "
+                    f"({content.get('content_type')}, {chunk_count} chunks)"
+                )
             else:
                 lines.append(f"{label} {content}")
         return "\n".join(lines)

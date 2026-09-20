@@ -8,6 +8,26 @@ if TYPE_CHECKING:
     from src.core.retrieval.gateway import RetrievalGateway
 
 
+def create_knowledge_router() -> "KnowledgeRouter":
+    """Build a workspace-capable router (KML gateway) for AI components."""
+    from src.config import settings
+    from src.core.knowledge_registry import KnowledgeRegistry
+    from src.core.retrieval.gateway import RetrievalGateway
+    from src.database.session import async_session_factory
+    from src.rag.embedder import Embedder
+    from src.rag.vector_store import VectorStore
+
+    gateway = RetrievalGateway(
+        embedder=Embedder(),
+        vector_store=VectorStore(
+            persist_directory=settings.vector_store_path,
+            collection_name=settings.collection_name,
+        ),
+        registry=KnowledgeRegistry(async_session_factory()),
+    )
+    return KnowledgeRouter(gateway)
+
+
 class KnowledgeRouter:
     """Thin routing facade that selects between KML pipeline and legacy path.
 

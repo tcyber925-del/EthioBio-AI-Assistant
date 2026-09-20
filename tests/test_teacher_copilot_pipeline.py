@@ -126,7 +126,7 @@ class TestGatherDataNode:
         result = await node(state)
 
         mock_evidence.gather_evidence.assert_called_once_with(
-            intent="student_analysis", user_id="u1", session=mock_session
+            intent="student_analysis", user_id="u1", session=mock_session, workspace_id=None
         )
 
         assert len(result["evidence"]) == 3

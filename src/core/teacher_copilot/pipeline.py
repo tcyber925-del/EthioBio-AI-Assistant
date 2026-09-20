@@ -54,6 +54,7 @@ class GatherDataNode:
                     intent=state.intent,
                     user_id=state.user_id,
                     session=session,
+                    workspace_id=state.workspace_id,
                 )
                 updates["evidence"] = evidence
 
@@ -69,6 +70,14 @@ class GatherDataNode:
 
                 updates["mastery_data"] = mastery_data or None
                 updates["misconception_data"] = misconception_data or None
+            elif state.workspace_id:
+                evidence = await self.evidence.gather_evidence(
+                    intent=state.intent,
+                    user_id=None,
+                    session=session,
+                    workspace_id=state.workspace_id,
+                )
+                updates["evidence"] = evidence
         except Exception as e:
             logger.exception("gather_evidence_error", error=str(e))
         finally:
@@ -108,11 +117,31 @@ class AssessmentCreatorNode:
                 break
 
         agent = QuizAgent(llm_router=self.llm_router)
+
+        context_override = None
+        if state.workspace_id:
+            try:
+                from src.core.retrieval.router import create_knowledge_router
+
+                router = create_knowledge_router()
+                results = await router.route_and_search(
+                    topic, workspace_id=str(state.workspace_id), limit=5
+                )
+                if results:
+                    sections = []
+                    for r in results:
+                        best = max(r.matches, key=lambda m: m.score, default=None)
+                        sections.append(f"[{r.title}]\n{best.text if best else ''}")
+                    context_override = "\n\n".join(sections)[:4000]
+            except Exception as e:
+                logger.warning("workspace_assessment_grounding_failed", error=str(e))
+
         result = await agent.generate(
             grade_level=grade_level,
             topic=topic,
             question_count=5,
             types=["multiple_choice", "true_false"],
+            context_override=context_override,
         )
 
         assessment_text = f"## {result.get('title', 'Assessment')}\n\n"

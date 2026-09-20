@@ -185,23 +185,9 @@ async def run_graph(
 
     retrieval_router = None
     if workspace_id:
-        from src.config import settings
-        from src.core.knowledge_registry import KnowledgeRegistry
-        from src.core.retrieval.gateway import RetrievalGateway
-        from src.core.retrieval.router import KnowledgeRouter
-        from src.database.session import async_session_factory
-        from src.rag.embedder import Embedder
-        from src.rag.vector_store import VectorStore
+        from src.core.retrieval.router import create_knowledge_router
 
-        gateway = RetrievalGateway(
-            embedder=Embedder(),
-            vector_store=VectorStore(
-                persist_directory=settings.vector_store_path,
-                collection_name=settings.collection_name,
-            ),
-            registry=KnowledgeRegistry(async_session_factory()),
-        )
-        retrieval_router = KnowledgeRouter(gateway)
+        retrieval_router = create_knowledge_router()
 
     initial_state = AgentState(
         user_message=user_message,
