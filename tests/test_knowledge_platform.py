@@ -410,6 +410,55 @@ class TestWorkspaceService:
         assert ok is False
 
 
+class TestWorkspaceSeedAPI:
+    def _app(self, session_factory, monkeypatch):
+        from fastapi import FastAPI
+
+        import src.api.workspace as workspace_module
+        from src.core.workspace import WorkspaceService
+
+        monkeypatch.setattr(workspace_module, "service", WorkspaceService(session_factory))
+        app = FastAPI()
+        app.include_router(workspace_module.router)
+        return app
+
+    async def test_seed_missing_class_returns_404(self, session_factory, monkeypatch):
+        from httpx import ASGITransport, AsyncClient
+
+        app = self._app(session_factory, monkeypatch)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.post(
+                "/api/v1/workspaces/seed/00000000-0000-0000-0000-000000009999"
+            )
+            assert resp.status_code == 404
+
+    async def test_seed_class_group_creates_workspace_and_lists_for_teacher(
+        self, session_factory, db_session: AsyncSession, monkeypatch
+    ):
+        from httpx import ASGITransport, AsyncClient
+
+        teacher = User(role=UserRole.teacher)
+        db_session.add(teacher)
+        await db_session.flush()
+        cg = ClassGroup(name="Grade 10 Biology", grade_level=10, teacher_id=teacher.id)
+        db_session.add(cg)
+        await db_session.commit()
+
+        app = self._app(session_factory, monkeypatch)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.post(f"/api/v1/workspaces/seed/{cg.id}")
+            assert resp.status_code == 201
+            data = resp.json()
+            assert data["name"] == "Grade 10 Biology"
+            assert data["class_group_id"] == str(cg.id)
+
+            list_resp = await client.get(f"/api/v1/workspaces/?user_id={teacher.id}")
+            assert list_resp.status_code == 200
+            assert any(w["id"] == data["id"] for w in list_resp.json())
+
+
 class TestWorkspaceContext:
     async def test_valid_workspace_context(self, session_factory):
         from src.core.workspace.dependencies import get_workspace_context

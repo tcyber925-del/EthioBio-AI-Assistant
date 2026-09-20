@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { isAuthenticated, ensureUserRole, getUserId } from '@/lib/auth'
+import { isAuthenticated, ensureUserRole, getUserId, initAuth } from '@/lib/auth'
 import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { DashboardSkeleton } from '@/components/dashboard-v2'
 import { FolderKanban, Plus } from 'lucide-react'
@@ -18,6 +18,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
 
   const fetchWorkspaces = async () => {
     try {
+      await initAuth()
       const userId = getUserId()
       if (!userId) return
       const response = await fetchWithAuth(`/api/v1/workspaces?user_id=${userId}`)

@@ -122,5 +122,8 @@ async def simple():
 async def seed_from_class_group(class_group_id: str):
     if not _valid_uuid(class_group_id):
         return JSONResponse(content={"detail": "Invalid UUID format"}, status_code=400)
-    ws = await service.seed_from_class_group(class_group_id)
+    try:
+        ws = await service.seed_from_class_group(class_group_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     return ws
