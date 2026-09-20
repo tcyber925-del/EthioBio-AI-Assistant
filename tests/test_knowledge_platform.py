@@ -1,6 +1,7 @@
 from pathlib import Path
 from tempfile import mkdtemp
 from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import UUID
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -502,6 +503,41 @@ async def test_app_and_client():
     test_registry = KnowledgeRegistry(factory)
     test_storage = LocalFileStorage(Path(mkdtemp()))
 
+    from src.api.auth import get_current_user
+    from src.database.models import Workspace as WorkspaceModel
+    from src.database.models import WorkspaceMember as WorkspaceMemberModel
+    from src.database.session import get_session
+
+    test_user = User(
+        id=UUID("00000000-0000-0000-0000-00000000000a"),
+        role=UserRole.teacher,
+        is_active=True,
+    )
+    async with factory() as db:
+        db.add(test_user)
+        db.add(
+            WorkspaceModel(
+                id=UUID("00000000-0000-0000-0000-000000000001"),
+                name="Test Workspace",
+                created_by=UUID("00000000-0000-0000-0000-00000000000a"),
+            )
+        )
+        db.add(
+            WorkspaceMemberModel(
+                workspace_id=UUID("00000000-0000-0000-0000-000000000001"),
+                user_id=test_user.id,
+                role="owner",
+            )
+        )
+        await db.commit()
+
+    async def _mock_get_current_user():
+        return test_user
+
+    async def _mock_get_session():
+        async with factory() as session:
+            yield session
+
     from fastapi import FastAPI
 
     import src.api.knowledge as knowledge_module
@@ -517,6 +553,8 @@ async def test_app_and_client():
     app.dependency_overrides[_orig_get_registry] = lambda: test_registry
     app.dependency_overrides[_orig_get_storage] = lambda: test_storage
     app.dependency_overrides[_orig_get_producer] = lambda: None
+    app.dependency_overrides[get_current_user] = _mock_get_current_user
+    app.dependency_overrides[get_session] = _mock_get_session
     with (
         patch.object(knowledge_module, "_get_registry", return_value=test_registry),
         patch.object(knowledge_module, "_get_storage", return_value=test_storage),
@@ -743,6 +781,106 @@ class TestKnowledgeAPI:
             assert upload_resp.status_code == 201
             ko_id = upload_resp.json()["id"]
 
+            download_resp = await client.get(f"/api/v1/knowledge/{ko_id}/download")
+            assert download_resp.status_code == 200
+
+    async def test_download_requires_auth(self, test_app_and_client):
+        app, sf, storage = test_app_and_client
+        from src.api.auth import get_current_user
+
+        async def _unauthorized():
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=401, detail="Authentication required")
+
+        app.dependency_overrides[get_current_user] = _unauthorized
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            ws_id = "00000000-0000-0000-0000-000000000001"
+            owner_id = "00000000-0000-0000-0000-000000000002"
+            upload_resp = await client.post(
+                "/api/v1/knowledge/upload",
+                files={"file": ("secret.txt", b"secret", "text/plain")},
+                params={"workspace_id": ws_id, "owner_id": owner_id},
+            )
+            ko_id = upload_resp.json()["id"]
+            download_resp = await client.get(f"/api/v1/knowledge/{ko_id}/download")
+            assert download_resp.status_code == 401
+
+    async def test_download_forbidden_for_non_member(self, test_app_and_client):
+        app, sf, storage = test_app_and_client
+        from src.api.auth import get_current_user
+        from src.core.workspace import WorkspaceService
+        from src.core.workspace.models import NewWorkspace
+        from src.database.models import User, UserRole
+
+        teacher = User(role=UserRole.teacher)
+        async with sf() as db:
+            db.add(teacher)
+            await db.commit()
+            await db.refresh(teacher)
+
+        ws_service = WorkspaceService(sf)
+        ws = await ws_service.create(
+            NewWorkspace(name="Locked"), created_by=str(teacher.id)
+        )
+
+        stranger = User(role=UserRole.teacher)
+        async with sf() as db:
+            db.add(stranger)
+            await db.commit()
+            await db.refresh(stranger)
+
+        async def _stranger():
+            return stranger
+
+        app.dependency_overrides[get_current_user] = _stranger
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            upload_resp = await client.post(
+                "/api/v1/knowledge/upload",
+                files={"file": ("locked.txt", b"locked", "text/plain")},
+                params={"workspace_id": ws.id, "owner_id": str(teacher.id)},
+            )
+            assert upload_resp.status_code == 201
+            ko_id = upload_resp.json()["id"]
+            download_resp = await client.get(f"/api/v1/knowledge/{ko_id}/download")
+            assert download_resp.status_code == 403
+
+    async def test_download_allowed_for_member(self, test_app_and_client):
+        app, sf, storage = test_app_and_client
+        from src.api.auth import get_current_user
+        from src.core.workspace import WorkspaceService
+        from src.core.workspace.models import NewWorkspace
+        from src.database.models import User, UserRole
+
+        teacher = User(role=UserRole.teacher)
+        async with sf() as db:
+            db.add(teacher)
+            await db.commit()
+            await db.refresh(teacher)
+
+        ws_service = WorkspaceService(sf)
+        ws = await ws_service.create(
+            NewWorkspace(name="Open"), created_by=str(teacher.id)
+        )
+
+        async def _member():
+            return teacher
+
+        app.dependency_overrides[get_current_user] = _member
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            upload_resp = await client.post(
+                "/api/v1/knowledge/upload",
+                files={"file": ("open.txt", b"open", "text/plain")},
+                params={"workspace_id": ws.id, "owner_id": str(teacher.id)},
+            )
+            assert upload_resp.status_code == 201
+            ko_id = upload_resp.json()["id"]
             download_resp = await client.get(f"/api/v1/knowledge/{ko_id}/download")
             assert download_resp.status_code == 200
 

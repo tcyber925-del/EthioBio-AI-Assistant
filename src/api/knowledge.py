@@ -6,12 +6,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import TYPE_CHECKING
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import structlog
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.auth import get_current_user
 from src.core.knowledge_registry import KnowledgeRegistry
+from src.database.models import User, UserRole
 
 if TYPE_CHECKING:
     from src.core.event_infrastructure import RedisStreamProducer
@@ -30,16 +33,35 @@ from src.core.pipeline import PipelineOrchestrator
 from src.core.pipeline.service import PipelineResult
 from src.core.retrieval.gateway import RetrievalGateway
 from src.core.storage import StorageAdapter
-from src.database.session import async_session_factory
+from src.database.session import async_session_factory, get_session
 from src.rag.vector_store import VectorStore
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/api/v1/knowledge", tags=["Knowledge Registry"])
 
-_registry: KnowledgeRegistry | None = None
-_producer: RedisStreamProducer | None = None
+_REGISTRY: KnowledgeRegistry | None = None
+_PRODUCER: RedisStreamProducer | None = None
 
 _RESERVED_METADATA_KEYS = frozenset({"storage_key"})
+
+
+async def _can_access_workspace(workspace_id: str, user: User, db: AsyncSession) -> bool:
+    """Admins and curriculum objects (no workspace) are always accessible."""
+    if user.role == UserRole.admin or not workspace_id:
+        return True
+    from sqlalchemy import select
+
+    from src.database.models import WorkspaceMember
+
+    row = (
+        await db.execute(
+            select(WorkspaceMember).where(
+                WorkspaceMember.workspace_id == UUID(workspace_id),
+                WorkspaceMember.user_id == user.id,
+            )
+        )
+    ).scalar_one_or_none()
+    return row is not None
 
 
 def _get_registry() -> KnowledgeRegistry:
@@ -252,10 +274,17 @@ async def get_knowledge_object(ko_id: str):
 
 
 @router.get("/{ko_id}/download")
-async def download_knowledge_object(ko_id: str):
+async def download_knowledge_object(
+    ko_id: str,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
     ko = await _get_registry().get(ko_id)
     if ko is None:
         raise HTTPException(status_code=404, detail="KnowledgeObject not found")
+
+    if not await _can_access_workspace(ko.workspace_id, current_user, session):
+        raise HTTPException(status_code=403, detail="Not a member of this workspace")
 
     storage_key = ko.metadata.get("storage_key")
     if not storage_key:

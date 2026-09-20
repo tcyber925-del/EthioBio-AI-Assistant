@@ -8,7 +8,7 @@ import { fetchWithAuth } from '@/lib/fetchWithAuth'
 import { getUserId } from '@/lib/auth'
 import { FileText, Folder, Trash2, Download, Plus, FolderOpen, Calendar, ChevronRight, X } from 'lucide-react'
 import { ErrorAlert, ErrorBanner } from '@/components/ui/errors'
-import { normalizeException, type AppError } from '@/lib/errors'
+import { normalizeException, normalizeHttpError, type AppError } from '@/lib/errors'
 
 interface KnowledgeObject {
   id: string
@@ -125,8 +125,23 @@ export default function BrowseAssetsPage() {
     }
   }
 
-  const handleDownload = (id: string) => {
-    window.open(`/api/v1/knowledge/${id}/download`, '_blank')
+  const handleDownload = async (id: string, title: string) => {
+    setActionError(null)
+    try {
+      const res = await fetchWithAuth(`/api/v1/knowledge/${id}/download`)
+      if (!res.ok) throw normalizeHttpError(res.status, await res.text())
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = title || 'download'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setActionError(normalizeException(err))
+    }
   }
 
   // Filter Logic
@@ -264,7 +279,7 @@ export default function BrowseAssetsPage() {
                           <td className="py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
                               <button
-                                onClick={() => handleDownload(ko.id)}
+                                onClick={() => handleDownload(ko.id, ko.title)}
                                 title={t('download_title')}
                                 className="p-1.5 rounded-lg border border-v2-border hover:border-v2-accent text-v2-text-secondary hover:text-v2-accent transition-colors"
                               >
