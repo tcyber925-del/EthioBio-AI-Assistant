@@ -21,7 +21,7 @@ class TestPipelineGraphTopology:
     def test_graph_has_correct_nodes(self):
         pipeline = build_teacher_pipeline()
         nodes = list(pipeline.nodes.keys())
-        expected = {"classify", "gather", "create_assessment", "reason", "format"}
+        expected = {"classify", "gather", "create_assessment", "create_lesson", "reason", "format"}
         for n in expected:
             assert n in nodes, f"Missing node: {n}"
 
@@ -39,6 +39,7 @@ class TestPipelineGraphTopology:
         edges = pipeline.edges
         expected = [
             ("create_assessment", "format"),
+            ("create_lesson", "format"),
             ("gather", "reason"),
             ("reason", "format"),
             ("format", END),
@@ -62,11 +63,14 @@ class TestRouteAfterClassify:
             "classroom_analysis",
             "intervention_guidance",
             "curriculum_analysis",
-            "lesson_planning",
             "",
         ):
             state = TeacherCopilotState(intent=intent)
             assert route_after_classify(state) == "gather"
+
+    def test_lesson_planning_routes_to_create_lesson(self):
+        state = TeacherCopilotState(intent="lesson_planning")
+        assert route_after_classify(state) == "create_lesson"
 
 
 class TestClassifyIntentNode:

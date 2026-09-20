@@ -4,7 +4,10 @@ import structlog
 from langgraph.graph import END, StateGraph
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.agents.lesson_planner import LessonPlannerAgent
 from src.agents.quiz import QuizAgent
+from src.core.intervention.service import InterventionService
+from src.core.learning_intelligence.teacher.teacher_service import TeacherService
 from src.core.teacher_copilot.evidence_engine import EvidenceEngine
 from src.core.teacher_copilot.intent_router import IntentRouter
 from src.core.teacher_copilot.reasoning_engine import ReasoningEngine
@@ -14,6 +17,80 @@ from src.llm.router import ModelRouter
 from src.schemas.streaming import TokenChunk
 
 logger = structlog.get_logger()
+
+TOPIC_KEYWORDS = [
+    "photosynthesis",
+    "respiration",
+    "genetics",
+    "cell division",
+    "ecology",
+    "evolution",
+    "classification",
+    "circulatory",
+    "digestive",
+    "nervous",
+    "excretory",
+    "reproduction",
+    "chemical bonding",
+    "chemical reactions",
+    "acids",
+    "bases",
+    "periodic table",
+    "electrolysis",
+    "motion",
+    "force",
+    "energy",
+    "electricity",
+    "magnetism",
+    "waves",
+    "optics",
+    "algebra",
+    "geometry",
+    "functions",
+    "equations",
+    "trigonometry",
+    "probability",
+]
+
+
+def _extract_topic(message: str) -> str:
+    """Extract the subject topic from a copilot message."""
+    lower = message.lower()
+    for kw in TOPIC_KEYWORDS:
+        if kw in lower:
+            return kw.title()
+    match = re.search(
+        r"\b(?:about|on)\s+([a-zA-Z][a-zA-Z0-9\s'\-]{2,40}?)(?:\?|\.|$)",
+        message,
+        re.IGNORECASE,
+    )
+    if match:
+        topic = match.group(1).strip()
+        topic = re.sub(r"\s*(?:for\s+)?grade\s+\d+.*$", "", topic, flags=re.IGNORECASE).strip()
+        if topic:
+            return topic.title()
+    return "Science"
+
+
+async def _ground_workspace_context(workspace_id: str | None, topic: str) -> str | None:
+    """Retrieve topic-relevant content from the workspace knowledge pool."""
+    if not workspace_id:
+        return None
+    try:
+        from src.core.retrieval.router import create_knowledge_router
+
+        router = create_knowledge_router()
+        results = await router.route_and_search(topic, workspace_id=workspace_id, limit=5)
+        if not results:
+            return None
+        sections = []
+        for r in results:
+            best = max(r.matches, key=lambda m: m.score, default=None)
+            sections.append(f"[{r.title}]\n{best.text if best else ''}")
+        return "\n\n".join(sections)[:4000]
+    except Exception as e:
+        logger.warning("workspace_grounding_failed", error=str(e))
+        return None
 
 
 class ClassifyIntentNode:
@@ -49,6 +126,39 @@ class GatherDataNode:
         updates: dict = {"status": "gathered"}
 
         try:
+            if state.classroom_id:
+                try:
+                    teacher = TeacherService()
+                    profile = await teacher.get_classroom_overview(
+                        session, state.classroom_id
+                    )
+                    if profile is not None:
+                        updates["classroom_profile"] = profile.model_dump()
+                        updates["readiness_data"] = {
+                            "readiness_distribution": profile.readiness_distribution,
+                            "classroom_health": profile.classroom_health,
+                        }
+                except Exception as e:
+                    logger.warning("classroom_profile_fetch_failed", error=str(e))
+
+                try:
+                    interventions = await InterventionService().list_for_classroom(
+                        str(state.classroom_id), session
+                    )
+                    if interventions:
+                        updates["intervention_data"] = [
+                            {
+                                "intervention_type": i.intervention_type,
+                                "topic": i.topic,
+                                "status": i.status,
+                                "priority": i.priority,
+                                "user_id": str(i.user_id),
+                            }
+                            for i in interventions[:10]
+                        ]
+                except Exception as e:
+                    logger.warning("intervention_fetch_failed", error=str(e))
+
             if state.user_id:
                 evidence = await self.evidence.gather_evidence(
                     intent=state.intent,
@@ -96,45 +206,15 @@ class AssessmentCreatorNode:
         grade_match = re.search(r"grade\s*(\d+)", msg, re.IGNORECASE)
         grade_level = int(grade_match.group(1)) if grade_match else 10
 
-        topic = "science"
-        topic_keywords = [
-            "photosynthesis",
-            "respiration",
-            "genetics",
-            "cell division",
-            "ecology",
-            "evolution",
-            "classification",
-            "circulatory",
-            "digestive",
-            "nervous",
-            "excretory",
-            "reproduction",
-        ]
-        for kw in topic_keywords:
-            if kw in msg.lower():
-                topic = kw.capitalize()
-                break
+        topic = _extract_topic(msg)
 
         agent = QuizAgent(llm_router=self.llm_router)
 
         context_override = None
         if state.workspace_id:
-            try:
-                from src.core.retrieval.router import create_knowledge_router
-
-                router = create_knowledge_router()
-                results = await router.route_and_search(
-                    topic, workspace_id=str(state.workspace_id), limit=5
-                )
-                if results:
-                    sections = []
-                    for r in results:
-                        best = max(r.matches, key=lambda m: m.score, default=None)
-                        sections.append(f"[{r.title}]\n{best.text if best else ''}")
-                    context_override = "\n\n".join(sections)[:4000]
-            except Exception as e:
-                logger.warning("workspace_assessment_grounding_failed", error=str(e))
+            context_override = await _ground_workspace_context(
+                str(state.workspace_id), topic
+            )
 
         result = await agent.generate(
             grade_level=grade_level,
@@ -163,6 +243,41 @@ class AssessmentCreatorNode:
             "generated_assessment": result,
             "confidence": 0.85,
             "status": "assessment_created",
+        }
+
+
+class LessonCreatorNode:
+    def __init__(self, router: ModelRouter | None = None):
+        self.llm_router = router or ModelRouter()
+
+    async def __call__(self, state: TeacherCopilotState) -> dict:
+        msg = state.user_message
+        grade_match = re.search(r"grade\s*(\d+)", msg, re.IGNORECASE)
+        grade_level = int(grade_match.group(1)) if grade_match else 10
+
+        topic = _extract_topic(msg)
+
+        workspace_context = await _ground_workspace_context(
+            str(state.workspace_id) if state.workspace_id else None, topic
+        )
+
+        agent = LessonPlannerAgent(llm_router=self.llm_router)
+        result = await agent.generate(
+            grade_level=grade_level,
+            topic=topic,
+            workspace_context=workspace_context,
+        )
+
+        reasoning = (
+            f"I drafted a lesson plan on **{topic}** for Grade {grade_level}. "
+            f"Review it below or refine it in the Lessons page."
+        )
+
+        return {
+            "reasoning": reasoning,
+            "generated_lesson_plan": result,
+            "confidence": 0.85,
+            "status": "lesson_created",
         }
 
 
@@ -211,6 +326,20 @@ class FormatResponseNode:
                 parts.append(f"\n**{i}. {q['question_text']}**\n{options_block}")
             parts.append("\n_Answer key and explanations available._")
 
+        if state.generated_lesson_plan:
+            plan = state.generated_lesson_plan
+            parts.append("\n\n**Generated Lesson Plan**")
+            parts.append(f"\n**Objective:** {plan.get('objective', '')}")
+            activities = plan.get("activities") or []
+            if activities:
+                parts.append("\n**Activities:**")
+                for i, act in enumerate(activities[:5], 1):
+                    if isinstance(act, dict):
+                        parts.append(f"\n{i}. {act.get('title', act.get('name', ''))}")
+            if plan.get("assessment"):
+                parts.append(f"\n**Assessment:** {plan['assessment']}")
+            parts.append("\n_Open the Lessons page to save or edit this plan._")
+
         if state.evidence:
             parts.append("\n\n**Evidence:**")
             parts.append(EvidenceEngine.format_citations(state.evidence))
@@ -222,6 +351,8 @@ class FormatResponseNode:
 def route_after_classify(state: TeacherCopilotState) -> str:
     if state.intent == "assessment_creation":
         return "create_assessment"
+    if state.intent == "lesson_planning":
+        return "create_lesson"
     return "gather"
 
 
@@ -238,6 +369,7 @@ def build_teacher_pipeline(
     workflow.add_node("classify", ClassifyIntentNode(intent_router))
     workflow.add_node("gather", GatherDataNode(evidence, session=session))
     workflow.add_node("create_assessment", AssessmentCreatorNode(router=router))
+    workflow.add_node("create_lesson", LessonCreatorNode(router=router))
     workflow.add_node("reason", ReasonNode(reasoning))
     workflow.add_node("format", FormatResponseNode())
 
@@ -246,10 +378,15 @@ def build_teacher_pipeline(
     workflow.add_conditional_edges(
         "classify",
         route_after_classify,
-        {"create_assessment": "create_assessment", "gather": "gather"},
+        {
+            "create_assessment": "create_assessment",
+            "create_lesson": "create_lesson",
+            "gather": "gather",
+        },
     )
 
     workflow.add_edge("create_assessment", "format")
+    workflow.add_edge("create_lesson", "format")
     workflow.add_edge("gather", "reason")
     workflow.add_edge("reason", "format")
     workflow.add_edge("format", END)

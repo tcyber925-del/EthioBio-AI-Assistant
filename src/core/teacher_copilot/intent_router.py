@@ -46,7 +46,7 @@ TEACHER_INTENTS = {
         "description": "Curriculum structure and dependencies",
     },
     "lesson_planning": {
-        "keywords": ["lesson", "plan", "teach", "tomorrow", "prepare", "activity", "create"],
+        "keywords": ["lesson", "plan", "teach", "tomorrow", "prepare", "activity", "design"],
         "description": "Lesson plan generation and preparation",
     },
     "assessment_creation": {

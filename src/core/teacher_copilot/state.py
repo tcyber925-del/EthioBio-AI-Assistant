@@ -33,6 +33,7 @@ class TeacherCopilotState:
     response_text: str = ""
 
     generated_assessment: dict | None = None
+    generated_lesson_plan: dict | None = None
 
     confidence: float = 0.0
     status: str = "pending"
