@@ -3,7 +3,7 @@ from collections.abc import AsyncGenerator
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -67,11 +67,12 @@ async def copilot_query(
     body: CopilotQuery,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
+    x_workspace_id: str | None = Header(default=None),
 ):
     from src.core.workspace.dependencies import resolve_workspace_access
 
     workspace_id = await resolve_workspace_access(
-        str(body.workspace_id) if body.workspace_id else None,
+        str(body.workspace_id) if body.workspace_id else x_workspace_id,
         current_user,
         session,
     )
@@ -155,11 +156,12 @@ async def reason(
     body: CopilotQuery,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
+    x_workspace_id: str | None = Header(default=None),
 ):
     from src.core.workspace.dependencies import resolve_workspace_access
 
     workspace_id = await resolve_workspace_access(
-        str(body.workspace_id) if body.workspace_id else None,
+        str(body.workspace_id) if body.workspace_id else x_workspace_id,
         current_user,
         session,
     )

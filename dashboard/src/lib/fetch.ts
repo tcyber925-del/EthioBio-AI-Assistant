@@ -54,6 +54,11 @@ export async function streamFetch(
   const token = getToken()
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (token) headers['Authorization'] = `Bearer ${token}`
+  const workspaceId =
+    typeof window !== 'undefined'
+      ? window.localStorage.getItem('ethiobio_active_workspace_id')
+      : null
+  if (workspaceId) headers['X-Workspace-Id'] = workspaceId
 
   const res = await fetch(url, {
     method: 'POST',

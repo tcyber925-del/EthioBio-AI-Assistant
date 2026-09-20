@@ -24,6 +24,7 @@ import {
   Cpu,
   GitFork,
   Upload,
+  Sparkles,
 } from 'lucide-react'
 import { DnaIcon } from './BioIcon'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
@@ -64,6 +65,7 @@ const NAV_STRUCTURE: NavSection[] = [
       { labelKey: 'single_lesson', subtitleKey: 'single_lesson_sub', href: '/lessons', icon: FileText, roles: ['admin', 'teacher'] },
       { labelKey: 'unit_plan', subtitleKey: 'unit_plan_sub', href: '/unit-plans', icon: BookOpen, roles: ['admin', 'teacher'] },
       { labelKey: 'assessment_studio', href: '/assessment-studio', icon: ClipboardCheck, roles: ['admin', 'teacher'] },
+      { labelKey: 'copilot', href: '/copilot', icon: Sparkles, roles: ['admin', 'teacher'] },
       { labelKey: 'knowledge_graph', href: '/knowledge-graph', icon: GitFork, roles: ['admin', 'teacher'] },
       { labelKey: 'quizzes', href: '/quizzes', icon: ClipboardCheck, roles: ['admin', 'teacher'] },
       { labelKey: 'ask', href: '/ask', icon: MessageSquare, roles: ['admin', 'teacher', 'student', 'parent'] },

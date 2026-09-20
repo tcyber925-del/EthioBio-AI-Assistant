@@ -959,7 +959,8 @@
       "content_review": "Content Review",
       "schools": "Schools",
       "users": "Users",
-      "agents": "Agents"
+      "agents": "Agents",
+      "copilot": "Copilot"
     },
     "sidebar": {
       "brand_sub": "Science Learning Assistant",
@@ -1547,5 +1548,14 @@
     "privacy_title": "Privacy Policy",
     "privacy_body": "EthioSci collects only the minimum data needed to teach: an account, your role, and — for learners — a date of birth used to keep the experience age-appropriate. We do not sell personal data and we do not show ads. Answers are generated from Ethiopian textbooks and may include your subject and grade to improve relevance.",
     "privacy_updated": "Last updated: September 2026"
+  },
+  "copilot": {
+    "title": "Teacher Copilot",
+    "subtitle": "Ask anything about your class, materials, and planning.",
+    "empty_hint": "Ask about your class's progress, generate an assessment, or plan tomorrow's lesson. Answers are grounded in your workspace materials.",
+    "placeholder": "Ask your copilot…",
+    "thinking": "Thinking…",
+    "open_lessons": "Open Lessons",
+    "open_assessment": "Assessment Studio"
   }
 }
