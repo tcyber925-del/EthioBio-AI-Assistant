@@ -61,15 +61,45 @@ async def generate_lesson_plan(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
+    from src.core.workspace.dependencies import resolve_workspace_access
+
+    workspace_id = await resolve_workspace_access(
+        str(request.workspace_id) if request.workspace_id else None,
+        current_user,
+        session,
+    )
+
     if request.stream:
-        return await _handle_lesson_stream(request, session, current_user)
-    return await _handle_lesson_blocking(request, session, current_user)
+        return await _handle_lesson_stream(request, session, current_user, workspace_id)
+    return await _handle_lesson_blocking(request, session, current_user, workspace_id)
+
+
+async def _gather_workspace_context(workspace_id: str | None, topic: str) -> str | None:
+    """Retrieve topic-relevant content from the workspace knowledge pool."""
+    if not workspace_id:
+        return None
+    try:
+        from src.core.retrieval.router import create_knowledge_router
+
+        router = create_knowledge_router()
+        results = await router.route_and_search(topic, workspace_id=workspace_id, limit=5)
+        if not results:
+            return None
+        sections = []
+        for r in results:
+            best = max(r.matches, key=lambda m: m.score, default=None)
+            sections.append(f"[{r.title}]\n{best.text if best else ''}")
+        return "\n\n".join(sections)[:4000]
+    except Exception as e:
+        logger.warning("workspace_lesson_grounding_failed", error=str(e))
+        return None
 
 
 async def _handle_lesson_blocking(
     request: LessonPlanRequest,
     session: AsyncSession,
     current_user: User,
+    workspace_id: str | None = None,
 ) -> LessonPlanResponse:
     teacher_id = request.teacher_id or current_user.id
     router_llm = ModelRouter(preferred_model=request.model)
@@ -87,6 +117,12 @@ async def _handle_lesson_blocking(
             logger.warning("classroom_intelligence_failed", exc_info=True)
 
     try:
+        workspace_context = await _gather_workspace_context(workspace_id, request.topic)
+    except Exception:
+        logger.warning("workspace_context_gather_failed", exc_info=True)
+        workspace_context = None
+
+    try:
         result = await agent.generate(
             grade_level=request.grade_level,
             topic=request.topic,
@@ -98,6 +134,7 @@ async def _handle_lesson_blocking(
             generate_diagram_suggestions=request.generate_diagram_suggestions,
             generate_misconception_activities=request.generate_misconception_activities,
             classroom_context=classroom_context,
+            workspace_context=workspace_context,
             subject=request.subject,
         )
 
@@ -177,6 +214,7 @@ async def _handle_lesson_stream(
     request: LessonPlanRequest,
     session: AsyncSession,
     current_user: User,
+    workspace_id: str | None = None,
 ) -> StreamingResponse:
     router_llm = ModelRouter(preferred_model=request.model)
     agent = LessonPlannerAgent(llm_router=router_llm)
@@ -192,6 +230,8 @@ async def _handle_lesson_stream(
         except Exception:
             logger.warning("classroom_intelligence_failed", exc_info=True)
 
+    workspace_context = await _gather_workspace_context(workspace_id, request.topic)
+
     queue: asyncio.Queue[TokenChunk | None] = asyncio.Queue()
     task = asyncio.create_task(
         agent.generate(
@@ -205,6 +245,7 @@ async def _handle_lesson_stream(
             generate_diagram_suggestions=request.generate_diagram_suggestions,
             generate_misconception_activities=request.generate_misconception_activities,
             classroom_context=classroom_context,
+            workspace_context=workspace_context,
             subject=request.subject,
             token_queue=queue,
         )

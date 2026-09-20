@@ -15,6 +15,7 @@ class LessonPlanRequest(SchemaModel):
     language: LanguageEnum = LanguageEnum.EN
     teacher_id: Optional[UUID] = None
     classroom_id: Optional[UUID] = None
+    workspace_id: Optional[UUID] = None
     model: Optional[str] = None
     stream: bool = False
     generate_exit_ticket: bool = False

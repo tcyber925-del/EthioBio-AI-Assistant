@@ -147,6 +147,7 @@ class LessonPlannerAgent(BaseAgent):
         generate_diagram_suggestions: bool = False,
         generate_misconception_activities: bool = False,
         classroom_context: Optional[dict] = None,
+        workspace_context: Optional[str] = None,
         subject: Optional[str] = None,
         token_queue: asyncio.Queue[TokenChunk | None] | None = None,
     ) -> dict:
@@ -200,6 +201,13 @@ class LessonPlannerAgent(BaseAgent):
                 "Address misconceptions with concept conflict activities. "
                 "Include prerequisite review where gaps exist. "
                 "Use recommended teaching strategies."
+            )
+
+        if workspace_context:
+            context_block += (
+                "\n\nWorkspace Materials (this class's uploaded knowledge — "
+                "reference and incorporate these into the lesson):\n"
+                f"{workspace_context}\n"
             )
 
         subject_label = f" ({subject})" if subject else ""
