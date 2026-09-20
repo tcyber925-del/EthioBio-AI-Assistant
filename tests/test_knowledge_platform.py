@@ -622,6 +622,39 @@ class TestKnowledgeAPI:
 
             assert not await storage.exists(storage_key)
 
+    async def test_upload_storage_failure_returns_502_and_cleans_up_row(
+        self, test_app_and_client, monkeypatch
+    ):
+        app, sf, storage = test_app_and_client
+
+        async def _boom(*args, **kwargs):
+            raise RuntimeError("storage backend down")
+
+        monkeypatch.setattr(storage, "store", _boom)
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            ws_id = "00000000-0000-0000-0000-000000000001"
+            owner_id = "00000000-0000-0000-0000-000000000002"
+
+            upload_resp = await client.post(
+                "/api/v1/knowledge/upload",
+                files={"file": ("boom.txt", b"boom", "text/plain")},
+                params={"workspace_id": ws_id, "owner_id": owner_id},
+            )
+            assert upload_resp.status_code == 502
+
+        from sqlalchemy import select
+
+        from src.database.models import KnowledgeObject as KnowledgeObjectModel
+
+        async with sf() as db:
+            rows = (
+                (await db.execute(select(KnowledgeObjectModel))).scalars().all()
+            )
+            assert rows != []
+            assert all(r.deleted_at is not None for r in rows)
+
     async def test_update_metadata_via_api(self, test_app_and_client):
         app, sf, storage = test_app_and_client
 

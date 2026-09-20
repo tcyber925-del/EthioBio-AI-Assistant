@@ -193,6 +193,20 @@ async def upload_knowledge_object(
         storage_key = await storage.store(
             tmp_path, workspace_id, ko.id, file.filename or upload_title
         )
+    except Exception as e:
+        logger.error(
+            "storage_store_failed",
+            ko_id=ko.id,
+            workspace_id=workspace_id,
+            error=str(e),
+        )
+        try:
+            await _get_registry().soft_delete(ko.id, reason="storage_store_failed")
+        except Exception:
+            logger.warning("storage_failure_cleanup_failed", ko_id=ko.id)
+        raise HTTPException(
+            status_code=502, detail="File storage backend unavailable, upload rolled back"
+        ) from e
     finally:
         tmp_path.unlink(missing_ok=True)
 
