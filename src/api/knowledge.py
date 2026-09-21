@@ -65,23 +65,23 @@ async def _can_access_workspace(workspace_id: str, user: User, db: AsyncSession)
 
 
 def _get_registry() -> KnowledgeRegistry:
-    global _registry
-    if _registry is None:
-        _registry = KnowledgeRegistry(async_session_factory())
-    return _registry
+    global _REGISTRY
+    if _REGISTRY is None:
+        _REGISTRY = KnowledgeRegistry(async_session_factory())
+    return _REGISTRY
 
 
 def _get_producer() -> RedisStreamProducer | None:
-    global _producer
-    if _producer is None:
+    global _PRODUCER
+    if _PRODUCER is None:
         try:
             from src.config import settings
             from src.core.event_infrastructure import RedisStreamProducer
 
-            _producer = RedisStreamProducer(settings.redis_url)
+            _PRODUCER = RedisStreamProducer(settings.redis_url)
         except Exception:
             logger.warning("redis_producer_unavailable, falling back to inline pipeline")
-    return _producer
+    return _PRODUCER
 
 
 def _get_storage() -> StorageAdapter:

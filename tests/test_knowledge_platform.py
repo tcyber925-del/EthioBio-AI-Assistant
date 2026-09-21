@@ -566,6 +566,24 @@ async def test_app_and_client():
     await engine.dispose()
 
 
+class TestKnowledgeModuleGlobals:
+    async def test_get_registry_no_name_error(self, monkeypatch):
+        import src.api.knowledge as knowledge_module
+
+        monkeypatch.setattr(knowledge_module, "_REGISTRY", None)
+        registry = knowledge_module._get_registry()
+        assert registry is not None
+        monkeypatch.setattr(knowledge_module, "_REGISTRY", None)
+
+    async def test_get_producer_no_name_error(self, monkeypatch):
+        import src.api.knowledge as knowledge_module
+
+        monkeypatch.setattr(knowledge_module, "_PRODUCER", None)
+        producer = knowledge_module._get_producer()
+        assert producer is None or producer is not None
+        monkeypatch.setattr(knowledge_module, "_PRODUCER", None)
+
+
 class TestKnowledgeAPI:
     async def test_upload_and_lifecycle(self, test_app_and_client):
         app, sf, storage = test_app_and_client
