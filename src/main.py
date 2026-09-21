@@ -353,9 +353,13 @@ app.add_api_route("/echo", _echo, methods=["POST"])
 async def security_headers_middleware(request: Request, call_next):
     try:
         response = await call_next(request)
-    except Exception:
-        logger.exception("middleware_unhandled_error")
-        return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+    except Exception as exc:
+        logger.exception("middleware_unhandled_error", path=str(request.url))
+        # DIAGNOSTIC-ONLY: surface the exception for debugging; revert before merge.
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal server error", "diag": f"{type(exc).__name__}: {exc}"},
+        )
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
