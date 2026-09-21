@@ -20,6 +20,19 @@ vi.mock("@/components/dashboard-v2", () => ({
   DashboardLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
+vi.mock("@/components/ModelSelector", () => ({
+  default: ({ value, onChange }: { value: string; onChange: (m: string) => void }) => (
+    <select
+      aria-label="model"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      <option value="">default</option>
+      <option value="ollama/gemma4:31b">gemma4</option>
+    </select>
+  ),
+}));
+
 vi.mock("@/components/ui/errors", () => ({
   ErrorAlert: () => <div role="alert">error</div>,
 }));
@@ -81,5 +94,20 @@ describe("CopilotPage", () => {
     callbacks.onToken?.(" improving.");
     callbacks.onDone?.();
     expect(await screen.findByText("The class is improving.")).toBeTruthy();
+  });
+
+  it("includes the selected model in the request body", async () => {
+    streamFetchMock.mockResolvedValue(undefined);
+
+    renderPage();
+    const modelSelect = await screen.findByLabelText("model");
+    fireEvent.change(modelSelect, { target: { value: "ollama/gemma4:31b" } });
+    const input = await screen.findByPlaceholderText("Ask your copilot…");
+    fireEvent.change(input, { target: { value: "who needs attention" } });
+    fireEvent.submit(input.closest("form") as HTMLFormElement);
+
+    await waitFor(() => expect(streamFetchMock).toHaveBeenCalled());
+    const [, body] = streamFetchMock.mock.calls[0] as [string, Record<string, unknown>];
+    expect(body.model).toBe("ollama/gemma4:31b");
   });
 });

@@ -29,6 +29,7 @@ class CopilotQuery(BaseModel):
     classroom_id: UUID | None = None
     student_id: UUID | None = None
     workspace_id: UUID | None = None
+    model: str | None = None
     stream: bool = False
 
 
@@ -80,7 +81,7 @@ async def copilot_query(
     if body.stream:
         return await _handle_copilot_stream(body, current_user, session, workspace_id)
 
-    router = ModelRouter()
+    router = ModelRouter(preferred_model=body.model)
 
     initial_state = TeacherCopilotState(
         user_message=body.message,
@@ -115,7 +116,7 @@ async def _handle_copilot_stream(
     session: AsyncSession,
     workspace_id: str | None = None,
 ) -> StreamingResponse:
-    router = ModelRouter()
+    router = ModelRouter(preferred_model=body.model)
     queue: asyncio.Queue[TokenChunk | None] = asyncio.Queue()
 
     initial_state = TeacherCopilotState(

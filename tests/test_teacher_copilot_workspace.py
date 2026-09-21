@@ -253,7 +253,6 @@ class TestCopilotWorkspaceAPI:
         assert captured["state"].workspace_id is None
 
     async def test_query_uses_workspace_header_fallback(self, session_factory):
-        from src.core.teacher_copilot.state import TeacherCopilotState
 
         app, copilot_module = self._build(
             session_factory,
@@ -291,3 +290,41 @@ class TestCopilotWorkspaceAPI:
                 assert resp.status_code == 200
 
         assert captured["state"].workspace_id == WS_ID
+
+    async def test_model_param_reaches_model_router(self, session_factory):
+        app, copilot_module = self._build(
+            session_factory,
+            lambda: User(id=TEACHER_ID, role=UserRole.teacher, is_active=True),
+        )
+
+        captured = {}
+
+        async def fake_pipeline_run(initial_state):
+            captured["state"] = initial_state
+            return TeacherCopilotState(
+                user_message=initial_state.user_message,
+                response_text="ok",
+                intent="classroom_analysis",
+                intent_confidence=0.9,
+                reasoning="analysis",
+                confidence=0.8,
+                status="complete",
+            )
+
+        model_router_cls = MagicMock()
+        with patch.object(
+            copilot_module, "build_teacher_pipeline"
+        ) as build_pipeline, patch.object(
+            copilot_module, "ModelRouter", model_router_cls
+        ):
+            build_pipeline.return_value = MagicMock(ainvoke=fake_pipeline_run)
+
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                resp = await client.post(
+                    "/copilot/query",
+                    json={"message": "analyze the class", "model": "ollama/gemma4:31b"},
+                )
+                assert resp.status_code == 200
+
+        assert model_router_cls.call_args.kwargs.get("preferred_model") == "ollama/gemma4:31b"

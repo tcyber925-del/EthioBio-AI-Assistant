@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/dashboard-v2'
+import ModelSelector from '@/components/ModelSelector'
 import { isAuthenticated, getUserId } from '@/lib/auth'
 import { streamFetch } from '@/lib/fetch'
 import { normalizeException, type AppError } from '@/lib/errors'
@@ -31,6 +32,7 @@ export default function CopilotPage() {
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<AppError | null>(null)
+  const [selectedModel, setSelectedModel] = useState('')
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -60,7 +62,7 @@ export default function CopilotPage() {
     try {
       await streamFetch(
         '/copilot/query',
-        { message },
+        { message, model: selectedModel },
         {
           onStatus: (status) => {
             setMessages((prev) => [...prev.filter((m) => m.role !== 'status'), { role: 'status', content: status }])
@@ -97,9 +99,12 @@ export default function CopilotPage() {
           <div className="p-2.5 rounded-xl bg-v2-accent-muted text-v2-accent border border-v2-accent/30">
             <Sparkles className="w-5 h-5" />
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="verge-display text-3xl text-v2-text-primary leading-none">{t('title')}</h1>
             <p className="text-sm text-v2-text-secondary mt-1">{t('subtitle')}</p>
+          </div>
+          <div className="w-52 shrink-0">
+            <ModelSelector value={selectedModel} onChange={setSelectedModel} disabled={busy} />
           </div>
         </div>
 
