@@ -24,6 +24,7 @@ class TutorRequest(SchemaModel):
     session_id: Optional[str] = None
     generate_diagram: bool = True
     stream: bool = False
+    metadata: Optional[dict] = None
 
 
 class TutorResponse(SchemaModel):

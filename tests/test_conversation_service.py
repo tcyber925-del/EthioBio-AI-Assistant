@@ -10,6 +10,11 @@ TEST_UUID = "550e8400-e29b-41d4-a716-446655440000"
 
 
 class TestConversationSchemas:
+    def test_tutor_request_accepts_metadata(self):
+        req = TutorRequest(
+            user_id=TEST_UUID, question="hello", metadata={"grade_level": 10, "subject": None}
+        )
+        assert req.metadata == {"grade_level": 10, "subject": None}
     def test_conversation_request_minimal(self):
         req = ConversationRequest(
             user_id=TEST_UUID,
