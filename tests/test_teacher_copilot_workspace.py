@@ -162,7 +162,6 @@ class TestCopilotWorkspaceAPI:
         return app, copilot_module
 
     async def test_member_can_query_with_workspace(self, session_factory):
-        from src.core.teacher_copilot.state import TeacherCopilotState
 
         app, copilot_module = self._build(
             session_factory,
@@ -173,22 +172,25 @@ class TestCopilotWorkspaceAPI:
 
         async def fake_pipeline_run(initial_state):
             captured["state"] = initial_state
-            return TeacherCopilotState(
-                user_message=initial_state.user_message,
-                response_text="ok",
-                intent="classroom_analysis",
-                intent_confidence=0.9,
-                reasoning="analysis",
-                confidence=0.8,
-                status="complete",
-            )
+            return {
+                "user_message": initial_state.user_message,
+                "response_text": "ok",
+                "intent": "classroom_analysis",
+                "intent_confidence": 0.9,
+                "reasoning": "analysis",
+                "confidence": 0.8,
+                "status": "complete",
+                "error": None,
+            }
 
         with patch.object(
             copilot_module, "build_teacher_pipeline"
         ) as build_pipeline, patch.object(
             copilot_module, "ModelRouter", return_value=MagicMock()
         ):
-            build_pipeline.return_value = MagicMock(ainvoke=fake_pipeline_run)
+            build_pipeline.return_value = MagicMock(
+                compile=MagicMock(return_value=MagicMock(ainvoke=fake_pipeline_run))
+            )
 
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -215,7 +217,6 @@ class TestCopilotWorkspaceAPI:
             assert resp.status_code == 403
 
     async def test_query_without_workspace_still_works(self, session_factory):
-        from src.core.teacher_copilot.state import TeacherCopilotState
 
         app, copilot_module = self._build(
             session_factory,
@@ -226,22 +227,25 @@ class TestCopilotWorkspaceAPI:
 
         async def fake_pipeline_run(initial_state):
             captured["state"] = initial_state
-            return TeacherCopilotState(
-                user_message=initial_state.user_message,
-                response_text="ok",
-                intent="classroom_analysis",
-                intent_confidence=0.9,
-                reasoning="analysis",
-                confidence=0.8,
-                status="complete",
-            )
+            return {
+                "user_message": initial_state.user_message,
+                "response_text": "ok",
+                "intent": "classroom_analysis",
+                "intent_confidence": 0.9,
+                "reasoning": "analysis",
+                "confidence": 0.8,
+                "status": "complete",
+                "error": None,
+            }
 
         with patch.object(
             copilot_module, "build_teacher_pipeline"
         ) as build_pipeline, patch.object(
             copilot_module, "ModelRouter", return_value=MagicMock()
         ):
-            build_pipeline.return_value = MagicMock(ainvoke=fake_pipeline_run)
+            build_pipeline.return_value = MagicMock(
+                compile=MagicMock(return_value=MagicMock(ainvoke=fake_pipeline_run))
+            )
 
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -263,22 +267,25 @@ class TestCopilotWorkspaceAPI:
 
         async def fake_pipeline_run(initial_state):
             captured["state"] = initial_state
-            return TeacherCopilotState(
-                user_message=initial_state.user_message,
-                response_text="ok",
-                intent="classroom_analysis",
-                intent_confidence=0.9,
-                reasoning="analysis",
-                confidence=0.8,
-                status="complete",
-            )
+            return {
+                "user_message": initial_state.user_message,
+                "response_text": "ok",
+                "intent": "classroom_analysis",
+                "intent_confidence": 0.9,
+                "reasoning": "analysis",
+                "confidence": 0.8,
+                "status": "complete",
+                "error": None,
+            }
 
         with patch.object(
             copilot_module, "build_teacher_pipeline"
         ) as build_pipeline, patch.object(
             copilot_module, "ModelRouter", return_value=MagicMock()
         ):
-            build_pipeline.return_value = MagicMock(ainvoke=fake_pipeline_run)
+            build_pipeline.return_value = MagicMock(
+                compile=MagicMock(return_value=MagicMock(ainvoke=fake_pipeline_run))
+            )
 
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -301,15 +308,16 @@ class TestCopilotWorkspaceAPI:
 
         async def fake_pipeline_run(initial_state):
             captured["state"] = initial_state
-            return TeacherCopilotState(
-                user_message=initial_state.user_message,
-                response_text="ok",
-                intent="classroom_analysis",
-                intent_confidence=0.9,
-                reasoning="analysis",
-                confidence=0.8,
-                status="complete",
-            )
+            return {
+                "user_message": initial_state.user_message,
+                "response_text": "ok",
+                "intent": "classroom_analysis",
+                "intent_confidence": 0.9,
+                "reasoning": "analysis",
+                "confidence": 0.8,
+                "status": "complete",
+                "error": None,
+            }
 
         model_router_cls = MagicMock()
         with patch.object(
@@ -317,7 +325,9 @@ class TestCopilotWorkspaceAPI:
         ) as build_pipeline, patch.object(
             copilot_module, "ModelRouter", model_router_cls
         ):
-            build_pipeline.return_value = MagicMock(ainvoke=fake_pipeline_run)
+            build_pipeline.return_value = MagicMock(
+                compile=MagicMock(return_value=MagicMock(ainvoke=fake_pipeline_run))
+            )
 
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://test") as client:

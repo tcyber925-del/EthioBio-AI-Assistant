@@ -91,22 +91,23 @@ async def copilot_query(
         workspace_id=UUID(workspace_id) if workspace_id else None,
     )
 
-    pipeline = build_teacher_pipeline(router=router, session=session)
+    pipeline = build_teacher_pipeline(router=router, session=session).compile()
     try:
-        final_state = await pipeline.ainvoke(initial_state)
+        final_state: dict = await pipeline.ainvoke(initial_state)
     except Exception as e:
         logger.error("copilot_pipeline_error", error=str(e))
+        raise HTTPException(status_code=500, detail=f"Copilot pipeline failed: {e}") from e
 
-    if final_state.error:
-        raise HTTPException(status_code=500, detail=final_state.error)
+    if final_state.get("error"):
+        raise HTTPException(status_code=500, detail=final_state["error"])
 
     return CopilotResponse(
-        response=final_state.response_text,
-        intent=final_state.intent,
-        intent_confidence=final_state.intent_confidence,
-        reasoning=final_state.reasoning,
-        evidence=final_state.evidence,
-        confidence=final_state.confidence,
+        response=final_state.get("response_text", ""),
+        intent=final_state.get("intent", ""),
+        intent_confidence=final_state.get("intent_confidence", 0.0),
+        reasoning=final_state.get("reasoning", ""),
+        evidence=final_state.get("evidence", []),
+        confidence=final_state.get("confidence", 0.0),
     )
 
 
@@ -128,7 +129,7 @@ async def _handle_copilot_stream(
         token_queue=queue,
     )
 
-    pipeline = build_teacher_pipeline(router=router, session=session)
+    pipeline = build_teacher_pipeline(router=router, session=session).compile()
     task = asyncio.create_task(pipeline.ainvoke(initial_state))
 
     return StreamingResponse(
