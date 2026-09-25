@@ -2,7 +2,16 @@ import { test, expect } from '@playwright/test';
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
+// Remote runs (BASE_URL pointed at a deployed origin) pay CDN/edge latency for
+// lazy chunks and navigations; give assertions and test budgets room for it.
+// Local runs keep the tight default budgets, so CI-equivalent runs stay strict.
+const REMOTE = !/localhost|127\.0\.0\.1/.test(BASE_URL);
+if (REMOTE) {
+  test.expect.configure({ timeout: 15_000 });
+}
+
 test.describe('Landing Page', () => {
+  if (REMOTE) test.slow();
   test('loads with the ported hero and primary CTA', async ({ page }) => {
     await page.goto(BASE_URL);
     const h1 = page.locator('h1');
