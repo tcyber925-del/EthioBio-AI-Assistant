@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "codex-grid-background",
+        "value": "*",
+        "files": [
+          "dashboard/src/app/globals.css"
+        ],
+        "createdAt": "2026-09-25T15:31:10.771Z",
+        "reason": "Deliberate: .sci-grid is the hero measuring grid from the generated landing design; the ported design is the authority (see .impeccable/surfaces/dashboard-src-app-marketing-page-tsx.md)."
+      }
+    ]
+  }
+}

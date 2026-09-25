@@ -1,18 +1,15 @@
 import type { Metadata } from 'next'
-import { getTranslations } from 'next-intl/server'
-import {
-  Award,
-  BookOpen,
-  Brain,
-  GraduationCap,
-  MessageSquare,
-  Users,
-  Zap,
-} from 'lucide-react'
-import Link from 'next/link'
 import HeroSection from '@/components/landing/HeroSection'
+import SubjectsSection from '@/components/landing/SubjectsSection'
+import PipelineSection from '@/components/landing/PipelineSection'
+import TrustSection from '@/components/landing/TrustSection'
+import JourneySection from '@/components/landing/JourneySection'
+import AudiencesSection from '@/components/landing/AudiencesSection'
+import AmharicSection from '@/components/landing/AmharicSection'
+import StreamSection from '@/components/landing/StreamSection'
+import ClosingSection from '@/components/landing/ClosingSection'
 import FaqSection from '@/components/landing/FaqSection'
-import { LazyConsoleTabs, LazyStatsSection } from '@/components/landing/LazySections'
+import { LazyAskDemo, LazyQuizDemo, LazyStatsSection } from '@/components/landing/LazySections'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://ethiosci.app'
 
@@ -32,6 +29,11 @@ export const metadata: Metadata = {
   },
 }
 
+/**
+ * FAQ copy for schema.org. English literals on purpose: FAQPage JSON-Ld is a
+ * search-engine artifact, not user-facing copy — the visible FAQ renders from
+ * `messages/*` via FaqSection.
+ */
 const FAQ = [
   {
     q: 'Is EthioSci free?',
@@ -98,84 +100,30 @@ function JsonLd() {
   )
 }
 
-export default async function LandingPage() {
-  const t = await getTranslations('landing')
-
-  const rolePanels: Array<{
-    role: string
-    kicker: string
-    titleKey: string
-    descKey: string
-    icon: typeof Award
-  }> = [
-    { role: 'learner', kicker: 'Core Track', titleKey: 'role_student_title', descKey: 'role_student_desc', icon: MessageSquare },
-    { role: 'teacher', kicker: 'Educator Workspace', titleKey: 'role_teacher_title', descKey: 'role_teacher_desc', icon: Users },
-    { role: 'parent', kicker: 'Family Circle', titleKey: 'role_parent_title', descKey: 'role_parent_desc', icon: Award },
-  ]
-
-  const features: Array<{ icon: typeof BookOpen; titleKey: string; descKey: string; tag: string }> = [
-    { icon: BookOpen, titleKey: 'feature_textbook', descKey: 'feature_textbook_desc', tag: 'Citations verified' },
-    { icon: Brain, titleKey: 'feature_gamification', descKey: 'feature_gamification_desc', tag: 'Bayesian IRT estimation' },
-    { icon: Zap, titleKey: 'feature_recovery', descKey: 'feature_recovery_desc', tag: 'Automatic recovery' },
-    { icon: GraduationCap, titleKey: 'feat_copilot_title', descKey: 'feat_copilot_desc', tag: 'Aligned to Grades 7-12' },
-  ]
-
+/**
+ * The landing page: the ported twelve-section composition, plus the two
+ * sections this repo keeps from the old page (Stats — live `/auth/public-stats`,
+ * and FAQ) before the closing CTA. Section order:
+ * hero → ask demo → subjects → pipeline → trust → journey → quiz → audiences
+ * → amharic → stream → stats → faq → final CTA.
+ */
+export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#131313]">
+    <>
       <JsonLd />
       <HeroSection />
-      <LazyConsoleTabs />
-      <section id="features" className="border-b border-[#2d2d2d] bg-[#181818] py-20">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-16 text-center">
-            <h2 className="verge-display mb-4 text-3xl text-white sm:text-4xl">{t('section_features')}</h2>
-            <p className="mx-auto max-w-xl font-sans text-gray-400">{t('features_subtitle')}</p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {features.map(({ icon: Icon, titleKey, descKey, tag }) => (
-              <div
-                key={titleKey}
-                className="flex flex-col justify-between border border-[#2d2d2d] bg-[#131313] p-6 transition-colors hover:border-[#3cffd0]"
-              >
-                <div>
-                  <Icon className="mb-4 h-8 w-8 text-[#3cffd0]" />
-                  <h3 className="verge-label text-base text-white">{t(titleKey)}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-gray-400">{t(descKey)}</p>
-                </div>
-                <span className="mt-6 font-mono text-[10px] text-gray-600">{tag}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="border-b border-[#2d2d2d] py-20">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-            {rolePanels.map(({ role, kicker, titleKey, descKey, icon: Icon }) => (
-              <Link
-                key={role}
-                href={`/sign-up?role=${role}`}
-                className="group relative block overflow-hidden border border-[#2d2d2d] bg-[#181818] p-8 transition-all hover:border-[#5200ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3cffd0] focus-visible:ring-offset-2 focus-visible:ring-offset-[#131313]"
-              >
-                <span className="verge-label mb-4 block text-[#3cffd0]">{kicker}</span>
-                <h3 className="verge-display mb-4 text-2xl font-black text-white">{t(titleKey)}</h3>
-                <p className="mb-6 font-sans text-sm leading-relaxed text-gray-400">{t(descKey)}</p>
-                <span className="text-sm font-medium text-[#3cffd0] opacity-0 transition-opacity group-hover:opacity-100">
-                  {t('banner_signup_free')} →
-                </span>
-                <div className="absolute bottom-0 right-0 translate-x-4 translate-y-4 p-4 opacity-10 transition-transform group-hover:translate-x-0 group-hover:translate-y-0 group-hover:opacity-40">
-                  <Icon className="h-16 w-16 text-[#3cffd0]" />
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <FaqSection />
+      <LazyAskDemo />
+      <SubjectsSection />
+      <PipelineSection />
+      <TrustSection />
+      <JourneySection />
+      <LazyQuizDemo />
+      <AudiencesSection />
+      <AmharicSection />
+      <StreamSection />
       <LazyStatsSection />
-    </div>
+      <FaqSection />
+      <ClosingSection />
+    </>
   )
 }

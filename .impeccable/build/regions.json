@@ -1,0 +1,88 @@
+{
+  "regions": [
+    {
+      "id": "nav",
+      "kind": "chrome",
+      "pixelBox": {
+        "x": 0,
+        "y": 0,
+        "w": 1440,
+        "h": 84
+      },
+      "note": "sticky nav bar: ETHIOSCI wordmark left, four mono nav links (LEARN / SUBJECTS / HOW IT WORKS / FOR TEACHERS) centered, mint pill 'START LEARNING' right, hairline bottom border"
+    },
+    {
+      "id": "kicker",
+      "kind": "text",
+      "pixelBox": {
+        "x": 100,
+        "y": 158,
+        "w": 572,
+        "h": 32
+      },
+      "note": "mono kicker row: ETHIOSCI / AI SCIENCE LEARNING  CURRICULUM / 7-12  LANG / EN + AM"
+    },
+    {
+      "id": "h1",
+      "kind": "text",
+      "pixelBox": {
+        "x": 110,
+        "y": 204,
+        "w": 380,
+        "h": 304
+      },
+      "note": "three-line uppercase display headline (condensed grotesque); lines 1-2 white, line 3 ETHIOPIA. in mint"
+    },
+    {
+      "id": "lede",
+      "kind": "text",
+      "pixelBox": {
+        "x": 100,
+        "y": 524,
+        "w": 565,
+        "h": 110
+      },
+      "note": "four-line body paragraph in white stating subjects, textbook grounding and practice loop"
+    },
+    {
+      "id": "cta-primary",
+      "kind": "control",
+      "pixelBox": {
+        "x": 112,
+        "y": 676,
+        "w": 200,
+        "h": 50
+      },
+      "note": "mint pill button START LEARNING with arrow, dark label"
+    },
+    {
+      "id": "cta-secondary",
+      "kind": "control",
+      "pixelBox": {
+        "x": 330,
+        "y": 676,
+        "w": 200,
+        "h": 50
+      },
+      "note": "hairline outline pill button EXPLORE ETHIOSCI, white mono label"
+    },
+    {
+      "id": "hero-stage",
+      "kind": "image",
+      "pixelBox": {
+        "x": 864,
+        "y": 164,
+        "w": 576,
+        "h": 496
+      },
+      "note": "dark stage panel: mint/violet DNA double-helix photograph with mint zigzag path and six mono step labels 01 QUESTION through 06 MASTER, RAG / ACTIVE top right, STATUS / ONLINE bottom left"
+    },
+    {
+      "id": "sci-grid",
+      "kind": "texture",
+      "grid": "A9:A9",
+      "note": "faint measuring-grid lines over the near-black hero canvas"
+    }
+  ],
+  "allowUncovered": true
+}

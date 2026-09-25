@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { fetchWithTimeout } from '@/lib/fetch'
+import { Label } from './Reveal'
 
 interface Stats {
   active_students: number
@@ -12,61 +13,90 @@ interface Stats {
   system_status: string
 }
 
-const defaultStats: Stats = {
-  active_students: 1520,
-  quizzes_completed: 8520,
-  lesson_plans_generated: 240,
-  knowledge_assets: 128,
-  system_status: 'healthy',
-}
-
+/**
+ * "Platform numbers" — live counts from `GET /auth/public-stats`. There are
+ * no fabricated fallbacks: while loading, each figure is a pulsing skeleton;
+ * if the endpoint fails, each figure renders an em dash (the old hardcoded
+ * defaults were removed deliberately — no invented statistics).
+ */
 export default function StatsSection() {
   const t = useTranslations('landing')
-  const [stats, setStats] = useState<Stats>(defaultStats)
+  const [stats, setStats] = useState<Stats | null>(null)
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
     fetchWithTimeout('/auth/public-stats')
       .then((data) => {
+        if (cancelled) return
         if (data && data.active_students) setStats(data)
+        else setFailed(true)
       })
-      .catch((err) => console.log('Stats fetch error: using static fallbacks', err))
+      .catch((err) => {
+        if (cancelled) return
+        console.log('Stats fetch error: showing no counts', err)
+        setFailed(true)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [])
+
+  const cells: Array<{ value: number | null; labelKey: string }> = [
+    { value: stats?.active_students ?? null, labelKey: 'stats_students' },
+    { value: stats?.quizzes_completed ?? null, labelKey: 'stats_quizzes' },
+    { value: stats?.lesson_plans_generated ?? null, labelKey: 'stats_lessons' },
+    { value: stats?.knowledge_assets ?? null, labelKey: 'stats_assets' },
+  ]
 
   return (
     <section
       id="stats"
-      className="relative overflow-hidden border-b border-[#2d2d2d] bg-[#1c1c1c] py-20"
+      className="border-t"
+      aria-busy={!stats && !failed}
+      aria-label={t('stats_aria')}
     >
-      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-16 text-center">
-          <h2 className="verge-display mb-2 text-3xl text-white sm:text-4xl">{t('stats_title')}</h2>
-          <div className="inline-flex items-center space-x-2 border border-[#3cffd0]/30 bg-[#3cffd0]/10 px-3 py-1 font-mono text-[10px] text-[#3cffd0]">
-            <span className="h-1.5 w-1.5 animate-ping rounded-full bg-[#3cffd0]" />
-            <span>Real-Time platform counts</span>
-          </div>
+      <div className="mx-auto max-w-[1280px] px-5 py-24 md:px-8">
+        <div className="mb-16">
+          <Label>{t('stats_kicker')}</Label>
+          <h2 className="display mt-6 text-[40px] text-white md:text-[56px]">{t('stats_title')}</h2>
+          {/* live badge only once counts are actually in — never on failure */}
+          {stats && (
+            <div className="mt-4 inline-flex items-center space-x-2 border border-mint/30 bg-mint/10 px-3 py-1">
+              <span
+                className="h-1.5 w-1.5 animate-ping rounded-full bg-mint motion-reduce:animate-none"
+                aria-hidden
+              />
+              <span className="label-mono text-mint">{t('stats_badge')}</span>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-8 lg:grid-cols-4">
-          <div className="border border-[#2d2d2d] bg-[#131313] p-6 text-center">
-            <span className="verge-display mb-2 block text-3xl font-black text-white sm:text-5xl">{stats.active_students.toLocaleString()}</span>
-            <span className="verge-label text-gray-500">{t('stats_students')}</span>
-          </div>
-
-          <div className="border border-[#2d2d2d] bg-[#131313] p-6 text-center">
-            <span className="verge-display mb-2 block text-3xl font-black text-white sm:text-5xl">{stats.quizzes_completed.toLocaleString()}</span>
-            <span className="verge-label text-gray-500">{t('stats_quizzes')}</span>
-          </div>
-
-          <div className="border border-[#2d2d2d] bg-[#131313] p-6 text-center">
-            <span className="verge-display mb-2 block text-3xl font-black text-white sm:text-5xl">{stats.lesson_plans_generated.toLocaleString()}</span>
-            <span className="verge-label text-gray-500">{t('stats_lessons')}</span>
-          </div>
-
-          <div className="border border-[#2d2d2d] bg-[#131313] p-6 text-center">
-            <span className="verge-display mb-2 block text-3xl font-black text-white sm:text-5xl">{stats.knowledge_assets.toLocaleString()}</span>
-            <span className="verge-label text-gray-500">{t('stats_assets')}</span>
-          </div>
+          {cells.map((cell) => (
+            <div
+              key={cell.labelKey}
+              className="rounded-card border border-line bg-slate p-6 text-center"
+            >
+              <span className="display mb-2 block text-3xl font-black tabular-nums text-white sm:text-5xl">
+                {cell.value != null ? (
+                  cell.value.toLocaleString()
+                ) : failed ? (
+                  <span aria-hidden>—</span>
+                ) : (
+                  <span
+                    className="inline-block h-9 w-24 animate-pulse bg-ink align-middle motion-reduce:animate-none"
+                    aria-hidden
+                  />
+                )}
+              </span>
+              <span className="label-mono block text-meta">{t(cell.labelKey)}</span>
+            </div>
+          ))}
         </div>
+        {failed && (
+          <p className="mt-6 text-center text-sm text-meta">{t('stats_error')}</p>
+        )}
       </div>
     </section>
   )

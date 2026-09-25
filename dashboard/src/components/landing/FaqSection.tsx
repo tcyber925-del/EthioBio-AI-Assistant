@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server'
 import { Accordion } from '@/components/ui/Accordion'
+import { Label } from './Reveal'
 
 const FAQ_COUNT = 8
 
@@ -13,17 +14,18 @@ export default async function FaqSection() {
   }))
 
   return (
-    <section id="faq" className="border-b border-[#2d2d2d] py-20">
-      <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-        <h2 className="verge-display mb-10 text-center text-3xl text-white sm:text-4xl">
+    <section id="faq" className="border-t">
+      <div className="mx-auto max-w-3xl px-5 py-24 md:px-8">
+        <Label>{t('faq_kicker')}</Label>
+        <h2 className="display mb-10 mt-6 text-[40px] text-white md:text-[56px]">
           {t('faq_title')}
         </h2>
         <Accordion
           items={items}
-          className="border border-[#2d2d2d] bg-[#181818] px-4"
-          dividerClassName="divide-[#2d2d2d]"
+          className="border border-line bg-slate px-4"
+          dividerClassName="divide-line"
           itemTitleClassName="text-white"
-          itemContentClassName="text-gray-400"
+          itemContentClassName="text-soft"
         />
       </div>
     </section>

@@ -31,13 +31,13 @@ export default function TeacherBanner() {
   }
 
   return (
-    <div className="border-b border-[#2d2d2d] bg-[#1a1a1a]">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2 sm:px-6 lg:px-8">
-        <p className="text-xs text-gray-400 font-sans">
+    <div className="border-b border-slate bg-ink">
+      <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-4 px-5 py-2 md:px-8">
+        <p className="text-xs text-soft">
           {t('banner_teacher')}{' '}
           <Link
             href="/sign-up?role=teacher"
-            className="font-bold text-[#3cffd0] hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3cffd0]"
+            className="font-bold text-mint transition-colors hover:text-white"
           >
             {t('banner_signup_free')}
           </Link>
@@ -46,7 +46,7 @@ export default function TeacherBanner() {
           type="button"
           onClick={dismiss}
           aria-label={t('banner_dismiss')}
-          className="shrink-0 p-1 text-gray-500 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3cffd0]"
+          className="shrink-0 p-1 text-meta transition-colors hover:text-white"
         >
           <X className="h-3.5 w-3.5" aria-hidden />
         </button>

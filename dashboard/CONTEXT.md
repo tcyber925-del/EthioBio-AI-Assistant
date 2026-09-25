@@ -24,9 +24,17 @@ _Avoid_: Metric grid, stat row
 Collapsible sidebar (256px expanded, 72px collapsed) with smooth Framer Motion animation, active route indicator, search navigation, and keyboard shortcuts.
 _Avoid_: Old sidebar, nav sidebar
 
-**HeroSection**:
-Mandatory section at the top of every dashboard page. Role-specific greeting or command-center summary. Receives data via props from the parent page.
+**HeroSection** (dashboard-v2):
+Mandatory section at the top of every dashboard page (v2). Role-specific greeting or command-center summary. Receives data via props from the parent page. Distinct from the marketing landing hero — that is `src/components/landing/HeroSection.tsx` (entry below).
 _Avoid_: Page title, dashboard title
+
+**Marketing surface**:
+The `(marketing)` route group (landing, privacy, terms) — the dark editorial world ported from the generated design. Tokens: `design-system.ts` `marketing` / `marketingTypography` (ink, slate, mint, violet, meta, soft, line, sun, pink, flame, volt + radii micro/input/card/feature/stage/cta), surfaced through `tailwind.config.ts`. Global utilities live in `globals.css` under `.mk-surface`: `.display` (Anton), `.label-mono` (Space Mono), `.sci-grid`, `anim-*`. Dashboard keeps `.verge-display` / Impact and the light-theme token names.
+_Avoid_: Landing theme, marketing palette
+
+**Landing sections**:
+One section per file in `src/components/landing/` (`HeroSection`, `AskDemoSection`, `SubjectsSection`, `PipelineSection`, `TrustSection`, `JourneySection`, `QuizDemoSection`, `AudiencesSection`, `AmharicSection`, `StreamSection`, `StatsSection`, `FaqSection`, `ClosingSection`), composed in order by `src/app/(marketing)/page.tsx`. Stateful sections are client components with `useTranslations`; static ones are async server components with `getTranslations`; AskDemo/QuizDemo/Stats load through `LazySections.tsx`. Scroll reveals share `Reveal`/`Label` (`components/landing/Reveal.tsx`) + `hooks/useInView.ts`, wrapped in `MotionConfig reducedMotion="user"` in the marketing layout.
+_Avoid_: Landing blocks, page sections
 
 **ActivityTimeline**:
 Vertical timeline of activity events. Replaces most activity tables. Shows user, action, and timestamp in a narrative format.
