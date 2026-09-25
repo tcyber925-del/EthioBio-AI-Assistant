@@ -81,3 +81,16 @@ scripts/scripts/
 # Planning artifacts (not tracked — prevents accidental add)
 01-Planning/Architectures/
 01-Planning/Research/
+
+# Impeccable: large verification captures (regenerable; check-added-large-files caps at 500KB)
+.impeccable/review/desktop.png
+.impeccable/review/desktop-am.png
+.impeccable/review/mobile.png
+.impeccable/review/source-desktop.png
+.impeccable/review/source-mobile.png
+.impeccable/review/diff/final/side-by-side.png
+.impeccable/review/diff/final/heatmap.png
+
+# ...but keep the Impeccable phase ledger + measured spec (the generic build/ above must not swallow them)
+!.impeccable/build/
+.impeccable/build/map-inspections/

@@ -1,6 +1,6 @@
 import { ClerkProvider } from '@clerk/nextjs';
 import type { Metadata } from 'next';
-import { Inter, JetBrains_Mono, Noto_Sans_Ethiopic, Spectral } from 'next/font/google';
+import { Anton, Inter, JetBrains_Mono, Noto_Sans_Ethiopic, Space_Grotesk, Space_Mono, Spectral } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import './globals.css';
@@ -32,6 +32,29 @@ const notoSansEthiopic = Noto_Sans_Ethiopic({
   display: 'swap',
 });
 
+/* Marketing surface faces (design-system.ts → `marketingTypography`).
+   Applied only by the `.display` / `.label-mono` utilities and the
+   `.mk-surface` body stack — the dashboard keeps Impact/Inter/JetBrains. */
+const anton = Anton({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-anton',
+  display: 'swap',
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-grotesk',
+  display: 'swap',
+});
+
+const spaceMono = Space_Mono({
+  subsets: ['latin'],
+  weight: ['400', '700'],
+  variable: '--font-spacemono',
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
   title: 'EthioSci',
   description: 'Personalized Science Tutoring for Ethiopian Grades 7-12',
@@ -48,7 +71,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${inter.variable} ${spectral.variable} ${jetbrainsMono.variable} ${notoSansEthiopic.variable}`}
+      className={`${inter.variable} ${spectral.variable} ${jetbrainsMono.variable} ${notoSansEthiopic.variable} ${anton.variable} ${spaceGrotesk.variable} ${spaceMono.variable}`}
     >
       <body className="bg-v2-bg text-v2-text-primary font-sans">
         <ClerkProvider>

@@ -1,80 +1,152 @@
 'use client'
 
+import { motion } from 'framer-motion'
 import { useTranslations } from 'next-intl'
-import { motion, MotionConfig } from 'framer-motion'
 import Link from 'next/link'
-import { MessageSquare } from 'lucide-react'
+import { motion as motionTokens } from '@/styles/design-system'
+
+const steps = [
+  'hero_step_question',
+  'hero_step_understand',
+  'hero_step_retrieve',
+  'hero_step_verify',
+  'hero_step_explain',
+  'hero_step_master',
+] as const
+
+const kickers = ['hero_label_1', 'hero_label_2', 'hero_label_3'] as const
+
+const titleLines = ['hero_title_1', 'hero_title_2', 'hero_title_3'] as const
+
+const rise = (delayMs: number) => ({
+  initial: { opacity: 0, y: 40 },
+  animate: { opacity: 1, y: 0 },
+  transition: {
+    duration: Number.parseInt(motionTokens.reveal, 10) / 1000,
+    delay: delayMs / 1000,
+    ease: motionTokens.revealEasing,
+  },
+})
 
 export default function HeroSection() {
   const t = useTranslations('landing')
 
   return (
-    <MotionConfig reducedMotion="user">
-      <section className="relative overflow-hidden border-b border-[#2d2d2d] bg-gradient-to-b from-[#181818] to-[#131313] pb-24 pt-20">
-        <div className="relative z-10 mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
-          <motion.span
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="verge-label mb-6 inline-block rounded-sm border border-[#3cffd0]/30 bg-[#3cffd0]/10 px-3 py-1 text-[#3cffd0]"
-          >
-            {t('hero_kicker')}
-          </motion.span>
+    <section id="top" className="relative overflow-hidden">
+      <div aria-hidden className="sci-grid pointer-events-none absolute inset-0 opacity-40" />
+      <div className="relative mx-auto grid max-w-[1280px] gap-12 px-5 pb-20 pt-14 md:px-8 lg:grid-cols-12 lg:pb-28 lg:pt-20">
+        <div className="lg:col-span-7">
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            {kickers.map((key, i) => (
+              <motion.p key={key} {...rise(i * 120)} className="label-mono text-meta">
+                {t(key)}
+              </motion.p>
+            ))}
+          </div>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="verge-display mx-auto mb-6 max-w-5xl text-4xl font-extrabold leading-none tracking-tighter text-white sm:text-6xl md:text-7xl"
-          >
-            {t('hero_title')}
-          </motion.h1>
+          <h1 className="display mt-8 text-[54px] sm:text-[80px] lg:text-[104px]">
+            {titleLines.map((key, i) => (
+              <span key={key} className="block overflow-hidden">
+                <motion.span
+                  {...rise(300 + i * 140)}
+                  className={`block ${i === 2 ? 'text-mint' : 'text-white'}`}
+                >
+                  {t(key)}
+                </motion.span>
+              </span>
+            ))}
+          </h1>
 
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-            className="mx-auto mb-10 max-w-3xl text-lg leading-relaxed text-gray-400 font-sans sm:text-xl"
-          >
-            {t('hero_subtitle')}
+          <motion.p {...rise(800)} className="mt-8 max-w-xl text-lg text-soft">
+            {t('hero_body')}
           </motion.p>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="flex flex-col items-center justify-center gap-4 sm:flex-row"
-          >
+          <motion.div {...rise(1000)} className="mt-10 flex flex-wrap gap-3">
             <Link
               href="/sign-up?role=learner"
-              className="w-full rounded-none border border-black bg-[#3cffd0] px-8 py-4 text-center font-mono text-sm font-bold uppercase tracking-wider text-black transition-all hover:-translate-x-[3px] hover:-translate-y-[3px] hover:bg-[#2be0b5] hover:shadow-[4px_4px_0px_0px_#5200ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3cffd0] focus-visible:ring-offset-2 focus-visible:ring-offset-[#131313] sm:w-auto"
+              className="label-mono inline-flex min-h-12 items-center rounded-stage bg-mint px-7 font-bold text-ink transition-colors hover:bg-white"
             >
-              {t('hero_cta_start')}
+              {t('hero_cta_start')} <span aria-hidden className="ml-2">→</span>
             </Link>
             <a
-              href="https://t.me/ethiobio_bot"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex w-full items-center justify-center space-x-2 rounded-none border border-gray-600 bg-transparent px-8 py-4 text-center font-mono text-sm font-bold uppercase tracking-wider text-white transition-all hover:border-white hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3cffd0] sm:w-auto"
+              href="#subjects"
+              className="label-mono inline-flex min-h-12 items-center rounded-cta border border-white/40 px-7 text-white transition-colors hover:border-mint hover:text-mint"
             >
-              <MessageSquare className="h-4 w-4 text-[#3cffd0]" />
-              <span>{t('cta_telegram')}</span>
+              {t('hero_cta_explore')}
             </a>
           </motion.div>
-
-          <p className="mt-6 text-sm text-gray-400">
-            <Link
-              href="/login"
-              className="underline decoration-gray-600 underline-offset-4 transition-colors hover:text-white hover:decoration-[#3cffd0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3cffd0]"
-            >
-              {t('cta_login')}
-            </Link>
-          </p>
         </div>
 
-        {/* Decorative Grid Lines */}
-        <div className="pointer-events-none absolute inset-0 z-0 bg-[linear-gradient(to_right,#1b1b1b_1px,transparent_1px),linear-gradient(to_bottom,#1b1b1b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)]" />
-      </section>
-    </MotionConfig>
+        <div className="relative lg:col-span-5">
+          <div className="relative aspect-square overflow-hidden rounded-feature border bg-ink">
+            <img
+              src="/landing/hero-dna.jpg"
+              alt={t('hero_image_alt')}
+              width={1280}
+              height={1280}
+              loading="eager"
+              fetchPriority="high"
+              className="absolute inset-0 h-full w-full object-cover opacity-45"
+            />
+            <svg viewBox="0 0 400 400" className="absolute inset-0 h-full w-full" aria-hidden>
+              <circle
+                cx="200"
+                cy="200"
+                r="170"
+                fill="none"
+                stroke="currentColor"
+                className="anim-spin text-line"
+                strokeDasharray="2 8"
+              />
+              {steps.map((_, i) => {
+                if (i === steps.length - 1) return null
+                const y1 = 45 + i * 62
+                const y2 = 45 + (i + 1) * 62
+                const x1 = i % 2 ? 250 : 150
+                const x2 = (i + 1) % 2 ? 250 : 150
+                return (
+                  <line
+                    key={i}
+                    x1={x1}
+                    y1={y1}
+                    x2={x2}
+                    y2={y2}
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    className="anim-draw text-mint"
+                    style={{ animationDelay: `${1200 + i * 220}ms` }}
+                  />
+                )
+              })}
+            </svg>
+            <ol className="absolute inset-0">
+              {steps.map((key, i) => (
+                <motion.li
+                  key={key}
+                  {...rise(1100 + i * 220)}
+                  className="absolute flex items-center gap-2"
+                  style={{
+                    top: `${((45 + i * 62) / 400) * 100}%`,
+                    left: `${((i % 2 ? 250 : 150) / 400) * 100}%`,
+                    translate: '-6px -50%',
+                  }}
+                >
+                  <span
+                    className={`size-3 rounded-full ${
+                      i === 5 ? 'bg-violet ring-2 ring-mint' : 'bg-mint'
+                    }`}
+                  />
+                  <span className="label-mono rounded-input bg-ink px-2 py-1 text-white">
+                    <span aria-hidden>{String(i + 1).padStart(2, '0')}</span> {t(key)}
+                  </span>
+                </motion.li>
+              ))}
+            </ol>
+            <p className="label-mono absolute bottom-4 left-4 text-mint">● Status / online</p>
+            <p className="label-mono absolute right-4 top-4 text-meta">RAG / active</p>
+          </div>
+        </div>
+      </div>
+    </section>
   )
 }

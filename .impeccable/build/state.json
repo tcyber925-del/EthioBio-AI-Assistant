@@ -1,0 +1,47 @@
+{
+  "tool": "impeccable",
+  "version": "0.1.6",
+  "createdAt": "2026-09-25T19:45:00+03:00",
+  "artifact": "dashboard/src/app/(marketing)/page.tsx",
+  "direction": {
+    "status": "closed",
+    "key": "brief-pinned",
+    "note": "Concept-seed roll deliberately not run. The brief pins the direction: 'preserve the generated visual design exactly; refactor only implementation.' Per reference/new-work.md: 'a user- or brief-pinned direction beats the roll, always.' Recorded in PRODUCT.md and the surface brief; disclosed to the finish reviewer."
+  },
+  "comps": {
+    "status": "skipped",
+    "reason": "No pixel-comp round ran. This is a port of the generated design's own source repository (tcyber925-del/pixel-perfect-clone-37845): its TSX and styles.css are the design authority, approved verbatim by the user's brief. The design-source captures at .impeccable/review/source-desktop.png, source-mobile.png, source-hero.png serve as the approved comp equivalent for measurement."
+  },
+  "spec": {
+    "status": "closed",
+    "artifact": ".impeccable/build/spec.json",
+    "note": "8 regions measured from source-hero.png (1440x900 first viewport): nav, kicker, h1, lede, cta-primary, cta-secondary, hero-stage, sci-grid. Font-match measured kicker (cap 8.4px) and lede (cap 12.8px); rank wrote the lede's chosen face. h1 is too tight-tracked to fingerprint at comp resolution, so it is sized by its measured box (380x304px)."
+  },
+  "plates": {
+    "status": "skipped",
+    "reason": "No comp-plate generation round ran. The hero-stage raster ships the source repo's own asset copied to dashboard/public/landing/hero-dna.jpg (origin provenance embedded in all 8 rasters; referenced by HeroSection.tsx). The sci-grid texture region is drawn by CSS gradients exactly as the source's styles.css draws it, verified match at 0.986 in the hero diff."
+  },
+  "hero": {
+    "status": "closed",
+    "gate": {
+      "score": 0.9591,
+      "threshold": 0.72,
+      "verdict": "pass",
+      "measuredBy": "impeccable comp-diff --comp .impeccable/review/source-hero.png --build .impeccable/review/hero-repro.png --spec .impeccable/build/spec.json (re-run against the shipped hero-repro.png and spec.json after the fix batch)",
+      "report": ".impeccable/review/diff/hero/report.json",
+      "regions": { "match": 6, "drift": 2 },
+      "advisories": [
+        "lede 0.683 drift: the source capture caught the generated design's anim-rise entry frames mid-flight (source Hero.tsx:30 anim-rise, animationDelay 800ms), so the comp's lede sits at a different offset than the settled build; copy is verbatim",
+        "cta-primary 0.727 drift: same mid-rise comp artifact moves the pill within its measured box; structure 0.984, geometry/color/label match"
+      ]
+    },
+    "repro": ".impeccable/review/hero-repro.png"
+  },
+  "build": {
+    "status": "closed",
+    "note": "Full page ported: 14 composition entries, marketing layer + tokens, EN+AM (175 landing keys each). Final full-page comp-diff --align top against the shipped desktop.png (.impeccable/review/diff/final/report.json): overall 0.853, verdict match, color 0.928, bands 1.0, structure 0.717 — structure reflects the approved deviations (Stats + FAQ sections inserted before Closing, kept multi-column footer vs the source's one-line footer, kept TeacherBanner), all confirmed in the user's Q2 answers."
+  },
+  "review": {
+    "status": "open"
+  }
+}

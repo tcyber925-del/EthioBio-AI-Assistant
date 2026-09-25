@@ -1,99 +1,200 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { MotionConfig } from 'framer-motion'
+import { Menu, X } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { getToken } from '@/lib/auth'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
 import TeacherBanner from '@/components/landing/TeacherBanner'
 
-export default function MarketingLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+/**
+ * `(marketing)` shell: the generated design's sticky nav (compact on scroll,
+ * hamburger under md) with this repo's kept chrome — TeacherBanner above,
+ * LanguageSwitcher and the auth-aware header CTA inside the nav, full footer
+ * below. `mk-surface` (globals.css) applies the marketing type stack, hairline
+ * default borders, mint focus ring and dark browser chrome; `MotionConfig`
+ * gives every reveal `reducedMotion="user"`.
+ */
+const navLinks = [
+  { href: '#learn', labelKey: 'nav_learn' },
+  { href: '#subjects', labelKey: 'nav_subjects' },
+  { href: '#how', labelKey: 'nav_how' },
+  { href: '#teachers', labelKey: 'nav_teachers' },
+] as const
+
+export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations('landing')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [compact, setCompact] = useState(false)
+  const [open, setOpen] = useState(false)
 
   useEffect(() => {
     setIsLoggedIn(!!getToken())
   }, [])
 
+  useEffect(() => {
+    const onScroll = () => setCompact(window.scrollY > 40)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   return (
-    <div className="bg-[#131313] text-white min-h-screen flex flex-col font-sans selection:bg-[#3cffd0] selection:text-black">
+    <div className="mk-surface flex min-h-screen flex-col bg-ink text-white selection:bg-mint selection:text-ink">
       <TeacherBanner />
 
-      {/* Navigation Header */}
-      <header className="border-b border-[#2d2d2d] sticky top-0 bg-[#131313]/90 backdrop-blur-md z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-8">
-            <Link href="/" className="flex items-center">
-              <span className="verge-display text-2xl font-black tracking-tighter text-white hover:text-[#3cffd0] transition-colors">
-                EthioSci
-              </span>
-            </Link>
-            <nav className="hidden md:flex space-x-6">
-              <a href="#features" className="verge-label text-gray-400 hover:text-white transition-colors">{t('nav_features')}</a>
-              <a href="#console" className="verge-label text-gray-400 hover:text-white transition-colors">{t('nav_demo')}</a>
-              <a href="#stats" className="verge-label text-gray-400 hover:text-white transition-colors">{t('nav_numbers')}</a>
-              <a href="#faq" className="verge-label text-gray-400 hover:text-white transition-colors">{t('faq_nav')}</a>
-            </nav>
-          </div>
+      <header
+        className={`sticky top-0 z-50 border-b bg-ink/95 backdrop-blur-md transition-[padding] duration-300 ${
+          compact ? 'py-2' : 'py-5'
+        }`}
+      >
+        <nav
+          aria-label={t('nav_aria_main')}
+          className="mx-auto flex max-w-[1280px] items-center justify-between gap-6 px-5 md:px-8"
+        >
+          <a href="#top" className="display text-2xl tracking-wide text-white">
+            Ethio<span className="text-mint">Sci</span>
+          </a>
 
-          <div className="flex items-center space-x-4">
-            {/* Language Switcher */}
+          <ul className="hidden items-center gap-8 md:flex">
+            {navLinks.map((link) => (
+              <li key={link.href}>
+                <a
+                  href={link.href}
+                  className="label-mono text-soft transition-colors hover:text-mint"
+                >
+                  {t(link.labelKey)}
+                </a>
+              </li>
+            ))}
+          </ul>
+
+          <div className="flex items-center gap-2">
             <LanguageSwitcher
               variant="toggle"
-              className="flex bg-[#222222] border border-[#333333] p-0.5 rounded-sm"
+              className="hidden rounded-input border border-line bg-slate p-0.5 md:flex"
             />
 
-            {/* Launch App / Dashboard button */}
             <Link
               href={isLoggedIn ? '/v2/overview' : '/login'}
-              className="bg-[#3cffd0] hover:bg-[#2be0b5] text-black font-mono font-bold text-xs uppercase tracking-wider px-4 py-2 rounded-none border border-black hover:translate-x-[-2px] hover:translate-y-[-2px] transition-all hover:shadow-[2px_2px_0px_0px_#5200ff]"
+              className="label-mono inline-flex min-h-11 items-center whitespace-nowrap rounded-cta bg-mint px-5 font-bold text-ink transition-colors hover:bg-white"
             >
               {t('cta_app')}
             </Link>
+
+            <button
+              type="button"
+              className="inline-flex size-11 items-center justify-center rounded-full border md:hidden"
+              aria-expanded={open}
+              aria-controls="mobile-menu"
+              aria-label={open ? t('nav_menu_close') : t('nav_menu_open')}
+              onClick={() => setOpen((o) => !o)}
+            >
+              {open ? (
+                <X className="h-5 w-5" aria-hidden />
+              ) : (
+                <Menu className="h-5 w-5" aria-hidden />
+              )}
+            </button>
           </div>
-        </div>
+        </nav>
+
+        {open && (
+          <div id="mobile-menu" className="mx-5 mt-3 border-t md:hidden">
+            <LanguageSwitcher
+              variant="toggle"
+              className="my-3 flex rounded-input border border-line bg-slate p-0.5"
+            />
+            <ul className="flex flex-col">
+              {navLinks.map((link) => (
+                <li key={link.href}>
+                  <a
+                    href={link.href}
+                    onClick={() => setOpen(false)}
+                    className="label-mono flex min-h-12 items-center border-b text-soft"
+                  >
+                    {t(link.labelKey)}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </header>
 
-      {/* Main Content Area */}
       <main className="flex-grow">
-        {children}
+        <MotionConfig reducedMotion="user">
+          {children}
+        </MotionConfig>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-[#2d2d2d] bg-[#0c0c0c] py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <footer className="border-t border-slate bg-ink py-12">
+        <div className="mx-auto max-w-[1280px] px-5 md:px-8">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
             <div>
-              <span className="verge-display text-xl font-bold text-white">EthioSci</span>
-              <p className="mt-4 text-sm text-gray-500 max-w-xs leading-relaxed">
+              <span className="display text-xl text-white">
+                Ethio<span className="text-mint">Sci</span>
+              </span>
+              <p className="mt-4 max-w-xs text-sm leading-relaxed text-meta">
                 {t('footer_tagline')}
               </p>
             </div>
             <div>
-              <h4 className="verge-label text-sm text-white mb-4">{t('footer_resources')}</h4>
-              <ul className="space-y-2 text-sm text-gray-400 font-mono">
-                <li><a href="#features" className="hover:text-[#3cffd0]">{t('section_features')}</a></li>
-                <li><a href="#console" className="hover:text-[#3cffd0]">{t('console_title')}</a></li>
-                <li><a href="#faq" className="hover:text-[#3cffd0]">{t('faq_nav')}</a></li>
-                <li><a href="https://t.me/ethiobio_bot" target="_blank" rel="noopener noreferrer" className="hover:text-[#3cffd0]">Telegram Bot</a></li>
+              <h4 className="label-mono mb-4 text-white">{t('footer_resources')}</h4>
+              <ul className="space-y-2 font-mono text-sm text-soft">
+                <li>
+                  <a href="#learn" className="hover:text-mint">
+                    {t('nav_learn')}
+                  </a>
+                </li>
+                <li>
+                  <a href="#subjects" className="hover:text-mint">
+                    {t('nav_subjects')}
+                  </a>
+                </li>
+                <li>
+                  <a href="#faq" className="hover:text-mint">
+                    {t('faq_nav')}
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://t.me/ethiobio_bot"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-mint"
+                  >
+                    {t('footer_telegram')}
+                  </a>
+                </li>
               </ul>
             </div>
             <div>
-              <h4 className="verge-label text-sm text-white mb-4">{t('footer_portal')}</h4>
-              <ul className="space-y-2 text-sm text-gray-400 font-mono">
-                <li><Link href="/login" className="hover:text-[#3cffd0]">{t('footer_login')}</Link></li>
-                <li><Link href="/v2/overview" className="hover:text-[#3cffd0]">Teacher Workspace</Link></li>
-                <li><Link href="/student" className="hover:text-[#3cffd0]">Student Center</Link></li>
+              <h4 className="label-mono mb-4 text-white">{t('footer_portal')}</h4>
+              <ul className="space-y-2 font-mono text-sm text-soft">
+                <li>
+                  <Link href="/login" className="hover:text-mint">
+                    {t('footer_login')}
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/v2/overview" className="hover:text-mint">
+                    {t('footer_workspace')}
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/student" className="hover:text-mint">
+                    {t('footer_student')}
+                  </Link>
+                </li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-[#1e1e1e] mt-12 pt-8 flex flex-col md:flex-row items-center justify-between">
-            <span className="text-xs font-mono text-gray-600">
-              &copy; {new Date().getFullYear()} EthioSci. Inspired by brutalist digital design.
+          <div className="mt-12 flex flex-col items-center justify-between border-t border-line pt-8 md:flex-row">
+            <span className="font-mono text-xs text-meta">
+              {t('footer_copyright', { year: new Date().getFullYear() })}
             </span>
           </div>
         </div>

@@ -1,8 +1,16 @@
-/** @type {import('tailwindcss').Config} */
-module.exports = {
-  content: [
-    './src/**/*.{js,ts,jsx,tsx,mdx}',
-  ],
+import type { Config } from 'tailwindcss';
+import { marketing, marketingTypography, radii } from './src/styles/design-system';
+
+/**
+ * Tailwind config.
+ *
+ * Converted from `tailwind.config.js` so the theme can import
+ * `src/styles/design-system.ts` — the documented single source of truth for
+ * tokens. Existing dashboard tokens (`v2-*`, `primary`, `accent`, font stacks)
+ * are unchanged; the `ink`/`mint`/... block below is the `(marketing)` world.
+ */
+const config: Config = {
+  content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'],
   theme: {
     extend: {
       colors: {
@@ -48,6 +56,28 @@ module.exports = {
         'v2-purple-rule': 'color-mix(in srgb, var(--v2-purple-rule) calc(100% * <alpha-value>), transparent)',
         'v2-link-hover': 'color-mix(in srgb, var(--v2-link-hover) calc(100% * <alpha-value>), transparent)',
         'v2-inverted': 'color-mix(in srgb, var(--v2-inverted) calc(100% * <alpha-value>), transparent)',
+        /* Marketing surface (design-system.ts → `marketing`) */
+        ink: marketing.ink,
+        slate: marketing.slate,
+        mint: marketing.mint,
+        violet: marketing.violet,
+        meta: marketing.meta,
+        soft: marketing.soft,
+        line: marketing.line,
+        link: marketing.link,
+        sun: marketing.sun,
+        pink: marketing.pink,
+        flame: marketing.flame,
+        volt: marketing.volt,
+      },
+      borderRadius: {
+        /* design-system.ts radii — marketing scale (2/4/20/24/30/40) */
+        input: radii.input,
+        micro: radii.micro,
+        card: radii.card,
+        feature: radii.feature,
+        stage: radii.stage,
+        cta: radii.cta,
       },
       fontFamily: {
         sans: [
@@ -65,8 +95,15 @@ module.exports = {
           'serif',
         ],
         mono: ['var(--font-jbmono)', 'monospace'],
+        /* Marketing surface stacks (design-system.ts → `marketingTypography`) */
+        grotesk: [
+          marketingTypography.body,
+        ],
+        ethiopic: ['var(--font-ethiopic)', 'Noto Sans Ethiopic', 'sans-serif'],
       },
     },
   },
   plugins: [],
-}
+};
+
+export default config;

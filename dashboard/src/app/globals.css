@@ -266,3 +266,145 @@ html[lang='am'] .text-heading {
     font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
   }
 }
+
+/* ===========================================================================
+   Marketing surface — the `(marketing)` route group (landing, privacy, terms).
+   Tokens: src/styles/design-system.ts → `marketing` / `marketingTypography`.
+   Declared with :where() so Tailwind color/radius utilities always win.
+   =========================================================================== */
+
+html {
+  scroll-behavior: smooth;
+}
+
+body:has(.mk-surface) {
+  background-color: #131313;
+}
+
+/* Dark browser chrome on marketing pages only. */
+html:has(:where(.mk-surface)) {
+  scrollbar-color: #444444 #131313;
+}
+
+html:has(:where(.mk-surface))::-webkit-scrollbar {
+  background: #131313;
+}
+
+html:has(:where(.mk-surface))::-webkit-scrollbar-thumb {
+  background: #444444;
+}
+
+html:has(:where(.mk-surface))::-webkit-scrollbar-thumb:hover {
+  background: #666666;
+}
+
+/* Body face + hairline default borders + mint focus ring. */
+:where(.mk-surface) {
+  font-family: var(--font-grotesk), var(--font-inter), system-ui, var(--font-ethiopic),
+    'Noto Sans Ethiopic', sans-serif;
+}
+
+:where(.mk-surface),
+:where(.mk-surface *) {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+:where(.mk-surface) :focus-visible {
+  outline: 2px solid #3cffd0;
+  outline-offset: 3px;
+}
+
+@layer utilities {
+  /* Condensed uppercase display face — marketing only (dashboard keeps
+     .verge-display / Impact; see design-system.ts `marketingTypography`). */
+  .display {
+    font-family: var(--font-anton), Impact, 'Arial Black', var(--font-ethiopic),
+      'Noto Sans Ethiopic', sans-serif;
+    font-weight: 400;
+    line-height: 0.9;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+  }
+
+  /* Technical mono label — marketing only (dashboard keeps .verge-label). */
+  .label-mono {
+    font-family: var(--font-spacemono), var(--font-jbmono), 'Courier New', monospace;
+    font-size: 11px;
+    line-height: 1.2;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  /* Low-opacity measuring grid behind the hero. */
+  .sci-grid {
+    background-image: linear-gradient(rgba(255, 255, 255, 0.14) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.14) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
+}
+
+/* --- Marketing motion: looping SVG decoration + typing caret only
+       (entrances/reveals are framer-motion; see design-system `motion`) --- */
+@keyframes draw {
+  from {
+    stroke-dashoffset: 400;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes pulse-node {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.anim-draw {
+  stroke-dasharray: 400;
+  animation: draw 1.4s ease-out both;
+}
+
+.anim-pulse {
+  animation: pulse-node 3s ease-in-out infinite;
+}
+
+.anim-spin {
+  animation: spin-slow 40s linear infinite;
+  transform-origin: center;
+}
+
+.caret::after {
+  content: '▍';
+  animation: blink 1s steps(1) infinite;
+  color: #3cffd0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .anim-draw,
+  .anim-pulse,
+  .anim-spin,
+  .caret::after {
+    animation: none !important;
+  }
+}
